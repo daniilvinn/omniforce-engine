@@ -1,26 +1,17 @@
 #pragma once
 
-#ifdef CURSED_STATIC
-	#define CURSED_API
-#elif defined(CURSED_DYNAMIC)
-	#error "Cursed Engine currently doesn't support dynamic linking. Coming soon!"
-#endif
+#define CURSED_DEBUG_CONFIG 0x1
+#define CURSED_RELEASE_CONFIG 0x2
 
 #ifdef _DEBUG
 	#define CURSED_DEBUG
+	#define CURSED_BUILD_CONFIG CURSED_DEBUG_CONFIG
 #elif defined(NDEBUG)
 	#define CURSED_RELEASE
+	#define CURSED_BUILD_CONFIG CURSED_RELEASE_CONFIG
 #endif // defined _DEBUG
 
 #define BIT(x) (1 << x)
-
-#define CLASS_API public
-#define PROTECTED_METHODS protected
-#define INTERNAL_UTILS private
-
-#define PUBLIC_DATA public
-#define PROTECTED_DATA protected
-#define INTERNAL_DATA private
 
 #ifdef _WIN32
 	#ifndef _WIN64
@@ -36,4 +27,16 @@
 
 #if defined(_WIN32) || defined(_WIN64)
 	#define CURSED_PLATFORM CURSED_PLATFORM_WIN64
+#endif
+
+#if CURSED_PLATFORM == CURSED_PLATFORM_WIN64
+	#ifdef CURSED_DYNAMIC
+		#ifdef CURSED_BUILD_DLL
+			#define CURSED_API __declspec(dllexport)
+		#else
+			#define CURSED_API __declspec(dllimport)
+		#endif
+	#elif defined(CURSED_STATIC)
+		#define CURSED_API
+	#endif
 #endif

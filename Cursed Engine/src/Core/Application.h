@@ -7,7 +7,7 @@
 
 #include <Core/Events/ApplicationEvents.h>
 #include <Core/Events/MouseEvents.h>
-
+	
 namespace Cursed {
 
 	class CURSED_API Application

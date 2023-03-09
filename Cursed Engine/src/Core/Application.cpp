@@ -7,6 +7,8 @@
 
 #include <Core/Input/Input.h>
 
+#include <Renderer/Renderer.h>
+
 namespace Cursed 
 {
 
@@ -24,6 +26,7 @@ namespace Cursed
 		m_RootSystem = options.root_system;
 
 		JobSystem::Init(JobSystem::ShutdownPolicy::WAIT);
+		JobSystem* js = JobSystem::Get();
 
 		CURSED_INITIALIZE_LOG_SYSTEM(Logger::Level::LEVEL_TRACE);
 
@@ -40,7 +43,16 @@ namespace Cursed
 
 		m_WindowSystem->AddWindow(main_window_config);
 
-		Input::Init();
+		RendererConfig renderer_config = {};
+		renderer_config.main_window = m_WindowSystem->GetWindow("main");
+		renderer_config.frames_in_flight = 3;
+
+		js->Execute(Input::Init);
+		js->Execute([&renderer_config]() {
+			Renderer::Init(renderer_config);
+		});
+
+		js->Wait();
 	}
 
 	void Application::Run()
@@ -64,6 +76,8 @@ namespace Cursed
 		EventDispatcher dispatcher(e);
 		dispatcher.Dispatch<WindowCloseEvent>(CURSED_BIND_EVENT_FUNCTION(Application::OnExit));
 		dispatcher.Dispatch<WindowResizeEvent>(CURSED_BIND_EVENT_FUNCTION(Application::OnMainWindowResize));
+
+		m_RootSystem->OnEvent(e);
 	}
 
 	void Application::PreFrame()
