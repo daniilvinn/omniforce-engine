@@ -1,5 +1,4 @@
 #pragma once
-#include <stdio.h>
 
 #if (CURSED_PLATFORM == CURSED_PLATFORM_WIN64)
 	#include <Windows.h>

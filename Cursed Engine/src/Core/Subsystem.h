@@ -2,6 +2,8 @@
 
 #include <Foundation/Macros.h>
 
+#include "Core/Events/Event.h"
+
 namespace Cursed {
 
 	class CURSED_API Subsystem {
@@ -12,7 +14,7 @@ namespace Cursed {
 		virtual void Launch() = 0;
 		virtual void Destroy() = 0;
 		virtual void OnUpdate() = 0;
-		virtual void OnEvent() = 0;
+		virtual void OnEvent(Event* e) = 0;
 
 	};
 

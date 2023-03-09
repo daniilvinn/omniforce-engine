@@ -14,7 +14,7 @@ namespace Cursed {
 		REGISTER_EVENT(KeyPressed, Keyboard)
 
 		inline KeyCode GetKey() const { return m_KeyCode; }
-		inline uint32 GetRepeatCount() const { m_Repeat; }
+		inline uint32 GetRepeatCount() const { return m_Repeat; }
 
 	private:
 		KeyCode m_KeyCode;

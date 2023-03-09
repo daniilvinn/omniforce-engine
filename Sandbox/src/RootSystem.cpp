@@ -17,21 +17,19 @@ public:
 		
 	}
 
-	void OnEvent() override 
+	void OnEvent(Event* e) override
 	{
-
-
 
 	}
 
 	void Destroy() override
 	{
-		printf("Exiting root system...\n");
+		CURSED_CLIENT_TRACE("Exiting root system...");
 	}
 
 	void Launch() override
 	{
-		printf("Constructed root system...\n");
+		CURSED_CLIENT_TRACE("Constructed root system...");
 	}
 
 };
