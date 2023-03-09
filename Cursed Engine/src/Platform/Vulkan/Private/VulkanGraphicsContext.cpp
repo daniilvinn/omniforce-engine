@@ -52,12 +52,16 @@ namespace Cursed {
 
 	VulkanGraphicsContext::~VulkanGraphicsContext()
 	{
-		
+		CURSED_CORE_WARNING("Destroying Vulkan graphics context from destructor. \
+			Consider using VulkanGraphicsContext::Destroy() for this purpose.");
+		m_Device->Destroy();
+		m_DebugUtils->Destroy(this);
 	}
 
 	void VulkanGraphicsContext::Destroy()
 	{
-
+		m_Device->Destroy();
+		m_DebugUtils->Destroy(this);
 	}
 
 	std::vector<const char*> VulkanGraphicsContext::GetVulkanExtensions()
