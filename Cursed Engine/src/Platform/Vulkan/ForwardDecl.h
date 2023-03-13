@@ -8,5 +8,7 @@ namespace Cursed
 	class VulkanPhysicalDevice;
 	class VulkanRenderer;
 	class VulkanDebugUtils;
+	class VulkanSwapchain;
+	class VulkanImage;
 
 }

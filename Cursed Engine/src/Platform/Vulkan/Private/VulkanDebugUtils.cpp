@@ -12,16 +12,16 @@ namespace Cursed {
 		switch (messageSeverity)
 		{
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
-			CURSED_CORE_TRACE("Vulkan validation layers: {0}", pCallbackData->pMessage);
+			CURSED_CORE_TRACE("Vulkan validation layers: {0}\n", pCallbackData->pMessage);
 			break;
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
-			CURSED_CORE_INFO("Vulkan validation layers: {0}", pCallbackData->pMessage);
+			CURSED_CORE_INFO("Vulkan validation layers: {0}\n", pCallbackData->pMessage);
 			break;
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-			CURSED_CORE_WARNING("Vulkan validation layers: {0}", pCallbackData->pMessage);
+			CURSED_CORE_WARNING("Vulkan validation layers: {0}\n", pCallbackData->pMessage);
 			break;
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-			CURSED_CORE_ERROR("Vulkan validation layers: {0}", pCallbackData->pMessage);
+			CURSED_CORE_ERROR("Vulkan validation layers: {0}\n", pCallbackData->pMessage);
 			break;
 		default:
 			break;
@@ -41,7 +41,7 @@ namespace Cursed {
 
 	VulkanDebugUtils::~VulkanDebugUtils()
 	{
-		CURSED_CORE_WARNING("Vulkan debug utils were destroyed in destructor instead of VulkanDebugUtils::Destroy() call.");
+		
 	}
 
 	void VulkanDebugUtils::Destroy(VulkanGraphicsContext* ctx)

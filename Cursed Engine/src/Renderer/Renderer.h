@@ -10,8 +10,9 @@
 namespace Cursed {
 
 	struct RendererConfig {
-		Shared<AppWindow> main_window;
+		AppWindow* main_window;
 		uint32 frames_in_flight;
+		bool vsync;
 	};
 
 	class CURSED_API Renderer {
@@ -19,6 +20,9 @@ namespace Cursed {
 
 		static void Init(const RendererConfig& config);
 		static void Shutdown();
+
+		static void BeginFrame();
+		static void EndFrame();
 
 	private:
 		static RendererAPI* s_RendererAPI;

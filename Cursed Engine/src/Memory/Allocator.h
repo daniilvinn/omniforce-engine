@@ -15,6 +15,7 @@ namespace Cursed {
 	public:
 
 		TransientAllocator(uint64 pool_size = 1024 * 1024) 
+			: m_Size(pool_size)
 		{
 			m_Stack = new byte[pool_size]; // Allocating 1MB
 			m_StackPointer = m_Stack; // bottom of the stack
@@ -40,10 +41,12 @@ namespace Cursed {
 		{
 			ConditionalLock<ThreadSafe> lock;
 			m_StackPointer = m_Stack;
+			memset(m_Stack, 0, m_Size);
 		}
 
 	private:
 		byte* m_Stack;
 		byte* m_StackPointer;
+		uint64 m_Size;
 	};
 }

@@ -1,14 +1,24 @@
 #include "../VulkanGraphicsContext.h"
 #include "../VulkanDevice.h"
 #include "../VulkanDebugUtils.h"
+#include "../VulkanSwapchain.h"
 
 #include <GLFW/glfw3.h>
 #include <vector>
 
 namespace Cursed {
 
-	VulkanGraphicsContext::VulkanGraphicsContext()
+	VulkanGraphicsContext* VulkanGraphicsContext::s_Instance;
+
+	VulkanGraphicsContext::VulkanGraphicsContext(const RendererConfig& config)
 	{
+		if (s_Instance) {
+			CURSED_CORE_ERROR("Graphics context is already initialized.");
+			return;
+		}
+
+		s_Instance = this;
+
 		VkApplicationInfo application_info = {};
 		application_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 		application_info.apiVersion = VK_API_VERSION_1_3;
@@ -19,7 +29,6 @@ namespace Cursed {
 
 		std::vector<const char*> extensions = GetVulkanExtensions();
 		std::vector<const char*> layers = GetVulkanLayers();
-
 
 		VkInstanceCreateInfo instance_create_info = {};
 		instance_create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -48,20 +57,34 @@ namespace Cursed {
 		Shared<VulkanPhysicalDevice> device = VulkanPhysicalDevice::Select(this);
 		m_Device = std::make_shared<VulkanDevice>(device, std::forward<VkPhysicalDeviceFeatures>(device_features));
 
+		GLFWwindow* window_handle = (GLFWwindow*)config.main_window->Raw();
+		ivec2 window_size = {};
+		glfwGetFramebufferSize(window_handle, &window_size.x, &window_size.y);
+
+		SwapchainSpecification swapchain_spec = {};
+		swapchain_spec.main_window = config.main_window;
+		swapchain_spec.frames_in_flight = config.frames_in_flight;
+		swapchain_spec.extent = window_size;
+		swapchain_spec.vsync = config.vsync;
+
+		m_Swapchain = std::make_shared<VulkanSwapchain>(swapchain_spec);
+		m_Swapchain->CreateSurface(swapchain_spec);
+		m_Swapchain->CreateSwapchain(swapchain_spec);
 	}
 
 	VulkanGraphicsContext::~VulkanGraphicsContext()
 	{
-		CURSED_CORE_WARNING("Destroying Vulkan graphics context from destructor. \
-			Consider using VulkanGraphicsContext::Destroy() for this purpose.");
-		m_Device->Destroy();
-		m_DebugUtils->Destroy(this);
+		Destroy();
 	}
 
 	void VulkanGraphicsContext::Destroy()
 	{
+		vkDeviceWaitIdle(m_Device->Raw());
+		m_Swapchain->DestroySwapchain();
+		m_Swapchain->DestroySurface();
 		m_Device->Destroy();
 		m_DebugUtils->Destroy(this);
+		vkDestroyInstance(m_VulkanInstance, nullptr);
 	}
 
 	std::vector<const char*> VulkanGraphicsContext::GetVulkanExtensions()

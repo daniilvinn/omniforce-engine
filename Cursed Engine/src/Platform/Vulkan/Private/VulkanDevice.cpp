@@ -168,18 +168,17 @@ namespace Cursed {
 		vkGetDeviceQueue(m_Device, m_PhysicalDevice->GetQueueFamilyIndices().graphics, 0, &m_GeneralQueue);
 		vkGetDeviceQueue(m_Device, m_PhysicalDevice->GetQueueFamilyIndices().compute, 0, &m_AsyncComputeQueue);
 
-
-
 	}
 
 	VulkanDevice::~VulkanDevice()
 	{
-		vkDestroyDevice(m_Device, nullptr);
+		CURSED_ASSERT_TAGGED(!m_Device, "Vulkan device was not destroyed yet. Please, call VulkanDevice::Destroy().");
 	}
 
 	void VulkanDevice::Destroy()
 	{
 		vkDestroyDevice(m_Device, nullptr);
+		m_Device = VK_NULL_HANDLE;
 	}
 
 	std::vector<const char*> VulkanDevice::GetRequiredExtensions()

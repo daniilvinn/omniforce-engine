@@ -16,5 +16,15 @@ namespace Cursed {
 		delete s_RendererAPI;
 	}
 
+	void Renderer::BeginFrame() 
+	{
+		s_RendererAPI->BeginFrame();
+	}
+	
+	void Renderer::EndFrame() 
+	{
+		s_RendererAPI->EndFrame();
+	}
+
 
 }

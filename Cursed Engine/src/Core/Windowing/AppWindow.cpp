@@ -12,6 +12,7 @@ namespace Cursed {
 		{
 		case CURSED_PLATFORM_WIN64:
 			return std::make_shared<Win64AppWindow>(config);
+			//return Shared<Win64AppWindow>::Create(config).Cast<AppWindow>();
 			break;
 		default:
 			break;

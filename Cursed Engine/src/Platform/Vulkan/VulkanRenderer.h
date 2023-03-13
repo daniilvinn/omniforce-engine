@@ -10,9 +10,12 @@ namespace Cursed {
 		VulkanRenderer(const RendererConfig& config);
 		~VulkanRenderer() override;
 
+		void BeginFrame() override;
+		void EndFrame() override;
+
 	private:
 		Shared<VulkanGraphicsContext> m_GraphicsContext;
-
+		Shared<VulkanSwapchain> m_Swapchain;
 	};
 
 }

@@ -40,3 +40,28 @@
 		#define CURSED_API
 	#endif
 #endif
+
+#ifdef CURSED_DEBUG
+	#define CURSED_ASSERT(expression)														\
+		do {																				\
+			if(!expression) {																\
+				CURSED_CORE_ERROR("Assertion failed: {0}({1})", __FILE__, __LINE__);		\
+				__debugbreak();																\
+			}																				\
+		} while (false)
+	#define CURSED_ASSERT_TAGGED(expression, ...)											\
+		do {																				\
+			if(!expression) {																\
+				CURSED_CORE_ERROR(															\
+					"Assertion failed: {0}({1}) | {2}",										\
+					__FILE__,																\
+					__LINE__,																\
+					__VA_ARGS__																\
+				);																			\
+				__debugbreak();																\
+			}																				\
+		} while (false)
+#else 
+	#define CURSED_ASSERT(expression)
+	#define CURSED_ASSERT_TAGGED(expression, ...)
+#endif

@@ -2,8 +2,6 @@
 
 using namespace Cursed;
 
-#include <functional>
-
 class RootSubsystem : public Subsystem 
 {
 public:

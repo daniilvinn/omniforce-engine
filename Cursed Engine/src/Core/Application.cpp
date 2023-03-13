@@ -44,8 +44,9 @@ namespace Cursed
 		m_WindowSystem->AddWindow(main_window_config);
 
 		RendererConfig renderer_config = {};
-		renderer_config.main_window = m_WindowSystem->GetWindow("main");
+		renderer_config.main_window = m_WindowSystem->GetWindow("main").get();
 		renderer_config.frames_in_flight = 3;
+		renderer_config.vsync = true;
 
 		js->Execute(Input::Init);
 		js->Execute([&renderer_config]() {
@@ -68,6 +69,11 @@ namespace Cursed
 
 	void Application::Destroy()
 	{
+		JobSystem* js = JobSystem::Get();
+
+		js->Execute([]() { Renderer::Shutdown(); });
+		
+		js->Wait();
 		CURSED_CORE_INFO("Engine shutdown success");
 	}
 
@@ -82,12 +88,14 @@ namespace Cursed
 
 	void Application::PreFrame()
 	{
+		Renderer::BeginFrame();
 		m_WindowSystem->ProcessEvents();
 	}
 
 	void Application::PostFrame()
 	{
 		m_WindowSystem->PollEvents();
+		Renderer::EndFrame();
 	}
 
 	Shared<AppWindow> Application::GetWindow(const std::string& tag) const
@@ -104,7 +112,7 @@ namespace Cursed
 
 	bool Application::OnMainWindowResize(WindowResizeEvent* e) 
 	{
-		vec2<int32> resolution = e->GetResolution();
+		ivec2 resolution = e->GetResolution();
 		CURSED_CORE_TRACE("Window resize: {0}x{1}", resolution.x, resolution.y);
 		return true;
 	};
