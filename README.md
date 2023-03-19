@@ -1,4 +1,4 @@
-# Cursed Engine
+# Omniforce Engine
 ## A game engine, designed to be fully multithreaded, capable of running single-player games and aimed for rendering stunning graphics.
 
 ## Features
