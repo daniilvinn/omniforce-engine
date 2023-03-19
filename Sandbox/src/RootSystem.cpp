@@ -1,6 +1,6 @@
 #include <CursedEngine.h>
 
-using namespace Cursed;
+using namespace Omni;
 
 class RootSubsystem : public Subsystem 
 {
@@ -31,7 +31,6 @@ public:
 	void Destroy() override
 	{
 		m_Buffer->Destroy();
-		CURSED_CLIENT_TRACE("Exiting root system...");
 	}
 
 	void Launch() override
@@ -51,7 +50,6 @@ public:
 
 
 		m_Buffer = DeviceBuffer::Create(buffer_spec, arr, sizeof(arr));
-		CURSED_CLIENT_TRACE("Constructed root system...");
 	}
 
 	/*
