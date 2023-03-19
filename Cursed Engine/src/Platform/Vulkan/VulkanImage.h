@@ -48,20 +48,26 @@ namespace Cursed {
 		VulkanImage(const ImageSpecification& spec);
 		~VulkanImage();
 
+		void CreateFromRaw(const ImageSpecification& spec, VkImage image, VkImageView view);
 		void Destroy() override;
 
 		VkImage Raw() const { return m_Image; }
 		VkImageView RawView() const { return m_ImageView; }
-
 		ImageSpecification GetSpecification() const { return m_Specification; }
+
+		VkImageLayout GetCurrentLayout() const { return m_CurrentLayout; }
+
+		// It is supposed that image has actually already been transitioned into layout.
+		void SetCurrentLayout(VkImageLayout layout) { m_CurrentLayout = layout; } 
 		
-		void CreateFromRaw(const ImageSpecification& spec, VkImage image, VkImageView view);
 
 	private:
 		ImageSpecification m_Specification;
 
 		VkImage m_Image;
 		VkImageView m_ImageView;
+		VkImageLayout m_CurrentLayout;
+		
 
 	};
 

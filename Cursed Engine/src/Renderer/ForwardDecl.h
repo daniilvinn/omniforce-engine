@@ -7,4 +7,6 @@ namespace Cursed
 	class RendererAPI;
 	class Swapchain;
 	class Image;
+	class DeviceBuffer;
+
 };

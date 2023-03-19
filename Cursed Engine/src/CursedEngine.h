@@ -12,5 +12,9 @@
 
 #include <Core/Input/Input.h>
 
+#include <Renderer/Renderer.h>
+#include <Renderer/Swapchain.h>
+#include <Renderer/DeviceBuffer.h>
+
 // Entry Point
 #include <Core/EntryPoint.h>

@@ -2,6 +2,7 @@
 #include "../VulkanDevice.h"
 #include "../VulkanDebugUtils.h"
 #include "../VulkanSwapchain.h"
+#include "VulkanMemoryAllocator.h"
 
 #include <GLFW/glfw3.h>
 #include <vector>
@@ -70,6 +71,8 @@ namespace Cursed {
 		m_Swapchain = std::make_shared<VulkanSwapchain>(swapchain_spec);
 		m_Swapchain->CreateSurface(swapchain_spec);
 		m_Swapchain->CreateSwapchain(swapchain_spec);
+
+		VulkanMemoryAllocator::Init();
 	}
 
 	VulkanGraphicsContext::~VulkanGraphicsContext()
@@ -80,10 +83,12 @@ namespace Cursed {
 	void VulkanGraphicsContext::Destroy()
 	{
 		vkDeviceWaitIdle(m_Device->Raw());
+		VulkanMemoryAllocator::Destroy();
 		m_Swapchain->DestroySwapchain();
 		m_Swapchain->DestroySurface();
 		m_Device->Destroy();
-		m_DebugUtils->Destroy(this);
+		if (CURSED_BUILD_CONFIG == CURSED_DEBUG_CONFIG)
+			m_DebugUtils->Destroy(this);
 		vkDestroyInstance(m_VulkanInstance, nullptr);
 	}
 

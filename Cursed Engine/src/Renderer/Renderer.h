@@ -18,11 +18,20 @@ namespace Cursed {
 	class CURSED_API Renderer {
 	public:
 
+		using RenderFunction = std::function<void()>;
+
 		static void Init(const RendererConfig& config);
 		static void Shutdown();
 
+		static void Submit(RenderFunction func);
 		static void BeginFrame();
 		static void EndFrame();
+		static Shared<Image> GetSwapchainImage();
+		static void ClearImage(Shared<Image> image, const fvec4& value);
+
+
+
+		static void Render();
 
 	private:
 		static RendererAPI* s_RendererAPI;

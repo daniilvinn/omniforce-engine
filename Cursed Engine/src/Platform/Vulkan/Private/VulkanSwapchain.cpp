@@ -15,7 +15,7 @@ namespace Cursed {
 
 	VulkanSwapchain::~VulkanSwapchain()
 	{
-		
+
 	}
 
 	void VulkanSwapchain::CreateSurface(const SwapchainSpecification& spec)
@@ -29,7 +29,7 @@ namespace Cursed {
 				(GLFWwindow*)spec.main_window->Raw(),
 				nullptr,
 				&m_Surface
-			) 
+			)
 		);
 		CURSED_CORE_TRACE("Created window surface");
 
@@ -57,7 +57,7 @@ namespace Cursed {
 		m_SurfaceFormat = surface_formats[0];
 
 		for (auto& format : surface_formats) {
-			if (format.format == VK_FORMAT_B8G8R8A8_SRGB && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) 
+			if (format.format == VK_FORMAT_B8G8R8A8_SRGB && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
 				m_SurfaceFormat = format;
 		}
 	}
@@ -72,36 +72,37 @@ namespace Cursed {
 
 		if (m_Swapchain) [[likely]]
 		{
-			for (auto& image : m_Images) {
-				vkDestroyImageView(device->Raw(), image->RawView(), nullptr);
-			}
-
 			vkDestroySwapchainKHR(device->Raw(), m_Swapchain, nullptr);
 		}
-		
+
+		uvec2 extent = (uvec2)spec.extent;
+		if (extent.x + extent.y == 0) {
+			extent = { 1, 1 };
+		}
+
 		VkSurfaceCapabilitiesKHR surface_capabilities = {};
 		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device->GetPhysicalDevice()->Raw(), m_Surface, &surface_capabilities);
 
 		VkSwapchainCreateInfoKHR swapchain_create_info = {};
 		swapchain_create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 		swapchain_create_info.surface = m_Surface;
-		swapchain_create_info.oldSwapchain = m_Swapchain;
+		swapchain_create_info.oldSwapchain = VK_NULL_HANDLE;
 		swapchain_create_info.imageFormat = m_SurfaceFormat.format;
 		swapchain_create_info.imageColorSpace = m_SurfaceFormat.colorSpace;
 		swapchain_create_info.minImageCount = spec.frames_in_flight;
 		swapchain_create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		swapchain_create_info.imageExtent = { (uint32)spec.extent.x, (uint32)spec.extent.y };
+		swapchain_create_info.imageExtent = { extent.x, extent.y };
 		swapchain_create_info.imageArrayLayers = 1;
 		swapchain_create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 		swapchain_create_info.clipped = VK_TRUE;
-		swapchain_create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+		swapchain_create_info.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 		swapchain_create_info.preTransform = surface_capabilities.currentTransform;
 		swapchain_create_info.presentMode = VK_PRESENT_MODE_FIFO_KHR;
 
 		if (m_SupportsMailboxPresentation) {
 			swapchain_create_info.presentMode = m_Specification.vsync ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_MAILBOX_KHR;
 		}
-		
+
 		VK_CHECK_RESULT(vkCreateSwapchainKHR(device->Raw(), &swapchain_create_info, nullptr, &m_Swapchain));
 
 		VK_CHECK_RESULT(vkGetSwapchainImagesKHR(device->Raw(), m_Swapchain, (uint32*)&m_Specification.frames_in_flight, nullptr));
@@ -110,6 +111,14 @@ namespace Cursed {
 		std::vector<VkImage> pure_swapchain_images(m_Specification.frames_in_flight);
 
 		VK_CHECK_RESULT(vkGetSwapchainImagesKHR(device->Raw(), m_Swapchain, (uint32*)&m_Specification.frames_in_flight, pure_swapchain_images.data()));
+
+		VkCommandBuffer image_layout_transition_command_buffer = device->AllocateTransientCmdBuffer();
+
+		for (auto& image : m_Images) {
+			vkDestroyImageView(device->Raw(), image->RawView(), nullptr);
+		}
+
+		m_Images.clear();
 
 		for (auto& image : pure_swapchain_images) {
 			VkImageView image_view = VK_NULL_HANDLE;
@@ -138,13 +147,45 @@ namespace Cursed {
 			swapchain_image_spec.format = VulkanToCursedImageFormat(m_SurfaceFormat.format);
 
 			m_Images.push_back(std::make_shared<VulkanImage>(swapchain_image_spec, image, image_view));
+
+			VkImageMemoryBarrier image_memory_barrier = {};
+			image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+			image_memory_barrier.image = image;
+			image_memory_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			image_memory_barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+			image_memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			image_memory_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			image_memory_barrier.subresourceRange.baseArrayLayer = 0;
+			image_memory_barrier.subresourceRange.layerCount = 1;
+			image_memory_barrier.subresourceRange.baseMipLevel = 0;
+			image_memory_barrier.subresourceRange.levelCount = 1;
+
+			vkCmdPipelineBarrier(
+				image_layout_transition_command_buffer,
+				VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+				0,
+				0,
+				nullptr,
+				0,
+				nullptr,
+				1,
+				&image_memory_barrier
+			);
+		}
+
+		device->ExecuteTransientCmdBuffer(image_layout_transition_command_buffer);
+
+		for (auto& image : m_Images) {
+			image->SetCurrentLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 		}
 
 		m_CurrentFrameIndex = 0;
 
 		/*  ===================
 		*	Create sync objects
-		*/  
+		*/
 
 		VkSemaphoreCreateInfo semaphore_create_info = {};
 		semaphore_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -160,7 +201,10 @@ namespace Cursed {
 		}
 
 		m_Fences.reserve(spec.frames_in_flight);
-		
+
+		m_Semaphores.shrink_to_fit();
+		m_Fences.shrink_to_fit();
+
 		VkFenceCreateInfo fence_create_info = {};
 		fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 		fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
@@ -182,7 +226,7 @@ namespace Cursed {
 
 	void VulkanSwapchain::CreateSwapchain()
 	{
-		
+
 	}
 
 	void VulkanSwapchain::DestroySurface()
@@ -203,7 +247,7 @@ namespace Cursed {
 		}
 
 		vkDestroySwapchainKHR(device->Raw(), m_Swapchain, nullptr);
-		
+
 		for (auto& semaphores : m_Semaphores) {
 			vkDestroySemaphore(device->Raw(), semaphores.render_complete, nullptr);
 			vkDestroySemaphore(device->Raw(), semaphores.present_complete, nullptr);
@@ -241,11 +285,11 @@ namespace Cursed {
 			m_Swapchain,
 			UINT64_MAX,
 			m_Semaphores[m_CurrentFrameIndex].present_complete,
-			VK_NULL_HANDLE, 
+			VK_NULL_HANDLE,
 			&m_CurrentImageIndex
 		);
 
-		if (acquisition_result == VK_ERROR_OUT_OF_DATE_KHR || acquisition_result == VK_SUBOPTIMAL_KHR) 
+		if (acquisition_result == VK_ERROR_OUT_OF_DATE_KHR || acquisition_result == VK_SUBOPTIMAL_KHR)
 		{
 			VkSurfaceCapabilitiesKHR surface_capabilities = {};
 			vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device->GetPhysicalDevice()->Raw(), m_Surface, &surface_capabilities);
@@ -273,7 +317,7 @@ namespace Cursed {
 		present_info.pWaitSemaphores = &m_Semaphores[m_CurrentFrameIndex].render_complete;
 		present_info.pResults = nullptr;
 
-		VkResult present_result = vkQueuePresentKHR(device->GetAsyncComputeQueue(), &present_info);
+		VkResult present_result = vkQueuePresentKHR(device->GetGeneralQueue(), &present_info);
 
 		if (present_result == VK_ERROR_OUT_OF_DATE_KHR || present_result == VK_SUBOPTIMAL_KHR)
 		{
@@ -283,13 +327,13 @@ namespace Cursed {
 			SwapchainSpecification new_spec = GetSpecification();
 			new_spec.extent = { (int32)surface_capabilities.currentExtent.width, (int32)surface_capabilities.currentExtent.height };
 
-			vkQueueWaitIdle(device->GetAsyncComputeQueue());
+			vkQueueWaitIdle(device->GetGeneralQueue());
 
 			CreateSwapchain(new_spec);
 		}
-
+		
+		
 		m_CurrentFrameIndex = (m_CurrentImageIndex + 1) % m_Specification.frames_in_flight;
-		CURSED_CORE_TRACE("Updating display framebuffer. Current image index: {}", m_CurrentImageIndex);
 	}
 
 }

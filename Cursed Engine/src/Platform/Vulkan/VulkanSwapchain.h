@@ -3,6 +3,8 @@
 #include "VulkanCommon.h"
 
 #include <Renderer/Swapchain.h>
+#include <Platform/Vulkan/VulkanDevice.h>
+#include <Platform/Vulkan/VulkanImage.h>
 
 namespace Cursed {
 
@@ -36,6 +38,8 @@ namespace Cursed {
 		uint32 GetCurrentFrameIndex() const { return m_CurrentFrameIndex; }
 
 		SwapchainSemaphores GetSemaphores() const { return m_Semaphores[m_CurrentFrameIndex]; }
+		VkFence GetCurrentFence() const { return m_Fences[m_CurrentFrameIndex]; }
+		Shared<Image> GetCurrentImage() override { return ShareAs<Image>(m_Images[m_CurrentImageIndex]); };
 
 	private:
 		SwapchainSpecification m_Specification;
@@ -52,7 +56,7 @@ namespace Cursed {
 		std::vector<VkFence> m_Fences;
 
 		uint32 m_CurrentFrameIndex;
-		uint32 m_CurrentImageIndex;
+		uint32 m_CurrentImageIndex = 0;
 	};
 
 }

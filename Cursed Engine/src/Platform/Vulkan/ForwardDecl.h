@@ -10,5 +10,6 @@ namespace Cursed
 	class VulkanDebugUtils;
 	class VulkanSwapchain;
 	class VulkanImage;
+	class VulkanDeviceBuffer;
 
 }
