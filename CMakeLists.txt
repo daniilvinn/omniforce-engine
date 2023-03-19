@@ -3,8 +3,8 @@
 #
 cmake_minimum_required (VERSION 3.23)
 
-project ("Cursed Engine")
+project ("Omniforce Engine")
 
 # Include sub-projects.
-add_subdirectory ("Cursed Engine")
+add_subdirectory ("Omniforce")
 add_subdirectory ("Sandbox")
