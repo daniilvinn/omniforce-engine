@@ -168,6 +168,13 @@ namespace Cursed {
 		vkGetDeviceQueue(m_Device, m_PhysicalDevice->GetQueueFamilyIndices().graphics, 0, &m_GeneralQueue);
 		vkGetDeviceQueue(m_Device, m_PhysicalDevice->GetQueueFamilyIndices().compute, 0, &m_AsyncComputeQueue);
 
+		VkCommandPoolCreateInfo cmd_pool_create_info = {};
+		cmd_pool_create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		cmd_pool_create_info.queueFamilyIndex = m_PhysicalDevice->GetQueueFamilyIndices().graphics;
+		cmd_pool_create_info.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+
+		VK_CHECK_RESULT(vkCreateCommandPool(m_Device, &cmd_pool_create_info, nullptr, &m_CmdPool));
+
 	}
 
 	VulkanDevice::~VulkanDevice()
@@ -177,8 +184,53 @@ namespace Cursed {
 
 	void VulkanDevice::Destroy()
 	{
+		vkDestroyCommandPool(m_Device, m_CmdPool, nullptr);
 		vkDestroyDevice(m_Device, nullptr);
 		m_Device = VK_NULL_HANDLE;
+	}
+
+	VkCommandBuffer VulkanDevice::AllocateTransientCmdBuffer() const
+	{
+		VkCommandBufferAllocateInfo cmd_buffer_allocate_info = {};
+		cmd_buffer_allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		cmd_buffer_allocate_info.commandPool = m_CmdPool;
+		cmd_buffer_allocate_info.commandBufferCount = 1;
+		cmd_buffer_allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+
+		VkCommandBuffer cmd_buffer;
+		vkAllocateCommandBuffers(m_Device, &cmd_buffer_allocate_info, &cmd_buffer);
+
+		VkCommandBufferBeginInfo begin_info = {};
+		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+		vkBeginCommandBuffer(cmd_buffer, &begin_info);
+
+		return cmd_buffer;
+	}
+
+	void VulkanDevice::ExecuteTransientCmdBuffer(VkCommandBuffer cmd_buffer, bool wait) const
+	{
+		vkEndCommandBuffer(cmd_buffer);
+
+		VkSubmitInfo submit_info = {};
+		submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submit_info.pCommandBuffers = &cmd_buffer;
+		submit_info.commandBufferCount = 1;
+
+		VkFence fence;
+		VkFenceCreateInfo fence_create_info = {};
+		fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+
+		vkCreateFence(m_Device, &fence_create_info, nullptr, &fence);
+
+		vkQueueSubmit(m_GeneralQueue, 1, &submit_info, fence);
+		vkWaitForFences(m_Device, 1, &fence, VK_TRUE, UINT64_MAX);
+
+		vkResetCommandPool(m_Device, m_CmdPool, 0);
+		vkFreeCommandBuffers(m_Device, m_CmdPool, 1, &cmd_buffer);
+
+		vkDestroyFence(m_Device, fence, nullptr);
 	}
 
 	std::vector<const char*> VulkanDevice::GetRequiredExtensions()

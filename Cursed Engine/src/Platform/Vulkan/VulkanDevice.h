@@ -42,6 +42,9 @@ namespace Cursed {
 		VkQueue GetGeneralQueue() const { return m_GeneralQueue; }
 		VkQueue GetAsyncComputeQueue() const { return m_GeneralQueue; }
 
+		VkCommandBuffer AllocateTransientCmdBuffer() const;
+		void ExecuteTransientCmdBuffer(VkCommandBuffer cmd_buffer, bool wait = false) const;
+
 	private:
 		std::vector<const char*> GetRequiredExtensions();
 
@@ -50,6 +53,8 @@ namespace Cursed {
 		Shared<VulkanPhysicalDevice> m_PhysicalDevice;
 		VkQueue m_GeneralQueue;
 		VkQueue m_AsyncComputeQueue;
+
+		VkCommandPool m_CmdPool;
 	};
 
 }

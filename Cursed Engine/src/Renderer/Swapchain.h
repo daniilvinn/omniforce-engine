@@ -2,7 +2,8 @@
 
 #include <Foundation/Macros.h>
 #include <Core/Windowing/AppWindow.h>
-#include "ForwardDecl.h"
+
+#include <Renderer/Image.h>
 
 namespace Cursed {
 
@@ -28,6 +29,8 @@ namespace Cursed {
 
 		virtual bool IsVSync() const = 0;
 		virtual void SetVSync(bool vsync) = 0;
+
+		virtual Shared<Image> GetCurrentImage() = 0;
 
 		virtual SwapchainSpecification GetSpecification() = 0;
 

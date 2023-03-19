@@ -11,34 +11,38 @@
 
 namespace Cursed {
 
+	enum class JobPriority : uint32 {
+		STANDARD,
+		HIGH
+	};
+
+	struct JobDeclaration {
+		std::function<void()> job;
+		std::atomic_bool finished = false;
+		JobDeclaration* dependencies = nullptr;
+		std::atomic<uint32> dependency_counter = 0;
+		JobPriority priority = JobPriority::STANDARD;
+	};
+
+	enum class JobSystemShutdownPolicy : uint8_t {
+		WAIT, // wait on all jobs to be executed before shutting down job system
+		CLEAR // clear the queue, so shutdown immediately 
+	};
+
 	class JobSystem {
 	public:
-
-		struct Declaration {
-			std::function<void()> job;
-			std::atomic_bool finished = false;
-			Declaration* dependencies = nullptr;
-		};
-
-		enum class ShutdownPolicy : uint8_t {
-			WAIT, // wait on all jobs to be executed before shutting down job system
-			CLEAR // clear the queue, so shutdown immediately 
-		};
 		
-		static void Init(ShutdownPolicy policy = ShutdownPolicy::CLEAR);
+		static void Init(JobSystemShutdownPolicy policy = JobSystemShutdownPolicy::CLEAR);
 		static void Destroy() { delete s_Instance; };
 		static JobSystem* Get() { return s_Instance; }
 
 		void Execute(std::function<void()> func);
-
-		inline bool IsBusy() const { return !(m_CurrentExecutionLabel == m_FinishExecutionLabel); }
-
 		inline void Wait() const { while (IsBusy()); }
-
+		inline bool IsBusy() const { return !(m_CurrentExecutionLabel == m_FinishExecutionLabel); }
 		void ClearQueue();
 
 	private:
-		JobSystem(ShutdownPolicy policy = ShutdownPolicy::CLEAR);
+		JobSystem(JobSystemShutdownPolicy policy = JobSystemShutdownPolicy::CLEAR);
 		~JobSystem();
 
 		static JobSystem* s_Instance;
@@ -50,6 +54,6 @@ namespace Cursed {
 		std::atomic<uint64> m_FinishExecutionLabel = 0;
 		std::shared_mutex m_CaptureMutex;
 		std::condition_variable_any m_ConditionVar;
-		ShutdownPolicy m_ShutdownPolicy;
+		JobSystemShutdownPolicy m_ShutdownPolicy;
 	};
 }

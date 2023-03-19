@@ -5,18 +5,19 @@ namespace Cursed
 
 	JobSystem* JobSystem::s_Instance;
 
-	void JobSystem::Init(ShutdownPolicy policy)
+	void JobSystem::Init(JobSystemShutdownPolicy policy)
 	{
 		s_Instance = new JobSystem(policy);
 	}
 
-	JobSystem::JobSystem(ShutdownPolicy policy)
+	JobSystem::JobSystem(JobSystemShutdownPolicy policy)
 		: m_ShutdownPolicy(policy)
 	{
 		m_Running = true;
 
 		uint8_t num_threads = std::thread::hardware_concurrency() - 1;
 		m_ThreadPool.resize(num_threads);
+		m_ThreadPool.shrink_to_fit();
 
 		for (int i = 0; i < num_threads; i++) {
 			m_ThreadPool[i] = std::thread([&]() {
@@ -41,7 +42,7 @@ namespace Cursed
 
 	JobSystem::~JobSystem() {
 
-		if (m_ShutdownPolicy == ShutdownPolicy::WAIT) {
+		if (m_ShutdownPolicy == JobSystemShutdownPolicy::WAIT) {
 			while (!m_Queue.empty());
 		}
 		else {

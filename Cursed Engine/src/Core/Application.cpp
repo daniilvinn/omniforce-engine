@@ -15,7 +15,7 @@ namespace Cursed
 	Application* Application::s_Instance = nullptr;
 
 	Application::Application() 
-		: m_RootSystem(nullptr), m_Running(true) {}
+		: m_RootSystem(nullptr), m_Running(true), m_WindowSystem(nullptr) {}
 
 	Application::~Application() {}
 
@@ -25,7 +25,7 @@ namespace Cursed
 		s_Instance = this;
 		m_RootSystem = options.root_system;
 
-		JobSystem::Init(JobSystem::ShutdownPolicy::WAIT);
+		JobSystem::Init(JobSystemShutdownPolicy::WAIT);
 		JobSystem* js = JobSystem::Get();
 
 		CURSED_INITIALIZE_LOG_SYSTEM(Logger::Level::LEVEL_TRACE);
@@ -46,7 +46,7 @@ namespace Cursed
 		RendererConfig renderer_config = {};
 		renderer_config.main_window = m_WindowSystem->GetWindow("main").get();
 		renderer_config.frames_in_flight = 3;
-		renderer_config.vsync = true;
+		renderer_config.vsync = false;
 
 		js->Execute(Input::Init);
 		js->Execute([&renderer_config]() {
@@ -72,8 +72,8 @@ namespace Cursed
 		JobSystem* js = JobSystem::Get();
 
 		js->Execute([]() { Renderer::Shutdown(); });
-		
 		js->Wait();
+		
 		CURSED_CORE_INFO("Engine shutdown success");
 	}
 
@@ -95,6 +95,7 @@ namespace Cursed
 	void Application::PostFrame()
 	{
 		m_WindowSystem->PollEvents();
+		Renderer::Render();
 		Renderer::EndFrame();
 	}
 
@@ -112,8 +113,6 @@ namespace Cursed
 
 	bool Application::OnMainWindowResize(WindowResizeEvent* e) 
 	{
-		ivec2 resolution = e->GetResolution();
-		CURSED_CORE_TRACE("Window resize: {0}x{1}", resolution.x, resolution.y);
 		return true;
 	};
 }
