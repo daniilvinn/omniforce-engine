@@ -5,6 +5,8 @@
 #include <Core/Subsystem.h>
 #include <Log/Logger.h>
 #include <Memory/Common.h>
+#include <Threading/JobSystem.h>
+#include <Threading/ConditionalLock.h>
 
 #include <Core/Events/ApplicationEvents.h>
 #include <Core/Events/KeyEvents.h>
@@ -15,6 +17,10 @@
 #include <Renderer/Renderer.h>
 #include <Renderer/Swapchain.h>
 #include <Renderer/DeviceBuffer.h>
+#include <Renderer/ShaderLibrary.h>
+#include <Renderer/Shader.h>
+#include <Renderer/Pipeline.h>
+#include <Renderer/Image.h>
 
 // Entry Point
 #include <Core/EntryPoint.h>
