@@ -6,7 +6,7 @@
 
 namespace Omni {
 
-	constexpr VkFormat OmniToVulkanImageFormat(const ImageFormat& format) {
+	constexpr VkFormat convert(const ImageFormat& format) {
 		switch (format)
 		{
 		case ImageFormat::R8:							return VK_FORMAT_R8_SRGB;
@@ -24,7 +24,7 @@ namespace Omni {
 		}
 	}
 
-	constexpr ImageFormat VulkanToOmniImageFormat(const VkFormat& format) {
+	constexpr ImageFormat convert(const VkFormat& format) {
 		switch (format) {
 		case VK_FORMAT_R8_SRGB:							return ImageFormat::R8;
 		case VK_FORMAT_R8G8_SRGB:						return ImageFormat::RB16;
@@ -53,7 +53,7 @@ namespace Omni {
 
 		VkImage Raw() const { return m_Image; }
 		VkImageView RawView() const { return m_ImageView; }
-		ImageSpecification GetSpecification() const { return m_Specification; }
+		ImageSpecification GetSpecification() const override { return m_Specification; }
 
 		VkImageLayout GetCurrentLayout() const { return m_CurrentLayout; }
 

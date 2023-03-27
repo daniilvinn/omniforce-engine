@@ -144,7 +144,7 @@ namespace Omni {
 			swapchain_image_spec.extent = (uvec2)m_Specification.extent;
 			swapchain_image_spec.usage = ImageUsage::RENDER_TARGET;
 			swapchain_image_spec.type = ImageType::TYPE_2D;
-			swapchain_image_spec.format = VulkanToOmniImageFormat(m_SurfaceFormat.format);
+			swapchain_image_spec.format = convert(m_SurfaceFormat.format);
 
 			m_Images.push_back(std::make_shared<VulkanImage>(swapchain_image_spec, image, image_view));
 
@@ -214,7 +214,7 @@ namespace Omni {
 			VK_CHECK_RESULT(vkCreateFence(device->Raw(), &fence_create_info, nullptr, &fence));
 			m_Fences.push_back(fence);
 		}
-
+		
 		OMNIFORCE_CORE_TRACE(
 			"Created renderer swapchain. Spec - extent: {0}x{1}, VSync: {2}, frames in flight: {3}",
 			spec.extent.x,

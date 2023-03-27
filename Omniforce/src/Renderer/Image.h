@@ -7,13 +7,13 @@
 
 namespace Omni {
 
-	enum class OMNIFORCE_API ImageUsage : uint32 {
+	enum class OMNIFORCE_API ImageUsage : uint8 {
 		SAMPLED,
 		RENDER_TARGET,
 		DEPTH_BUFFER
 	};
 
-	enum class OMNIFORCE_API ImageFormat : uint32 {
+	enum class OMNIFORCE_API ImageFormat : uint8 {
 		R8,
 		RB16,
 		RGB24,
@@ -25,7 +25,7 @@ namespace Omni {
 		D32
 	};
 
-	enum class OMNIFORCE_API ImageType : uint32 {
+	enum class OMNIFORCE_API ImageType : uint8 {
 		TYPE_1D,
 		TYPE_2D,
 		TYPE_3D,
@@ -44,8 +44,9 @@ namespace Omni {
 		static Shared<Image> Create(const ImageSpecification& spec);
 
 		virtual ~Image() {}
-
 		virtual void Destroy() = 0;
+
+		virtual ImageSpecification GetSpecification() const = 0;
 	};
 
 }

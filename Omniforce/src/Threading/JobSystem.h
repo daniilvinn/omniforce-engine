@@ -50,7 +50,7 @@ namespace Omni {
 		std::vector<std::thread> m_ThreadPool;
 		std::queue<std::function<void()>> m_Queue;
 		std::atomic_bool m_Running;
-		uint64 m_CurrentExecutionLabel = 0;
+		std::atomic<uint64> m_CurrentExecutionLabel = 0;
 		std::atomic<uint64> m_FinishExecutionLabel = 0;
 		std::shared_mutex m_CaptureMutex;
 		std::condition_variable_any m_ConditionVar;
