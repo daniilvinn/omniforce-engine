@@ -8,6 +8,7 @@
 #include <Core/Input/Input.h>
 
 #include <Renderer/Renderer.h>
+#include <Renderer/ShaderLibrary.h>
 
 namespace Omni 
 {
@@ -54,6 +55,9 @@ namespace Omni
 		});
 
 		js->Wait();
+		js->Execute([]() {
+			Renderer::LoadShaderPack();
+		});
 	}
 
 	void Application::Run()
@@ -71,7 +75,8 @@ namespace Omni
 	{
 		JobSystem* js = JobSystem::Get();
 
-		js->Execute([]() { Renderer::Shutdown(); });
+		js->Wait();
+		js->Execute(Renderer::Shutdown);
 		js->Wait();
 		
 		OMNIFORCE_CORE_INFO("Engine shutdown success");
@@ -89,12 +94,12 @@ namespace Omni
 	void Application::PreFrame()
 	{
 		Renderer::BeginFrame();
-		m_WindowSystem->ProcessEvents();
+		m_WindowSystem->PollEvents();
 	}
 
 	void Application::PostFrame()
 	{
-		m_WindowSystem->PollEvents();
+		m_WindowSystem->ProcessEvents();
 		Renderer::Render();
 		Renderer::EndFrame();
 	}

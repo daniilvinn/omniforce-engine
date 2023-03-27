@@ -8,6 +8,21 @@
 
 namespace Omni {
 
+	struct IndexBufferData {
+		uint32 index_count;
+		VkIndexType index_type;
+	};
+
+	struct VertexBufferData {
+		uint32 vertex_count;
+	};
+
+	constexpr VkIndexType ExtractIndexType(BitMask buffer_flags) {
+		if (buffer_flags & (uint64)DeviceBufferFlags::INDEX_TYPE_UINT8)		return VK_INDEX_TYPE_UINT8_EXT;
+		if (buffer_flags & (uint64)DeviceBufferFlags::INDEX_TYPE_UINT16)	return VK_INDEX_TYPE_UINT16;
+		if (buffer_flags & (uint64)DeviceBufferFlags::INDEX_TYPE_UINT32)	return VK_INDEX_TYPE_UINT32;
+	}
+
 	class VulkanDeviceBuffer : public DeviceBuffer {
 	public:
 		VulkanDeviceBuffer(const DeviceBufferSpecification& spec);
@@ -18,6 +33,7 @@ namespace Omni {
 		
 		VkBuffer Raw() const { return m_Buffer; }
 		VmaAllocation RawAllocation() const { return m_Allocation; }
+		void* GetAdditionalData() const { return m_Data; }
 
 		void UploadData(uint64 offset, void* data, uint64 data_size);
 		DeviceBufferSpecification GetSpecification() const override { return m_Specification; }
@@ -27,7 +43,7 @@ namespace Omni {
 		VmaAllocation m_Allocation;
 
 		DeviceBufferSpecification m_Specification;
-
+		void* m_Data; // VBOs, IBOs and other buffers can have different data: vertex count, index count;
 
 	};
 

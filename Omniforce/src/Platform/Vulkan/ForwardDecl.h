@@ -11,5 +11,6 @@ namespace Omni
 	class VulkanSwapchain;
 	class VulkanImage;
 	class VulkanDeviceBuffer;
+	class Shader;
 
 }

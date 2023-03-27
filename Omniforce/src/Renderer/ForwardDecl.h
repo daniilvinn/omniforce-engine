@@ -8,5 +8,9 @@ namespace Omni
 	class Swapchain;
 	class Image;
 	class DeviceBuffer;
-
+	class Shader;
+	class ShaderProgram;
+	class Pipeline;
+	class DeviceBufferLayout;
+	class DeviceBufferLayoutElement;
 };

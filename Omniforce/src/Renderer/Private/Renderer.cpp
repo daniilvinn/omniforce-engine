@@ -2,6 +2,9 @@
 
 #include <Threading/JobSystem.h>
 #include <Platform/Vulkan/VulkanRenderer.h>
+#include "../ShaderLibrary.h"
+
+#include <Core/Windowing/WindowSystem.h>
 
 namespace Omni {
 
@@ -14,10 +17,12 @@ namespace Omni {
 	void Renderer::Init(const RendererConfig& config)
 	{
 		s_RendererAPI = new VulkanRenderer(config);
+		ShaderLibrary::Init();
 	}
 
 	void Renderer::Shutdown()
 	{
+		ShaderLibrary::Destroy();
 		delete s_RendererAPI;
 	}
 
@@ -36,6 +41,21 @@ namespace Omni {
 		s_RendererAPI->EndFrame();
 	}
 
+	void Renderer::BeginRender(Shared<Image> target, uvec2 render_area, ivec2 offset, fvec4 clear_value)
+	{
+		s_RendererAPI->BeginRender(target, render_area, offset, clear_value);
+	}
+
+	void Renderer::EndRender(Shared<Image> target) 
+	{
+		s_RendererAPI->EndRender(target);
+	}
+
+	void Renderer::WaitDevice()
+	{
+		s_RendererAPI->WaitDevice();
+	}
+
 	Shared<Image> Renderer::GetSwapchainImage()
 	{
 		return s_RendererAPI->GetSwapchain()->GetCurrentImage();
@@ -44,6 +64,17 @@ namespace Omni {
 	void Renderer::ClearImage(Shared<Image> image, const fvec4& value)
 	{
 		s_RendererAPI->ClearImage(image, value);
+	}
+
+	void Renderer::RenderMesh(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo)
+	{
+		s_RendererAPI->RenderMesh(pipeline, vbo, ibo);
+	}
+
+	void Renderer::LoadShaderPack()
+	{
+		ShaderLibrary::Get()->Load("assets/shaders/basic.vert");
+		ShaderLibrary::Get()->Load("assets/shaders/color_pass.frag");
 	}
 
 	void Renderer::Render()

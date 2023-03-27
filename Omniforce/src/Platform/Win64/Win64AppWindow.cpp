@@ -10,6 +10,7 @@ namespace Omni {
 	Win64AppWindow::Win64AppWindow(const AppWindow::Config& config)
 	{
 		m_EventCallback = config.event_callback;
+		m_Minimized = false;
 
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // for Vulkan
 
@@ -28,6 +29,11 @@ namespace Omni {
 
 			auto impl_window = (Win64AppWindow*)glfwGetWindowUserPointer(window);
 			impl_window->AllocateEvent<WindowResizeEvent>(resolution);
+
+			if (resolution.x || resolution.y)
+				impl_window->SetMinimized(true);
+			else
+				impl_window->SetMinimized(false);
 		});
 
 		glfwSetKeyCallback(m_WindowHandle, [](GLFWwindow* window, int key, int scancode, int action, int mods) {

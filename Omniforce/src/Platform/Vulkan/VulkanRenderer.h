@@ -20,16 +20,18 @@ namespace Omni {
 
 		void BeginFrame() override;
 		void EndFrame() override;
+		void BeginRender(Shared<Image> target, uvec2 render_area, ivec2 render_offset, fvec4 clear_color) override;
+		void EndRender(Shared<Image> target) override;
+		void WaitDevice() override;
 
 		void BeginCommandRecord() override;
 		void EndCommandRecord() override;
-
 		void ExecuteCurrentCommands() override;
 
 		void ClearImage(Shared<Image> image, const fvec4& value) override;
-
 		Shared<Swapchain> GetSwapchain() override { return ShareAs<Swapchain>(m_Swapchain); };
 		CmdBuffer* GetCurrentCmdBuffer() const { return m_CurrentCmdBuffer; }
+		void RenderMesh(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo) override;
 
 		void TransitionImageLayout(
 			Shared<VulkanImage> image, 
@@ -40,6 +42,9 @@ namespace Omni {
 			VkAccessFlags dstAccess
 		);
 
+		static std::vector<VkDescriptorSet> AllocateDescriptorSets(VkDescriptorSetLayout layout, uint32 count);
+		static void FreeDescriptorSets(std::vector<VkDescriptorSet> sets);
+
 	private:
 		Shared<VulkanGraphicsContext> m_GraphicsContext;
 		Shared<VulkanDevice> m_Device;
@@ -49,6 +54,8 @@ namespace Omni {
 		CmdBuffer* m_CurrentCmdBuffer;
 
 		std::shared_mutex m_Mutex;
+
+		static VkDescriptorPool s_DescriptorPool;
 	};
 
 }
