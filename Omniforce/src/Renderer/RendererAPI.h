@@ -15,9 +15,12 @@ namespace Omni {
 		RendererAPI() {};
 		virtual ~RendererAPI() {};
 
+		virtual RendererConfig GetConfig() const = 0;
+		virtual uint32 GetCurrentFrameIndex() const = 0;
+
 		virtual void BeginFrame() = 0;
 		virtual void EndFrame() = 0;
-		virtual void BeginRender(Shared<Image> target, uvec2 render_area, ivec2 render_offset, fvec4 clear_color) = 0;
+		virtual void BeginRender(Shared<Image> target, uvec3 render_area, ivec2 render_offset, fvec4 clear_color) = 0;
 		virtual void EndRender(Shared<Image> target) = 0;
 		virtual void WaitDevice() = 0;
 

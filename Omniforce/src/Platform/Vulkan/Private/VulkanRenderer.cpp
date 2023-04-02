@@ -13,6 +13,7 @@ namespace Omni {
 	VkDescriptorPool VulkanRenderer::s_DescriptorPool = VK_NULL_HANDLE;
 
 	VulkanRenderer::VulkanRenderer(const RendererConfig& config)
+		: m_Config(config)
 	{
 		m_GraphicsContext = std::make_shared<VulkanGraphicsContext>(config);
 		m_Device = m_GraphicsContext->GetDevice();
@@ -263,7 +264,7 @@ namespace Omni {
 		});
 	}
 
-	void VulkanRenderer::BeginRender(Shared<Image> target, uvec2 render_area, ivec2 render_offset, fvec4 clear_color)
+	void VulkanRenderer::BeginRender(Shared<Image> target, uvec3 render_area, ivec2 render_offset, fvec4 clear_color)
 	{
 		Renderer::Submit([=]() mutable {
 			Shared<VulkanImage> vk_target = ShareAs<VulkanImage>(target);
@@ -282,8 +283,9 @@ namespace Omni {
 			color_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
 			color_attachment.imageView = vk_target->RawView();
 			color_attachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-			color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+			color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 			color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+			color_attachment.clearValue = { clear_color.r, clear_color.g, clear_color.b, clear_color.a };
 
 			VkRenderingInfo rendering_info = {};
 			rendering_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;

@@ -57,8 +57,8 @@ namespace Omni {
 	constexpr VkFrontFace convert(const PipelineFrontFace face) {
 		switch (face)
 		{
-		case PipelineFrontFace::CLOCK_WISE:				return VK_FRONT_FACE_CLOCKWISE;
-		case PipelineFrontFace::COUNTER_CLOCK_WISE:		return VK_FRONT_FACE_COUNTER_CLOCKWISE;
+		case PipelineFrontFace::CLOCKWISE:				return VK_FRONT_FACE_CLOCKWISE;
+		case PipelineFrontFace::COUNTER_CLOCKWISE:		return VK_FRONT_FACE_COUNTER_CLOCKWISE;
 		default:										std::unreachable();
 		}
 	}

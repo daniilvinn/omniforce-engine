@@ -21,8 +21,8 @@ namespace Omni {
 	};
 
 	enum class OMNIFORCE_API PipelineFrontFace : uint8 {
-		CLOCK_WISE,
-		COUNTER_CLOCK_WISE
+		CLOCKWISE,
+		COUNTER_CLOCKWISE
 	};
 
 	enum class OMNIFORCE_API PipelineTopology : uint8 {
@@ -62,7 +62,7 @@ namespace Omni {
 			spec.line_width = 1.0f;
 			spec.type = PipelineType::GRAPHICS;
 			spec.culling_mode = PipelineCullingMode::BACK;
-			spec.front_face = PipelineFrontFace::COUNTER_CLOCK_WISE;
+			spec.front_face = PipelineFrontFace::COUNTER_CLOCKWISE;
 			spec.topology = PipelineTopology::TRIANGLES;
 			spec.fill_mode = PipelineFillMode::FILL;
 			spec.output_attachments_formats = {};

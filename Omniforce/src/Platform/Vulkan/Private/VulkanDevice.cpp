@@ -109,7 +109,7 @@ namespace Omni {
 		std::vector<VkExtensionProperties> supported_extensions(count);
 		vkEnumerateDeviceExtensionProperties(m_PhysicalDevice, nullptr, &count, supported_extensions.data());
 
-		for (auto& supported_ext : supported_extensions) {
+		for (const auto& supported_ext : supported_extensions) {
 			if (!strcmp(supported_ext.extensionName, extension.c_str())) {
 				return true;
 			}

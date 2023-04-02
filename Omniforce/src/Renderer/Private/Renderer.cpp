@@ -41,7 +41,7 @@ namespace Omni {
 		s_RendererAPI->EndFrame();
 	}
 
-	void Renderer::BeginRender(Shared<Image> target, uvec2 render_area, ivec2 offset, fvec4 clear_value)
+	void Renderer::BeginRender(Shared<Image> target, uvec3 render_area, ivec2 offset, fvec4 clear_value)
 	{
 		s_RendererAPI->BeginRender(target, render_area, offset, clear_value);
 	}
@@ -69,6 +69,11 @@ namespace Omni {
 	void Renderer::RenderMesh(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo)
 	{
 		s_RendererAPI->RenderMesh(pipeline, vbo, ibo);
+	}
+
+	uint32 Renderer::GetCurrentFrameIndex()
+	{
+		return s_RendererAPI->GetCurrentFrameIndex();
 	}
 
 	void Renderer::LoadShaderPack()

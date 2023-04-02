@@ -141,7 +141,7 @@ namespace Omni {
 			VK_CHECK_RESULT(vkCreateImageView(device->Raw(), &image_view_create_info, nullptr, &image_view));
 
 			ImageSpecification swapchain_image_spec = {};
-			swapchain_image_spec.extent = (uvec2)m_Specification.extent;
+			swapchain_image_spec.extent = { (uint32)m_Specification.extent.x, (uint32)m_Specification.extent.y, 1 };
 			swapchain_image_spec.usage = ImageUsage::RENDER_TARGET;
 			swapchain_image_spec.type = ImageType::TYPE_2D;
 			swapchain_image_spec.format = convert(m_SurfaceFormat.format);
