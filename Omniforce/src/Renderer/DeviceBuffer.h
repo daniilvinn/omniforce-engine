@@ -22,7 +22,8 @@ namespace Omni {
 		VERTEX_BUFFER,
 		INDEX_BUFFER,
 		UNIFORM_BUFFER,
-		STORAGE_BUFFER
+		STORAGE_BUFFER,
+		STAGING_BUFFER
 	};
 
 	enum class OMNIFORCE_API DeviceBufferMemoryUsage {

@@ -9,38 +9,22 @@ namespace Omni {
 	{
 		switch (usage)
 		{
-		case DeviceBufferUsage::VERTEX_BUFFER:
-			return VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-			break;
-		case DeviceBufferUsage::INDEX_BUFFER:
-			return VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-			break;
-		case DeviceBufferUsage::UNIFORM_BUFFER:
-			return VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-			break;
-		case DeviceBufferUsage::STORAGE_BUFFER:
-			return VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-			break;
-		default:
-			std::unreachable();
-			break;
+		case DeviceBufferUsage::VERTEX_BUFFER:						return VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+		case DeviceBufferUsage::INDEX_BUFFER:						return VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+		case DeviceBufferUsage::UNIFORM_BUFFER:						return VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		case DeviceBufferUsage::STORAGE_BUFFER:						return VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+		case DeviceBufferUsage::STAGING_BUFFER:						return VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		default:													std::unreachable();
 		}
 	}
 
 	VmaAllocationCreateFlags convert(DeviceBufferMemoryUsage usage) {
 		switch (usage)
 		{
-		case DeviceBufferMemoryUsage::FREQUENT_ACCESS:
-			return VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
-			break;
-		case DeviceBufferMemoryUsage::ONE_TIME_HOST_ACCESS:
-			return VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-			break;
-		case DeviceBufferMemoryUsage::NO_HOST_ACCESS:
-			return 0;
-		default:
-			std::unreachable();
-			break;
+		case DeviceBufferMemoryUsage::FREQUENT_ACCESS:				return VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;			
+		case DeviceBufferMemoryUsage::ONE_TIME_HOST_ACCESS:			return VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;  
+		case DeviceBufferMemoryUsage::NO_HOST_ACCESS:				return 0;														
+		default:													std::unreachable();												
 		}
 	}
 
@@ -74,9 +58,6 @@ namespace Omni {
 		if (m_Specification.memory_usage == DeviceBufferMemoryUsage::NO_HOST_ACCESS) {
 			buffer_create_info.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 		}
-		else if (m_Specification.flags & (BitMask)DeviceBufferFlags::CREATE_STAGING_BUFFER) {
-			buffer_create_info.usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-		}
 
 		m_Allocation = alloc->AllocateBuffer(&buffer_create_info, vma_flags, &m_Buffer);
 		this->UploadData(0, data, data_size);
@@ -103,9 +84,8 @@ namespace Omni {
 
 			DeviceBufferSpecification staging_buffer_spec = {};
 			staging_buffer_spec.size = data_size;
-			staging_buffer_spec.buffer_usage = m_Specification.buffer_usage;
+			staging_buffer_spec.buffer_usage = DeviceBufferUsage::STAGING_BUFFER;
 			staging_buffer_spec.memory_usage = DeviceBufferMemoryUsage::ONE_TIME_HOST_ACCESS;
-			staging_buffer_spec.flags = (uint64)DeviceBufferFlags::CREATE_STAGING_BUFFER;
 
 			VulkanDeviceBuffer staging_buffer(staging_buffer_spec, data, data_size);
 

@@ -5,10 +5,10 @@
 
 #include "../VulkanGraphicsContext.h"
 
-#if CURSED_BUILD_CONFIG == CURSED_DEBUG_CONFIG
-	#define CURSED_TRACE_DEVICE_ALLOCATIONS 1
+#if OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG
+	#define OMNIFORCE_TRACE_DEVICE_ALLOCATIONS 1
 #else
-	#define CURSED_TRACE_DEVICE_ALLOCATIONS 0
+	#define OMNIFORCE_TRACE_DEVICE_ALLOCATIONS 0
 #endif
 
 namespace Omni {
@@ -68,7 +68,7 @@ namespace Omni {
 		m_Statistics.allocated += allocation_info.size;
 		m_Statistics.currently_allocated += allocation_info.size;
 
-		if (CURSED_TRACE_DEVICE_ALLOCATIONS) {
+		if (OMNIFORCE_TRACE_DEVICE_ALLOCATIONS) {
 			OMNIFORCE_CORE_TRACE("Allocating device buffer:");
 			OMNIFORCE_CORE_TRACE("\tRequested size: {0}", create_info->size);
 			OMNIFORCE_CORE_TRACE("\tAllocated size: {0}", allocation_info.size);
@@ -79,7 +79,23 @@ namespace Omni {
 
 	VmaAllocation VulkanMemoryAllocator::AllocateImage(VkImageCreateInfo* create_info, uint32_t flags, VkImage* image)
 	{
-		return VK_NULL_HANDLE;
+		VmaAllocationCreateInfo allocation_create_info = {};
+		allocation_create_info.usage = VMA_MEMORY_USAGE_AUTO;
+		allocation_create_info.flags = flags;
+
+		VmaAllocation allocation;
+		VmaAllocationInfo allocation_info;
+
+		VK_CHECK_RESULT(vmaCreateImage(m_Allocator, create_info, &allocation_create_info, image, &allocation, &allocation_info));
+		m_Statistics.allocated += allocation_info.size;
+		m_Statistics.currently_allocated += allocation_info.size;
+
+		if (OMNIFORCE_TRACE_DEVICE_ALLOCATIONS) {
+			OMNIFORCE_CORE_TRACE("Allocating device image:");
+			OMNIFORCE_CORE_TRACE("\tAllocated size: {0}", allocation_info.size);
+			OMNIFORCE_CORE_TRACE("\tCurrently allocated: {0}", m_Statistics.currently_allocated);
+		}
+		return allocation;
 	}
 
 	void VulkanMemoryAllocator::DestroyBuffer(VkBuffer* buffer, VmaAllocation* allocation)
@@ -92,7 +108,7 @@ namespace Omni {
 		m_Statistics.freed += allocation_info.size;
 		m_Statistics.currently_allocated -= allocation_info.size;
 
-		if (CURSED_TRACE_DEVICE_ALLOCATIONS) {
+		if (OMNIFORCE_TRACE_DEVICE_ALLOCATIONS) {
 			OMNIFORCE_CORE_TRACE("Destroying device buffer:");
 			OMNIFORCE_CORE_TRACE("\tFreed memory: {0}", allocation_info.size);
 			OMNIFORCE_CORE_TRACE("\tCurrently allocated: {0}", m_Statistics.currently_allocated);
@@ -102,9 +118,24 @@ namespace Omni {
 		*allocation = VK_NULL_HANDLE;
 	}
 
-	void VulkanMemoryAllocator::DestroyImage(VkImage* image, VmaAllocation allocation)
+	void VulkanMemoryAllocator::DestroyImage(VkImage* image, VmaAllocation* allocation)
 	{
+		VmaAllocationInfo allocation_info;
+		vmaGetAllocationInfo(m_Allocator, *allocation, &allocation_info);
 
+		vmaDestroyImage(m_Allocator, *image, *allocation);
+
+		m_Statistics.freed += allocation_info.size;
+		m_Statistics.currently_allocated -= allocation_info.size;
+
+		if (OMNIFORCE_TRACE_DEVICE_ALLOCATIONS) {
+			OMNIFORCE_CORE_TRACE("Destroying device image:");
+			OMNIFORCE_CORE_TRACE("\tFreed memory: {0}", allocation_info.size);
+			OMNIFORCE_CORE_TRACE("\tCurrently allocated: {0}", m_Statistics.currently_allocated);
+		}
+
+		*image = VK_NULL_HANDLE;
+		*allocation = VK_NULL_HANDLE;
 	}
 
 

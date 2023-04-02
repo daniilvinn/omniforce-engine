@@ -16,22 +16,28 @@ public:
 		
 		Renderer::ClearImage(swapchain_image, { 0.420, 0.69, 0.14 });
 
-		if (Input::KeyPressed(KeyCode::KEY_SPACE)) {
-			ShaderLibrary::Get()->Unload("basic.vert");
-		}
+		static fvec4 clear_value = { 0.0f, 0.0f, 0.0f, 0.0f };
 
-		if (ShaderLibrary::Get()->Has("basic.vert")) {
-			Renderer::ClearImage(swapchain_image, { 0.123, 0.321, 0.420 });
-		};
+		if (Input::KeyPressed(KeyCode::KEY_W))
+			clear_value.r += 0.0003f;
+		if (Input::KeyPressed(KeyCode::KEY_S))
+			clear_value.r -= 0.0003f;
+		if (Input::KeyPressed(KeyCode::KEY_A))
+			clear_value.g -= 0.0003f;
+		if (Input::KeyPressed(KeyCode::KEY_D))
+			clear_value.g += 0.0003f;
 
-		Renderer::BeginRender(swapchain_image, swapchain_image->GetSpecification().extent, { 0,0 }, { 0.0f, 0.0f, 1.0f });
+		clear_value.r = std::clamp(clear_value.r, 0.0f, 1.0f);
+		clear_value.g = std::clamp(clear_value.g, 0.0f, 1.0f);
+
+		Renderer::BeginRender(swapchain_image, swapchain_image->GetSpecification().extent, { 0,0 }, clear_value);
 		Renderer::RenderMesh(m_Pipeline, m_VertexBuffer, m_IndexBuffer);
 		Renderer::EndRender(swapchain_image);
 	}
 
 	void OnEvent(Event* e) override
 	{
-
+		
 	}
 
 	void Destroy() override
@@ -44,6 +50,10 @@ public:
 
 	void Launch() override
 	{
+		ImageSpecification image_spec = ImageSpecification::Default();
+		image_spec.path = "assets/textures/test.png";
+		Shared<Image> img = Image::Create(image_spec);
+
 		float vertices[] = {
 			-0.5f, -0.5f,	1.0f, 0.0f, 0.0f,
 			 0.5f, -0.5f,	0.0f, 1.0f, 0.0f,

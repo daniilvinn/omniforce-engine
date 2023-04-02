@@ -6,6 +6,8 @@
 #include <Renderer/Swapchain.h>
 #include <Platform/Vulkan/VulkanSwapchain.h>
 
+#include <Renderer/Renderer.h>
+
 namespace Omni {
 
 	class VulkanRenderer : public RendererAPI {
@@ -18,9 +20,12 @@ namespace Omni {
 		VulkanRenderer(const RendererConfig& config);
 		~VulkanRenderer() override;
 
+		RendererConfig GetConfig() const override { return m_Config; }
+		uint32 GetCurrentFrameIndex() const override { return m_Swapchain->GetCurrentFrameIndex(); }
+
 		void BeginFrame() override;
 		void EndFrame() override;
-		void BeginRender(Shared<Image> target, uvec2 render_area, ivec2 render_offset, fvec4 clear_color) override;
+		void BeginRender(Shared<Image> target, uvec3 render_area, ivec2 render_offset, fvec4 clear_color) override;
 		void EndRender(Shared<Image> target) override;
 		void WaitDevice() override;
 
@@ -46,6 +51,8 @@ namespace Omni {
 		static void FreeDescriptorSets(std::vector<VkDescriptorSet> sets);
 
 	private:
+		RendererConfig m_Config;
+
 		Shared<VulkanGraphicsContext> m_GraphicsContext;
 		Shared<VulkanDevice> m_Device;
 		Shared<VulkanSwapchain> m_Swapchain;

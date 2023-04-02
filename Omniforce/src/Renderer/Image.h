@@ -1,14 +1,13 @@
 #pragma once
 
-#include "ForwardDecl.h"
-#include <Foundation/Types.h>
+#include "RendererCommon.h"
 
 #include <filesystem>
 
 namespace Omni {
 
 	enum class OMNIFORCE_API ImageUsage : uint8 {
-		SAMPLED,
+		TEXTURE,
 		RENDER_TARGET,
 		DEPTH_BUFFER
 	};
@@ -32,18 +31,35 @@ namespace Omni {
 	};
 
 	struct OMNIFORCE_API ImageSpecification {
-		uvec2 extent;
+		uvec3 extent;
 		std::filesystem::path path;
 		ImageFormat format;
 		ImageUsage usage;
 		ImageType type;
+		uint8 array_layers;
+		uint8 mip_levels;
+
+		static ImageSpecification Default() {
+			ImageSpecification spec;
+			spec.extent = { 0, 0, 0 };
+			spec.path = "";
+			spec.format = ImageFormat::RGBA32;
+			spec.usage = ImageUsage::TEXTURE;
+			spec.type = ImageType::TYPE_2D;
+			spec.mip_levels = 1;
+			spec.array_layers = 1;
+
+			return spec;
+		};
 	};
 
-	class OMNIFORCE_API Image {
+	class OMNIFORCE_API Image 
+	{
 	public:
 		static Shared<Image> Create(const ImageSpecification& spec);
 
 		virtual ~Image() {}
+
 		virtual void Destroy() = 0;
 
 		virtual ImageSpecification GetSpecification() const = 0;

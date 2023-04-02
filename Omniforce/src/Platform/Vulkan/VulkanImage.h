@@ -1,11 +1,13 @@
 #pragma once
 
 #include "VulkanCommon.h"
-
 #include <Renderer/Image.h>
+
+#include <vulkan-memory-allocator-hpp/vk_mem_alloc.h>
 
 namespace Omni {
 
+#pragma region converts
 	constexpr VkFormat convert(const ImageFormat& format) {
 		switch (format)
 		{
@@ -35,40 +37,65 @@ namespace Omni {
 		case VK_FORMAT_R16G16B16A16_SFLOAT:				return ImageFormat::RGBA64_HDR;
 		case VK_FORMAT_R32G32B32A32_SFLOAT:				return ImageFormat::RGBA128_HDR;
 		case VK_FORMAT_D32_SFLOAT:						return ImageFormat::D32;
-		default:
-			std::unreachable();
-			break;
+		default:										std::unreachable(); break;;
 		}
 	}
 
+	constexpr VkImageType convert(const ImageType& type) {
+		switch (type)
+		{
+		case ImageType::TYPE_1D:						return VK_IMAGE_TYPE_1D;
+		case ImageType::TYPE_2D:						return VK_IMAGE_TYPE_2D;
+		case ImageType::TYPE_3D:						return VK_IMAGE_TYPE_3D;
+		default:										std::unreachable(); break;
+		}
+	}
+
+	constexpr VkImageUsageFlagBits convert(const ImageUsage& usage) {
+		switch (usage)
+		{
+		case ImageUsage::TEXTURE:						return VK_IMAGE_USAGE_SAMPLED_BIT;
+		case ImageUsage::RENDER_TARGET:					return VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+		case ImageUsage::DEPTH_BUFFER:					return VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+		default:										std::unreachable(); break;
+		}
+	}
+#pragma endregion
+
 	class VulkanImage : public Image {
 	public:
+
 		VulkanImage();
 		VulkanImage(const ImageSpecification& spec, VkImage image, VkImageView view);
 		VulkanImage(const ImageSpecification& spec);
+		VulkanImage(std::filesystem::path path);
 		~VulkanImage();
 
 		void CreateFromRaw(const ImageSpecification& spec, VkImage image, VkImageView view);
 		void Destroy() override;
 
 		VkImage Raw() const { return m_Image; }
-		VkImageView RawView() const { return m_ImageView; }
+		VkImageView RawView() const { return m_ImageView; };
 		ImageSpecification GetSpecification() const override { return m_Specification; }
 
 		VkImageLayout GetCurrentLayout() const { return m_CurrentLayout; }
 
 		// It is supposed that image has actually already been transitioned into layout.
 		void SetCurrentLayout(VkImageLayout layout) { m_CurrentLayout = layout; } 
-		
+
+	private:
+		void CreateTexture();
+		void CreateRenderTarget();
 
 	private:
 		ImageSpecification m_Specification;
 
 		VkImage m_Image;
+		VmaAllocation m_Allocation;
 		VkImageView m_ImageView;
 		VkImageLayout m_CurrentLayout;
 		
-
+		bool m_CreatedFromRaw;
 	};
 
 }
