@@ -257,14 +257,8 @@ namespace Omni {
 		if (m_PhysicalDevice->IsExtensionSupported(VK_KHR_SWAPCHAIN_EXTENSION_NAME)) {
 			extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 		}
-		if (m_PhysicalDevice->IsExtensionSupported(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME)) {
-			extensions.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
-		}
 		if (m_PhysicalDevice->IsExtensionSupported(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME)) {
 			extensions.push_back(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME);
-		}
-		if (m_PhysicalDevice->IsExtensionSupported(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME)) {
-			extensions.push_back(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
 		}
 
 		OMNIFORCE_CORE_TRACE("Enabled Vulkan device extensions:");
