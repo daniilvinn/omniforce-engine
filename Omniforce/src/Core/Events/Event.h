@@ -18,7 +18,7 @@ namespace Omni {
 
 // Thanks Yan TheCherno Chernikov for this macro <3
 // https://github.com/TheCherno
-#define CURSED_BIND_EVENT_FUNCTION(fn) [this](auto&&... args) -> decltype(auto) { return this->fn(std::forward<decltype(args)>(args)...); }
+#define OMNIFORCE_BIND_EVENT_FUNCTION(fn) [this](auto&&... args) -> decltype(auto) { return this->fn(std::forward<decltype(args)>(args)...); }
 // --------------------------------------
 
 	class OMNIFORCE_API Event {

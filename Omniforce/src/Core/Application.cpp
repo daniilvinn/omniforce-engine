@@ -34,7 +34,7 @@ namespace Omni
 		m_WindowSystem = WindowSystem::Init();
 
 		WindowSystem::WindowConfig main_window_config = {};
-		main_window_config.event_callback = CURSED_BIND_EVENT_FUNCTION(Application::OnEvent);
+		main_window_config.event_callback = OMNIFORCE_BIND_EVENT_FUNCTION(Application::OnEvent);
 		main_window_config.tag = "main";
 		main_window_config.title = "Cursed Engine";
 		main_window_config.width = 1600;
@@ -85,8 +85,8 @@ namespace Omni
 	void Application::OnEvent(Event* e)
 	{
 		EventDispatcher dispatcher(e);
-		dispatcher.Dispatch<WindowCloseEvent>(CURSED_BIND_EVENT_FUNCTION(Application::OnExit));
-		dispatcher.Dispatch<WindowResizeEvent>(CURSED_BIND_EVENT_FUNCTION(Application::OnMainWindowResize));
+		dispatcher.Dispatch<WindowCloseEvent>(OMNIFORCE_BIND_EVENT_FUNCTION(Application::OnExit));
+		dispatcher.Dispatch<WindowResizeEvent>(OMNIFORCE_BIND_EVENT_FUNCTION(Application::OnMainWindowResize));
 
 		m_RootSystem->OnEvent(e);
 	}
