@@ -10,3 +10,12 @@
 * 3D physics using NVIDIA PhysX, skeleton animation and ragdolls based on PhysX joints
 * Simple audio engine to play game's OST without complex audio physics simulation (for now).
 * Editor 
+
+## Used third-party libraries
+* GLFW
+* VMA
+* GLM
+* robin-hood hash map
+* spdlog
+* shaderc
+* spirv-reflect

@@ -21,12 +21,14 @@ target_compile_definitions(${ENGINE_TARGET} PUBLIC OMNIFORCE_STATIC)
 find_package(spdlog CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(unofficial-spirv-reflect CONFIG REQUIRED)
+find_package(glm CONFIG REQUIRED)
 
 target_link_libraries(
     ${ENGINE_TARGET} 
     PUBLIC 
         spdlog::spdlog 
-        spdlog::spdlog_header_only 
+        spdlog::spdlog_header_only
+        glm::glm
 )
 
 target_link_libraries(
