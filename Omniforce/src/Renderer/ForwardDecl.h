@@ -7,10 +7,13 @@ namespace Omni
 	class RendererAPI;
 	class Swapchain;
 	class Image;
+	class ImageSampler;
 	class DeviceBuffer;
 	class Shader;
 	class ShaderProgram;
 	class Pipeline;
 	class DeviceBufferLayout;
 	class DeviceBufferLayoutElement;
+	class DescriptorSet;
+
 };

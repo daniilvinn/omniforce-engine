@@ -56,6 +56,11 @@ namespace Omni {
 		s_RendererAPI->WaitDevice();
 	}
 
+	void Renderer::BindSet(Shared<DescriptorSet> set, Shared<Pipeline> pipeline, uint8 index)
+	{
+		s_RendererAPI->BindSet(set, pipeline, index);
+	}
+
 	Shared<Image> Renderer::GetSwapchainImage()
 	{
 		return s_RendererAPI->GetSwapchain()->GetCurrentImage();
@@ -66,9 +71,9 @@ namespace Omni {
 		s_RendererAPI->ClearImage(image, value);
 	}
 
-	void Renderer::RenderMesh(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo)
+	void Renderer::RenderMesh(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo, MiscData data)
 	{
-		s_RendererAPI->RenderMesh(pipeline, vbo, ibo);
+		s_RendererAPI->RenderMesh(pipeline, vbo, ibo, data);
 	}
 
 	uint32 Renderer::GetCurrentFrameIndex()

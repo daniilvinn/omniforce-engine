@@ -4,6 +4,7 @@
 
 #include <filesystem>
 #include <vector>
+#include <map>
 
 namespace Omni {
 	
@@ -41,7 +42,7 @@ namespace Omni {
 
 	class OMNIFORCE_API Shader {
 	public:
-		static Shared<Shader> Create(const ShaderStage& stage, const std::vector<uint32>& code, std::filesystem::path path);
+		static Shared<Shader> Create(std::map<ShaderStage, std::vector<uint32>> binaries, std::filesystem::path path);
 		virtual ~Shader() {};
 		virtual void Destroy() = 0;
 
@@ -49,17 +50,6 @@ namespace Omni {
 		virtual void SetDirty(bool dirty) = 0;
 
 		virtual void RestoreShaderModule(std::filesystem::path path) = 0;
-	};
-
-	class OMNIFORCE_API ShaderProgram {
-	public:
-		ShaderProgram(std::initializer_list<Shared<Shader>> shaders);
-
-		std::vector<Shared<Shader>> GetShaders() const { return m_Shaders; }
-
-	private:
-		std::vector<Shared<Shader>> m_Shaders;
-
 	};
 
 }

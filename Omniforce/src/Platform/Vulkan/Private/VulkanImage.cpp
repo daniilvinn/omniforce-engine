@@ -10,9 +10,14 @@
 
 namespace Omni {
 
+	uint32 VulkanImage::s_IdCounter = 0;
+
 	VulkanImage::VulkanImage()
 		: m_Specification(), m_Image(VK_NULL_HANDLE), m_ImageView(VK_NULL_HANDLE), m_Allocation(VK_NULL_HANDLE), m_CurrentLayout(VK_IMAGE_LAYOUT_UNDEFINED),
-		  m_CreatedFromRaw(false) {}
+		  m_CreatedFromRaw(false) 
+	{
+		m_Id = s_IdCounter++;
+	}
 
 	VulkanImage::VulkanImage(const ImageSpecification& spec)
 		: VulkanImage()
@@ -309,6 +314,49 @@ namespace Omni {
 		m_Image = image;
 		m_ImageView = view;
 		m_Specification = spec;
+	}
+
+
+	/*
+	*	SAMPLER METHODS' DEFINITIONS
+	*/
+
+	VulkanImageSampler::VulkanImageSampler(const ImageSamplerSpecification& spec)
+		: m_Sampler(VK_NULL_HANDLE), m_Specification(spec)
+	{
+		auto device = VulkanGraphicsContext::Get()->GetDevice();
+
+		VkSamplerCreateInfo sampler_create_info = {};
+		sampler_create_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+		sampler_create_info.minFilter = convert(spec.min_filtering_mode);
+		sampler_create_info.magFilter = convert(spec.mag_filtering_mode);
+		sampler_create_info.mipmapMode = convertMipmapMode(spec.mipmap_filtering_mode);
+		sampler_create_info.addressModeU = convert(spec.address_mode);
+		sampler_create_info.addressModeV = convert(spec.address_mode);
+		sampler_create_info.addressModeW = convert(spec.address_mode);
+		sampler_create_info.anisotropyEnable = spec.anisotropy_filtering_level == 1.0f ? VK_FALSE : VK_TRUE;
+		sampler_create_info.maxAnisotropy = (float32)spec.anisotropy_filtering_level;
+		sampler_create_info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+		sampler_create_info.unnormalizedCoordinates = VK_FALSE;
+		sampler_create_info.compareEnable = VK_FALSE;
+		sampler_create_info.compareOp = VK_COMPARE_OP_ALWAYS;
+		sampler_create_info.mipLodBias = spec.lod_bias;
+		sampler_create_info.minLod = spec.min_lod;
+		sampler_create_info.maxLod = spec.max_lod;
+
+		VK_CHECK_RESULT(vkCreateSampler(device->Raw(), &sampler_create_info, nullptr, &m_Sampler));
+	}
+
+	VulkanImageSampler::~VulkanImageSampler()
+	{
+
+	}
+
+	void VulkanImageSampler::Destroy()
+	{
+		auto device = VulkanGraphicsContext::Get()->GetDevice();
+		vkDestroySampler(device->Raw(), m_Sampler, nullptr);
+		m_Sampler = VK_NULL_HANDLE;
 	}
 
 }

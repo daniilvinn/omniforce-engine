@@ -28,6 +28,7 @@ namespace Omni {
 		void BeginRender(Shared<Image> target, uvec3 render_area, ivec2 render_offset, fvec4 clear_color) override;
 		void EndRender(Shared<Image> target) override;
 		void WaitDevice() override;
+		void BindSet(Shared<DescriptorSet> set, Shared<Pipeline> pipeline, uint8 index) override;
 
 		void BeginCommandRecord() override;
 		void EndCommandRecord() override;
@@ -36,7 +37,7 @@ namespace Omni {
 		void ClearImage(Shared<Image> image, const fvec4& value) override;
 		Shared<Swapchain> GetSwapchain() override { return ShareAs<Swapchain>(m_Swapchain); };
 		CmdBuffer* GetCurrentCmdBuffer() const { return m_CurrentCmdBuffer; }
-		void RenderMesh(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo) override;
+		void RenderMesh(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo, MiscData misc_data) override;
 
 		void TransitionImageLayout(
 			Shared<VulkanImage> image, 

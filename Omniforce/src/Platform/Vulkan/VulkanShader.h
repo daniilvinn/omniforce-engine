@@ -2,6 +2,7 @@
 
 #include <Renderer/Shader.h>
 
+#include <map>
 #include <filesystem>
 #include <vulkan/vulkan.h>
 
@@ -9,11 +10,11 @@ namespace Omni {
 
 	class VulkanShader : public Shader {
 	public:
-		VulkanShader(const ShaderStage& stage, const std::vector<uint32>& code, std::filesystem::path path);
+		VulkanShader(std::map<ShaderStage, std::vector<uint32>> binaries, std::filesystem::path path);
 		~VulkanShader();
 
-		VkPipelineShaderStageCreateInfo GetCreateInfo() const { return m_CreateInfo; }
-		std::vector<VkDescriptorSetLayout> GetLayouts() const { return m_Layouts; }
+		std::vector<VkPipelineShaderStageCreateInfo> GetCreateInfos() const { return m_StageCreateInfos; }
+		std::vector<VkDescriptorSetLayout> GetLayouts() const { return m_SetLayouts; }
 		std::vector<VkPushConstantRange> GetRanges() const { return m_Ranges; }
 		void Destroy() override;
 
@@ -27,8 +28,8 @@ namespace Omni {
 		void RestoreShaderModule(std::filesystem::path path) override;
 
 	private:
-		VkPipelineShaderStageCreateInfo m_CreateInfo;
-		std::vector<VkDescriptorSetLayout> m_Layouts;
+		std::vector<VkPipelineShaderStageCreateInfo> m_StageCreateInfos;
+		std::vector<VkDescriptorSetLayout> m_SetLayouts;
 		std::vector<VkPushConstantRange> m_Ranges;
 		std::filesystem::path m_Path;
 		bool m_Dirty = false;

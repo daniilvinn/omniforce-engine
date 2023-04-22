@@ -39,7 +39,7 @@ namespace Omni {
 	struct OMNIFORCE_API PipelineSpecification {
 		std::string debug_name;
 		DeviceBufferLayout input_layout;
-		ShaderProgram program;
+		Shared<Shader> shader;
 		float32 line_width;
 		PipelineType type;
 		PipelineCullingMode culling_mode;
@@ -58,7 +58,7 @@ namespace Omni {
 			PipelineSpecification spec = {};
 			spec.debug_name = "";
 			spec.input_layout = {};
-			spec.program = {};
+			spec.shader = nullptr;
 			spec.line_width = 1.0f;
 			spec.type = PipelineType::GRAPHICS;
 			spec.culling_mode = PipelineCullingMode::BACK;
@@ -80,6 +80,7 @@ namespace Omni {
 	public:
 		static Shared<Pipeline> Create(const PipelineSpecification& spec);
 		virtual void Destroy() = 0;
+		virtual PipelineSpecification GetSpecification() const = 0;
 	};
 
 }

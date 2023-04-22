@@ -12,27 +12,7 @@ public:
 
 	void OnUpdate() override
 	{
-		Shared<Image> swapchain_image = Renderer::GetSwapchainImage();
-		
-		Renderer::ClearImage(swapchain_image, { 0.420, 0.69, 0.14 });
 
-		static fvec4 clear_value = { 0.0f, 0.0f, 0.0f, 0.0f };
-
-		if (Input::KeyPressed(KeyCode::KEY_W))
-			clear_value.r += 0.0003f;
-		if (Input::KeyPressed(KeyCode::KEY_S))
-			clear_value.r -= 0.0003f;
-		if (Input::KeyPressed(KeyCode::KEY_A))
-			clear_value.g -= 0.0003f;
-		if (Input::KeyPressed(KeyCode::KEY_D))
-			clear_value.g += 0.0003f;
-
-		clear_value.r = std::clamp(clear_value.r, 0.0f, 1.0f);
-		clear_value.g = std::clamp(clear_value.g, 0.0f, 1.0f);
-
-		Renderer::BeginRender(swapchain_image, swapchain_image->GetSpecification().extent, { 0,0 }, clear_value);
-		Renderer::RenderMesh(m_Pipeline, m_VertexBuffer, m_IndexBuffer);
-		Renderer::EndRender(swapchain_image);
 	}
 
 	void OnEvent(Event* e) override
@@ -45,15 +25,10 @@ public:
 		Renderer::WaitDevice();
 		m_VertexBuffer->Destroy();
 		m_IndexBuffer->Destroy();
-		m_Pipeline->Destroy();
 	}
 
 	void Launch() override
 	{
-		ImageSpecification image_spec = ImageSpecification::Default();
-		image_spec.path = "assets/textures/test.png";
-		Shared<Image> img = Image::Create(image_spec);
-
 		float vertices[] = {
 			-0.5f, -0.5f,	1.0f, 0.0f, 0.0f,
 			 0.5f, -0.5f,	0.0f, 1.0f, 0.0f,
@@ -83,26 +58,7 @@ public:
 
 		JobSystem::Get()->Wait();
 
-		ShaderProgram program({
-			ShaderLibrary::Get()->Get("basic.vert"),
-			ShaderLibrary::Get()->Get("color_pass.frag"),
-		});
-
-		DeviceBufferLayout input_layout({
-			{ "pos", DeviceDataType::FLOAT2 },
-			{ "color", DeviceDataType::FLOAT3 }
-		});
-
-		PipelineSpecification pipeline_spec = PipelineSpecification::Default();
-		pipeline_spec.debug_name = "test pipeline";
-		pipeline_spec.input_layout = input_layout;
-		pipeline_spec.program = program;
-		pipeline_spec.output_attachments_formats = { ImageFormat::BGRA32 };
-	
-		m_Pipeline = Pipeline::Create(pipeline_spec);
-
-		ShaderLibrary::Get()->Unload("basic.vert");
-		ShaderLibrary::Get()->Unload("color_pass.frag");
+		ShaderLibrary::Get()->Load("assets/shaders/test.ofs");
 	}
 
 	/*
@@ -111,7 +67,6 @@ public:
 
 	Shared<DeviceBuffer> m_VertexBuffer;
 	Shared<DeviceBuffer> m_IndexBuffer;
-	Shared<Pipeline> m_Pipeline;
 };
 
 Subsystem* ConstructRootSystem() 

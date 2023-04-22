@@ -34,11 +34,12 @@ namespace Omni {
 		static void BeginRender(Shared<Image> target, uvec3 render_area, ivec2 offset, fvec4 clear_value);
 		static void EndRender(Shared<Image> target);
 		static void WaitDevice(); // to be used ONLY while shutting down the engine.
+		static void BindSet(Shared<DescriptorSet> set, Shared<Pipeline> pipeline, uint8 index);
 
 		static Shared<Image> GetSwapchainImage();
 		static void ClearImage(Shared<Image> image, const fvec4& value);
 		static void InsertBarrier(Shared<DeviceBuffer> buffer);
-		static void RenderMesh(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo);
+		static void RenderMesh(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo, MiscData data);
 
 		static void Render();
 

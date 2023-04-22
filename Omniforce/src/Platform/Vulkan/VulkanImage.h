@@ -60,11 +60,40 @@ namespace Omni {
 		default:										std::unreachable(); break;
 		}
 	}
+
+	constexpr VkFilter convert(const SamplerFilteringMode& mode) {
+		switch (mode)
+		{
+		case SamplerFilteringMode::LINEAR:				return VK_FILTER_LINEAR;
+		case SamplerFilteringMode::NEAREST:				return VK_FILTER_NEAREST;
+		default:										std::unreachable();
+		}
+	}
+
+	constexpr VkSamplerAddressMode convert(const SamplerAddressMode& mode) {
+		switch (mode)
+		{
+		case SamplerAddressMode::CLAMP:					return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		case SamplerAddressMode::CLAMP_BORDER:			return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+		case SamplerAddressMode::REPEAT:				return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		case SamplerAddressMode::MIRRORED_REPEAT:		return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+		default:										std::unreachable();
+		}
+	}
+
+	constexpr VkSamplerMipmapMode convertMipmapMode(const SamplerFilteringMode& mode) {
+		switch (mode)
+		{
+		case SamplerFilteringMode::LINEAR:				return VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		case SamplerFilteringMode::NEAREST:				return VK_SAMPLER_MIPMAP_MODE_NEAREST;
+		default:										std::unreachable();
+		}
+	}
+
 #pragma endregion
 
 	class VulkanImage : public Image {
 	public:
-
 		VulkanImage();
 		VulkanImage(const ImageSpecification& spec, VkImage image, VkImageView view);
 		VulkanImage(const ImageSpecification& spec);
@@ -77,6 +106,7 @@ namespace Omni {
 		VkImage Raw() const { return m_Image; }
 		VkImageView RawView() const { return m_ImageView; };
 		ImageSpecification GetSpecification() const override { return m_Specification; }
+		uint32 GetId() const override { return m_Id; }
 
 		VkImageLayout GetCurrentLayout() const { return m_CurrentLayout; }
 
@@ -88,7 +118,10 @@ namespace Omni {
 		void CreateRenderTarget();
 
 	private:
+		static uint32 s_IdCounter;
+
 		ImageSpecification m_Specification;
+		uint32 m_Id;
 
 		VkImage m_Image;
 		VmaAllocation m_Allocation;
@@ -96,6 +129,23 @@ namespace Omni {
 		VkImageLayout m_CurrentLayout;
 		
 		bool m_CreatedFromRaw;
+
+	};
+
+	class VulkanImageSampler : public ImageSampler {
+	public:
+		VulkanImageSampler(const ImageSamplerSpecification& spec);
+		~VulkanImageSampler();
+
+		void Destroy() override;
+
+		VkSampler Raw() const { return m_Sampler; }
+		ImageSamplerSpecification GetSpecification() const { return m_Specification; }
+
+	private:
+		VkSampler m_Sampler;
+		ImageSamplerSpecification m_Specification;
+
 	};
 
 }

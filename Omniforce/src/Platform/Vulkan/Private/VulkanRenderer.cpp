@@ -5,6 +5,7 @@
 #include "../VulkanPipeline.h"
 #include "../VulkanDeviceBuffer.h"
 #include "../VulkanImage.h"
+#include "../VulkanDescriptorSet.h"
 #include <Renderer/ShaderLibrary.h>
 #include <Threading/JobSystem.h>
 
@@ -43,21 +44,17 @@ namespace Omni {
 
 		if (s_DescriptorPool == VK_NULL_HANDLE) {
 			std::vector<VkDescriptorPoolSize> pool_sizes = {
-				{ VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
-				{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
-				{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
-				{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
-				{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
-				{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
-				{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
-				{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
-				{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000},
-				{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000},
-				{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 },
-				{ VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK, 1000 }
-				// { VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 1000 },
-				// { VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV, 1000 },
-				// { VK_DESCRIPTOR_TYPE_MUTABLE_VALVE, 1000 }
+				{ VK_DESCRIPTOR_TYPE_SAMPLER,					UINT16_MAX },
+				{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,	UINT16_MAX },
+				{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,				UINT16_MAX },
+				{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,				UINT16_MAX },
+				{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,		UINT16_MAX },
+				{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,		UINT16_MAX },
+				{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,			UINT16_MAX },
+				{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,			UINT16_MAX },
+				{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,	UINT16_MAX },
+				{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,	UINT16_MAX },
+				{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,			UINT16_MAX }
 			};
 
 			VkDescriptorPoolCreateInfo descriptor_pool_create_info = {};
@@ -243,7 +240,7 @@ namespace Omni {
 		VK_CHECK_RESULT(vkFreeDescriptorSets(device->Raw(), s_DescriptorPool, sets.size(), sets.data()));
 	}
 
-	void VulkanRenderer::RenderMesh(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo)
+	void VulkanRenderer::RenderMesh(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo, MiscData misc_data)
 	{
 		Renderer::Submit([=]() mutable {
 			Shared<VulkanPipeline> vk_pipeline = ShareAs<VulkanPipeline>(pipeline);
@@ -256,9 +253,12 @@ namespace Omni {
 
 			VkBuffer raw_vbo = vk_vbo->Raw();
 
+
 			vkCmdBindPipeline(m_CurrentCmdBuffer->buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
 			vkCmdBindVertexBuffers(m_CurrentCmdBuffer->buffer, 0, 1, &raw_vbo, &offset);
 			vkCmdBindIndexBuffer(m_CurrentCmdBuffer->buffer, vk_ibo->Raw(), 0, ibo_data->index_type);
+
+			vkCmdPushConstants(m_CurrentCmdBuffer->buffer, vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, misc_data.size, misc_data.data);
 
 			vkCmdDrawIndexed(m_CurrentCmdBuffer->buffer, ibo_data->index_count, 1, 0, 0, 0);
 		});
@@ -321,6 +321,28 @@ namespace Omni {
 	void VulkanRenderer::WaitDevice()
 	{
 		vkDeviceWaitIdle(m_Device->Raw());
+	}
+
+	void VulkanRenderer::BindSet(Shared<DescriptorSet> set, Shared<Pipeline> pipeline, uint8 index)
+	{
+		Renderer::Submit([=]() mutable {
+			PipelineSpecification pipeline_spec = pipeline->GetSpecification();
+			Shared<VulkanPipeline> vk_pipeline = ShareAs<VulkanPipeline>(pipeline);
+			Shared<VulkanDescriptorSet> vk_set = ShareAs<VulkanDescriptorSet>(set);
+			VkDescriptorSet raw_set = vk_set->Raw();
+
+			VkPipelineBindPoint bind_point;
+
+			switch (pipeline_spec.type)
+			{
+			case PipelineType::GRAPHICS:		bind_point = VK_PIPELINE_BIND_POINT_GRAPHICS;			break;
+			case PipelineType::COMPUTE:			bind_point = VK_PIPELINE_BIND_POINT_COMPUTE;			break;
+			case PipelineType::RAY_TRACING:		bind_point = VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;	break;
+			default:							std::unreachable();
+			}
+
+			vkCmdBindDescriptorSets(m_CurrentCmdBuffer->buffer, bind_point, vk_pipeline->RawLayout(), index, 1, &raw_set, 0, nullptr);
+		});
 	}
 
 }

@@ -4,6 +4,8 @@
 #include <Filesystem/Filesystem.h>
 #include <Threading/JobSystem.h>
 
+#include <fstream>
+
 namespace Omni {
 
 	Omni::ShaderLibrary* ShaderLibrary::s_Instance;
@@ -39,21 +41,18 @@ namespace Omni {
 			return false;
 		}
 
-		result = m_Compiler.ReadShaderFile(path, &sstream);
+		std::string shader_source;
+		std::string line;
+		std::ifstream input_stream;
+		while (std::getline(input_stream, line)) shader_source.append(line + '\n');
 
-		if (!result)
-		{
-			OMNIFORCE_CORE_ERROR("Failed to read shared file: {0}", path.string());
-			return false;
-		}
-		
 		std::vector<uint32> binary_data;
 
-		if (m_Compiler.Compile(sstream, this->EvaluateStage(path), path.filename().string(), &binary_data)) {
-			OMNIFORCE_CORE_INFO("Shader \"{0}\" loaded succesfully", path.filename().string());
-		};
+		ShaderCompilationResult compilation_result = m_Compiler.Compile(shader_source, path.filename().string());
 
-		Shared<Shader> shader = Shader::Create(this->EvaluateStage(path), binary_data, path);
+		if (!compilation_result.valid) return false;
+
+		Shared<Shader> shader = Shader::Create(compilation_result.bytecode, path);
 
 		m_Mutex.lock();
 		m_Library.emplace(path.filename().string(), shader);
@@ -98,5 +97,5 @@ namespace Omni {
 
 		return ShaderStage::UNKNOWN;
 	}
-
+	
 }

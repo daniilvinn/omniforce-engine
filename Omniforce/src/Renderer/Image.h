@@ -63,6 +63,37 @@ namespace Omni {
 		virtual void Destroy() = 0;
 
 		virtual ImageSpecification GetSpecification() const = 0;
+		virtual uint32 GetId() const = 0;
+	};
+
+	enum class OMNIFORCE_API SamplerFilteringMode : uint32 {
+		NEAREST,
+		LINEAR
+	};
+
+	enum class OMNIFORCE_API SamplerAddressMode : uint32 {
+		REPEAT,
+		MIRRORED_REPEAT,
+		CLAMP,
+		CLAMP_BORDER
+	};
+
+	struct OMNIFORCE_API ImageSamplerSpecification {
+		SamplerFilteringMode min_filtering_mode;
+		SamplerFilteringMode mag_filtering_mode;
+		SamplerFilteringMode mipmap_filtering_mode;
+		SamplerAddressMode address_mode;
+		float min_lod;
+		float max_lod;
+		float lod_bias;
+		uint8 anisotropy_filtering_level;
+	};
+
+	class OMNIFORCE_API ImageSampler {
+	public:
+		static Shared<ImageSampler> Create(const ImageSamplerSpecification& spec);
+
+		virtual void Destroy() = 0;
 	};
 
 }

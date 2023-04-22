@@ -21,6 +21,9 @@
 #include <Renderer/Shader.h>
 #include <Renderer/Pipeline.h>
 #include <Renderer/Image.h>
+#include <Renderer/DescriptorSet.h>
+
+#include <Scene/SceneRenderer.h>
 
 // Entry Point
 #include <Core/EntryPoint.h>

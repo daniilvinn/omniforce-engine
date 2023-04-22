@@ -10,7 +10,10 @@ namespace Omni
 	class VulkanDebugUtils;
 	class VulkanSwapchain;
 	class VulkanImage;
+	class VulkanImageSampler;
 	class VulkanDeviceBuffer;
-	class Shader;
+	class VulkanShader;
+	class VulkanPipeline;
+	class VulkanDescriptorSet;
 
 }

@@ -5,6 +5,7 @@
 
 namespace Omni {
 
+#pragma region converts
 	VkBufferUsageFlags convert(DeviceBufferUsage usage) 
 	{
 		switch (usage)
@@ -27,6 +28,7 @@ namespace Omni {
 		default:													std::unreachable();												
 		}
 	}
+#pragma endregion
 
 	VulkanDeviceBuffer::VulkanDeviceBuffer(const DeviceBufferSpecification& spec)
 		: m_Buffer(VK_NULL_HANDLE), m_Specification(spec), m_Data(nullptr)
@@ -146,6 +148,7 @@ namespace Omni {
 
 			ibo_data->index_count = data_size / index_size;
 			ibo_data->index_type = ExtractIndexType(m_Specification.flags);
+
 		}
 
 		else if (m_Specification.buffer_usage == DeviceBufferUsage::VERTEX_BUFFER) {

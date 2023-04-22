@@ -15,7 +15,7 @@ namespace Omni {
 		STANDARD,
 		HIGH
 	};
-
+	
 	struct JobDeclaration {
 		std::function<void()> job;
 		std::atomic_bool finished = false;

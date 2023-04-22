@@ -9,4 +9,9 @@ namespace Omni {
 		return std::make_shared<VulkanImage>(spec);
 	}
 
+	Shared<ImageSampler> ImageSampler::Create(const ImageSamplerSpecification& spec)
+	{
+		return std::make_shared<VulkanImageSampler>(spec);
+	}
+
 }
