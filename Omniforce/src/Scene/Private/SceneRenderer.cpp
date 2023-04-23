@@ -57,28 +57,7 @@ namespace Omni {
 			m_SamplerLinear = ImageSampler::Create(sampler_spec);
 		}
 		// Initializing pipelines
-		{
-			ShaderProgram program({
-			ShaderLibrary::Get()->Get("basic.vert"),
-			ShaderLibrary::Get()->Get("color_pass.frag"),
-				});
-
-			DeviceBufferLayout input_layout({
-				{ "pos", DeviceDataType::FLOAT2 },
-				{ "color", DeviceDataType::FLOAT3 }
-				});
-
-			PipelineSpecification pipeline_spec = PipelineSpecification::Default();
-			pipeline_spec.debug_name = "test pipeline";
-			pipeline_spec.input_layout = input_layout;
-			pipeline_spec.program = program;
-			pipeline_spec.output_attachments_formats = { ImageFormat::BGRA32 };
-
-			m_TexturePass = Pipeline::Create(pipeline_spec);
-
-			ShaderLibrary::Get()->Unload("basic.vert");
-			ShaderLibrary::Get()->Unload("color_pass.frag");
-		}
+		
 	}
 
 	SceneRenderer::~SceneRenderer()

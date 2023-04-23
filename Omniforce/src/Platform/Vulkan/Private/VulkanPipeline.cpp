@@ -218,20 +218,9 @@ namespace Omni {
 		multisample_state.sampleShadingEnable = m_Specification.multisampling_enable;
 		multisample_state.rasterizationSamples = (VkSampleCountFlagBits)m_Specification.sample_count;
 
-		std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
-		std::vector<VkPushConstantRange> push_constant_ranges;
-
-		for (auto& base_shader : m_Specification.program.GetShaders()) {
-			Shared<VulkanShader> shader = ShareAs<VulkanShader>(base_shader);
-
-			auto layouts = shader->GetLayouts();
-			for (const auto& set_layout : layouts)
-				descriptor_set_layouts.push_back(set_layout);
-			
-			auto ranges = shader->GetRanges();
-			for (const auto& range : ranges)
-				push_constant_ranges.push_back(range);
-		}
+		Shared<VulkanShader> vk_shader = ShareAs<VulkanShader>(m_Specification.shader);
+		std::vector<VkDescriptorSetLayout> descriptor_set_layouts = vk_shader->GetLayouts();
+		std::vector<VkPushConstantRange> push_constant_ranges = vk_shader->GetRanges();
 
 		VkPipelineLayoutCreateInfo pipeline_layout_create_info = {};
 		pipeline_layout_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -253,13 +242,7 @@ namespace Omni {
 		// HACK: I assume that D32_SFLOAT is chosen format. More proper way to do it is to request depth image format from pipeline spec or swapchain
 		pipeline_rendering.depthAttachmentFormat = VK_FORMAT_D32_SFLOAT; 
 
-		std::vector<VkPipelineShaderStageCreateInfo> stage_infos;
-		std::vector<Shared<Shader>> shaders = m_Specification.program.GetShaders();
-		
-		for (auto& base_shader : shaders) {
-			Shared<VulkanShader> shader = ShareAs<VulkanShader>(base_shader);
-			stage_infos.push_back(shader->GetCreateInfo());
-		}
+		std::vector<VkPipelineShaderStageCreateInfo> stage_infos = vk_shader->GetCreateInfos();
 
 		VkGraphicsPipelineCreateInfo graphics_pipeline_create_info = {};
 		graphics_pipeline_create_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -291,20 +274,9 @@ namespace Omni {
 	{
 		auto device = VulkanGraphicsContext::Get()->GetDevice();
 
-		std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
-		std::vector<VkPushConstantRange> push_constant_ranges;
-
-		for (auto& base_shader : m_Specification.program.GetShaders()) {
-			Shared<VulkanShader> shader = ShareAs<VulkanShader>(base_shader);
-
-			auto layouts = shader->GetLayouts();
-			for (const auto& set_layout : layouts)
-				descriptor_set_layouts.push_back(set_layout);
-
-			auto ranges = shader->GetRanges();
-			for (const auto& range : ranges)
-				push_constant_ranges.push_back(range);
-		}
+		Shared<VulkanShader> vk_shader = ShareAs<VulkanShader>(m_Specification.shader);
+		std::vector<VkDescriptorSetLayout> descriptor_set_layouts = vk_shader->GetLayouts();
+		std::vector<VkPushConstantRange> push_constant_ranges = vk_shader->GetRanges();
 
 		VkPipelineLayoutCreateInfo pipeline_layout_create_info = {};
 		pipeline_layout_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -313,14 +285,12 @@ namespace Omni {
 		pipeline_layout_create_info.pushConstantRangeCount = push_constant_ranges.size();
 		pipeline_layout_create_info.pPushConstantRanges = push_constant_ranges.data();
 
-		std::vector<Shared<Shader>> shaders = m_Specification.program.GetShaders();
-
-		Shared<VulkanShader> compute_shader = ShareAs<VulkanShader>(shaders[0]);
+		std::vector<VkPipelineShaderStageCreateInfo> stage_create_info = vk_shader->GetCreateInfos();
 
 		VkComputePipelineCreateInfo compute_pipeline_create_info = {};
 		compute_pipeline_create_info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
 		compute_pipeline_create_info.layout = m_PipelineLayout;
-		compute_pipeline_create_info.stage = compute_shader->GetCreateInfo();
+		compute_pipeline_create_info.stage = stage_create_info[0];
 		
 		VK_CHECK_RESULT(vkCreateComputePipelines(device->Raw(), VK_NULL_HANDLE, 1, &compute_pipeline_create_info, nullptr, &m_Pipeline));
 

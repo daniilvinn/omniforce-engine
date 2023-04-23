@@ -109,7 +109,7 @@ namespace Omni {
 
 			for (auto& reflect_range : reflect_push_constant_ranges) {
 				for (auto& range : constant_ranges) {
-					if (range.offset == reflect_range->offset) {
+					if (range.offset == reflect_range->offset && range.size == reflect_range->size) {
 						range.stageFlags |= convert(stage_data.first);
 						continue;
 					}
@@ -126,16 +126,35 @@ namespace Omni {
 			spvReflectDestroyShaderModule(&reflect_module);
 		}
 
-		uint32 highest_set_index = bindings.rbegin()->first;
-		for (int i = 0; i < highest_set_index; i++) {
-			if (bindings.find(i) == bindings.end())
-				m_SetLayouts.push_back(VK_NULL_HANDLE);
-			else {
-				VkDescriptorSetLayoutCreateInfo layout_create_info = {};
-				layout_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		if (bindings.size()) {
+			uint32 highest_set_index = bindings.rbegin()->first;
+			for (int i = 0; i < highest_set_index; i++) {
+				if (bindings.find(i) == bindings.end())
+					m_SetLayouts.push_back(VK_NULL_HANDLE);
+				else {
+					std::vector<VkDescriptorBindingFlags> binding_flags;
+					for (auto& binding : bindings[i]) {
+						if (binding.descriptorCount != 1) binding_flags.push_back(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
+						else binding_flags.push_back(0);
+					}
+
+					VkDescriptorSetLayoutBindingFlagsCreateInfo layout_bindings_flags = {};
+					layout_bindings_flags.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+					layout_bindings_flags.bindingCount = binding_flags.size();
+					layout_bindings_flags.pBindingFlags = binding_flags.data();
+
+					VkDescriptorSetLayoutCreateInfo layout_create_info = {};
+					layout_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+					layout_create_info.pNext = &layout_bindings_flags;
+					layout_create_info.bindingCount = bindings[i].size();
+					layout_create_info.pBindings = bindings[i].data();
+
+					VkDescriptorSetLayout vk_descriptor_set_layout = VK_NULL_HANDLE;
+					vkCreateDescriptorSetLayout(device->Raw(), &layout_create_info, nullptr, &vk_descriptor_set_layout);
+					m_SetLayouts.push_back(vk_descriptor_set_layout);
+				}
 			}
 		}
-
 	}
 
 	VulkanShader::~VulkanShader()

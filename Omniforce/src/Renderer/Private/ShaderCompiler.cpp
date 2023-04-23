@@ -154,7 +154,7 @@ namespace Omni {
 
 		// Compilation stage
 		for (auto& stage_source : separated_sources) {
-			shaderc::CompilationResult result = m_Compiler.CompileGlslToSpv(stage_source.second, convert(stage_source.first), filename.c_str());
+			shaderc::CompilationResult result = m_Compiler.CompileGlslToSpv(stage_source.second, convert(stage_source.first), filename.c_str(), local_options);
 			if (result.GetCompilationStatus() != shaderc_compilation_status_success) {
 				OMNIFORCE_CORE_ERROR("Failed to compile shader {0}.{1}:\n{2}", filename, StageToString(stage_source.first), result.GetErrorMessage());
 				compilation_result.valid = false;

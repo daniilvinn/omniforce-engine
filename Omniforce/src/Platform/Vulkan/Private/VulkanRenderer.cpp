@@ -258,7 +258,8 @@ namespace Omni {
 			vkCmdBindVertexBuffers(m_CurrentCmdBuffer->buffer, 0, 1, &raw_vbo, &offset);
 			vkCmdBindIndexBuffer(m_CurrentCmdBuffer->buffer, vk_ibo->Raw(), 0, ibo_data->index_type);
 
-			vkCmdPushConstants(m_CurrentCmdBuffer->buffer, vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, misc_data.size, misc_data.data);
+			if(misc_data.size)
+				vkCmdPushConstants(m_CurrentCmdBuffer->buffer, vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, misc_data.size, misc_data.data);
 
 			vkCmdDrawIndexed(m_CurrentCmdBuffer->buffer, ibo_data->index_count, 1, 0, 0, 0);
 		});

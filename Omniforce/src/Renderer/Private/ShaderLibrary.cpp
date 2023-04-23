@@ -43,7 +43,7 @@ namespace Omni {
 
 		std::string shader_source;
 		std::string line;
-		std::ifstream input_stream;
+		std::ifstream input_stream(path);
 		while (std::getline(input_stream, line)) shader_source.append(line + '\n');
 
 		std::vector<uint32> binary_data;
@@ -81,7 +81,7 @@ namespace Omni {
 		return m_Library.find(key) != m_Library.end();
 	}
 
-	Shared<Shader> ShaderLibrary::Get(std::string key)
+	Shared<Shader> ShaderLibrary::GetShader(std::string key)
 	{
 		return m_Library.find(key)->second;
 	}

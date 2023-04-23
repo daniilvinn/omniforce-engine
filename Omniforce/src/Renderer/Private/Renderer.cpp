@@ -83,8 +83,7 @@ namespace Omni {
 
 	void Renderer::LoadShaderPack()
 	{
-		ShaderLibrary::Get()->Load("assets/shaders/basic.vert");
-		ShaderLibrary::Get()->Load("assets/shaders/color_pass.frag");
+		ShaderLibrary::Get()->Load("assets/shaders/test.ofs");
 	}
 
 	void Renderer::Render()
