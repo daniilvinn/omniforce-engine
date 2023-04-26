@@ -10,6 +10,8 @@
 #include <Renderer/Renderer.h>
 #include <Renderer/ShaderLibrary.h>
 
+#include <box2d/box2d.h>
+
 namespace Omni 
 {
 
@@ -55,6 +57,7 @@ namespace Omni
 		});
 
 		js->Wait();
+
 		js->Execute([]() {
 			Renderer::LoadShaderPack();
 		});

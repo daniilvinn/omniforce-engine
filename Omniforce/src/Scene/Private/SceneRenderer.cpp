@@ -3,8 +3,14 @@
 #include <Renderer/DescriptorSet.h>
 #include <Renderer/Pipeline.h>
 #include <Renderer/ShaderLibrary.h>
+#include <Renderer/DeviceBuffer.h>
 
 namespace Omni {
+
+	SceneRenderer* SceneRenderer::Create(const SceneRendererSpecification& spec)
+	{
+		return new SceneRenderer(spec);
+	}
 
 	SceneRenderer::SceneRenderer(const SceneRendererSpecification& spec)
 		: m_Specification(spec)
@@ -24,8 +30,6 @@ namespace Omni {
 			uint32 index = 0;
 			for (auto i = s_GlobalSceneData.available_texture_indices.rbegin(); i != s_GlobalSceneData.available_texture_indices.rend(); i++, index++)
 				*i = index;
-
-			s_GlobalSceneData.scene_descriptor_set->Write(0, 1, m_CameraData, sizeof CameraData, 0);
 		}
 		
 		// Initializing nearest filtration sampler
@@ -38,7 +42,7 @@ namespace Omni {
 			sampler_spec.min_lod = 0.0f;
 			sampler_spec.max_lod = 1000.0f;
 			sampler_spec.lod_bias = 0.0f;
-			sampler_spec.anisotropy_filtering_level = m_Specification.anisotropy_filtration;
+			sampler_spec.anisotropic_filtering_level = m_Specification.anisotropic_filtering;
 
 			m_SamplerNearest = ImageSampler::Create(sampler_spec);
 		}
@@ -52,11 +56,27 @@ namespace Omni {
 			sampler_spec.min_lod = 0.0f;
 			sampler_spec.max_lod = 1000.0f;
 			sampler_spec.lod_bias = 0.0f;
-			sampler_spec.anisotropy_filtering_level = m_Specification.anisotropy_filtration;
+			sampler_spec.anisotropic_filtering_level = m_Specification.anisotropic_filtering;
 
 			m_SamplerLinear = ImageSampler::Create(sampler_spec);
 		}
 		// Initializing pipelines
+		{
+			DeviceBufferLayout input_layout({
+				{ "v_Pos", DeviceDataType::FLOAT2 },
+				{ "v_TexCoord", DeviceDataType::FLOAT2 },
+			});
+
+			PipelineSpecification pipeline_spec = PipelineSpecification::Default();
+			pipeline_spec.debug_name = "test pipeline";
+			pipeline_spec.input_layout = input_layout;
+			pipeline_spec.shader = ShaderLibrary::Get()->GetShader("test.ofs");
+			pipeline_spec.output_attachments_formats = { ImageFormat::BGRA32 };
+
+			m_BasicColorPass = Pipeline::Create(pipeline_spec);
+
+			ShaderLibrary::Get()->Unload("test.ofs");
+		}
 		
 	}
 
@@ -65,10 +85,19 @@ namespace Omni {
 
 	}
 
-	void SceneRenderer::BeginScene(const SceneRenderData& scene_data)
+	void SceneRenderer::Destroy()
+	{
+		m_SamplerLinear->Destroy();
+		m_SamplerNearest->Destroy();
+		m_BasicColorPass->Destroy();
+		s_GlobalSceneData.scene_descriptor_set->Destroy();
+	}
+
+	void SceneRenderer::BeginScene(SceneRenderData scene_data)
 	{
 		m_CurrentSceneRenderData = scene_data;
 		Renderer::BeginRender(scene_data.target, scene_data.target->GetSpecification().extent, { 0, 0 }, { 0.0f, 0.0f, 0.0f, 0.0f });
+		Renderer::BindSet(s_GlobalSceneData.scene_descriptor_set, m_BasicColorPass, 0);
 	}
 
 	void SceneRenderer::EndScene()
@@ -90,12 +119,12 @@ namespace Omni {
 
 		switch (filtering_mode)
 		{
-		case SamplerFilteringMode::NEAREST: sampler = m_SamplerNearest; break;
-		case SamplerFilteringMode::LINEAR:	sampler = m_SamplerLinear; break;
-		default:							OMNIFORCE_ASSERT_TAGGED(false, "Invalid sampler filtering mode"); break;
+		case SamplerFilteringMode::NEAREST:		sampler = m_SamplerNearest; break;
+		case SamplerFilteringMode::LINEAR:		sampler = m_SamplerLinear;  break;
+		default:								OMNIFORCE_ASSERT_TAGGED(false, "Invalid sampler filtering mode"); break;
 		}
 
-		s_GlobalSceneData.scene_descriptor_set->Write(1, index, image, sampler);
+		s_GlobalSceneData.scene_descriptor_set->Write(0, index, image, sampler);
 		s_GlobalSceneData.textures.emplace(image->GetId(), index);
 
 		return index;
@@ -118,7 +147,11 @@ namespace Omni {
 
 	void SceneRenderer::RenderMesh(Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo, Shared<Image> texture)
 	{
+		MiscData data;
+		data.data = &s_GlobalSceneData.textures[texture->GetId()];;
+		data.size = sizeof(s_GlobalSceneData.textures[texture->GetId()]);
 
+		Renderer::RenderMesh(m_BasicColorPass, vbo, ibo, data);
 	}
 
 }

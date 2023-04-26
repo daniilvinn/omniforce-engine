@@ -23,15 +23,19 @@ namespace Omni {
 	};
 
 	struct OMNIFORCE_API SceneRendererSpecification {
-		uint8 anisotropy_filtration = 16;
+		uint8 anisotropic_filtering = 16;
 	};
 
 	class OMNIFORCE_API SceneRenderer {
 	public:
+		static SceneRenderer* Create(const SceneRendererSpecification& spec);
+
 		SceneRenderer(const SceneRendererSpecification& spec);
 		~SceneRenderer();
 
-		void BeginScene(const SceneRenderData& scene_data);
+		void Destroy();
+
+		void BeginScene(SceneRenderData scene_data);
 		void EndScene();
 		
 		/*
@@ -56,12 +60,12 @@ namespace Omni {
 		Shared<ImageSampler> m_SamplerNearest;
 		Shared<ImageSampler> m_SamplerLinear;
 
-		Shared<Pipeline> m_TexturePass;
+		Shared<Pipeline> m_BasicColorPass;
 
-		struct GlobalSceneData {
+		struct GlobalSceneRenderData {
 			const uint32 max_textures = UINT16_MAX + 1;
-			robin_hood::unordered_map<uint32, uint16> textures;
-			std::vector<uint16> available_texture_indices;
+			robin_hood::unordered_map<uint32, uint32> textures;
+			std::vector<uint32> available_texture_indices;
 			Shared<DescriptorSet> scene_descriptor_set;
 		} s_GlobalSceneData;
 

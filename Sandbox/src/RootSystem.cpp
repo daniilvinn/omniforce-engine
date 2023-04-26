@@ -30,9 +30,11 @@ public:
 		clear_value.r = std::clamp(clear_value.r, 0.0f, 1.0f);
 		clear_value.g = std::clamp(clear_value.g, 0.0f, 1.0f);
 
-		Renderer::BeginRender(swapchain_image, swapchain_image->GetSpecification().extent, { 0,0 }, clear_value);
-		Renderer::RenderMesh(m_Pipeline, m_VertexBuffer, m_IndexBuffer, {});
-		Renderer::EndRender(swapchain_image);
+		SceneRenderData render_data{ .target = swapchain_image, .camera_data = {} };
+		m_Renderer->BeginScene(render_data);
+		m_Renderer->RenderMesh(m_VertexBuffer, m_IndexBuffer, m_Image);
+		m_Renderer->EndScene();
+		
 	}
 
 	void OnEvent(Event* e) override
@@ -43,19 +45,21 @@ public:
 	void Destroy() override
 	{
 		Renderer::WaitDevice();
+		m_Renderer->Destroy();
 		m_VertexBuffer->Destroy();
 		m_IndexBuffer->Destroy();
-		m_Pipeline->Destroy();
+		m_Image->Destroy();
 	}
 
 	void Launch() override
 	{
 
 		float vertices[] = {
-			-0.5f, -0.5f,	1.0f, 0.0f, 0.0f,
-			 0.5f, -0.5f,	0.0f, 1.0f, 0.0f,
-			 0.5f,  0.5f,	0.0f, 0.0f, 1.0f,
-			-0.5f,  0.5f,	1.0f, 0.0f, 0.0f
+			// Pos			// Tex coord
+			-0.5f, -0.5f,	0.0f, 0.0f,
+			 0.5f, -0.5f,	1.0f, 0.0f,
+			 0.5f,  0.5f,	1.0f, 1.0f,
+			-0.5f,  0.5f,	0.0f, 1.0f
 		};
 
 		uint8 indices[] = {
@@ -78,22 +82,17 @@ public:
 		m_VertexBuffer = DeviceBuffer::Create(vertex_buffer_spec, vertices, sizeof(vertices));
 		m_IndexBuffer = DeviceBuffer::Create(index_buffer_spec, indices, sizeof(indices));
 
+		ImageSpecification image_spec = ImageSpecification::Default();
+		image_spec.path = "assets/textures/test.jpg";
+		m_Image = Image::Create(image_spec);
+
 		JobSystem::Get()->Wait();
 
-		DeviceBufferLayout input_layout({
-			{ "pos", DeviceDataType::FLOAT2 },
-			{ "color", DeviceDataType::FLOAT3 }
-		});
+		SceneRendererSpecification renderer_spec = {};
+		renderer_spec.anisotropic_filtering = 16;
 
-		PipelineSpecification pipeline_spec = PipelineSpecification::Default();
-		pipeline_spec.debug_name = "test pipeline";
-		pipeline_spec.input_layout = input_layout;
-		pipeline_spec.shader = ShaderLibrary::Get()->GetShader("test.ofs");
-		pipeline_spec.output_attachments_formats = { ImageFormat::BGRA32 };
-
-		m_Pipeline = Pipeline::Create(pipeline_spec);
-
-		ShaderLibrary::Get()->Unload("test.ofs");
+		m_Renderer = SceneRenderer::Create(renderer_spec);
+		m_Renderer->AcquireTextureIndex(m_Image, SamplerFilteringMode::NEAREST);
 	}
 
 	/*
@@ -102,7 +101,8 @@ public:
 
 	Shared<DeviceBuffer> m_VertexBuffer;
 	Shared<DeviceBuffer> m_IndexBuffer;
-	Shared<Pipeline> m_Pipeline;
+	Shared<Image> m_Image;
+	SceneRenderer* m_Renderer;
 };
 
 Subsystem* ConstructRootSystem() 

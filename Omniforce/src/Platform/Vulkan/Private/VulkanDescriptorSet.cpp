@@ -86,7 +86,9 @@ namespace Omni {
 
 	void VulkanDescriptorSet::Destroy()
 	{
-
+		auto device = VulkanGraphicsContext::Get()->GetDevice();
+		VulkanRenderer::FreeDescriptorSets({ m_DescriptorSet });
+		vkDestroyDescriptorSetLayout(device->Raw(), m_Layout, nullptr);
 	}
 
 	void VulkanDescriptorSet::Write(uint16 binding, uint16 array_element, Shared<Image> image, Shared<ImageSampler> sampler)

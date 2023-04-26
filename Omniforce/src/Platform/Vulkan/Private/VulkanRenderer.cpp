@@ -253,7 +253,6 @@ namespace Omni {
 
 			VkBuffer raw_vbo = vk_vbo->Raw();
 
-
 			vkCmdBindPipeline(m_CurrentCmdBuffer->buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
 			vkCmdBindVertexBuffers(m_CurrentCmdBuffer->buffer, 0, 1, &raw_vbo, &offset);
 			vkCmdBindIndexBuffer(m_CurrentCmdBuffer->buffer, vk_ibo->Raw(), 0, ibo_data->index_type);

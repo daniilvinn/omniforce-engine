@@ -86,7 +86,7 @@ namespace Omni {
 		float min_lod;
 		float max_lod;
 		float lod_bias;
-		uint8 anisotropy_filtering_level;
+		uint8 anisotropic_filtering_level;
 	};
 
 	class OMNIFORCE_API ImageSampler {

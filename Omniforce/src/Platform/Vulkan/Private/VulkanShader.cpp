@@ -43,7 +43,6 @@ namespace Omni {
 
 		// set id and its bindings
 		std::map<uint32, std::vector<VkDescriptorSetLayoutBinding>> bindings;
-		std::vector<VkPushConstantRange> constant_ranges;
 
 		for (auto& stage_data : binaries) {
 			VkShaderModule shader_module;
@@ -93,8 +92,9 @@ namespace Omni {
 					bool binding_already_registered = false;
 
 					for (auto& set_binding : bindings[reflect_set->set]) {
-						if (set_binding.binding == layout_binding.binding)
+						if (set_binding.binding == layout_binding.binding) {
 							continue;
+						}
 					}
 					
 					bindings[reflect_set->set].push_back(layout_binding);
@@ -108,7 +108,7 @@ namespace Omni {
 			spvReflectEnumeratePushConstants(&reflect_module, &push_constant_range_count, reflect_push_constant_ranges.data());
 
 			for (auto& reflect_range : reflect_push_constant_ranges) {
-				for (auto& range : constant_ranges) {
+				for (auto& range : m_Ranges) {
 					if (range.offset == reflect_range->offset && range.size == reflect_range->size) {
 						range.stageFlags |= convert(stage_data.first);
 						continue;
@@ -118,9 +118,9 @@ namespace Omni {
 				VkPushConstantRange push_constant_range = {};
 				push_constant_range.size = reflect_range->size;
 				push_constant_range.offset = reflect_range->offset;
-				push_constant_range.stageFlags = convert(stage_data.first);
+				push_constant_range.stageFlags = VK_SHADER_STAGE_ALL;
 
-				constant_ranges.push_back(push_constant_range);
+				m_Ranges.push_back(push_constant_range);
 			}
 
 			spvReflectDestroyShaderModule(&reflect_module);
@@ -128,7 +128,7 @@ namespace Omni {
 
 		if (bindings.size()) {
 			uint32 highest_set_index = bindings.rbegin()->first;
-			for (int i = 0; i < highest_set_index; i++) {
+			for (int i = 0; i <= highest_set_index; i++) {
 				if (bindings.find(i) == bindings.end())
 					m_SetLayouts.push_back(VK_NULL_HANDLE);
 				else {

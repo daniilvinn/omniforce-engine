@@ -66,6 +66,8 @@ namespace Omni {
 
 	void VulkanImage::CreateTexture()
 	{
+		stbi_set_flip_vertically_on_load(true);
+
 		int image_width, image_height, channel_count;
 		byte* image_data = stbi_load(m_Specification.path.string().c_str(), &image_width, &image_height, &channel_count, STBI_rgb_alpha);
 
@@ -86,11 +88,11 @@ namespace Omni {
 		m_Allocation = allocator->AllocateImage(&texture_create_info, 0, &m_Image);
 
 		DeviceBufferSpecification staging_buffer_spec = {};
-		staging_buffer_spec.size = image_width * image_height * channel_count;
+		staging_buffer_spec.size = image_width * image_height * STBI_rgb_alpha;
 		staging_buffer_spec.memory_usage = DeviceBufferMemoryUsage::ONE_TIME_HOST_ACCESS;
 		staging_buffer_spec.buffer_usage = DeviceBufferUsage::STAGING_BUFFER;
 
-		VulkanDeviceBuffer staging_buffer(staging_buffer_spec, image_data, image_width * image_height * channel_count);
+		VulkanDeviceBuffer staging_buffer(staging_buffer_spec, image_data, image_width * image_height * STBI_rgb_alpha);
 		
 		VkBufferImageCopy buffer_image_copy = {};
 		buffer_image_copy.imageExtent = { (uint32)image_width, (uint32)image_height, 1 };
@@ -334,8 +336,8 @@ namespace Omni {
 		sampler_create_info.addressModeU = convert(spec.address_mode);
 		sampler_create_info.addressModeV = convert(spec.address_mode);
 		sampler_create_info.addressModeW = convert(spec.address_mode);
-		sampler_create_info.anisotropyEnable = spec.anisotropy_filtering_level == 1.0f ? VK_FALSE : VK_TRUE;
-		sampler_create_info.maxAnisotropy = (float32)spec.anisotropy_filtering_level;
+		sampler_create_info.anisotropyEnable = spec.anisotropic_filtering_level == 1.0f ? VK_FALSE : VK_TRUE;
+		sampler_create_info.maxAnisotropy = (float32)spec.anisotropic_filtering_level;
 		sampler_create_info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 		sampler_create_info.unnormalizedCoordinates = VK_FALSE;
 		sampler_create_info.compareEnable = VK_FALSE;
