@@ -6,6 +6,12 @@
 
 namespace Omni {
 
+	enum class OMNIFORCE_API DescriptorBindingRate {
+		SCENE = 0,
+		PASS = 1,
+		DRAW_CALL = 2
+	};
+
 	enum class OMNIFORCE_API DescriptorBindingType : uint32 {
 		SAMPLED_IMAGE,
 		STORAGE_IMAGE,

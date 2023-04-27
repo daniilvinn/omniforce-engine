@@ -23,7 +23,10 @@ namespace Omni {
 			DescriptorSetSpecification global_set_spec = {};
 			global_set_spec.bindings = std::move(bindings);
 
-			s_GlobalSceneData.scene_descriptor_set = DescriptorSet::Create(global_set_spec);
+			for (int i = 0; i < 3; i++) {
+				auto set = DescriptorSet::Create(global_set_spec);
+				s_GlobalSceneData.scene_descriptor_set.push_back(set);
+			}
 
 			s_GlobalSceneData.available_texture_indices.reserve(s_GlobalSceneData.max_textures);
 			s_GlobalSceneData.available_texture_indices.resize(s_GlobalSceneData.max_textures);
@@ -90,14 +93,15 @@ namespace Omni {
 		m_SamplerLinear->Destroy();
 		m_SamplerNearest->Destroy();
 		m_BasicColorPass->Destroy();
-		s_GlobalSceneData.scene_descriptor_set->Destroy();
+		for(auto set : s_GlobalSceneData.scene_descriptor_set)
+			set->Destroy();
 	}
 
 	void SceneRenderer::BeginScene(SceneRenderData scene_data)
 	{
 		m_CurrentSceneRenderData = scene_data;
 		Renderer::BeginRender(scene_data.target, scene_data.target->GetSpecification().extent, { 0, 0 }, { 0.0f, 0.0f, 0.0f, 0.0f });
-		Renderer::BindSet(s_GlobalSceneData.scene_descriptor_set, m_BasicColorPass, 0);
+		Renderer::BindSet(s_GlobalSceneData.scene_descriptor_set[Renderer::GetCurrentFrameIndex()], m_BasicColorPass, 0);
 	}
 
 	void SceneRenderer::EndScene()
@@ -124,7 +128,8 @@ namespace Omni {
 		default:								OMNIFORCE_ASSERT_TAGGED(false, "Invalid sampler filtering mode"); break;
 		}
 
-		s_GlobalSceneData.scene_descriptor_set->Write(0, index, image, sampler);
+		for(auto& set : s_GlobalSceneData.scene_descriptor_set)
+			set->Write(0, index, image, sampler);
 		s_GlobalSceneData.textures.emplace(image->GetId(), index);
 
 		return index;

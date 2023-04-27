@@ -15,6 +15,9 @@ namespace Omni {
 	void ShaderLibrary::Init()
 	{
 		s_Instance = new ShaderLibrary;
+		m_Compiler.AddGlobalMacro("_OMNI_SCENE_DESCRIPTOR_SET", "0");
+		m_Compiler.AddGlobalMacro("_OMNI_PASS_DESCRIPTOR_SET", "1");
+		m_Compiler.AddGlobalMacro("_OMNI_DRAW_CALL_DESCRIPTOR_SET", "2");
 	}
 
 	void ShaderLibrary::Destroy()
@@ -24,7 +27,6 @@ namespace Omni {
 
 	bool ShaderLibrary::Load(std::filesystem::path path)
 	{
-		std::stringstream sstream;
 		bool result = m_Library.find(path.filename().string()) != m_Library.end();
 
 		if (result)
@@ -45,8 +47,6 @@ namespace Omni {
 		std::string line;
 		std::ifstream input_stream(path);
 		while (std::getline(input_stream, line)) shader_source.append(line + '\n');
-
-		std::vector<uint32> binary_data;
 
 		ShaderCompilationResult compilation_result = m_Compiler.Compile(shader_source, path.filename().string());
 

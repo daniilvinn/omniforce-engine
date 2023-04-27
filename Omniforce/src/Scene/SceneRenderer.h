@@ -66,7 +66,7 @@ namespace Omni {
 			const uint32 max_textures = UINT16_MAX + 1;
 			robin_hood::unordered_map<uint32, uint32> textures;
 			std::vector<uint32> available_texture_indices;
-			Shared<DescriptorSet> scene_descriptor_set;
+			std::vector<Shared<DescriptorSet>> scene_descriptor_set;
 		} s_GlobalSceneData;
 
 	};

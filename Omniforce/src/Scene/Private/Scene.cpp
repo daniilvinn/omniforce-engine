@@ -17,7 +17,7 @@ namespace Omni {
 
 	void Scene::OnUpdate(float ts /*= 60.0f*/)
 	{
-
+		
 	}
 
 	void Scene::FlushDrawList()
