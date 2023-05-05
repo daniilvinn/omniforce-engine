@@ -11,7 +11,7 @@
               "CMAKE_C_COMPILER": "cl.exe",
               "CMAKE_CXX_COMPILER": "cl.exe",
               "CMAKE_CXX_FLAGS": "/MP",
-              "CMAKE_TOOLCHAIN_FILE": "C:/local/vcpkg/scripts/buildsystems/vcpkg.cmake" // set vcpkg toolchain directory here
+              "CMAKE_TOOLCHAIN_FILE": "C:/vcpkg/scripts/buildsystems/vcpkg.cmake" // set vcpkg toolchain directory here
             },
             "condition": {
                 "type": "equals",

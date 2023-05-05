@@ -52,4 +52,17 @@ namespace Omni {
 		virtual void RestoreShaderModule(std::filesystem::path path) = 0;
 	};
 
+	namespace Utils {
+		inline constexpr std::string StageToString(const ShaderStage& stage) {
+			switch (stage)
+			{
+			case ShaderStage::VERTEX:		return "vertex";
+			case ShaderStage::FRAGMENT:		return "fragment";
+			case ShaderStage::COMPUTE:		return "compute";
+			case ShaderStage::UNKNOWN:		return "unknown";
+			}
+		}
+
+	}
+
 }

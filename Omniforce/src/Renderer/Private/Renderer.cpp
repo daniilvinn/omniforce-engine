@@ -26,6 +26,11 @@ namespace Omni {
 		delete s_RendererAPI;
 	}
 
+	RendererConfig Renderer::GetConfig()
+	{
+		return s_RendererAPI->GetConfig();
+	}
+
 	void Renderer::Submit(RenderFunction func)
 	{
 		s_InternalData.cmd_generation_function_list.push_back(func);
@@ -76,14 +81,26 @@ namespace Omni {
 		s_RendererAPI->RenderMesh(pipeline, vbo, ibo, data);
 	}
 
+	void Renderer::RenderQuad(Shared<Pipeline> pipeline, MiscData data)
+	{
+		s_RendererAPI->RenderQuad(pipeline, data);
+	}
+
 	uint32 Renderer::GetCurrentFrameIndex()
 	{
 		return s_RendererAPI->GetCurrentFrameIndex();
 	}
 
+	uint32 Renderer::GetDeviceMinimalAlignment()
+	{
+		return s_RendererAPI->GetDeviceMinimalAlignment();
+	}
+
 	void Renderer::LoadShaderPack()
 	{
-		ShaderLibrary::Get()->Load("assets/shaders/test.ofs");
+		ShaderLibrary::Get()->Load("assets/shaders/texture_pass.ofs");
+		ShaderLibrary::Get()->Load("assets/shaders/sprite_opaque_color.ofs");
+		ShaderLibrary::Get()->Load("assets/shaders/sprite_textured.ofs");
 	}
 
 	void Renderer::Render()

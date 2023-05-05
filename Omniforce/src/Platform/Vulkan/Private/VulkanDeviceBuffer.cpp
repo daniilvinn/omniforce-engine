@@ -22,8 +22,8 @@ namespace Omni {
 	VmaAllocationCreateFlags convert(DeviceBufferMemoryUsage usage) {
 		switch (usage)
 		{
-		case DeviceBufferMemoryUsage::FREQUENT_ACCESS:				return VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;			
-		case DeviceBufferMemoryUsage::ONE_TIME_HOST_ACCESS:			return VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;  
+		case DeviceBufferMemoryUsage::READ_BACK:				return VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;			
+		case DeviceBufferMemoryUsage::COHERENT_WRITE:			return VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;  
 		case DeviceBufferMemoryUsage::NO_HOST_ACCESS:				return 0;														
 		default:													std::unreachable();												
 		}
@@ -87,7 +87,7 @@ namespace Omni {
 			DeviceBufferSpecification staging_buffer_spec = {};
 			staging_buffer_spec.size = data_size;
 			staging_buffer_spec.buffer_usage = DeviceBufferUsage::STAGING_BUFFER;
-			staging_buffer_spec.memory_usage = DeviceBufferMemoryUsage::ONE_TIME_HOST_ACCESS;
+			staging_buffer_spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
 
 			VulkanDeviceBuffer staging_buffer(staging_buffer_spec, data, data_size);
 
@@ -124,6 +124,7 @@ namespace Omni {
 		}
 		else 
 		{
+			// TODO: flush memory ranges for non-coherent allocations so changes are visible on GPU
 			VulkanMemoryAllocator* allocator = VulkanMemoryAllocator::Get();
 			void* memory = allocator->MapMemory(m_Allocation);
 			memcpy((byte*)memory + offset, data, data_size);

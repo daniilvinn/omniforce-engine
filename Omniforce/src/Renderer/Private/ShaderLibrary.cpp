@@ -3,6 +3,7 @@
 #include <Log/Logger.h>
 #include <Filesystem/Filesystem.h>
 #include <Threading/JobSystem.h>
+#include "../ShaderCompiler.h"
 
 #include <fstream>
 
@@ -10,7 +11,7 @@ namespace Omni {
 
 	Omni::ShaderLibrary* ShaderLibrary::s_Instance;
 
-	Omni::ShaderCompiler thread_local ShaderLibrary::m_Compiler;
+	Omni::ShaderCompiler m_Compiler;
 
 	void ShaderLibrary::Init()
 	{

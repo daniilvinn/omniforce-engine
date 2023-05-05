@@ -1,6 +1,8 @@
 #pragma once
 
 #include "SceneCommon.h"
+#include "SceneRenderer.h"
+#include "Sprite.h"
 
 namespace Omni {
 
@@ -19,7 +21,7 @@ namespace Omni {
 		void FlushDrawList();
 
 	private:
-		SceneRenderer m_Renderer;
+		SceneRenderer* m_Renderer;
 		std::vector<Sprite> m_DrawList2D;
 		SceneType m_Type;
 		Camera* m_Camera;

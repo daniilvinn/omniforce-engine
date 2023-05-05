@@ -14,14 +14,21 @@ file (GLOB_RECURSE ENGINE_FILES
 
 add_library(${ENGINE_TARGET} ${ENGINE_FILES})
 
-target_include_directories(${ENGINE_TARGET} PUBLIC "src/" PRIVATE "${Vulkan_SDK}\\Include" "${Vulkan_SDK}\\Source")
-target_link_directories(${ENGINE_TARGET} INTERFACE "${Vulkan_SDK}\\Lib")
-target_compile_definitions(${ENGINE_TARGET} PUBLIC OMNIFORCE_STATIC)
-
 find_package(spdlog CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
-find_package(unofficial-spirv-reflect CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
+find_package(Stb REQUIRED)
+
+target_include_directories(${ENGINE_TARGET} 
+    PUBLIC 
+        "src/" 
+    PRIVATE 
+        "${Vulkan_SDK}\\Include" 
+        "${Vulkan_SDK}\\Source" 
+        ${Stb_INCLUDE_DIR}
+)
+target_link_directories(${ENGINE_TARGET} INTERFACE "${Vulkan_SDK}\\Lib")
+target_compile_definitions(${ENGINE_TARGET} PUBLIC OMNIFORCE_STATIC)
 
 target_link_libraries(
     ${ENGINE_TARGET} 
@@ -36,7 +43,6 @@ target_link_libraries(
     PRIVATE 
         glfw
         vulkan-1.lib
-        unofficial::spirv-reflect::spirv-reflect
         debug shaderc_sharedd.lib optimized shaderc_shared.lib
         debug shaderc_utild.lib optimized shaderc_util.lib
 )

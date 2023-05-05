@@ -116,7 +116,7 @@ namespace Omni {
 	using fmat4 = mat4<float32>;
 
 	struct MiscData {
-		void* data;
+		byte* data;
 		uint32 size;
 	};
 

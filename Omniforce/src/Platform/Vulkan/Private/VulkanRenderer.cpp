@@ -43,18 +43,16 @@ namespace Omni {
 		}
 
 		if (s_DescriptorPool == VK_NULL_HANDLE) {
+			uint32 descriptor_count = UINT16_MAX * config.frames_in_flight;;
+
 			std::vector<VkDescriptorPoolSize> pool_sizes = {
-				{ VK_DESCRIPTOR_TYPE_SAMPLER,					UINT16_MAX },
-				{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,	UINT16_MAX },
-				{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,				UINT16_MAX },
-				{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,				UINT16_MAX },
-				{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,		UINT16_MAX },
-				{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,		UINT16_MAX },
-				{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,			UINT16_MAX },
-				{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,			UINT16_MAX },
-				{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,	UINT16_MAX },
-				{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,	UINT16_MAX },
-				{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,			UINT16_MAX }
+				{ VK_DESCRIPTOR_TYPE_SAMPLER,					descriptor_count }, 
+				{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,	descriptor_count },
+				{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,				descriptor_count },
+				{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,				descriptor_count },
+				{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,			descriptor_count },
+				{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,			descriptor_count },
+				{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,			descriptor_count }
 			};
 
 			VkDescriptorPoolCreateInfo descriptor_pool_create_info = {};
@@ -240,6 +238,11 @@ namespace Omni {
 		VK_CHECK_RESULT(vkFreeDescriptorSets(device->Raw(), s_DescriptorPool, sets.size(), sets.data()));
 	}
 
+	uint32 VulkanRenderer::GetDeviceMinimalAlignment() const
+	{
+		return m_Device->GetPhysicalDevice()->GetProps().limits.minUniformBufferOffsetAlignment;
+	}
+
 	void VulkanRenderer::RenderMesh(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo, MiscData misc_data)
 	{
 		Renderer::Submit([=]() mutable {
@@ -261,6 +264,22 @@ namespace Omni {
 				vkCmdPushConstants(m_CurrentCmdBuffer->buffer, vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, misc_data.size, misc_data.data);
 
 			vkCmdDrawIndexed(m_CurrentCmdBuffer->buffer, ibo_data->index_count, 1, 0, 0, 0);
+
+			delete[] misc_data.data;
+		});
+	}
+
+	void VulkanRenderer::RenderQuad(Shared<Pipeline> pipeline, MiscData data)
+	{
+		Renderer::Submit([=]() mutable {
+			Shared<VulkanPipeline> vk_pipeline = ShareAs<VulkanPipeline>(pipeline);
+
+			vkCmdPushConstants(m_CurrentCmdBuffer->buffer, vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
+			vkCmdBindPipeline(m_CurrentCmdBuffer->buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
+
+			vkCmdDraw(m_CurrentCmdBuffer->buffer, 6, 1, 0, 0);
+
+			delete[] data.data;
 		});
 	}
 

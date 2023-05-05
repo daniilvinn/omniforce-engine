@@ -22,6 +22,7 @@ namespace Omni {
 
 		RendererConfig GetConfig() const override { return m_Config; }
 		uint32 GetCurrentFrameIndex() const override { return m_Swapchain->GetCurrentFrameIndex(); }
+		uint32 GetDeviceMinimalAlignment() const override;
 
 		void BeginFrame() override;
 		void EndFrame() override;
@@ -38,6 +39,7 @@ namespace Omni {
 		Shared<Swapchain> GetSwapchain() override { return ShareAs<Swapchain>(m_Swapchain); };
 		CmdBuffer* GetCurrentCmdBuffer() const { return m_CurrentCmdBuffer; }
 		void RenderMesh(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo, MiscData misc_data) override;
+		void RenderQuad(Shared<Pipeline> pipeline, MiscData data) override;
 
 		void TransitionImageLayout(
 			Shared<VulkanImage> image, 

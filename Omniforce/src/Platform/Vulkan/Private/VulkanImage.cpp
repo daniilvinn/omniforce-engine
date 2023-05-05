@@ -89,7 +89,7 @@ namespace Omni {
 
 		DeviceBufferSpecification staging_buffer_spec = {};
 		staging_buffer_spec.size = image_width * image_height * STBI_rgb_alpha;
-		staging_buffer_spec.memory_usage = DeviceBufferMemoryUsage::ONE_TIME_HOST_ACCESS;
+		staging_buffer_spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
 		staging_buffer_spec.buffer_usage = DeviceBufferUsage::STAGING_BUFFER;
 
 		VulkanDeviceBuffer staging_buffer(staging_buffer_spec, image_data, image_width * image_height * STBI_rgb_alpha);

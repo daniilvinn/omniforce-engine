@@ -35,7 +35,7 @@ namespace Omni {
 		VmaAllocation RawAllocation() const { return m_Allocation; }
 		void* GetAdditionalData() const { return m_Data; }
 
-		void UploadData(uint64 offset, void* data, uint64 data_size);
+		void UploadData(uint64 offset, void* data, uint64 data_size) override;
 		DeviceBufferSpecification GetSpecification() const override { return m_Specification; }
 
 	private:

@@ -21,19 +21,12 @@ namespace Omni {
 		}
 	}
 
-	std::string StageToString(const ShaderStage& stage) {
-		switch (stage)
-		{
-		case ShaderStage::VERTEX:		return "vertex";
-		case ShaderStage::FRAGMENT:		return "fragment";
-		case ShaderStage::COMPUTE:		return "compute";
-		case ShaderStage::UNKNOWN:		return "unknown";
-		}
-	}
-
 	ShaderCompiler::ShaderCompiler()
 	{
-		//m_Options.SetIncluder();
+		if(OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG)
+			m_GlobalOptions.SetOptimizationLevel(shaderc_optimization_level_zero);
+		else
+			m_GlobalOptions.SetOptimizationLevel(shaderc_optimization_level_performance);
 	}
 
 	bool ShaderCompiler::ReadShaderFile(std::filesystem::path path, std::stringstream* out)
@@ -44,34 +37,6 @@ namespace Omni {
 
 		out->write((const char*)file->GetData(), file->GetSize());
 		file->Release();
-
-		return true;
-	}
-
-	bool ShaderCompiler::Compile(const std::stringstream& source, const ShaderStage& stage, std::string_view filename, std::vector<uint32>* out)
-	{
-		shaderc::CompileOptions options;
-		options.SetOptimizationLevel(shaderc_optimization_level_performance);
-		options.SetSourceLanguage(shaderc_source_language_glsl);
-
-		shaderc::CompilationResult result = m_Compiler.CompileGlslToSpv(
-			source.str(),
-			convert(stage),
-			filename.data(),
-			options
-		);
-
-		if (result.GetCompilationStatus() != shaderc_compilation_status_success) 
-		{
-			OMNIFORCE_CORE_ERROR("Failed to compile shader ({0}):", filename.data());
-			for (int32 i = 0; i < result.GetNumErrors(); i++)
-				OMNIFORCE_CORE_ERROR("{0}", result.GetErrorMessage());
-			return false;
-		}
-
-		std::vector<uint32> binary_data(result.begin(), result.end());
-
-		*out = std::move(binary_data);
 
 		return true;
 	}
@@ -148,15 +113,11 @@ namespace Omni {
 			return compilation_result;
 		}
 
-		for (auto& stage : separated_sources) {
-			OMNIFORCE_CORE_WARNING("{0}\n\n", stage.second);
-		}
-
 		// Compilation stage
 		for (auto& stage_source : separated_sources) {
 			shaderc::CompilationResult result = m_Compiler.CompileGlslToSpv(stage_source.second, convert(stage_source.first), filename.c_str(), local_options);
 			if (result.GetCompilationStatus() != shaderc_compilation_status_success) {
-				OMNIFORCE_CORE_ERROR("Failed to compile shader {0}.{1}:\n{2}", filename, StageToString(stage_source.first), result.GetErrorMessage());
+				OMNIFORCE_CORE_ERROR("Failed to compile shader {0}.{1}:\n{2}", filename, Utils::StageToString(stage_source.first), result.GetErrorMessage());
 				compilation_result.valid = false;
 			}
 

@@ -1,7 +1,12 @@
 #pragma once
 
+#include <Foundation/Types.h>
+
 #include <string>
 #include <ctime>
+#include <iostream>
+
+#include <fmt/format.h>
 
 namespace Omni {
 
@@ -41,6 +46,26 @@ namespace Omni {
 			std::cout << datetime << std::endl;
 
 			return datetime;
+		}
+
+		// Thanks to https://github.com/SaschaWillems for this alignment function
+		inline uint64 Align(uint64 original, uint64 min_alignment) {
+			size_t alignedSize = original;
+			if (min_alignment > 0) {
+				alignedSize = (alignedSize + min_alignment - 1) & ~(min_alignment - 1);
+			}
+			return alignedSize;
+		}
+
+		inline constexpr std::string FormatAllocationSize(uint64 size) {
+			if (size / 1'000'000'000 >= 1)
+				return fmt::format("{:.4}(GiB)", (double)size / 1'000'000'000.0);
+			else if (size / 1'000'000 >= 1)
+				return fmt::format("{:.4}(MiB)", (double)size / 1'000'000.0);
+			else if (size / 1'000 >= 1)
+				return fmt::format("{:.4}(KiB)", (double)size / 1'000.0);
+			else
+				return fmt::format("{}(B)", size);
 		}
 
 	}

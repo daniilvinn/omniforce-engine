@@ -97,43 +97,55 @@ namespace Omni {
 
 		// ==================
 		// Vertex input state
+
 		VkVertexInputBindingDescription vertex_input_binding = {};
 		vertex_input_binding.binding = 0;
 		vertex_input_binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 		vertex_input_binding.stride = m_Specification.input_layout.GetStride();
 		std::vector<VkVertexInputAttributeDescription> vertex_input_attributes;
 
-		// Computing locations
-		int previous_location_width = 0;
-		for (const auto& element : m_Specification.input_layout.GetElements())
-		{
-			uint32_t location;
-			float location_compute_result = (float)element.size / 16.0f;
-			if (location_compute_result <= 1.0f)
-			{
-				location = previous_location_width;
-				previous_location_width += 1;
-			}
-			else
-			{
-				location = previous_location_width;
-				previous_location_width += location_compute_result;
-			}
-
-			vertex_input_attributes.push_back({
-				.location = location,
-				.binding = 0,
-				.format = convert(element.format),
-				.offset = element.offset
-			});
-		}
-
 		VkPipelineVertexInputStateCreateInfo vertex_input_state = {};
 		vertex_input_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-		vertex_input_state.vertexBindingDescriptionCount = 1;
-		vertex_input_state.pVertexBindingDescriptions = &vertex_input_binding;
-		vertex_input_state.pVertexAttributeDescriptions = vertex_input_attributes.data();
-		vertex_input_state.vertexAttributeDescriptionCount = vertex_input_attributes.size();
+
+		if (m_Specification.input_layout.GetStride()) {
+
+			// Computing locations
+			int previous_location_width = 0;
+			for (const auto& element : m_Specification.input_layout.GetElements())
+			{
+				uint32_t location;
+				float location_compute_result = (float)element.size / 16.0f;
+				if (location_compute_result <= 1.0f)
+				{
+					location = previous_location_width;
+					previous_location_width += 1;
+				}
+				else
+				{
+					location = previous_location_width;
+					previous_location_width += location_compute_result;
+				}
+
+				vertex_input_attributes.push_back({
+					.location = location,
+					.binding = 0,
+					.format = convert(element.format),
+					.offset = element.offset
+					});
+			}
+
+			vertex_input_state.vertexBindingDescriptionCount = 1;
+			vertex_input_state.pVertexBindingDescriptions = &vertex_input_binding;
+			vertex_input_state.pVertexAttributeDescriptions = vertex_input_attributes.data();
+			vertex_input_state.vertexAttributeDescriptionCount = vertex_input_attributes.size();
+		}
+		else {
+			vertex_input_state.vertexBindingDescriptionCount = 0;
+			vertex_input_state.pVertexBindingDescriptions = nullptr;
+			vertex_input_state.vertexAttributeDescriptionCount = 0;
+			vertex_input_state.pVertexAttributeDescriptions = nullptr;
+		}
+		
 
 		VkPipelineInputAssemblyStateCreateInfo input_assembly_state = {};
 		input_assembly_state.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;

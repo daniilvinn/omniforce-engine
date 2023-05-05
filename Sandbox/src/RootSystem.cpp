@@ -1,5 +1,7 @@
 #include <Omniforce.h>
 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 using namespace Omni;
 
 class RootSubsystem : public Subsystem 
@@ -19,71 +21,59 @@ public:
 		static fvec4 clear_value = { 0.0f, 0.0f, 0.0f, 0.0f };
 
 		if (Input::KeyPressed(KeyCode::KEY_W))
-			clear_value.r += 0.0003f;
+			m_Camera->Move({ 0.0f, 0.0f, 0.005f });
 		if (Input::KeyPressed(KeyCode::KEY_S))
-			clear_value.r -= 0.0003f;
+			m_Camera->Move({ 0.0f, 0.0f, -0.005f });
 		if (Input::KeyPressed(KeyCode::KEY_A))
-			clear_value.g -= 0.0003f;
+			m_Camera->Move({ -0.005f, 0.0f, 0.0f });
 		if (Input::KeyPressed(KeyCode::KEY_D))
-			clear_value.g += 0.0003f;
+			m_Camera->Move({ 0.005f, 0.0f, 0.0f});
 
-		clear_value.r = std::clamp(clear_value.r, 0.0f, 1.0f);
-		clear_value.g = std::clamp(clear_value.g, 0.0f, 1.0f);
+		if (Input::KeyPressed(KeyCode::KEY_Q))
+			m_Camera->Rotate(-0.5f, 0.0f, 0.0f, true);
+		if (Input::KeyPressed(KeyCode::KEY_E))
+			m_Camera->Rotate(0.5f, 0.0f, 0.0f, true);
 
-		SceneRenderData render_data{ .target = swapchain_image, .camera_data = {} };
+		glm::mat4 transform = glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, 0.0f)) *
+								glm::rotate(glm::mat4(1.0f), glm::radians(29.0f), glm::vec3(0.0f, 0.0f, 1.0f)) *
+								glm::scale(glm::mat4(1.0f), glm::vec3(2.0f, 0.5f, 1.0f));
+
+		SceneRenderData render_data{ .target = swapchain_image, .camera = ShareAs<Camera>(m_Camera)};
 		m_Renderer->BeginScene(render_data);
-		m_Renderer->RenderMesh(m_VertexBuffer, m_IndexBuffer, m_Image);
+		m_Renderer->RenderSpriteTextured(glm::mat4(1.0f), m_Image);
+		//m_Renderer->RenderSpriteOpaque(transform, { 0.5f, 0.2f, 0.8f, 1.0f });
 		m_Renderer->EndScene();
 		
 	}
 
 	void OnEvent(Event* e) override
 	{
-		
+		EventDispatcher dispatcher(e);
+		dispatcher.Dispatch<WindowResizeEvent>(OMNIFORCE_BIND_EVENT_FUNCTION(OnWindowResize));
+	}
+
+	bool OnWindowResize(WindowResizeEvent* e) {
+		if (e->GetResolution().x == 0 || e->GetResolution().y == 0) return false;
+
+		float32 aspect_ratio = (float32)e->GetResolution().x / (float32)e->GetResolution().y;
+		m_Camera->SetProjection(glm::radians(90.0f), aspect_ratio, 0.0f, 100.0f);
+
+		OMNIFORCE_CORE_WARNING("aspect ratio: {}", aspect_ratio);
+
+		return false;
 	}
 
 	void Destroy() override
 	{
 		Renderer::WaitDevice();
 		m_Renderer->Destroy();
-		m_VertexBuffer->Destroy();
-		m_IndexBuffer->Destroy();
 		m_Image->Destroy();
 	}
 
 	void Launch() override
 	{
-
-		float vertices[] = {
-			// Pos			// Tex coord
-			-0.5f, -0.5f,	0.0f, 0.0f,
-			 0.5f, -0.5f,	1.0f, 0.0f,
-			 0.5f,  0.5f,	1.0f, 1.0f,
-			-0.5f,  0.5f,	0.0f, 1.0f
-		};
-
-		uint8 indices[] = {
-			0, 1, 2,
-			2, 3, 0
-		};
-
-		DeviceBufferSpecification vertex_buffer_spec = {};
-		vertex_buffer_spec.size = sizeof(vertices);
-		vertex_buffer_spec.buffer_usage = DeviceBufferUsage::VERTEX_BUFFER;
-		vertex_buffer_spec.memory_usage = DeviceBufferMemoryUsage::NO_HOST_ACCESS;
-		vertex_buffer_spec.flags = (uint64)DeviceBufferFlags::VERTEX_RATE;
-
-		DeviceBufferSpecification index_buffer_spec = {};
-		index_buffer_spec.size = sizeof(indices);
-		index_buffer_spec.buffer_usage = DeviceBufferUsage::INDEX_BUFFER;
-		index_buffer_spec.memory_usage = DeviceBufferMemoryUsage::NO_HOST_ACCESS;
-		index_buffer_spec.flags = (uint64)DeviceBufferFlags::INDEX_TYPE_UINT8;
-
-		m_VertexBuffer = DeviceBuffer::Create(vertex_buffer_spec, vertices, sizeof(vertices));
-		m_IndexBuffer = DeviceBuffer::Create(index_buffer_spec, indices, sizeof(indices));
-
 		ImageSpecification image_spec = ImageSpecification::Default();
-		image_spec.path = "assets/textures/test.jpg";
+		image_spec.path = "assets/textures/sprite.png";
 		m_Image = Image::Create(image_spec);
 
 		JobSystem::Get()->Wait();
@@ -92,16 +82,18 @@ public:
 		renderer_spec.anisotropic_filtering = 16;
 
 		m_Renderer = SceneRenderer::Create(renderer_spec);
-		m_Renderer->AcquireTextureIndex(m_Image, SamplerFilteringMode::NEAREST);
+		m_Renderer->AcquireTextureIndex(m_Image, SamplerFilteringMode::LINEAR);
+
+		m_Camera = std::make_shared<Camera3D>();
+		m_Camera->SetProjection( glm::radians(90.0f), 16.0 / 9.0, 0.0f, 100.0f );
 	}
 
 	/*
 	*	DATA
 	*/
 
-	Shared<DeviceBuffer> m_VertexBuffer;
-	Shared<DeviceBuffer> m_IndexBuffer;
 	Shared<Image> m_Image;
+	Shared<Camera3D> m_Camera;
 	SceneRenderer* m_Renderer;
 };
 

@@ -10,8 +10,6 @@
 #include <Renderer/Renderer.h>
 #include <Renderer/ShaderLibrary.h>
 
-#include <box2d/box2d.h>
-
 namespace Omni 
 {
 

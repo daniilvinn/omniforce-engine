@@ -1,14 +1,15 @@
 #define VMA_IMPLEMENTATION
 #include <vulkan-memory-allocator-hpp/vk_mem_alloc.h>
 
+#include <Core/Utils.h>
 #include "VulkanMemoryAllocator.h"
 
 #include "../VulkanGraphicsContext.h"
 
 #if OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG
-	#define OMNIFORCE_TRACE_DEVICE_ALLOCATIONS 1
+#define OMNIFORCE_TRACE_DEVICE_ALLOCATIONS 1
 #else
-	#define OMNIFORCE_TRACE_DEVICE_ALLOCATIONS 0
+#define OMNIFORCE_TRACE_DEVICE_ALLOCATIONS 0
 #endif
 
 namespace Omni {
@@ -39,9 +40,9 @@ namespace Omni {
 	{
 		vmaDestroyAllocator(m_Allocator);
 		OMNIFORCE_CORE_TRACE("Destroying vulkan memory allocator: ");
-		OMNIFORCE_CORE_TRACE("\tTotal memory allocated: {0}", m_Statistics.allocated);
-		OMNIFORCE_CORE_TRACE("\tTotal memory freed: {0}", m_Statistics.freed);
-		OMNIFORCE_CORE_TRACE("\tIn use at the moment: {0}", m_Statistics.currently_allocated);
+		OMNIFORCE_CORE_TRACE("\tTotal memory allocated: {0}", Utils::FormatAllocationSize(m_Statistics.allocated));
+		OMNIFORCE_CORE_TRACE("\tTotal memory freed: {0}", Utils::FormatAllocationSize(m_Statistics.freed));
+		OMNIFORCE_CORE_TRACE("\tIn use at the moment: {0}", Utils::FormatAllocationSize(m_Statistics.currently_allocated));
 	}
 
 	void VulkanMemoryAllocator::Init()
@@ -70,9 +71,9 @@ namespace Omni {
 
 		if (OMNIFORCE_TRACE_DEVICE_ALLOCATIONS) {
 			OMNIFORCE_CORE_TRACE("Allocating device buffer:");
-			OMNIFORCE_CORE_TRACE("\tRequested size: {0}", create_info->size);
-			OMNIFORCE_CORE_TRACE("\tAllocated size: {0}", allocation_info.size);
-			OMNIFORCE_CORE_TRACE("\tCurrently allocated: {0}", m_Statistics.currently_allocated);
+			OMNIFORCE_CORE_TRACE("\tRequested size: {0}", Utils::FormatAllocationSize(create_info->size));
+			OMNIFORCE_CORE_TRACE("\tAllocated size: {0}", Utils::FormatAllocationSize(allocation_info.size));
+			OMNIFORCE_CORE_TRACE("\tCurrently allocated: {0}", Utils::FormatAllocationSize(m_Statistics.currently_allocated));
 		}
 		return allocation;
 	}
@@ -92,8 +93,8 @@ namespace Omni {
 
 		if (OMNIFORCE_TRACE_DEVICE_ALLOCATIONS) {
 			OMNIFORCE_CORE_TRACE("Allocating device image:");
-			OMNIFORCE_CORE_TRACE("\tAllocated size: {0}", allocation_info.size);
-			OMNIFORCE_CORE_TRACE("\tCurrently allocated: {0}", m_Statistics.currently_allocated);
+			OMNIFORCE_CORE_TRACE("\tAllocated size: {0}", Utils::FormatAllocationSize(allocation_info.size));
+			OMNIFORCE_CORE_TRACE("\tCurrently allocated: {0}", Utils::FormatAllocationSize(m_Statistics.currently_allocated));
 		}
 		return allocation;
 	}
@@ -110,8 +111,8 @@ namespace Omni {
 
 		if (OMNIFORCE_TRACE_DEVICE_ALLOCATIONS) {
 			OMNIFORCE_CORE_TRACE("Destroying device buffer:");
-			OMNIFORCE_CORE_TRACE("\tFreed memory: {0}", allocation_info.size);
-			OMNIFORCE_CORE_TRACE("\tCurrently allocated: {0}", m_Statistics.currently_allocated);
+			OMNIFORCE_CORE_TRACE("\tFreed memory: {0}", Utils::FormatAllocationSize(allocation_info.size));
+			OMNIFORCE_CORE_TRACE("\tCurrently allocated: {0}", Utils::FormatAllocationSize(m_Statistics.currently_allocated));
 		}
 
 		*buffer = VK_NULL_HANDLE;
@@ -130,8 +131,8 @@ namespace Omni {
 
 		if (OMNIFORCE_TRACE_DEVICE_ALLOCATIONS) {
 			OMNIFORCE_CORE_TRACE("Destroying device image:");
-			OMNIFORCE_CORE_TRACE("\tFreed memory: {0}", allocation_info.size);
-			OMNIFORCE_CORE_TRACE("\tCurrently allocated: {0}", m_Statistics.currently_allocated);
+			OMNIFORCE_CORE_TRACE("\tFreed memory: {0}", Utils::FormatAllocationSize(allocation_info.size));
+			OMNIFORCE_CORE_TRACE("\tCurrently allocated: {0}", Utils::FormatAllocationSize(m_Statistics.currently_allocated));
 		}
 
 		*image = VK_NULL_HANDLE;

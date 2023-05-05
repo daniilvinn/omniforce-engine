@@ -25,6 +25,7 @@ namespace Omni {
 
 		static RendererConfig GetConfig();
 		static uint32 GetCurrentFrameIndex();
+		static uint32 GetDeviceMinimalAlignment();
 
 		static void LoadShaderPack();
 		static void Submit(RenderFunction func);
@@ -40,6 +41,7 @@ namespace Omni {
 		static void ClearImage(Shared<Image> image, const fvec4& value);
 		static void InsertBarrier(Shared<DeviceBuffer> buffer);
 		static void RenderMesh(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo, MiscData data);
+		static void RenderQuad(Shared<Pipeline> pipeline, MiscData data);
 
 		static void Render();
 

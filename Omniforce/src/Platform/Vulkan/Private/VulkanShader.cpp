@@ -2,12 +2,12 @@
 
 #include <Platform/Vulkan/VulkanGraphicsContext.h>
 
-#include <SPIRV-Reflect/spirv_reflect.h>
+#include <SPIRV-Reflect/spirv_reflect.c>
 
 namespace Omni {
 
-#pragma region converts 
-	VkShaderStageFlagBits convert(const ShaderStage& stage) {
+#pragma region converts
+	constexpr VkShaderStageFlagBits convert(const ShaderStage& stage) {
 		switch (stage)
 		{
 		case ShaderStage::VERTEX:		return VK_SHADER_STAGE_VERTEX_BIT;
@@ -16,7 +16,7 @@ namespace Omni {
 		}
 	}
 
-	VkDescriptorType convert(SpvReflectDescriptorType type) {
+	constexpr VkDescriptorType convert(SpvReflectDescriptorType type) {
 		switch (type)
 		{
 		case SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLER:							return VK_DESCRIPTOR_TYPE_SAMPLER;
@@ -34,6 +34,21 @@ namespace Omni {
 		default:															std::unreachable();
 		}
 	}
+
+	constexpr std::string DescriptorToString(VkDescriptorType type) {
+		switch (type)
+		{
+		case VK_DESCRIPTOR_TYPE_SAMPLER:						return "sampler";
+		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:			return "combined image sampler";
+		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:					return "sampled image";
+		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:					return "storage image";
+		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:			return "uniform texel buffer";
+		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:			return "storage texel buffer";
+		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:					return "uniform buffer";
+		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:					return "storage buffer";
+		default:												std::unreachable();
+		}
+	}
 #pragma endregion
 
 	VulkanShader::VulkanShader(std::map<ShaderStage, std::vector<uint32>> binaries, std::filesystem::path path)
@@ -43,6 +58,11 @@ namespace Omni {
 
 		// set id and its bindings
 		std::map<uint32, std::vector<VkDescriptorSetLayoutBinding>> bindings;
+		VkPushConstantRange push_constant_range = {};
+
+		OMNIFORCE_CORE_TRACE("=======================");
+		OMNIFORCE_CORE_TRACE("Reflecting shader - {0}", path.filename().string());
+		OMNIFORCE_CORE_TRACE("=======================");
 
 		for (auto& stage_data : binaries) {
 			VkShaderModule shader_module;
@@ -89,8 +109,6 @@ namespace Omni {
 					layout_binding.descriptorCount = reflect_binding->count;
 					layout_binding.stageFlags = VK_SHADER_STAGE_ALL;
 
-					bool binding_already_registered = false;
-
 					for (auto& set_binding : bindings[reflect_set->set]) {
 						if (set_binding.binding == layout_binding.binding) {
 							continue;
@@ -106,6 +124,13 @@ namespace Omni {
 
 			std::vector<SpvReflectBlockVariable*> reflect_push_constant_ranges(push_constant_range_count);
 			spvReflectEnumeratePushConstants(&reflect_module, &push_constant_range_count, reflect_push_constant_ranges.data());
+#if 1
+			for (auto& reflect_range : reflect_push_constant_ranges) {
+				push_constant_range.size = reflect_range->size; // TODO: some dodgy stuff here
+				push_constant_range.offset = 0;
+				push_constant_range.stageFlags = VK_SHADER_STAGE_ALL;
+			}
+#elif 0
 
 			for (auto& reflect_range : reflect_push_constant_ranges) {
 				for (auto& range : m_Ranges) {
@@ -122,8 +147,21 @@ namespace Omni {
 
 				m_Ranges.push_back(push_constant_range);
 			}
+#endif
 
 			spvReflectDestroyShaderModule(&reflect_module);
+		}
+
+		m_Ranges.push_back(push_constant_range);
+
+		if (OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG) {
+			for (auto& set : bindings) {
+				OMNIFORCE_CORE_TRACE("\tSet #0: ", set.first);
+				for (auto& binding : set.second) {
+					OMNIFORCE_CORE_TRACE("\t\t Binding #{0}: {1}[{2}]", binding.binding, DescriptorToString(binding.descriptorType), binding.descriptorCount);
+				}
+			}
+			printf("\n");
 		}
 
 		if (bindings.size()) {

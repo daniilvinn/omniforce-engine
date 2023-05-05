@@ -8,18 +8,13 @@
 #include <vector>
 
 #include <glm/glm.hpp>
+#include "Camera.h"
 
 namespace Omni {
 
-	struct CameraData {
-		glm::mat4 view_matrix;
-		glm::mat4 view_projection_matrix;
-		glm::mat4 projection_matrix;
-	};
-
 	struct OMNIFORCE_API SceneRenderData {
 		Shared<Image> target;
-		CameraData camera_data;
+		Shared<Camera> camera;
 	};
 
 	struct OMNIFORCE_API SceneRendererSpecification {
@@ -51,6 +46,8 @@ namespace Omni {
 		bool ReleaseTextureIndex(Shared<Image> image);
 
 		void RenderMesh(Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo, Shared<Image> texture);
+		void RenderSpriteOpaque(glm::mat4 transform, fvec4 color);
+		void RenderSpriteTextured(glm::mat4 transform, Shared<Image> texture);
 
 	private:
 		SceneRenderData m_CurrentSceneRenderData;
@@ -59,8 +56,11 @@ namespace Omni {
 		Shared<DeviceBuffer> m_CameraData;
 		Shared<ImageSampler> m_SamplerNearest;
 		Shared<ImageSampler> m_SamplerLinear;
+		Shared<DeviceBuffer> m_MainCameraDataBuffer;
 
 		Shared<Pipeline> m_BasicColorPass;
+		Shared<Pipeline> m_OpaqueColorPass;
+		Shared<Pipeline> m_SpriteTexturePass;
 
 		struct GlobalSceneRenderData {
 			const uint32 max_textures = UINT16_MAX + 1;

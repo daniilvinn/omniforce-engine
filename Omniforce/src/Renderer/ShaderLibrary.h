@@ -2,8 +2,6 @@
 
 #include "RendererCommon.h"
 #include "Shader.h"
-
-#include "ShaderCompiler.h"
 #include <robin_hood.h>
 #include <shared_mutex>
 
@@ -50,7 +48,6 @@ namespace Omni {
 	private:
 		static ShaderLibrary* s_Instance;
 		robin_hood::unordered_map<std::string, Shared<Shader>> m_Library;
-		static thread_local ShaderCompiler m_Compiler;
 		std::shared_mutex m_Mutex;
 	};
 
