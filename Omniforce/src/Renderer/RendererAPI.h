@@ -17,7 +17,8 @@ namespace Omni {
 
 		virtual RendererConfig GetConfig() const = 0;
 		virtual uint32 GetCurrentFrameIndex() const = 0;
-		virtual uint32 GetDeviceMinimalAlignment() const = 0;
+		virtual uint32 GetDeviceMinimalUniformBufferAlignment() const = 0;
+		virtual uint32 GetDeviceMinimalStorageBufferAlignment() const = 0;
 		virtual Shared<Swapchain> GetSwapchain() = 0;
 
 		virtual void BeginFrame() = 0;
@@ -34,6 +35,7 @@ namespace Omni {
 		virtual void ClearImage(Shared<Image> image, const fvec4& value) = 0;
 		virtual void RenderMesh(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo, MiscData misc_data) = 0;
 		virtual void RenderQuad(Shared<Pipeline> pipeline, MiscData data) = 0;
+		virtual void RenderQuad(Shared<Pipeline> pipeline, uint32 amount, MiscData data) = 0;
 
 
 	private:

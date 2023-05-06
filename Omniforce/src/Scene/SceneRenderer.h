@@ -1,14 +1,15 @@
 #pragma once
 
 #include "SceneCommon.h"
+#include "Sprite.h"
+#include "Camera.h"
 #include <Renderer/Renderer.h>
 #include <Renderer/Image.h>
 
-#include <robin_hood.h>
 #include <vector>
 
+#include <robin_hood.h>
 #include <glm/glm.hpp>
-#include "Camera.h"
 
 namespace Omni {
 
@@ -19,6 +20,7 @@ namespace Omni {
 
 	struct OMNIFORCE_API SceneRendererSpecification {
 		uint8 anisotropic_filtering = 16;
+		uint32 sprite_buffer_size = 2500; // How much sprites will be stored in a device buffer. Actual size will be *sprite_buffer_size * sizeof(Sprite)*
 	};
 
 	class OMNIFORCE_API SceneRenderer {
@@ -46,21 +48,23 @@ namespace Omni {
 		bool ReleaseTextureIndex(Shared<Image> image);
 
 		void RenderMesh(Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo, Shared<Image> texture);
-		void RenderSpriteOpaque(glm::mat4 transform, fvec4 color);
-		void RenderSpriteTextured(glm::mat4 transform, Shared<Image> texture);
+
+		void RenderSprite(const Sprite& sprite);
 
 	private:
 		SceneRenderData m_CurrentSceneRenderData;
 		SceneRendererSpecification m_Specification;
 
-		Shared<DeviceBuffer> m_CameraData;
 		Shared<ImageSampler> m_SamplerNearest;
 		Shared<ImageSampler> m_SamplerLinear;
+		Shared<Image> m_DummyWhiteTexture;
 		Shared<DeviceBuffer> m_MainCameraDataBuffer;
+		Shared<DeviceBuffer> m_SpriteDataBuffer;
+		uint32 m_SpriteBufferSize; // size in bytes per frame in flight, not overall size
+		std::vector<Sprite> m_SpriteQueue;
 
 		Shared<Pipeline> m_BasicColorPass;
-		Shared<Pipeline> m_OpaqueColorPass;
-		Shared<Pipeline> m_SpriteTexturePass;
+		Shared<Pipeline> m_SpritePass;
 
 		struct GlobalSceneRenderData {
 			const uint32 max_textures = UINT16_MAX + 1;

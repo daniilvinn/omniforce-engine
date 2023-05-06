@@ -70,6 +70,7 @@ namespace Omni {
 
 		int image_width, image_height, channel_count;
 		byte* image_data = stbi_load(m_Specification.path.string().c_str(), &image_width, &image_height, &channel_count, STBI_rgb_alpha);
+		m_Specification.extent = { (uint32)image_width, (uint32)image_height };
 
 		VkImageCreateInfo texture_create_info = {};
 		texture_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -239,7 +240,6 @@ namespace Omni {
 
 		m_Specification.array_layers = 1;
 		m_Specification.mip_levels = texture_create_info.mipLevels;
-		m_Specification.extent = {(uint32)image_width, (uint32)image_height};
 		m_Specification.type = ImageType::TYPE_2D;
 		m_Specification.usage = ImageUsage::TEXTURE;
 		m_Specification.format = ImageFormat::RGBA32;

@@ -21,6 +21,7 @@ namespace Omni {
 			// Camera Data
 			bindings.push_back({ 0, DescriptorBindingType::SAMPLED_IMAGE, s_GlobalSceneData.max_textures, (uint64)DescriptorFlags::PARTIALLY_BOUND });
 			bindings.push_back({ 1, DescriptorBindingType::UNIFORM_BUFFER, 1, 0 });
+			bindings.push_back({ 2, DescriptorBindingType::STORAGE_BUFFER, 1, 0 });
 
 			DescriptorSetSpecification global_set_spec = {};
 			global_set_spec.bindings = std::move(bindings);
@@ -38,7 +39,7 @@ namespace Omni {
 
 			// Create camera data buffer
 			{
-				uint32 per_frame_size = Utils::Align(sizeof(glm::mat4) * 3, Renderer::GetDeviceMinimalAlignment());
+				uint32 per_frame_size = Utils::Align(sizeof(glm::mat4) * 3, Renderer::GetDeviceMinimalUniformBufferOffsetAlignment());
 
 				DeviceBufferSpecification buffer_spec = {};
 				buffer_spec.size = per_frame_size * Renderer::GetConfig().frames_in_flight;
@@ -50,9 +51,25 @@ namespace Omni {
 				for (uint32 i = 0; i < Renderer::GetConfig().frames_in_flight; i++) {
 					s_GlobalSceneData.scene_descriptor_set[i]->Write(1, 0, m_MainCameraDataBuffer, per_frame_size, i * per_frame_size);
 				}
-
 			}
 
+			// Create sprite data buffer. Creating SSBO because I need more than 65kb.
+			{
+				uint32 per_frame_size = Utils::Align(sizeof(Sprite) * 2500, Renderer::GetDeviceMinimalStorageBufferOffsetAlignment());
+
+				DeviceBufferSpecification buffer_spec = {};
+				buffer_spec.size = per_frame_size * Renderer::GetConfig().frames_in_flight;
+				buffer_spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
+				buffer_spec.buffer_usage = DeviceBufferUsage::STORAGE_BUFFER;
+
+				m_SpriteDataBuffer = DeviceBuffer::Create(buffer_spec);
+
+				for (uint32 i = 0; i < Renderer::GetConfig().frames_in_flight; i++) {
+					s_GlobalSceneData.scene_descriptor_set[i]->Write(2, 0, m_SpriteDataBuffer, per_frame_size, i * per_frame_size);
+				}
+
+				m_SpriteBufferSize = per_frame_size;
+			}
 		}
 		
 		// Initializing nearest filtration sampler
@@ -83,37 +100,23 @@ namespace Omni {
 
 			m_SamplerLinear = ImageSampler::Create(sampler_spec);
 		}
+		// Load dummy white texture
+		{
+			ImageSpecification image_spec = {};
+			image_spec.path = "assets/textures/dummy_white_texture.png";
+			m_DummyWhiteTexture = Image::Create(image_spec);
+			AcquireTextureIndex(m_DummyWhiteTexture, SamplerFilteringMode::LINEAR);
+		}
 		// Initializing pipelines
 		{
-			DeviceBufferLayout input_layout({
-				{ "v_Pos", DeviceDataType::FLOAT2 },
-				{ "v_TexCoord", DeviceDataType::FLOAT2 },
-			});
-
 			PipelineSpecification pipeline_spec = PipelineSpecification::Default();
-			pipeline_spec.debug_name = "texture pass";
-			pipeline_spec.input_layout = input_layout;
-			pipeline_spec.shader = ShaderLibrary::Get()->GetShader("texture_pass.ofs");
-			pipeline_spec.output_attachments_formats = { ImageFormat::BGRA32 };
-
-			m_BasicColorPass = Pipeline::Create(pipeline_spec);
-			ShaderLibrary::Get()->Unload("texture_pass.ofs");
-
-			pipeline_spec.debug_name = "sprite opaque color";
+			pipeline_spec.shader = ShaderLibrary::Get()->GetShader("sprite.ofs");
 			pipeline_spec.input_layout = DeviceBufferLayout({});
-			pipeline_spec.shader = ShaderLibrary::Get()->GetShader("sprite_opaque_color.ofs");
+			pipeline_spec.debug_name = "sprite pass";
 			pipeline_spec.output_attachments_formats = { ImageFormat::BGRA32 };
 
-			m_OpaqueColorPass = Pipeline::Create(pipeline_spec);
-			ShaderLibrary::Get()->Unload("sprite_opaque_color.ofs");
-
-			pipeline_spec.debug_name = "sprite textured";
-			pipeline_spec.input_layout = DeviceBufferLayout({});
-			pipeline_spec.shader = ShaderLibrary::Get()->GetShader("sprite_textured.ofs");
-			pipeline_spec.output_attachments_formats = { ImageFormat::BGRA32 };
-
-			m_SpriteTexturePass = Pipeline::Create(pipeline_spec);
-			ShaderLibrary::Get()->Unload("sprite_opaque_color.ofs");
+			m_SpritePass = Pipeline::Create(pipeline_spec);
+			ShaderLibrary::Get()->Unload("sprite.ofs");
 		}
 		
 	}
@@ -127,8 +130,9 @@ namespace Omni {
 	{
 		m_SamplerLinear->Destroy();
 		m_SamplerNearest->Destroy();
-		m_BasicColorPass->Destroy();
-		m_OpaqueColorPass->Destroy();
+		m_DummyWhiteTexture->Destroy();
+		m_SpritePass->Destroy();
+		m_SpriteDataBuffer->Destroy();
 		m_MainCameraDataBuffer->Destroy();
 		for(auto set : s_GlobalSceneData.scene_descriptor_set)
 			set->Destroy();
@@ -142,13 +146,22 @@ namespace Omni {
 
 		m_MainCameraDataBuffer->UploadData(Renderer::GetCurrentFrameIndex() * (sizeof glm::mat4 * 3), matrices, sizeof(matrices));
 
-		Renderer::BeginRender(scene_data.target, scene_data.target->GetSpecification().extent, { 0, 0 }, { 0.0f, 0.0f, 0.0f, 0.0f });
-		Renderer::BindSet(s_GlobalSceneData.scene_descriptor_set[Renderer::GetCurrentFrameIndex()], m_BasicColorPass, 0);
+		Renderer::BeginRender(scene_data.target, scene_data.target->GetSpecification().extent, { 0, 0 }, { 0.0f, 0.0f, 0.0f, 1.0f });
+		Renderer::BindSet(s_GlobalSceneData.scene_descriptor_set[Renderer::GetCurrentFrameIndex()], m_SpritePass, 0);
 	}
 
 	void SceneRenderer::EndScene()
 	{
+		m_SpriteDataBuffer->UploadData(
+			Renderer::GetCurrentFrameIndex() * m_SpriteBufferSize,
+			m_SpriteQueue.data(),
+			m_SpriteQueue.size() * sizeof(Sprite)
+		);
+
+		Renderer::RenderQuad(m_SpritePass, m_SpriteQueue.size(), { nullptr, 0 });
 		Renderer::EndRender(m_CurrentSceneRenderData.target);
+
+		m_SpriteQueue.clear();
 	}
 
 	uint16 SceneRenderer::AcquireTextureIndex(Shared<Image> image, SamplerFilteringMode filtering_mode)
@@ -194,6 +207,7 @@ namespace Omni {
 
 	void SceneRenderer::RenderMesh(Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo, Shared<Image> texture)
 	{
+		OMNIFORCE_ASSERT_TAGGED(false, "Currently not implemented properly. Basic color pass is not inited.");
 		MiscData data;
 		data.size = sizeof(s_GlobalSceneData.textures[texture->GetId()]);
 		data.data = new uint8[data.size];
@@ -204,28 +218,9 @@ namespace Omni {
 		Renderer::RenderMesh(m_BasicColorPass, vbo, ibo, data);
 	}
 
-	void SceneRenderer::RenderSpriteOpaque(glm::mat4 transform, fvec4 color)
+	void SceneRenderer::RenderSprite(const Sprite& sprite)
 	{
-		MiscData data;
-		data.size = sizeof(transform) + sizeof(color);
-		data.data = new uint8[data.size];
-		memcpy(data.data, &transform, sizeof(transform));
-		memcpy(data.data + sizeof(transform), &color, sizeof(color));
-		Renderer::BindSet(s_GlobalSceneData.scene_descriptor_set[Renderer::GetCurrentFrameIndex()], m_OpaqueColorPass, 0);
-		Renderer::RenderQuad(m_OpaqueColorPass, data);
-	}
-
-	void SceneRenderer::RenderSpriteTextured(glm::mat4 transform, Shared<Image> texture)
-	{
-		uint32 texture_id = s_GlobalSceneData.textures[texture->GetId()];
-
-		MiscData data;
-		data.size = sizeof(transform) + sizeof(texture_id);
-		data.data = new uint8[data.size];
-		memcpy(data.data, &transform, sizeof(transform));
-		memcpy(data.data + sizeof(transform), &texture_id, sizeof(texture_id));
-		Renderer::BindSet(s_GlobalSceneData.scene_descriptor_set[Renderer::GetCurrentFrameIndex()], m_OpaqueColorPass, 0);
-		Renderer::RenderQuad(m_SpriteTexturePass, data);
+		m_SpriteQueue.push_back(sprite);
 	}
 
 }

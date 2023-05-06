@@ -22,7 +22,8 @@ namespace Omni {
 
 		RendererConfig GetConfig() const override { return m_Config; }
 		uint32 GetCurrentFrameIndex() const override { return m_Swapchain->GetCurrentFrameIndex(); }
-		uint32 GetDeviceMinimalAlignment() const override;
+		uint32 GetDeviceMinimalUniformBufferAlignment() const override;
+		uint32 GetDeviceMinimalStorageBufferAlignment() const override;
 
 		void BeginFrame() override;
 		void EndFrame() override;
@@ -52,6 +53,9 @@ namespace Omni {
 
 		static std::vector<VkDescriptorSet> AllocateDescriptorSets(VkDescriptorSetLayout layout, uint32 count);
 		static void FreeDescriptorSets(std::vector<VkDescriptorSet> sets);
+
+
+		void RenderQuad(Shared<Pipeline> pipeline, uint32 amount, MiscData data) override;
 
 	private:
 		RendererConfig m_Config;

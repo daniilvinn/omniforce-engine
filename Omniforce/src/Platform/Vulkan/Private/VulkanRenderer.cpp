@@ -238,9 +238,14 @@ namespace Omni {
 		VK_CHECK_RESULT(vkFreeDescriptorSets(device->Raw(), s_DescriptorPool, sets.size(), sets.data()));
 	}
 
-	uint32 VulkanRenderer::GetDeviceMinimalAlignment() const
+	uint32 VulkanRenderer::GetDeviceMinimalUniformBufferAlignment() const
 	{
 		return m_Device->GetPhysicalDevice()->GetProps().limits.minUniformBufferOffsetAlignment;
+	}
+
+	uint32 VulkanRenderer::GetDeviceMinimalStorageBufferAlignment() const
+	{
+		return m_Device->GetPhysicalDevice()->GetProps().limits.minStorageBufferOffsetAlignment;
 	}
 
 	void VulkanRenderer::RenderMesh(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo, MiscData misc_data)
@@ -283,6 +288,21 @@ namespace Omni {
 		});
 	}
 
+	void VulkanRenderer::RenderQuad(Shared<Pipeline> pipeline, uint32 amount, MiscData data)
+	{
+		Renderer::Submit([=]() mutable {
+			Shared<VulkanPipeline> vk_pipeline = ShareAs<VulkanPipeline>(pipeline);
+
+			if (data.size)
+				vkCmdPushConstants(m_CurrentCmdBuffer->buffer, vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
+			vkCmdBindPipeline(m_CurrentCmdBuffer->buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
+
+			vkCmdDraw(m_CurrentCmdBuffer->buffer, 6, amount, 0, 0);
+
+			delete[] data.data;
+		});
+	}
+
 	void VulkanRenderer::BeginRender(Shared<Image> target, uvec3 render_area, ivec2 render_offset, fvec4 clear_color)
 	{
 		Renderer::Submit([=]() mutable {
@@ -296,7 +316,6 @@ namespace Omni {
 				0,
 				VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
 			);
-
 
 			VkRenderingAttachmentInfo color_attachment = {};
 			color_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;

@@ -161,6 +161,7 @@ namespace Omni {
 		vulkan_1_2_features.shaderSampledImageArrayNonUniformIndexing = true;
 		vulkan_1_2_features.descriptorBindingPartiallyBound = true;
 		vulkan_1_2_features.runtimeDescriptorArray = true;
+		vulkan_1_2_features.scalarBlockLayout = true;
 
 		VkPhysicalDeviceVulkan13Features vulkan_1_3_features = {};
 		vulkan_1_3_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;

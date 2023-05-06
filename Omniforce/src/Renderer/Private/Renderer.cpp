@@ -86,21 +86,30 @@ namespace Omni {
 		s_RendererAPI->RenderQuad(pipeline, data);
 	}
 
+	void Renderer::RenderQuad(Shared<Pipeline> pipeline, uint32 amount, MiscData data)
+	{
+		s_RendererAPI->RenderQuad(pipeline, amount, data);
+	}
+
 	uint32 Renderer::GetCurrentFrameIndex()
 	{
 		return s_RendererAPI->GetCurrentFrameIndex();
 	}
 
-	uint32 Renderer::GetDeviceMinimalAlignment()
+	uint32 Renderer::GetDeviceMinimalUniformBufferOffsetAlignment()
 	{
-		return s_RendererAPI->GetDeviceMinimalAlignment();
+		return s_RendererAPI->GetDeviceMinimalUniformBufferAlignment();
+	}
+
+	uint32 Renderer::GetDeviceMinimalStorageBufferOffsetAlignment()
+	{
+		return s_RendererAPI->GetDeviceMinimalStorageBufferAlignment();
 	}
 
 	void Renderer::LoadShaderPack()
 	{
-		ShaderLibrary::Get()->Load("assets/shaders/texture_pass.ofs");
-		ShaderLibrary::Get()->Load("assets/shaders/sprite_opaque_color.ofs");
-		ShaderLibrary::Get()->Load("assets/shaders/sprite_textured.ofs");
+		//ShaderLibrary::Get()->Load("assets/shaders/texture_pass.ofs");
+		ShaderLibrary::Get()->Load("assets/shaders/sprite.ofs");
 	}
 
 	void Renderer::Render()

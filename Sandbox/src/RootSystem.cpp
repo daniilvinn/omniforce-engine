@@ -16,10 +16,6 @@ public:
 	{
 		Shared<Image> swapchain_image = Renderer::GetSwapchainImage();
 
-		Renderer::ClearImage(swapchain_image, { 0.420, 0.69, 0.14 });
-
-		static fvec4 clear_value = { 0.0f, 0.0f, 0.0f, 0.0f };
-
 		if (Input::KeyPressed(KeyCode::KEY_W))
 			m_Camera->Move({ 0.0f, 0.0f, 0.005f });
 		if (Input::KeyPressed(KeyCode::KEY_S))
@@ -34,14 +30,17 @@ public:
 		if (Input::KeyPressed(KeyCode::KEY_E))
 			m_Camera->Rotate(0.5f, 0.0f, 0.0f, true);
 
-		glm::mat4 transform = glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, 0.0f)) *
-								glm::rotate(glm::mat4(1.0f), glm::radians(29.0f), glm::vec3(0.0f, 0.0f, 1.0f)) *
-								glm::scale(glm::mat4(1.0f), glm::vec3(2.0f, 0.5f, 1.0f));
+		Sprite sprite;
+		sprite.color_tint = { 1.0f, 1.0f, 1.0f, 1.0f };
+		sprite.position = { 0.0f, 0.0f };
+		sprite.rotation = 0.0f;
+		sprite.size = { (float32)m_Image->GetSpecification().extent.x / 100, (float32)m_Image->GetSpecification().extent.y / 100 };
+		//sprite.size = { 1, 1 };
+		sprite.texture_index = 1;
 
 		SceneRenderData render_data{ .target = swapchain_image, .camera = ShareAs<Camera>(m_Camera)};
 		m_Renderer->BeginScene(render_data);
-		m_Renderer->RenderSpriteTextured(glm::mat4(1.0f), m_Image);
-		//m_Renderer->RenderSpriteOpaque(transform, { 0.5f, 0.2f, 0.8f, 1.0f });
+		m_Renderer->RenderSprite(sprite);
 		m_Renderer->EndScene();
 		
 	}
@@ -57,8 +56,6 @@ public:
 
 		float32 aspect_ratio = (float32)e->GetResolution().x / (float32)e->GetResolution().y;
 		m_Camera->SetProjection(glm::radians(90.0f), aspect_ratio, 0.0f, 100.0f);
-
-		OMNIFORCE_CORE_WARNING("aspect ratio: {}", aspect_ratio);
 
 		return false;
 	}
