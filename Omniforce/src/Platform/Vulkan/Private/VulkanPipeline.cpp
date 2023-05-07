@@ -195,6 +195,7 @@ namespace Omni {
 		color_blend_attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
 		color_blend_attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 		color_blend_attachment.alphaBlendOp = VK_BLEND_OP_ADD;
+		color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_FLAG_BITS_MAX_ENUM;
 
 		VkPipelineColorBlendStateCreateInfo color_blend_state = {};
 		color_blend_state.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -202,6 +203,7 @@ namespace Omni {
 		color_blend_state.pAttachments = &color_blend_attachment;
 		color_blend_state.logicOpEnable = VK_FALSE;
 		color_blend_state.logicOp = VK_LOGIC_OP_COPY;
+
 
 		VkPipelineDepthStencilStateCreateInfo depth_stencil_state = {};
 		depth_stencil_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;

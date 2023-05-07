@@ -10,8 +10,6 @@ namespace Omni {
 		fvec2 size;
 		float32 rotation;
 		uint32 texture_index;
-
-		Sprite() = default;
 	};
 
 }

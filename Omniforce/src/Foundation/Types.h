@@ -22,7 +22,7 @@ namespace Omni {
 	using Flag = uint64;
 
 	template<typename T = float32>
-	struct alignas(8) vec2 {
+	struct vec2 {
 		union {
 			T values[2];
 			struct {
@@ -43,7 +43,7 @@ namespace Omni {
 	};
 
 	template<typename T = float32>
-	struct alignas(16) vec3 {
+	struct vec3 {
 		union {
 			T values[3];
 			struct {
@@ -67,7 +67,7 @@ namespace Omni {
 	};
 
 	template<typename T = float32>
-	struct alignas(16) vec4 {
+	struct vec4 {
 		union {
 			T values[4];
 			struct {
@@ -94,7 +94,7 @@ namespace Omni {
 	};
 
 	template<typename T>
-	struct alignas(64) mat4 {
+	struct mat4 {
 		vec4<T> values[4];
 		vec4<T> operator[](uint32 index) { return values[index]; }
 	};

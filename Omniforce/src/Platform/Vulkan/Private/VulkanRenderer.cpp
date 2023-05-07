@@ -294,12 +294,12 @@ namespace Omni {
 			Shared<VulkanPipeline> vk_pipeline = ShareAs<VulkanPipeline>(pipeline);
 
 			if (data.size)
+			{
 				vkCmdPushConstants(m_CurrentCmdBuffer->buffer, vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
+				delete[] data.data;
+			}
 			vkCmdBindPipeline(m_CurrentCmdBuffer->buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
-
 			vkCmdDraw(m_CurrentCmdBuffer->buffer, 6, amount, 0, 0);
-
-			delete[] data.data;
 		});
 	}
 

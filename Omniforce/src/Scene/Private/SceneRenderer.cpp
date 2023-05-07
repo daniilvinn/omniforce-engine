@@ -75,7 +75,7 @@ namespace Omni {
 		// Initializing nearest filtration sampler
 		{
 			ImageSamplerSpecification sampler_spec = {};
-			sampler_spec.min_filtering_mode = SamplerFilteringMode::NEAREST;
+			sampler_spec.min_filtering_mode = SamplerFilteringMode::LINEAR;
 			sampler_spec.mag_filtering_mode = SamplerFilteringMode::NEAREST;
 			sampler_spec.mipmap_filtering_mode = SamplerFilteringMode::LINEAR;
 			sampler_spec.address_mode = SamplerAddressMode::CLAMP;
@@ -89,7 +89,7 @@ namespace Omni {
 		// Initializing linear filtration sampler
 		{
 			ImageSamplerSpecification sampler_spec = {};
-			sampler_spec.min_filtering_mode = SamplerFilteringMode::NEAREST;
+			sampler_spec.min_filtering_mode = SamplerFilteringMode::LINEAR;
 			sampler_spec.mag_filtering_mode = SamplerFilteringMode::LINEAR;
 			sampler_spec.mipmap_filtering_mode = SamplerFilteringMode::LINEAR;
 			sampler_spec.address_mode = SamplerAddressMode::CLAMP;
@@ -111,7 +111,6 @@ namespace Omni {
 		{
 			PipelineSpecification pipeline_spec = PipelineSpecification::Default();
 			pipeline_spec.shader = ShaderLibrary::Get()->GetShader("sprite.ofs");
-			pipeline_spec.input_layout = DeviceBufferLayout({});
 			pipeline_spec.debug_name = "sprite pass";
 			pipeline_spec.output_attachments_formats = { ImageFormat::BGRA32 };
 
@@ -144,7 +143,7 @@ namespace Omni {
 
 		glm::mat4 matrices[3] = { scene_data.camera->GetViewMatrix(), scene_data.camera->GetProjectionMatrix(), scene_data.camera->GetViewProjectionMatrix() };
 
-		m_MainCameraDataBuffer->UploadData(Renderer::GetCurrentFrameIndex() * (sizeof glm::mat4 * 3), matrices, sizeof(matrices));
+		m_MainCameraDataBuffer->UploadData(Renderer::GetCurrentFrameIndex() * (sizeof glm::mat4 * 3), matrices, sizeof(matrices)); // TODO: bug here
 
 		Renderer::BeginRender(scene_data.target, scene_data.target->GetSpecification().extent, { 0, 0 }, { 0.0f, 0.0f, 0.0f, 1.0f });
 		Renderer::BindSet(s_GlobalSceneData.scene_descriptor_set[Renderer::GetCurrentFrameIndex()], m_SpritePass, 0);

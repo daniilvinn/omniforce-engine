@@ -17,13 +17,13 @@ public:
 		Shared<Image> swapchain_image = Renderer::GetSwapchainImage();
 
 		if (Input::KeyPressed(KeyCode::KEY_W))
-			m_Camera->Move({ 0.0f, 0.0f, 0.005f });
+			m_Camera->Move({ 0.0f, 0.0f, 0.05f });
 		if (Input::KeyPressed(KeyCode::KEY_S))
-			m_Camera->Move({ 0.0f, 0.0f, -0.005f });
+			m_Camera->Move({ 0.0f, 0.0f, -0.05f });
 		if (Input::KeyPressed(KeyCode::KEY_A))
-			m_Camera->Move({ -0.005f, 0.0f, 0.0f });
+			m_Camera->Move({ -0.05f, 0.0f, 0.0f });
 		if (Input::KeyPressed(KeyCode::KEY_D))
-			m_Camera->Move({ 0.005f, 0.0f, 0.0f});
+			m_Camera->Move({ 0.05f, 0.0f, 0.0f});
 
 		if (Input::KeyPressed(KeyCode::KEY_Q))
 			m_Camera->Rotate(-0.5f, 0.0f, 0.0f, true);
@@ -35,12 +35,25 @@ public:
 		sprite.position = { 0.0f, 0.0f };
 		sprite.rotation = 0.0f;
 		sprite.size = { (float32)m_Image->GetSpecification().extent.x / 100, (float32)m_Image->GetSpecification().extent.y / 100 };
-		//sprite.size = { 1, 1 };
 		sprite.texture_index = 1;
 
 		SceneRenderData render_data{ .target = swapchain_image, .camera = ShareAs<Camera>(m_Camera)};
 		m_Renderer->BeginScene(render_data);
 		m_Renderer->RenderSprite(sprite);
+	
+		OMNIFORCE_CORE_TRACE("{}", sizeof(Sprite));
+
+#if 1
+		Sprite opaque;
+		opaque.color_tint = { 1.0f, 0.0f, 0.3f, 1.0f };
+		opaque.position = {3.0f, 2.0f};
+		opaque.rotation = 27.0f;
+		opaque.size = { 1.0f, 1.0f };
+		opaque.texture_index = 0;
+
+		m_Renderer->RenderSprite(opaque);
+#endif
+
 		m_Renderer->EndScene();
 		
 	}
@@ -79,7 +92,7 @@ public:
 		renderer_spec.anisotropic_filtering = 16;
 
 		m_Renderer = SceneRenderer::Create(renderer_spec);
-		m_Renderer->AcquireTextureIndex(m_Image, SamplerFilteringMode::LINEAR);
+		m_Renderer->AcquireTextureIndex(m_Image, SamplerFilteringMode::NEAREST);
 
 		m_Camera = std::make_shared<Camera3D>();
 		m_Camera->SetProjection( glm::radians(90.0f), 16.0 / 9.0, 0.0f, 100.0f );
