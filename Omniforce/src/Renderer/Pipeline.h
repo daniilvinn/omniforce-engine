@@ -36,6 +36,10 @@ namespace Omni {
 		EDGE_ONLY
 	};
 
+	enum class PipelineStage : uint32 {
+
+	};
+
 	struct OMNIFORCE_API PipelineSpecification {
 		std::string debug_name;
 		DeviceBufferLayout input_layout;

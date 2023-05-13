@@ -6,8 +6,12 @@
 #include "../VulkanDeviceBuffer.h"
 #include "../VulkanImage.h"
 #include "../VulkanDescriptorSet.h"
+
 #include <Renderer/ShaderLibrary.h>
 #include <Threading/JobSystem.h>
+
+#include <imgui.h>
+#include <backends/imgui_impl_vulkan.h>
 
 namespace Omni {
 
@@ -303,6 +307,24 @@ namespace Omni {
 		});
 	}
 
+	void VulkanRenderer::RenderImGui()
+	{
+		auto image = m_Swapchain->GetCurrentImage();
+		BeginRender(
+			image,
+			image->GetSpecification().extent,
+			{ 0,0 },
+			{ 0.0f, 0.0f, 0.0f, 0.0f }
+		);
+
+		Renderer::Submit([=]() mutable {
+			ImGui::Render();
+			ImDrawData* draw_data = ImGui::GetDrawData();
+			ImGui_ImplVulkan_RenderDrawData(draw_data, m_CurrentCmdBuffer->buffer);
+		});
+		EndRender(image);
+	}
+
 	void VulkanRenderer::BeginRender(Shared<Image> target, uvec3 render_area, ivec2 render_offset, fvec4 clear_color)
 	{
 		Renderer::Submit([=]() mutable {
@@ -321,7 +343,10 @@ namespace Omni {
 			color_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
 			color_attachment.imageView = vk_target->RawView();
 			color_attachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-			color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+			if(clear_color.a != 0.0f)
+				color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+			else
+				color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
 			color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 			color_attachment.clearValue = { clear_color.r, clear_color.g, clear_color.b, clear_color.a };
 

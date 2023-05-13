@@ -1,6 +1,8 @@
 #pragma once
 
 // Engine API
+
+// Core
 #include <Core/Application.h>
 #include <Core/Subsystem.h>
 #include <Log/Logger.h>
@@ -14,6 +16,7 @@
 
 #include <Core/Input/Input.h>
 
+// Renderer
 #include <Renderer/Renderer.h>
 #include <Renderer/Swapchain.h>
 #include <Renderer/DeviceBuffer.h>
@@ -23,7 +26,14 @@
 #include <Renderer/Image.h>
 #include <Renderer/DescriptorSet.h>
 
+// Scene
+#include <Scene/Scene.h>
+#include <Scene/Entity.h>
+#include <Scene/Component.h>
 #include <Scene/SceneRenderer.h>
+
+// ImGui
+#include <imgui.h>
 
 // Entry Point
 #include <Core/EntryPoint.h>

@@ -37,6 +37,7 @@ namespace Omni {
 		virtual void RenderQuad(Shared<Pipeline> pipeline, MiscData data) = 0;
 		virtual void RenderQuad(Shared<Pipeline> pipeline, uint32 amount, MiscData data) = 0;
 
+		virtual void RenderImGui() = 0;
 
 	private:
 		

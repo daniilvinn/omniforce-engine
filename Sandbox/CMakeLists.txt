@@ -8,7 +8,8 @@ file(GLOB_RECURSE SANDBOX_FILES
 
 add_executable(${SANDBOX_TARGET} ${SANDBOX_FILES})
 
-target_link_libraries(${SANDBOX_TARGET} PUBLIC OmniforceEngine)
+target_link_libraries(${SANDBOX_TARGET} PUBLIC OmniforceEngine ${OMNI_IMGUI_TARGET})
+target_include_directories(${SANDBOX_TARGET} PUBLIC ${IMGUI_INCLUDE_PATH})
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET ${SANDBOX_TARGET} PROPERTY CXX_STANDARD 23)

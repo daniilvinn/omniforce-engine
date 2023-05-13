@@ -35,6 +35,11 @@ namespace Omni {
 		void BeginScene(SceneRenderData scene_data);
 		void EndScene();
 		
+		Shared<Image> GetFinalImage();
+
+		static Shared<ImageSampler> GetSamplerNearest() { return s_SamplerNearest; }
+		static Shared<ImageSampler> GetSamplerLinear() { return s_SamplerLinear; }
+
 		/*
 		* @brief Adds texture to a global renderer data
 		* @return returns an index the texture can be accessed with
@@ -55,8 +60,10 @@ namespace Omni {
 		SceneRenderData m_CurrentSceneRenderData;
 		SceneRendererSpecification m_Specification;
 
-		Shared<ImageSampler> m_SamplerNearest;
-		Shared<ImageSampler> m_SamplerLinear;
+		std::vector<Shared<Image>> m_RendererOutputs;
+
+		inline static Shared<ImageSampler> s_SamplerNearest;
+		inline static Shared<ImageSampler> s_SamplerLinear;
 		Shared<Image> m_DummyWhiteTexture;
 		Shared<DeviceBuffer> m_MainCameraDataBuffer;
 		Shared<DeviceBuffer> m_SpriteDataBuffer;

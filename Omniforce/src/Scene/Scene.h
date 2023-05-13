@@ -4,6 +4,8 @@
 #include "SceneRenderer.h"
 #include "Sprite.h"
 
+#include <entt/entt.hpp>
+
 namespace Omni {
 
 	enum class OMNIFORCE_API SceneType : uint8 {
@@ -11,20 +13,28 @@ namespace Omni {
 		SCENE_TYPE_3D,
 	};
 
+	class Entity;
+
 	class OMNIFORCE_API Scene {
 	public:
 		Scene() = delete;
 		Scene(SceneType type);
 
+		void Destroy();
+
 		void OnUpdate(float ts = 60.0f);
-		void AddSprite(Sprite sprite) { m_DrawList2D.push_back(sprite); };
-		void FlushDrawList();
+		Entity CreateEntity(const std::string& name = "Entity");
+
+		entt::registry* GetRegistry() { return &m_Registry; }
+		std::vector<Entity>& GetEntities() { return m_Entities; }
 
 	private:
 		SceneRenderer* m_Renderer;
-		std::vector<Sprite> m_DrawList2D;
 		SceneType m_Type;
-		Camera* m_Camera;
+		Shared<Camera> m_Camera;
+
+		entt::registry m_Registry;
+		std::vector<Entity> m_Entities;
 
 	};
 

@@ -12,12 +12,15 @@ namespace Omni {
 
 	struct RendererInternalData {
 		std::list<Renderer::RenderFunction> cmd_generation_function_list;
+		Shared<ImageSampler> m_LinearSampler;
+		Shared<ImageSampler> m_NearestSampler;
 	} s_InternalData;
 
 	void Renderer::Init(const RendererConfig& config)
 	{
 		s_RendererAPI = new VulkanRenderer(config);
 		ShaderLibrary::Init();
+
 	}
 
 	void Renderer::Shutdown()
@@ -106,6 +109,16 @@ namespace Omni {
 		return s_RendererAPI->GetDeviceMinimalStorageBufferAlignment();
 	}
 
+	Shared<ImageSampler> Renderer::GetNearestSampler()
+	{
+		return s_InternalData.m_NearestSampler;
+	}
+
+	Shared<ImageSampler> Renderer::GetLinearSampler()
+	{
+		return s_InternalData.m_LinearSampler;
+	}
+
 	void Renderer::LoadShaderPack()
 	{
 		//ShaderLibrary::Get()->Load("assets/shaders/texture_pass.ofs");
@@ -125,6 +138,11 @@ namespace Omni {
 				func();
 			}
 		//});
+	}
+
+	void Renderer::RenderImGui()
+	{
+		s_RendererAPI->RenderImGui();
 	}
 
 }

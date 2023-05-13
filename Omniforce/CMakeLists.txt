@@ -18,14 +18,16 @@ find_package(spdlog CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(Stb REQUIRED)
+find_package(EnTT CONFIG REQUIRED)
 
 target_include_directories(${ENGINE_TARGET} 
     PUBLIC 
-        "src/" 
+        "src/"
     PRIVATE 
         "${Vulkan_SDK}\\Include" 
         "${Vulkan_SDK}\\Source" 
         ${Stb_INCLUDE_DIR}
+        "vendor/imgui"
 )
 target_link_directories(${ENGINE_TARGET} INTERFACE "${Vulkan_SDK}\\Lib")
 target_compile_definitions(${ENGINE_TARGET} PUBLIC OMNIFORCE_STATIC)
@@ -36,6 +38,8 @@ target_link_libraries(
         spdlog::spdlog 
         spdlog::spdlog_header_only
         glm::glm
+        EnTT::EnTT
+        ${OMNI_IMGUI_TARGET}
 )
 
 target_link_libraries(

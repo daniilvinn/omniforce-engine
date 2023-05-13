@@ -2,6 +2,9 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
+#include <glm/gtx/euler_angles.hpp>
+
 using namespace Omni;
 
 class RootSubsystem : public Subsystem 
@@ -16,6 +19,7 @@ public:
 	{
 		Shared<Image> swapchain_image = Renderer::GetSwapchainImage();
 
+		{
 		if (Input::KeyPressed(KeyCode::KEY_W))
 			m_Camera->Move({ 0.0f, 0.0f, 0.05f });
 		if (Input::KeyPressed(KeyCode::KEY_S))
@@ -29,33 +33,12 @@ public:
 			m_Camera->Rotate(-0.5f, 0.0f, 0.0f, true);
 		if (Input::KeyPressed(KeyCode::KEY_E))
 			m_Camera->Rotate(0.5f, 0.0f, 0.0f, true);
-
-		Sprite sprite;
-		sprite.color_tint = { 1.0f, 1.0f, 1.0f, 1.0f };
-		sprite.position = { 0.0f, 0.0f };
-		sprite.rotation = 0.0f;
-		sprite.size = { (float32)m_Image->GetSpecification().extent.x / 100, (float32)m_Image->GetSpecification().extent.y / 100 };
-		sprite.texture_index = 1;
+		}
 
 		SceneRenderData render_data{ .target = swapchain_image, .camera = ShareAs<Camera>(m_Camera)};
 		m_Renderer->BeginScene(render_data);
-		m_Renderer->RenderSprite(sprite);
-	
-		OMNIFORCE_CORE_TRACE("{}", sizeof(Sprite));
-
-#if 1
-		Sprite opaque;
-		opaque.color_tint = { 1.0f, 0.0f, 0.3f, 1.0f };
-		opaque.position = {3.0f, 2.0f};
-		opaque.rotation = 27.0f;
-		opaque.size = { 1.0f, 1.0f };
-		opaque.texture_index = 0;
-
-		m_Renderer->RenderSprite(opaque);
-#endif
-
 		m_Renderer->EndScene();
-		
+
 	}
 
 	void OnEvent(Event* e) override
@@ -77,14 +60,10 @@ public:
 	{
 		Renderer::WaitDevice();
 		m_Renderer->Destroy();
-		m_Image->Destroy();
 	}
 
 	void Launch() override
 	{
-		ImageSpecification image_spec = ImageSpecification::Default();
-		image_spec.path = "assets/textures/sprite.png";
-		m_Image = Image::Create(image_spec);
 
 		JobSystem::Get()->Wait();
 
@@ -92,19 +71,22 @@ public:
 		renderer_spec.anisotropic_filtering = 16;
 
 		m_Renderer = SceneRenderer::Create(renderer_spec);
-		m_Renderer->AcquireTextureIndex(m_Image, SamplerFilteringMode::NEAREST);
 
 		m_Camera = std::make_shared<Camera3D>();
 		m_Camera->SetProjection( glm::radians(90.0f), 16.0 / 9.0, 0.0f, 100.0f );
+
+		m_Scene = new Scene(SceneType::SCENE_TYPE_2D);
+
 	}
 
 	/*
 	*	DATA
 	*/
-
-	Shared<Image> m_Image;
 	Shared<Camera3D> m_Camera;
 	SceneRenderer* m_Renderer;
+	Scene* m_Scene;
+	uint32 m_SelectedEntity = 0;
+	bool m_EntitySelected = false;
 };
 
 Subsystem* ConstructRootSystem() 

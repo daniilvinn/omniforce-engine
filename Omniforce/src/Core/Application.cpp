@@ -36,7 +36,7 @@ namespace Omni
 		WindowSystem::WindowConfig main_window_config = {};
 		main_window_config.event_callback = OMNIFORCE_BIND_EVENT_FUNCTION(Application::OnEvent);
 		main_window_config.tag = "main";
-		main_window_config.title = "Cursed Engine";
+		main_window_config.title = "Omniforce Game Engine";
 		main_window_config.width = 1600;
 		main_window_config.height = 900;
 		main_window_config.fs_exclusive = false;
@@ -59,6 +59,9 @@ namespace Omni
 		js->Execute([]() {
 			Renderer::LoadShaderPack();
 		});
+
+		m_ImGuiRenderer = ImGuiRenderer::Create();
+		m_ImGuiRenderer->Launch(m_WindowSystem->GetWindow("main")->Raw());
 	}
 
 	void Application::Run()
@@ -75,6 +78,8 @@ namespace Omni
 	void Application::Destroy()
 	{
 		JobSystem* js = JobSystem::Get();
+
+		m_ImGuiRenderer->Destroy();
 
 		js->Wait();
 		js->Execute(Renderer::Shutdown);
@@ -94,15 +99,17 @@ namespace Omni
 
 	void Application::PreFrame()
 	{
-		Renderer::BeginFrame();
 		m_WindowSystem->PollEvents();
+		Renderer::BeginFrame();
+		m_ImGuiRenderer->BeginFrame();
 	}
 
 	void Application::PostFrame()
 	{
-		m_WindowSystem->ProcessEvents();
+		m_ImGuiRenderer->EndFrame();
 		Renderer::Render();
 		Renderer::EndFrame();
+		m_WindowSystem->ProcessEvents();
 	}
 
 	Shared<AppWindow> Application::GetWindow(const std::string& tag) const

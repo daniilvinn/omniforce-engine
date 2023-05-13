@@ -57,6 +57,8 @@ namespace Omni {
 
 		void RenderQuad(Shared<Pipeline> pipeline, uint32 amount, MiscData data) override;
 
+		void RenderImGui() override;
+
 	private:
 		RendererConfig m_Config;
 

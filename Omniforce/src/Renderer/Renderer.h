@@ -27,6 +27,8 @@ namespace Omni {
 		static uint32 GetCurrentFrameIndex();
 		static uint32 GetDeviceMinimalUniformBufferOffsetAlignment();
 		static uint32 GetDeviceMinimalStorageBufferOffsetAlignment();
+		static Shared<ImageSampler> GetNearestSampler();
+		static Shared<ImageSampler> GetLinearSampler();
 
 		static void LoadShaderPack();
 		static void Submit(RenderFunction func);
@@ -46,6 +48,7 @@ namespace Omni {
 		static void RenderQuad(Shared<Pipeline> pipeline, uint32 amount, MiscData data);
 
 		static void Render();
+		static void RenderImGui();
 
 	private:
 		static RendererAPI* s_RendererAPI;

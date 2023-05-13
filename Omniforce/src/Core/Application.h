@@ -7,7 +7,9 @@
 
 #include <Core/Events/ApplicationEvents.h>
 #include <Core/Events/MouseEvents.h>
-	
+
+#include <Renderer/UI/ImGuiRenderer.h>
+
 namespace Omni {
 
 	class OMNIFORCE_API Application
@@ -53,6 +55,7 @@ namespace Omni {
 
 		Subsystem* m_RootSystem;
 		WindowSystem* m_WindowSystem;
+		ImGuiRenderer* m_ImGuiRenderer;
 	};
 
 }

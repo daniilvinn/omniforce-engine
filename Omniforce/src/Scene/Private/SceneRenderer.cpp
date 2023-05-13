@@ -6,6 +6,8 @@
 #include <Renderer/DeviceBuffer.h>
 #include <Core/Utils.h>
 
+#include <Platform/Vulkan/VulkanCommon.h>
+
 namespace Omni {
 
 	SceneRenderer* SceneRenderer::Create(const SceneRendererSpecification& spec)
@@ -84,7 +86,7 @@ namespace Omni {
 			sampler_spec.lod_bias = 0.0f;
 			sampler_spec.anisotropic_filtering_level = m_Specification.anisotropic_filtering;
 
-			m_SamplerNearest = ImageSampler::Create(sampler_spec);
+			s_SamplerNearest = ImageSampler::Create(sampler_spec);
 		}
 		// Initializing linear filtration sampler
 		{
@@ -98,21 +100,22 @@ namespace Omni {
 			sampler_spec.lod_bias = 0.0f;
 			sampler_spec.anisotropic_filtering_level = m_Specification.anisotropic_filtering;
 
-			m_SamplerLinear = ImageSampler::Create(sampler_spec);
+			s_SamplerLinear = ImageSampler::Create(sampler_spec);
 		}
 		// Load dummy white texture
 		{
 			ImageSpecification image_spec = {};
-			image_spec.path = "assets/textures/dummy_white_texture.png";
+			image_spec.path = "assets/textures/opaque_white.png";
 			m_DummyWhiteTexture = Image::Create(image_spec);
-			AcquireTextureIndex(m_DummyWhiteTexture, SamplerFilteringMode::LINEAR);
+			AcquireTextureIndex(m_DummyWhiteTexture, SamplerFilteringMode::NEAREST);
 		}
 		// Initializing pipelines
 		{
 			PipelineSpecification pipeline_spec = PipelineSpecification::Default();
 			pipeline_spec.shader = ShaderLibrary::Get()->GetShader("sprite.ofs");
 			pipeline_spec.debug_name = "sprite pass";
-			pipeline_spec.output_attachments_formats = { ImageFormat::BGRA32 };
+			pipeline_spec.output_attachments_formats = { ImageFormat::BGRA32_UNORM };
+			pipeline_spec.culling_mode = PipelineCullingMode::NONE;
 
 			m_SpritePass = Pipeline::Create(pipeline_spec);
 			ShaderLibrary::Get()->Unload("sprite.ofs");
@@ -127,8 +130,8 @@ namespace Omni {
 
 	void SceneRenderer::Destroy()
 	{
-		m_SamplerLinear->Destroy();
-		m_SamplerNearest->Destroy();
+		s_SamplerLinear->Destroy();
+		s_SamplerNearest->Destroy();
 		m_DummyWhiteTexture->Destroy();
 		m_SpritePass->Destroy();
 		m_SpriteDataBuffer->Destroy();
@@ -163,6 +166,11 @@ namespace Omni {
 		m_SpriteQueue.clear();
 	}
 
+	Shared<Image> SceneRenderer::GetFinalImage()
+	{
+		return m_RendererOutputs[Renderer::GetCurrentFrameIndex()];
+	}
+
 	uint16 SceneRenderer::AcquireTextureIndex(Shared<Image> image, SamplerFilteringMode filtering_mode)
 	{
 		if (s_GlobalSceneData.available_texture_indices.size() == 0) {
@@ -177,8 +185,8 @@ namespace Omni {
 
 		switch (filtering_mode)
 		{
-		case SamplerFilteringMode::NEAREST:		sampler = m_SamplerNearest; break;
-		case SamplerFilteringMode::LINEAR:		sampler = m_SamplerLinear;  break;
+		case SamplerFilteringMode::NEAREST:		sampler = s_SamplerNearest; break;
+		case SamplerFilteringMode::LINEAR:		sampler = s_SamplerLinear;  break;
 		default:								OMNIFORCE_ASSERT_TAGGED(false, "Invalid sampler filtering mode"); break;
 		}
 

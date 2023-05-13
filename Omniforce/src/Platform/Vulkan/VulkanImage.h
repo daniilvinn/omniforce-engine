@@ -15,7 +15,8 @@ namespace Omni {
 		case ImageFormat::RB16:							return VK_FORMAT_R8G8_SRGB;
 		case ImageFormat::RGB24:						return VK_FORMAT_R8G8B8_SRGB;
 		case ImageFormat::RGBA32:						return VK_FORMAT_R8G8B8A8_SRGB;
-		case ImageFormat::BGRA32:						return VK_FORMAT_B8G8R8A8_SRGB;
+		case ImageFormat::BGRA32_SRGB:					return VK_FORMAT_B8G8R8A8_SRGB;
+		case ImageFormat::BGRA32_UNORM:					return VK_FORMAT_B8G8R8A8_UNORM;
 		case ImageFormat::RGB32_HDR:					return VK_FORMAT_B10G11R11_UFLOAT_PACK32;
 		case ImageFormat::RGBA64_HDR:					return VK_FORMAT_R16G16B16A16_SFLOAT;
 		case ImageFormat::RGBA128_HDR:					return VK_FORMAT_R32G32B32A32_SFLOAT;
@@ -32,7 +33,8 @@ namespace Omni {
 		case VK_FORMAT_R8G8_SRGB:						return ImageFormat::RB16;
 		case VK_FORMAT_R8G8B8_SRGB:						return ImageFormat::RGB24;
 		case VK_FORMAT_R8G8B8A8_SRGB:					return ImageFormat::RGBA32;
-		case VK_FORMAT_B8G8R8A8_SRGB:					return ImageFormat::BGRA32;
+		case VK_FORMAT_B8G8R8A8_SRGB:					return ImageFormat::BGRA32_SRGB;
+		case VK_FORMAT_B8G8R8A8_UNORM:					return ImageFormat::BGRA32_UNORM;
 		case VK_FORMAT_B10G11R11_UFLOAT_PACK32:			return ImageFormat::RGB32_HDR;
 		case VK_FORMAT_R16G16B16A16_SFLOAT:				return ImageFormat::RGBA64_HDR;
 		case VK_FORMAT_R32G32B32A32_SFLOAT:				return ImageFormat::RGBA128_HDR;
