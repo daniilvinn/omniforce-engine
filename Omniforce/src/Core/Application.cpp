@@ -10,13 +10,15 @@
 #include <Renderer/Renderer.h>
 #include <Renderer/ShaderLibrary.h>
 
+#include <Asset/AssetManager.h>
+
 namespace Omni 
 {
 
 	Application* Application::s_Instance = nullptr;
 
 	Application::Application() 
-		: m_RootSystem(nullptr), m_Running(true), m_WindowSystem(nullptr) {}
+		: m_RootSystem(nullptr), m_Running(true), m_WindowSystem(nullptr), m_ImGuiRenderer(nullptr) {}
 
 	Application::~Application() {}
 
@@ -50,7 +52,8 @@ namespace Omni
 		renderer_config.vsync = false;
 
 		js->Execute(Input::Init);
-		js->Execute([&renderer_config]() {
+		js->Execute(AssetManager::Init);
+		js->Execute([renderer_config]() {
 			Renderer::Init(renderer_config);
 		});
 

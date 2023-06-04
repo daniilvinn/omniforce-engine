@@ -15,7 +15,7 @@ namespace Omni {
 		// If no entities selected, then nothing to show
 		void Render() override;
 
-		void SetEntity(Entity entity, bool selected) { m_Entity = entity; m_Selected = selected; };
+		void SetEntity(Entity entity, bool selected);;
 
 	private:
 		void RecalculateTransform();
@@ -23,7 +23,6 @@ namespace Omni {
 	private:
 		Entity m_Entity;
 		bool m_Selected = false;
-
 	};
 
 }

@@ -3,11 +3,13 @@
 #include "SceneCommon.h"
 #include "Scene.h"
 
+#include <Core/Serializable.h>
+
 #include <entt/entt.hpp>
 
 namespace Omni {
 
-	class OMNIFORCE_API Entity {
+	class OMNIFORCE_API Entity : public Serializable {
 	public:
 		Entity();
 		Entity(Scene* scene);
@@ -16,8 +18,8 @@ namespace Omni {
 		operator entt::entity() const { return m_Handle; }
 
 		template<typename Component, typename... Args>
-		void AddComponent(Args&&... args) {
-			m_OwnerScene->GetRegistry()->emplace<Component>(m_Handle, std::forward<Args>(args)...);
+		Component& AddComponent(Args&&... args) {
+			return m_OwnerScene->GetRegistry()->emplace<Component>(m_Handle, std::forward<Args>(args)...);
 		};
 
 		template<typename Component>
@@ -35,6 +37,9 @@ namespace Omni {
 		bool HasComponent() {
 			return (bool)m_OwnerScene->GetRegistry()->try_get<Component>(m_Handle);
 		}
+
+		void Serialize(nlohmann::json& node) override;
+		void Deserialize(nlohmann::json& node) override;
 
 	private:
 		entt::entity m_Handle;

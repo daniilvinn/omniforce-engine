@@ -188,7 +188,7 @@ namespace Omni {
 		viewport_state.pScissors = &scissor;
 
 		VkPipelineColorBlendAttachmentState color_blend_attachment = {};
-		color_blend_attachment.blendEnable = VK_TRUE;
+		color_blend_attachment.blendEnable = m_Specification.color_blending_enable;
 		color_blend_attachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
 		color_blend_attachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
 		color_blend_attachment.colorBlendOp = VK_BLEND_OP_ADD;

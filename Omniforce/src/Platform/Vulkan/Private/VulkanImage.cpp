@@ -1,6 +1,7 @@
 #include "../VulkanImage.h"
 #include "../VulkanDeviceBuffer.h"
 #include "../VulkanGraphicsContext.h"
+#include "../VulkanDeviceCmdBuffer.h"
 #include "VulkanMemoryAllocator.h"
 
 #include <Renderer/Renderer.h>
@@ -10,19 +11,17 @@
 
 namespace Omni {
 
-	uint32 VulkanImage::s_IdCounter = 0;
-
 	VulkanImage::VulkanImage()
-		: m_Specification(), m_Image(VK_NULL_HANDLE), m_ImageView(VK_NULL_HANDLE), m_Allocation(VK_NULL_HANDLE), m_CurrentLayout(VK_IMAGE_LAYOUT_UNDEFINED),
-		  m_CreatedFromRaw(false) 
+		: m_Specification(), m_Image(VK_NULL_HANDLE), m_ImageView(VK_NULL_HANDLE), 
+		m_Allocation(VK_NULL_HANDLE), m_CurrentLayout(ImageLayout::UNDEFINED), m_CreatedFromRaw(false) 
 	{
-		m_Id = s_IdCounter++;
 	}
 
-	VulkanImage::VulkanImage(const ImageSpecification& spec)
+	VulkanImage::VulkanImage(const ImageSpecification& spec, UUID id)
 		: VulkanImage()
 	{
-		m_Specification = spec;
+ 		m_Specification = spec;
+		m_Id = id;
 
 		switch (m_Specification.usage)
 		{
@@ -64,6 +63,40 @@ namespace Omni {
 		m_ImageView = VK_NULL_HANDLE;
 	}
 
+	void VulkanImage::SetLayout(Shared<DeviceCmdBuffer> cmd_buffer, ImageLayout new_layout, PipelineStage src_stage, PipelineStage dst_stage, PipelineAccess src_access, PipelineAccess dst_access)
+	{
+		Shared<VulkanDeviceCmdBuffer> vk_cmd_buffer = ShareAs<VulkanDeviceCmdBuffer>(cmd_buffer);
+
+		VkImageMemoryBarrier image_memory_barrier = {};
+		image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		image_memory_barrier.image = m_Image;
+		image_memory_barrier.oldLayout = (VkImageLayout)m_CurrentLayout;
+		image_memory_barrier.newLayout = (VkImageLayout)new_layout;
+		image_memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		image_memory_barrier.srcAccessMask = (VkAccessFlags)src_access;
+		image_memory_barrier.dstAccessMask = (VkAccessFlags)dst_access;
+		image_memory_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		image_memory_barrier.subresourceRange.baseArrayLayer = 0;
+		image_memory_barrier.subresourceRange.layerCount = 1;
+		image_memory_barrier.subresourceRange.baseMipLevel = 0;
+		image_memory_barrier.subresourceRange.levelCount = 1;
+
+		vkCmdPipelineBarrier(vk_cmd_buffer->Raw(),
+			(VkPipelineStageFlags)src_stage,
+			(VkPipelineStageFlags)dst_stage,
+			0,
+			0,
+			nullptr,
+			0,
+			nullptr,
+			1,
+			&image_memory_barrier
+		);
+
+		m_CurrentLayout = new_layout;
+	}
+
 	void VulkanImage::CreateTexture()
 	{
 		stbi_set_flip_vertically_on_load(true);
@@ -74,7 +107,7 @@ namespace Omni {
 
 		VkImageCreateInfo texture_create_info = {};
 		texture_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-		texture_create_info.format = VK_FORMAT_R8G8B8A8_SRGB;
+		texture_create_info.format = VK_FORMAT_R8G8B8A8_UNORM;
 		texture_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
 		texture_create_info.imageType = VK_IMAGE_TYPE_2D;
 		texture_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -217,7 +250,7 @@ namespace Omni {
 
 		device->ExecuteTransientCmdBuffer(cmd_buffer);
 
-		m_CurrentLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		m_CurrentLayout = ImageLayout::SHADER_READ_ONLY;
 
 		stbi_image_free(image_data);
 
@@ -225,7 +258,7 @@ namespace Omni {
 		image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
 		image_view_create_info.image = m_Image;
-		image_view_create_info.format = VK_FORMAT_R8G8B8A8_SRGB;
+		image_view_create_info.format = VK_FORMAT_R8G8B8A8_UNORM;
 		image_view_create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		image_view_create_info.subresourceRange.baseArrayLayer = 0;
 		image_view_create_info.subresourceRange.layerCount = 1;
@@ -242,7 +275,7 @@ namespace Omni {
 		m_Specification.mip_levels = texture_create_info.mipLevels;
 		m_Specification.type = ImageType::TYPE_2D;
 		m_Specification.usage = ImageUsage::TEXTURE;
-		m_Specification.format = ImageFormat::RGBA32;
+		m_Specification.format = ImageFormat::RGBA32_UNORM;
 	}
 
 	void VulkanImage::CreateRenderTarget()
@@ -251,19 +284,19 @@ namespace Omni {
 
 		VkImageCreateInfo render_target_create_info = {};
 		render_target_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-		render_target_create_info.extent = { m_Specification.extent.x, m_Specification.extent.y };
+		render_target_create_info.extent = { m_Specification.extent.x, m_Specification.extent.y, 1 };
 		render_target_create_info.imageType = VK_IMAGE_TYPE_2D;
 		render_target_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		render_target_create_info.mipLevels = 1;
 		render_target_create_info.arrayLayers = 1;
 		render_target_create_info.format = convert(m_Specification.format);
 		render_target_create_info.samples = VK_SAMPLE_COUNT_1_BIT; // HACK
-		render_target_create_info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+		render_target_create_info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 		render_target_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
 		render_target_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		
 		auto allocator = VulkanMemoryAllocator::Get();
-		allocator->AllocateImage(&render_target_create_info, 0, &m_Image);
+		m_Allocation = allocator->AllocateImage(&render_target_create_info, 0, &m_Image);
 
 		VkImageViewCreateInfo image_view_create_info = {};
 		image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -282,33 +315,24 @@ namespace Omni {
 
 		VK_CHECK_RESULT(vkCreateImageView(device->Raw(), &image_view_create_info, nullptr, &m_ImageView));
 
-		VkImageMemoryBarrier image_memory_barrier = {};
-		image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		image_memory_barrier.image = m_Image;
-		image_memory_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		image_memory_barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		image_memory_barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		image_memory_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		image_memory_barrier.subresourceRange.baseArrayLayer = 0;
-		image_memory_barrier.subresourceRange.layerCount = 1;
-		image_memory_barrier.subresourceRange.baseMipLevel = 0;
-		image_memory_barrier.subresourceRange.levelCount = 1;
-
-
-		VkCommandBuffer cmd_buffer = device->AllocateTransientCmdBuffer();
-		vkCmdPipelineBarrier(
-			cmd_buffer,
-			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-			0,
-			0,
-			nullptr,
-			0,
-			nullptr,
-			1,
-			&image_memory_barrier
+		Shared<DeviceCmdBuffer> cmd_buffer = DeviceCmdBuffer::Create(
+			DeviceCmdBufferLevel::PRIMARY, 
+			DeviceCmdBufferType::TRANSIENT, 
+			DeviceCmdType::GENERAL
 		);
-		device->ExecuteTransientCmdBuffer(cmd_buffer);
+
+		cmd_buffer->Begin();
+		SetLayout(
+			cmd_buffer,
+			ImageLayout::COLOR_ATTACHMENT,
+			PipelineStage::TOP_OF_PIPE,
+			PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+			PipelineAccess::NONE,
+			PipelineAccess::COLOR_ATTACHMENT_WRITE
+		);
+		cmd_buffer->End();
+		cmd_buffer->Execute(true);
+		cmd_buffer->Destroy();
 	}
 
 	void VulkanImage::CreateFromRaw(const ImageSpecification& spec, VkImage image, VkImageView view)

@@ -16,14 +16,22 @@ namespace Omni {
 	{
 		if (m_IsOpen) {
 			ImGui::Begin("Scene Hierarchy", &m_IsOpen);
-			if (ImGui::Button("Create entity", { ImGui::GetContentRegionAvail().x, 0.f })) {
-				m_Context->CreateEntity();
+			ImGui::Text("Right-click to create object");
+
+			if (ImGui::BeginPopupContextWindow())
+			{
+				if (ImGui::MenuItem("Create object")) {
+					m_SelectedNode = m_Context->CreateEntity();
+					m_IsSelected = true;
+				}
+				ImGui::EndPopup();
 			}
+
 			ImGui::Separator();
 			m_Context->GetRegistry()->each([&](auto entity_id) {
 				Entity entity(entity_id, m_Context);
 				RenderHierarchyNode(entity);
-				});
+			});
 			ImGui::End();
 		}
 	}

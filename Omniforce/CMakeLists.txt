@@ -19,6 +19,7 @@ find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(Stb REQUIRED)
 find_package(EnTT CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 
 target_include_directories(${ENGINE_TARGET} 
     PUBLIC 
@@ -39,6 +40,7 @@ target_link_libraries(
         spdlog::spdlog_header_only
         glm::glm
         EnTT::EnTT
+	  nlohmann_json::nlohmann_json
         ${OMNI_IMGUI_TARGET}
 )
 

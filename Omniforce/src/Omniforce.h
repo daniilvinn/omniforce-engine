@@ -32,6 +32,9 @@
 #include <Scene/Component.h>
 #include <Scene/SceneRenderer.h>
 
+// Asset
+#include <Asset/AssetManager.h>
+
 // ImGui
 #include <imgui.h>
 
