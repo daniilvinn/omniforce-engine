@@ -178,7 +178,7 @@ namespace Omni {
 		device->ExecuteTransientCmdBuffer(image_layout_transition_command_buffer);
 
 		for (auto& image : m_Images) {
-			image->SetCurrentLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+			image->SetCurrentLayout(ImageLayout::PRESENT_SRC);
 		}
 
 		m_CurrentFrameIndex = 0;

@@ -15,5 +15,5 @@ namespace Omni
 	class DeviceBufferLayout;
 	class DeviceBufferLayoutElement;
 	class DescriptorSet;
-
+	class DeviceCmdBuffer;
 };

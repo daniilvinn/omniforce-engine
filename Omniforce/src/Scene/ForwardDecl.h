@@ -7,5 +7,6 @@ namespace Omni {
 	class Camera;
 	class Camera2D;
 	class Camera3D;
+	class UUID;
 
 }

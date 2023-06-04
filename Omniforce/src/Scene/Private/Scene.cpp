@@ -18,6 +18,7 @@ namespace Omni {
 
 		auto camera_3D = ShareAs<Camera3D>(m_Camera);
 		camera_3D->SetProjection(glm::radians(90.0f), 16.0 / 9.0, 0.0f, 100.0f);
+		camera_3D->Move({ 0.0f, 0.0f, -50.0f });
 	}
 
 	void Scene::Destroy()
@@ -27,15 +28,37 @@ namespace Omni {
 
 	void Scene::OnUpdate(float ts /*= 60.0f*/)
 	{
+		m_Renderer->BeginScene(m_Camera);
+
+		m_Registry.sort<SpriteComponent>([](const auto& lhs, const auto& rhs) {
+			return lhs.layer < rhs.layer;
+		});
+		auto view = m_Registry.view<SpriteComponent>();
 		
+		for (auto& entity : view) {
+			TRSComponent trs = m_Registry.get<TRSComponent>(entity);
+			SpriteComponent sprite_component = m_Registry.get<SpriteComponent>(entity);
+
+			Sprite sprite;
+			sprite.texture_id = m_Renderer->GetTextureIndex(sprite_component.texture);
+			sprite.rotation = glm::radians(-trs.rotation.z);
+			sprite.position = { trs.translation.x, trs.translation.y, trs.translation.z };
+			sprite.size = { trs.scale.x, trs.scale.y };
+			sprite.color_tint = sprite_component.color;
+
+			m_Renderer->RenderSprite(sprite);
+		}
+
+		m_Renderer->EndScene();
 	}
 
-	Entity Scene::CreateEntity(const std::string& name /*= "Entity"*/)
+	Entity Scene::CreateEntity(const UUID& id)
 	{
 		Entity entity(this);
-		entity.AddComponent<TagComponent>(name);
-		entity.AddComponent<TransformComponent>();
+		entity.AddComponent<UUIDComponent>(id);
+		entity.AddComponent<TagComponent>("Object");
 		entity.AddComponent<TRSComponent>();
+		entity.AddComponent<TransformComponent>();
 
 		m_Entities.push_back(entity);
 

@@ -74,6 +74,11 @@ namespace Omni {
 		return s_RendererAPI->GetSwapchain()->GetCurrentImage();
 	}
 
+	Shared<DeviceCmdBuffer> Renderer::GetCmdBuffer()
+	{
+		return s_RendererAPI->GetCmdBuffer();
+	}
+
 	void Renderer::ClearImage(Shared<Image> image, const fvec4& value)
 	{
 		s_RendererAPI->ClearImage(image, value);
@@ -127,6 +132,17 @@ namespace Omni {
 
 	void Renderer::Render()
 	{
+		Renderer::Submit([=]() mutable {
+			auto swapchain_image = GetSwapchainImage();
+
+			swapchain_image->SetLayout(
+				GetCmdBuffer(),
+				ImageLayout::PRESENT_SRC,
+				PipelineStage::TRANSFER,
+				PipelineStage::BOTTOM_OF_PIPE,
+				PipelineAccess::TRANSFER_WRITE
+			);
+		});
 		s_RendererAPI->EndCommandRecord();
 		s_RendererAPI->ExecuteCurrentCommands();
 

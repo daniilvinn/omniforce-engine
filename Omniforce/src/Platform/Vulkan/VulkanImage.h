@@ -14,7 +14,8 @@ namespace Omni {
 		case ImageFormat::R8:							return VK_FORMAT_R8_SRGB;
 		case ImageFormat::RB16:							return VK_FORMAT_R8G8_SRGB;
 		case ImageFormat::RGB24:						return VK_FORMAT_R8G8B8_SRGB;
-		case ImageFormat::RGBA32:						return VK_FORMAT_R8G8B8A8_SRGB;
+		case ImageFormat::RGBA32_SRGB:					return VK_FORMAT_R8G8B8A8_SRGB;
+		case ImageFormat::RGBA32_UNORM:					return VK_FORMAT_R8G8B8A8_UNORM;
 		case ImageFormat::BGRA32_SRGB:					return VK_FORMAT_B8G8R8A8_SRGB;
 		case ImageFormat::BGRA32_UNORM:					return VK_FORMAT_B8G8R8A8_UNORM;
 		case ImageFormat::RGB32_HDR:					return VK_FORMAT_B10G11R11_UFLOAT_PACK32;
@@ -32,7 +33,7 @@ namespace Omni {
 		case VK_FORMAT_R8_SRGB:							return ImageFormat::R8;
 		case VK_FORMAT_R8G8_SRGB:						return ImageFormat::RB16;
 		case VK_FORMAT_R8G8B8_SRGB:						return ImageFormat::RGB24;
-		case VK_FORMAT_R8G8B8A8_SRGB:					return ImageFormat::RGBA32;
+		case VK_FORMAT_R8G8B8A8_SRGB:					return ImageFormat::RGBA32_SRGB;
 		case VK_FORMAT_B8G8R8A8_SRGB:					return ImageFormat::BGRA32_SRGB;
 		case VK_FORMAT_B8G8R8A8_UNORM:					return ImageFormat::BGRA32_UNORM;
 		case VK_FORMAT_B10G11R11_UFLOAT_PACK32:			return ImageFormat::RGB32_HDR;
@@ -98,7 +99,7 @@ namespace Omni {
 	public:
 		VulkanImage();
 		VulkanImage(const ImageSpecification& spec, VkImage image, VkImageView view);
-		VulkanImage(const ImageSpecification& spec);
+		VulkanImage(const ImageSpecification& spec, UUID id);
 		VulkanImage(std::filesystem::path path);
 		~VulkanImage();
 
@@ -108,27 +109,27 @@ namespace Omni {
 		VkImage Raw() const { return m_Image; }
 		VkImageView RawView() const { return m_ImageView; };
 		ImageSpecification GetSpecification() const override { return m_Specification; }
-		uint32 GetId() const override { return m_Id; }
+		UUID GetId() const override { return m_Id; }
 
-		VkImageLayout GetCurrentLayout() const { return m_CurrentLayout; }
+		ImageLayout GetCurrentLayout() const { return m_CurrentLayout; }
 
 		// It is supposed that image has actually already been transitioned into layout.
-		void SetCurrentLayout(VkImageLayout layout) { m_CurrentLayout = layout; } 
+		void SetCurrentLayout(ImageLayout layout) { m_CurrentLayout = layout; } 
+		void SetLayout(Shared<DeviceCmdBuffer> cmd_buffer, ImageLayout new_layout, PipelineStage src_stage, PipelineStage dst_stage, PipelineAccess src_access, PipelineAccess dst_access) override;
 
 	private:
 		void CreateTexture();
 		void CreateRenderTarget();
 
 	private:
-		static uint32 s_IdCounter;
 
 		ImageSpecification m_Specification;
-		uint32 m_Id;
+		UUID m_Id;
 
 		VkImage m_Image;
 		VmaAllocation m_Allocation;
 		VkImageView m_ImageView;
-		VkImageLayout m_CurrentLayout;
+		ImageLayout m_CurrentLayout;
 		
 		bool m_CreatedFromRaw;
 

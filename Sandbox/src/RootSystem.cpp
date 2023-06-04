@@ -35,8 +35,7 @@ public:
 			m_Camera->Rotate(0.5f, 0.0f, 0.0f, true);
 		}
 
-		SceneRenderData render_data{ .target = swapchain_image, .camera = ShareAs<Camera>(m_Camera)};
-		m_Renderer->BeginScene(render_data);
+		m_Renderer->BeginScene(m_Camera);
 		m_Renderer->EndScene();
 
 	}

@@ -29,21 +29,8 @@ namespace Omni {
 		m_CmdBuffers.resize(m_Swapchain->GetSpecification().frames_in_flight);
 		m_CmdBuffers.shrink_to_fit();
 
-		for (auto& cmd_buffer : m_CmdBuffers) 
-		{
-			VkCommandPoolCreateInfo cmd_pool_create_info = {};
-			cmd_pool_create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-			cmd_pool_create_info.queueFamilyIndex = m_Device->GetPhysicalDevice()->GetQueueFamilyIndices().graphics;
-
-			VK_CHECK_RESULT(vkCreateCommandPool(m_Device->Raw(), &cmd_pool_create_info, nullptr, &cmd_buffer.pool));
-
-			VkCommandBufferAllocateInfo cmd_buffer_allocate_info = {};
-			cmd_buffer_allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-			cmd_buffer_allocate_info.commandPool = cmd_buffer.pool;
-			cmd_buffer_allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-			cmd_buffer_allocate_info.commandBufferCount = 1;
-			
-			VK_CHECK_RESULT(vkAllocateCommandBuffers(m_Device->Raw(), &cmd_buffer_allocate_info, &cmd_buffer.buffer));
+		for (auto& buf : m_CmdBuffers) {
+			buf = std::make_shared<VulkanDeviceCmdBuffer>(DeviceCmdBufferLevel::PRIMARY, DeviceCmdBufferType::GENERAL, DeviceCmdType::GENERAL);
 		}
 
 		if (s_DescriptorPool == VK_NULL_HANDLE) {
@@ -73,17 +60,15 @@ namespace Omni {
 	VulkanRenderer::~VulkanRenderer()
 	{
 		vkDeviceWaitIdle(m_Device->Raw());
-		for (auto& cmd_buffer : m_CmdBuffers) {
-			vkFreeCommandBuffers(m_Device->Raw(), cmd_buffer.pool, 1, &cmd_buffer.buffer);
-			vkDestroyCommandPool(m_Device->Raw(), cmd_buffer.pool, nullptr);
-		}
+		for (auto& cmd_buffer : m_CmdBuffers)
+			cmd_buffer->Destroy();
 		vkDestroyDescriptorPool(m_Device->Raw(), s_DescriptorPool, nullptr);
 	}
 
 	void VulkanRenderer::BeginFrame()
 	{
 		m_Swapchain->BeginFrame();	
-		m_CurrentCmdBuffer = &m_CmdBuffers[m_Swapchain->GetCurrentFrameIndex()];
+		m_CurrentCmdBuffer = m_CmdBuffers[m_Swapchain->GetCurrentFrameIndex()];
 		this->BeginCommandRecord();
 	}
 
@@ -95,64 +80,57 @@ namespace Omni {
 	void VulkanRenderer::BeginCommandRecord()
 	{
 		Renderer::Submit([=]() mutable {
-			vkResetCommandPool(m_Device->Raw(), m_CurrentCmdBuffer->pool, 0);
-
-			VkCommandBufferBeginInfo cmd_buffer_begin_info = {};
-			cmd_buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-
-			vkBeginCommandBuffer(m_CurrentCmdBuffer->buffer, &cmd_buffer_begin_info);
+			m_CurrentCmdBuffer->Reset();
+			m_CurrentCmdBuffer->Begin();
 		});
 	}
 
 	void VulkanRenderer::EndCommandRecord()
 	{
-		Renderer::Submit([cmd_buffer = m_CurrentCmdBuffer]() {
-			vkEndCommandBuffer(cmd_buffer->buffer);
+		Renderer::Submit([=]() mutable {
+			m_CurrentCmdBuffer->End();
 		});
 	}
 
 	void VulkanRenderer::ExecuteCurrentCommands()
 	{
 		Renderer::Submit(
-			[
-				// Context
-				current_fence = m_Swapchain->GetCurrentFence(),
-				current_render_semaphore = m_Swapchain->GetSemaphores().render_complete,
-				current_present_semaphore = m_Swapchain->GetSemaphores().present_complete,
-				cmd_buffer = m_CurrentCmdBuffer,
-				device = m_Device,
-				mtx = &m_Mutex
-			]() {
+			[=]() mutable {
 				// Execution code
 				VkPipelineStageFlags stagemasks[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+
+				Shared<VulkanDeviceCmdBuffer> vk_cmd_buffer = ShareAs<VulkanDeviceCmdBuffer>(m_CurrentCmdBuffer);
+				VkCommandBuffer raw_buffer = vk_cmd_buffer->Raw();
+				auto semaphores = m_Swapchain->GetSemaphores();
 
 				VkSubmitInfo submitinfo = {};
 				submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 				submitinfo.commandBufferCount = 1;
-				submitinfo.pCommandBuffers = &cmd_buffer->buffer;
+				submitinfo.pCommandBuffers = &raw_buffer;
 				submitinfo.signalSemaphoreCount = 1;
-				submitinfo.pSignalSemaphores = &current_render_semaphore;
+				submitinfo.pSignalSemaphores = &semaphores.render_complete;
 				submitinfo.waitSemaphoreCount = 1;
-				submitinfo.pWaitSemaphores = &current_present_semaphore;
+				submitinfo.pWaitSemaphores = &semaphores.present_complete;
 				submitinfo.pWaitDstStageMask = stagemasks;
 
-				mtx->lock();
-				VkResult result = vkQueueSubmit(device->GetGeneralQueue(), 1, &submitinfo, current_fence);
-				mtx->unlock();
+				m_Mutex.lock();
+				VkResult result = vkQueueSubmit(m_Device->GetGeneralQueue(), 1, &submitinfo, m_Swapchain->GetCurrentFence());
+				m_Mutex.unlock();
 		});
 	}
 
 	void VulkanRenderer::ClearImage(Shared<Image> image, const fvec4& value)
 	{
 		Renderer::Submit([=]() mutable {
-			TransitionImageLayout(
-				ShareAs<VulkanImage>(image),
-				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
-				VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-				VK_PIPELINE_STAGE_TRANSFER_BIT,
-				0,
-				0
+
+			image->SetLayout(
+				m_CurrentCmdBuffer,
+				ImageLayout::TRANSFER_DST,
+				PipelineStage::TOP_OF_PIPE,
+				PipelineStage::TRANSFER
 			);
+
+
 			Shared<VulkanImage> vk_image = ShareAs<VulkanImage>(image);
 
 			VkClearColorValue clear_color_value = {};
@@ -168,49 +146,14 @@ namespace Omni {
 			range.baseArrayLayer = 0;
 			range.layerCount = 1;
 
-			vkCmdClearColorImage(m_CurrentCmdBuffer->buffer, vk_image->Raw(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear_color_value, 1, &range);
+			vkCmdClearColorImage(m_CurrentCmdBuffer->Raw(), vk_image->Raw(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear_color_value, 1, &range);
 
-			TransitionImageLayout(
-				ShareAs<VulkanImage>(image),
-				VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-				VK_PIPELINE_STAGE_TRANSFER_BIT,
-				VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-				0,
-				0
+			image->SetLayout(m_CurrentCmdBuffer,
+				ImageLayout::PRESENT_SRC,
+				PipelineStage::TRANSFER,
+				PipelineStage::BOTTOM_OF_PIPE
 			);
 		});
-	}
-
-	void VulkanRenderer::TransitionImageLayout(Shared<VulkanImage> image, VkImageLayout new_layout, VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage, VkAccessFlags srcAccess, VkAccessFlags dstAccess)
-	{
-		VkImageMemoryBarrier image_memory_barrier = {};
-		image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		image_memory_barrier.image = image->Raw();
-		image_memory_barrier.oldLayout = image->GetCurrentLayout();
-		image_memory_barrier.newLayout = new_layout;
-		image_memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		image_memory_barrier.srcAccessMask = srcAccess;
-		image_memory_barrier.dstAccessMask = dstAccess;
-		image_memory_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		image_memory_barrier.subresourceRange.baseArrayLayer = 0;
-		image_memory_barrier.subresourceRange.layerCount = 1;
-		image_memory_barrier.subresourceRange.baseMipLevel = 0;
-		image_memory_barrier.subresourceRange.levelCount = 1;
-
-		vkCmdPipelineBarrier(m_CurrentCmdBuffer->buffer,
-			srcStage,
-			dstStage,
-			0,
-			0,
-			nullptr,
-			0,
-			nullptr,
-			1,
-			&image_memory_barrier
-		);
-		
-		image->SetCurrentLayout(new_layout);
 	}
 
 	std::vector<VkDescriptorSet> VulkanRenderer::AllocateDescriptorSets(VkDescriptorSetLayout layout, uint32 count)
@@ -265,14 +208,14 @@ namespace Omni {
 
 			VkBuffer raw_vbo = vk_vbo->Raw();
 
-			vkCmdBindPipeline(m_CurrentCmdBuffer->buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
-			vkCmdBindVertexBuffers(m_CurrentCmdBuffer->buffer, 0, 1, &raw_vbo, &offset);
-			vkCmdBindIndexBuffer(m_CurrentCmdBuffer->buffer, vk_ibo->Raw(), 0, ibo_data->index_type);
+			vkCmdBindPipeline(m_CurrentCmdBuffer->Raw(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
+			vkCmdBindVertexBuffers(m_CurrentCmdBuffer->Raw(), 0, 1, &raw_vbo, &offset);
+			vkCmdBindIndexBuffer(m_CurrentCmdBuffer->Raw(), vk_ibo->Raw(), 0, ibo_data->index_type);
 
 			if(misc_data.size)
-				vkCmdPushConstants(m_CurrentCmdBuffer->buffer, vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, misc_data.size, misc_data.data);
+				vkCmdPushConstants(m_CurrentCmdBuffer->Raw(), vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, misc_data.size, misc_data.data);
 
-			vkCmdDrawIndexed(m_CurrentCmdBuffer->buffer, ibo_data->index_count, 1, 0, 0, 0);
+			vkCmdDrawIndexed(m_CurrentCmdBuffer->Raw(), ibo_data->index_count, 1, 0, 0, 0);
 
 			delete[] misc_data.data;
 		});
@@ -283,10 +226,10 @@ namespace Omni {
 		Renderer::Submit([=]() mutable {
 			Shared<VulkanPipeline> vk_pipeline = ShareAs<VulkanPipeline>(pipeline);
 
-			vkCmdPushConstants(m_CurrentCmdBuffer->buffer, vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
-			vkCmdBindPipeline(m_CurrentCmdBuffer->buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
+			vkCmdPushConstants(m_CurrentCmdBuffer->Raw(), vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
+			vkCmdBindPipeline(m_CurrentCmdBuffer->Raw(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
 
-			vkCmdDraw(m_CurrentCmdBuffer->buffer, 6, 1, 0, 0);
+			vkCmdDraw(m_CurrentCmdBuffer->Raw(), 6, 1, 0, 0);
 
 			delete[] data.data;
 		});
@@ -299,17 +242,29 @@ namespace Omni {
 
 			if (data.size)
 			{
-				vkCmdPushConstants(m_CurrentCmdBuffer->buffer, vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
+				vkCmdPushConstants(m_CurrentCmdBuffer->Raw(), vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
 				delete[] data.data;
 			}
-			vkCmdBindPipeline(m_CurrentCmdBuffer->buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
-			vkCmdDraw(m_CurrentCmdBuffer->buffer, 6, amount, 0, 0);
+			vkCmdBindPipeline(m_CurrentCmdBuffer->Raw(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
+			vkCmdDraw(m_CurrentCmdBuffer->Raw(), 6, amount, 0, 0);
 		});
 	}
 
 	void VulkanRenderer::RenderImGui()
 	{
 		auto image = m_Swapchain->GetCurrentImage();
+		
+		Renderer::Submit([=]() mutable {
+			image->SetLayout(
+				m_CurrentCmdBuffer,
+				ImageLayout::COLOR_ATTACHMENT,
+				PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+				PipelineStage::BOTTOM_OF_PIPE,
+				PipelineAccess::COLOR_ATTACHMENT_WRITE,
+				PipelineAccess::NONE
+			);
+		});
+
 		BeginRender(
 			image,
 			image->GetSpecification().extent,
@@ -320,9 +275,53 @@ namespace Omni {
 		Renderer::Submit([=]() mutable {
 			ImGui::Render();
 			ImDrawData* draw_data = ImGui::GetDrawData();
-			ImGui_ImplVulkan_RenderDrawData(draw_data, m_CurrentCmdBuffer->buffer);
+			ImGui_ImplVulkan_RenderDrawData(draw_data, m_CurrentCmdBuffer->Raw());
 		});
 		EndRender(image);
+	}
+
+	void VulkanRenderer::CopyToSwapchain(Shared<Image> image)
+	{
+		Renderer::Submit([=]() mutable {
+			Shared<VulkanImage> vk_image = ShareAs<VulkanImage>(image);
+			Shared<Image> swapchain_image = m_Swapchain->GetCurrentImage();
+			uvec3 swapchain_resolution = swapchain_image->GetSpecification().extent;
+			uvec3 src_image_resolution = image->GetSpecification().extent;
+
+			VkImageBlit image_blit = {};
+			image_blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			image_blit.srcSubresource.mipLevel = 0;
+			image_blit.srcSubresource.baseArrayLayer = 0;
+			image_blit.srcSubresource.layerCount = 1;
+			image_blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			image_blit.dstSubresource.mipLevel = 0;
+			image_blit.dstSubresource.baseArrayLayer = 0;
+			image_blit.dstSubresource.layerCount = 1;
+			image_blit.srcOffsets[0] = { 0, 0, 0 };
+			image_blit.srcOffsets[1] = { (int32)src_image_resolution.x, (int32)src_image_resolution.y, 1 };
+			image_blit.dstOffsets[0] = { 0, 0, 0 };
+			image_blit.dstOffsets[1] = { (int32)swapchain_resolution.x, (int32)swapchain_resolution.y, 1 };
+
+			vk_image->SetLayout(
+				m_CurrentCmdBuffer,
+				ImageLayout::TRANSFER_DST,
+				PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+				PipelineStage::TRANSFER,
+				PipelineAccess::COLOR_ATTACHMENT_WRITE,
+				PipelineAccess::TRANSFER_READ
+			);
+
+			vkCmdBlitImage(
+				m_CurrentCmdBuffer->Raw(),
+				vk_image->Raw(),
+				(VkImageLayout)vk_image->GetCurrentLayout(),
+				ShareAs<VulkanImage>(image)->Raw(),
+				(VkImageLayout)VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				1,
+				&image_blit,
+				VK_FILTER_LINEAR
+			);
+		});
 	}
 
 	void VulkanRenderer::BeginRender(Shared<Image> target, uvec3 render_area, ivec2 render_offset, fvec4 clear_color)
@@ -331,12 +330,12 @@ namespace Omni {
 			Shared<VulkanImage> vk_target = ShareAs<VulkanImage>(target);
 			ImageSpecification target_spec = vk_target->GetSpecification();
 
-			TransitionImageLayout(ShareAs<VulkanImage>(target),
-				VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-				VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-				0,
-				VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+			target->SetLayout(m_CurrentCmdBuffer,
+				ImageLayout::COLOR_ATTACHMENT,
+				PipelineStage::BOTTOM_OF_PIPE,
+				PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+				PipelineAccess::NONE,
+				PipelineAccess::COLOR_ATTACHMENT_WRITE
 			);
 
 			VkRenderingAttachmentInfo color_attachment = {};
@@ -361,23 +360,16 @@ namespace Omni {
 
 			VkRect2D scissor = { {0,0}, {target_spec.extent.x, target_spec.extent.y} };
 			VkViewport viewport = { 0, (float32)target_spec.extent.y, (float32)target_spec.extent.x, -(float32)target_spec.extent.y, 0.0f, 1.0f};
-			vkCmdSetScissor(m_CurrentCmdBuffer->buffer, 0, 1, &scissor);
-			vkCmdSetViewport(m_CurrentCmdBuffer->buffer, 0, 1, &viewport);
-			vkCmdBeginRendering(m_CurrentCmdBuffer->buffer, &rendering_info);
+			vkCmdSetScissor(m_CurrentCmdBuffer->Raw(), 0, 1, &scissor);
+			vkCmdSetViewport(m_CurrentCmdBuffer->Raw(), 0, 1, &viewport);
+			vkCmdBeginRendering(m_CurrentCmdBuffer->Raw(), &rendering_info);
 		});
 	}
 
 	void VulkanRenderer::EndRender(Shared<Image> target)
 	{
 		Renderer::Submit([=]() mutable {
-			vkCmdEndRendering(m_CurrentCmdBuffer->buffer);
-			TransitionImageLayout(ShareAs<VulkanImage>(target),
-				VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-				VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-				VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-				0
-			);
+			vkCmdEndRendering(m_CurrentCmdBuffer->Raw());
 		});
 	}
 
@@ -404,7 +396,7 @@ namespace Omni {
 			default:							std::unreachable();
 			}
 
-			vkCmdBindDescriptorSets(m_CurrentCmdBuffer->buffer, bind_point, vk_pipeline->RawLayout(), index, 1, &raw_set, 0, nullptr);
+			vkCmdBindDescriptorSets(m_CurrentCmdBuffer->Raw(), bind_point, vk_pipeline->RawLayout(), index, 1, &raw_set, 0, nullptr);
 		});
 	}
 

@@ -20,6 +20,7 @@ namespace Omni {
 		virtual uint32 GetDeviceMinimalUniformBufferAlignment() const = 0;
 		virtual uint32 GetDeviceMinimalStorageBufferAlignment() const = 0;
 		virtual Shared<Swapchain> GetSwapchain() = 0;
+		virtual Shared<DeviceCmdBuffer> GetCmdBuffer() = 0;
 
 		virtual void BeginFrame() = 0;
 		virtual void EndFrame() = 0;
@@ -27,6 +28,7 @@ namespace Omni {
 		virtual void EndRender(Shared<Image> target) = 0;
 		virtual void WaitDevice() = 0;
 		virtual void BindSet(Shared<DescriptorSet> set, Shared<Pipeline> pipeline, uint8 index) = 0;
+		virtual void CopyToSwapchain(Shared<Image> image) = 0;
 
 		virtual void BeginCommandRecord() = 0;
 		virtual void EndCommandRecord() = 0;

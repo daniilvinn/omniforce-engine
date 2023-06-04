@@ -6,8 +6,6 @@
 #include <shaderc/shaderc.hpp>
 
 #include <fstream>
-#include <chrono>
-#include <any>
 
 namespace Omni {
 

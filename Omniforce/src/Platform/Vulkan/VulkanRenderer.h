@@ -5,6 +5,7 @@
 
 #include <Renderer/Swapchain.h>
 #include <Platform/Vulkan/VulkanSwapchain.h>
+#include "VulkanDeviceCmdBuffer.h"
 
 #include <Renderer/Renderer.h>
 
@@ -12,10 +13,6 @@ namespace Omni {
 
 	class VulkanRenderer : public RendererAPI {
 	public:
-		struct CmdBuffer {
-			VkCommandBuffer buffer;
-			VkCommandPool pool;
-		};
 
 		VulkanRenderer(const RendererConfig& config);
 		~VulkanRenderer() override;
@@ -24,6 +21,7 @@ namespace Omni {
 		uint32 GetCurrentFrameIndex() const override { return m_Swapchain->GetCurrentFrameIndex(); }
 		uint32 GetDeviceMinimalUniformBufferAlignment() const override;
 		uint32 GetDeviceMinimalStorageBufferAlignment() const override;
+		Shared<DeviceCmdBuffer> GetCmdBuffer() override { return m_CurrentCmdBuffer; };
 
 		void BeginFrame() override;
 		void EndFrame() override;
@@ -38,26 +36,18 @@ namespace Omni {
 
 		void ClearImage(Shared<Image> image, const fvec4& value) override;
 		Shared<Swapchain> GetSwapchain() override { return ShareAs<Swapchain>(m_Swapchain); };
-		CmdBuffer* GetCurrentCmdBuffer() const { return m_CurrentCmdBuffer; }
+		Shared<DeviceCmdBuffer> GetCurrentCmdBuffer() { return ShareAs<DeviceCmdBuffer>(m_CurrentCmdBuffer); }
 		void RenderMesh(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo, MiscData misc_data) override;
 		void RenderQuad(Shared<Pipeline> pipeline, MiscData data) override;
-
-		void TransitionImageLayout(
-			Shared<VulkanImage> image, 
-			VkImageLayout new_layout, 
-			VkPipelineStageFlags srcStage, 
-			VkPipelineStageFlags dstStage, 
-			VkAccessFlags srcAccess, 
-			VkAccessFlags dstAccess
-		);
 
 		static std::vector<VkDescriptorSet> AllocateDescriptorSets(VkDescriptorSetLayout layout, uint32 count);
 		static void FreeDescriptorSets(std::vector<VkDescriptorSet> sets);
 
-
 		void RenderQuad(Shared<Pipeline> pipeline, uint32 amount, MiscData data) override;
-
 		void RenderImGui() override;
+
+
+		void CopyToSwapchain(Shared<Image> image) override;
 
 	private:
 		RendererConfig m_Config;
@@ -66,8 +56,8 @@ namespace Omni {
 		Shared<VulkanDevice> m_Device;
 		Shared<VulkanSwapchain> m_Swapchain;
 
-		std::vector<CmdBuffer> m_CmdBuffers;
-		CmdBuffer* m_CurrentCmdBuffer;
+		std::vector<Shared<VulkanDeviceCmdBuffer>> m_CmdBuffers;
+		Shared<VulkanDeviceCmdBuffer> m_CurrentCmdBuffer;
 
 		std::shared_mutex m_Mutex;
 

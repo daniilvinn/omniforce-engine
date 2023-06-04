@@ -20,6 +20,6 @@ namespace Omni {
 	};
 
 	namespace UI {
-		void OMNIFORCE_API RenderImage(Shared<Image> image, Shared<ImageSampler> sampler, ImVec2 size, uint32 image_layer = 0);
+		void OMNIFORCE_API RenderImage(Shared<Image> image, Shared<ImageSampler> sampler, ImVec2 size, uint32 image_layer = 0, bool flip = false);
 	}
 }

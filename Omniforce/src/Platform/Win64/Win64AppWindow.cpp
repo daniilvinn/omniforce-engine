@@ -1,4 +1,4 @@
-#include "Win64AppWindow.h"
+﻿#include "Win64AppWindow.h"
 #include <Log/Logger.h>
 
 #include <Core/Events/ApplicationEvents.h>

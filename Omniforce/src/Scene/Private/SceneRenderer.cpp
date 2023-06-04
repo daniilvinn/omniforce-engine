@@ -6,6 +6,7 @@
 #include <Renderer/DeviceBuffer.h>
 #include <Core/Utils.h>
 
+#include <Asset/AssetManager.h>
 #include <Platform/Vulkan/VulkanCommon.h>
 
 namespace Omni {
@@ -72,8 +73,19 @@ namespace Omni {
 
 				m_SpriteBufferSize = per_frame_size;
 			}
+
+			// Initialize render targets
+			{
+				ImageSpecification render_target_spec = ImageSpecification::Default();
+				render_target_spec.usage = ImageUsage::RENDER_TARGET;
+				render_target_spec.extent = Renderer::GetSwapchainImage()->GetSpecification().extent;
+				render_target_spec.format = ImageFormat::RGB32_HDR;
+				for (int i = 0; i < Renderer::GetConfig().frames_in_flight; i++)
+					m_RendererOutputs.push_back(Image::Create(render_target_spec));
+			}
+
 		}
-		
+
 		// Initializing nearest filtration sampler
 		{
 			ImageSamplerSpecification sampler_spec = {};
@@ -104,23 +116,23 @@ namespace Omni {
 		}
 		// Load dummy white texture
 		{
-			ImageSpecification image_spec = {};
-			image_spec.path = "assets/textures/opaque_white.png";
-			m_DummyWhiteTexture = Image::Create(image_spec);
-			AcquireTextureIndex(m_DummyWhiteTexture, SamplerFilteringMode::NEAREST);
+			ImageSpecification spec = ImageSpecification::Default();
+			spec.path = "assets\\textures\\opaque_white.png";
+			m_DummyWhiteTexture = Image::Create(spec);
+			AcquireTextureIndex(m_DummyWhiteTexture, SamplerFilteringMode::LINEAR);
 		}
 		// Initializing pipelines
 		{
 			PipelineSpecification pipeline_spec = PipelineSpecification::Default();
 			pipeline_spec.shader = ShaderLibrary::Get()->GetShader("sprite.ofs");
 			pipeline_spec.debug_name = "sprite pass";
-			pipeline_spec.output_attachments_formats = { ImageFormat::BGRA32_UNORM };
+			pipeline_spec.output_attachments_formats = { ImageFormat::RGB32_HDR };
 			pipeline_spec.culling_mode = PipelineCullingMode::NONE;
 
 			m_SpritePass = Pipeline::Create(pipeline_spec);
 			ShaderLibrary::Get()->Unload("sprite.ofs");
 		}
-		
+
 	}
 
 	SceneRenderer::~SceneRenderer()
@@ -136,19 +148,30 @@ namespace Omni {
 		m_SpritePass->Destroy();
 		m_SpriteDataBuffer->Destroy();
 		m_MainCameraDataBuffer->Destroy();
-		for(auto set : s_GlobalSceneData.scene_descriptor_set)
+		for (auto set : s_GlobalSceneData.scene_descriptor_set)
 			set->Destroy();
 	}
 
-	void SceneRenderer::BeginScene(SceneRenderData scene_data)
+	void SceneRenderer::BeginScene(Shared<Camera> camera)
 	{
-		m_CurrentSceneRenderData = scene_data;
+		m_Camera = camera;
 
-		glm::mat4 matrices[3] = { scene_data.camera->GetViewMatrix(), scene_data.camera->GetProjectionMatrix(), scene_data.camera->GetViewProjectionMatrix() };
-
+		glm::mat4 matrices[3] = { m_Camera->GetViewMatrix(), m_Camera->GetProjectionMatrix(), m_Camera->GetViewProjectionMatrix() };
 		m_MainCameraDataBuffer->UploadData(Renderer::GetCurrentFrameIndex() * (sizeof glm::mat4 * 3), matrices, sizeof(matrices)); // TODO: bug here
 
-		Renderer::BeginRender(scene_data.target, scene_data.target->GetSpecification().extent, { 0, 0 }, { 0.0f, 0.0f, 0.0f, 1.0f });
+		m_CurrectMainRenderTarget = m_RendererOutputs[Renderer::GetCurrentFrameIndex()];
+
+		Renderer::Submit([=]() {	
+			m_CurrectMainRenderTarget->SetLayout(
+				Renderer::GetCmdBuffer(),
+				ImageLayout::COLOR_ATTACHMENT,
+				PipelineStage::FRAGMENT_SHADER,
+				PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+				PipelineAccess::UNIFORM_READ,
+				PipelineAccess::COLOR_ATTACHMENT_WRITE
+			);
+		});
+		Renderer::BeginRender(m_CurrectMainRenderTarget, m_CurrectMainRenderTarget->GetSpecification().extent, { 0, 0 }, { 0.0f, 0.0f, 0.0f, 1.0f });
 		Renderer::BindSet(s_GlobalSceneData.scene_descriptor_set[Renderer::GetCurrentFrameIndex()], m_SpritePass, 0);
 	}
 
@@ -161,7 +184,18 @@ namespace Omni {
 		);
 
 		Renderer::RenderQuad(m_SpritePass, m_SpriteQueue.size(), { nullptr, 0 });
-		Renderer::EndRender(m_CurrentSceneRenderData.target);
+		Renderer::EndRender(m_CurrectMainRenderTarget);
+		Renderer::Submit([=]() {
+			m_CurrectMainRenderTarget->SetLayout(
+				Renderer::GetCmdBuffer(),
+				ImageLayout::SHADER_READ_ONLY,
+				PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+				PipelineStage::FRAGMENT_SHADER,
+				PipelineAccess::COLOR_ATTACHMENT_WRITE,
+				PipelineAccess::UNIFORM_READ
+			);
+		});
+		
 
 		m_SpriteQueue.clear();
 	}
@@ -190,7 +224,7 @@ namespace Omni {
 		default:								OMNIFORCE_ASSERT_TAGGED(false, "Invalid sampler filtering mode"); break;
 		}
 
-		for(auto& set : s_GlobalSceneData.scene_descriptor_set)
+		for (auto& set : s_GlobalSceneData.scene_descriptor_set)
 			set->Write(0, index, image, sampler);
 		s_GlobalSceneData.textures.emplace(image->GetId(), index);
 

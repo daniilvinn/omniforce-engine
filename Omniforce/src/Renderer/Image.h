@@ -1,10 +1,29 @@
 #pragma once
 
 #include "RendererCommon.h"
+#include "PipelineStage.h"
+
+#include "Core/UUID.h"
 
 #include <filesystem>
 
 namespace Omni {
+
+	// =======
+	//  Image
+	// =======
+
+	enum class ImageLayout {
+		UNDEFINED = 0,
+		GENERAL = 1,
+		COLOR_ATTACHMENT = 2,
+		DEPTH_STENCIL_ATTACHMENT = 3,
+		DEPTH_STENCIL_READ_ONLY = 4,
+		SHADER_READ_ONLY = 5,
+		TRANSFER_SRC = 6,
+		TRANSFER_DST = 7,
+		PRESENT_SRC = 1000001002
+	};
 
 	enum class OMNIFORCE_API ImageUsage : uint8 {
 		TEXTURE,
@@ -16,7 +35,8 @@ namespace Omni {
 		R8,
 		RB16,
 		RGB24,
-		RGBA32,
+		RGBA32_SRGB,
+		RGBA32_UNORM,
 		BGRA32_SRGB,
 		BGRA32_UNORM,
 		RGB32_HDR,
@@ -44,7 +64,7 @@ namespace Omni {
 			ImageSpecification spec;
 			spec.extent = { 0, 0, 0 };
 			spec.path = "";
-			spec.format = ImageFormat::RGBA32;
+			spec.format = ImageFormat::RGBA32_SRGB;
 			spec.usage = ImageUsage::TEXTURE;
 			spec.type = ImageType::TYPE_2D;
 			spec.mip_levels = 1;
@@ -57,16 +77,28 @@ namespace Omni {
 	class OMNIFORCE_API Image 
 	{
 	public:
-		static Shared<Image> Create(const ImageSpecification& spec);
+		static Shared<Image> Create(const ImageSpecification& spec, const UUID& id = UUID());
 
 		virtual ~Image() {}
 
 		virtual void Destroy() = 0;
 
 		virtual ImageSpecification GetSpecification() const = 0;
-		virtual uint32 GetId() const = 0;
+		virtual void SetLayout(
+			Shared<DeviceCmdBuffer> cmd_buffer,
+			ImageLayout new_layout,
+			PipelineStage src_stage,
+			PipelineStage dst_stage,
+			PipelineAccess src_access = PipelineAccess::NONE,
+			PipelineAccess dst_access = PipelineAccess::NONE
+ 		) = 0;
+		virtual UUID GetId() const = 0;
 	};
 
+
+	// ===============
+	//	Image sampler
+	// ===============
 	enum class OMNIFORCE_API SamplerFilteringMode : uint32 {
 		NEAREST,
 		LINEAR
