@@ -8,7 +8,9 @@ file(GLOB_RECURSE SANDBOX_FILES
 
 add_executable(${EDITOR_TARGET} ${SANDBOX_FILES})
 
-target_link_libraries(${EDITOR_TARGET} PUBLIC OmniforceEngine ${OMNI_IMGUI_TARGET})
+find_package(tinyfiledialogs CONFIG REQUIRED)
+
+target_link_libraries(${EDITOR_TARGET} PUBLIC OmniforceEngine ${OMNI_IMGUI_TARGET} tinyfiledialogs::tinyfiledialogs)
 target_include_directories(${EDITOR_TARGET} PUBLIC ${IMGUI_INCLUDE_PATH})
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)

@@ -83,6 +83,8 @@ namespace Omni {
 		distribute_sink->add_sink(file_sink);
 		m_FileLogger->set_pattern("%v");
 
+		OMNIFORCE_CORE_WARNING("Generating engine dump: {}", filename);
+
 		for (auto& msg : messages) {
 			m_FileLogger->critical(msg);
 		}

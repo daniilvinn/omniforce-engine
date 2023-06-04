@@ -37,9 +37,9 @@ namespace Omni {
 
 		explicit constexpr operator vec2<int32>()   const	{ return { (int32)x, (int32)y }; }
 		explicit constexpr operator vec2<uint32>()  const	{ return { (uint32)x, (uint32)y }; }
-		explicit constexpr operator vec2<float32>() const { return { (float32)x, (float32)y }; }
+		explicit constexpr operator vec2<float32>() const	{ return { (float32)x, (float32)y }; }
 
-		T operator[](uint32 index) { return values[index]; }
+		T& operator[](uint32 index) { return values[index]; }
 	};
 
 	template<typename T = float32>
@@ -61,9 +61,9 @@ namespace Omni {
 
 		explicit constexpr operator vec3<int32>()   const	{ return { (int32)values }; }
 		explicit constexpr operator vec3<uint32>()  const	{ return { (uint32)values }; }
-		explicit constexpr operator vec3<float32>() const { return { (float32)values }; }
+		explicit constexpr operator vec3<float32>() const	{ return { (float32)values }; }
 
-		T operator[](uint32 index) { return values[index]; }
+		T& operator[](uint32 index) { return values[index]; }
 	};
 
 	template<typename T = float32>
@@ -90,13 +90,13 @@ namespace Omni {
 		explicit constexpr operator vec4<uint32>()  const { return { (uint32)values }; }
 		explicit constexpr operator vec4<float32>() const { return { (float32)values }; }
 
-		T operator[](uint32 index) { return values[index]; }
+		T& operator[](uint32 index) { return values[index]; }
 	};
 
 	template<typename T>
 	struct mat4 {
 		vec4<T> values[4];
-		vec4<T> operator[](uint32 index) { return values[index]; }
+		vec4<T>& operator[](uint32 index) { return values[index]; }
 	};
 
 	using ivec2 = vec2<int32>;

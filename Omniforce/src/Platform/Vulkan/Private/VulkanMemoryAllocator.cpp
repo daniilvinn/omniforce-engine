@@ -80,6 +80,9 @@ namespace Omni {
 
 	VmaAllocation VulkanMemoryAllocator::AllocateImage(VkImageCreateInfo* create_info, uint32_t flags, VkImage* image)
 	{
+		if (create_info->extent.depth == 0)
+			OMNIFORCE_CORE_WARNING("Trying to allocate image with 0 depth. No allocation done");
+
 		VmaAllocationCreateInfo allocation_create_info = {};
 		allocation_create_info.usage = VMA_MEMORY_USAGE_AUTO;
 		allocation_create_info.flags = flags;

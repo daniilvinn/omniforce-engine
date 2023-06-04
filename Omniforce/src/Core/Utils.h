@@ -43,8 +43,6 @@ namespace Omni {
 
 			datetime += std::to_string(tt->tm_min);
 
-			std::cout << datetime << std::endl;
-
 			return datetime;
 		}
 

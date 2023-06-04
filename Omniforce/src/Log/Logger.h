@@ -79,7 +79,7 @@ namespace Omni {
 
 #ifdef OMNIFORCE_DEBUG
 	#define OMNIFORCE_INITIALIZE_LOG_SYSTEM(log_level) Omni::Logger::Init(log_level);
-	#define OMNIFORCE_WRITE_LOGS_TO_FILE() Omni::Logger::Get()->WriteLogFile();
+	#define OMNIFORCE_WRITE_LOGS_TO_FILE()		Omni::Logger::Get()->WriteLogFile();
 
 	#define OMNIFORCE_CORE_TRACE(...)			Omni::Logger::GetCoreLooger()->trace(__VA_ARGS__)
 	#define OMNIFORCE_CORE_INFO(...)			Omni::Logger::GetCoreLooger()->info(__VA_ARGS__)
@@ -93,8 +93,8 @@ namespace Omni {
 	#define OMNIFORCE_CLIENT_ERROR(...)			Omni::Logger::GetClientLooger()->error(__VA_ARGS__)
 	#define OMNIFORCE_CLIENT_CRITICAL(...)		Omni::Logger::GetClientLooger()->critical(__VA_ARGS__)
 #else
-	#define OMNIFORCE_INITIALIZE_LOG_SYSTEM(log_level)
-	#define OMNIFORCE_WRITE_LOGS_TO_FILE()
+	#define OMNIFORCE_INITIALIZE_LOG_SYSTEM(log_level) Omni::Logger::Init(log_level);
+	#define OMNIFORCE_WRITE_LOGS_TO_FILE()			   Omni::Logger::Get()->WriteLogFile();
 
 	#define OMNIFORCE_CORE_TRACE(...)
 	#define OMNIFORCE_CORE_INFO(...)
@@ -102,11 +102,11 @@ namespace Omni {
 	#define OMNIFORCE_CORE_ERROR(...)
 	#define OMNIFORCE_CORE_CRITICAL(...)
 
-	#define CURSED_CLIENT_TRACE(...)
-	#define CURSED_CLIENT_INFO(...)
-	#define CURSED_CLIENT_WARNING(...)
-	#define CURSED_CLIENT_ERROR(...)
-	#define CURSED_CLIENT_CRITICAL(...)
+	#define OMNIFORCE_CLIENT_TRACE(...)
+	#define OMNIFORCE_CLIENT_INFO(...)
+	#define OMNIFORCE_CLIENT_WARNING(...)
+	#define OMNIFORCE_CLIENT_ERROR(...)
+	#define OMNIFORCE_CLIENT_CRITICAL(...)
 #endif
 
 }

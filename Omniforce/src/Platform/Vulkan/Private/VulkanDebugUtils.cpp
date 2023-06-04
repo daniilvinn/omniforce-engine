@@ -23,7 +23,6 @@ namespace Omni {
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
 			OMNIFORCE_CORE_ERROR("Vulkan validation layers: {0}\n", pCallbackData->pMessage);
 			return VK_TRUE;
-			break;
 		default:
 			break;
 		}
