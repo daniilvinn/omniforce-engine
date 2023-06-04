@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cursed_pch.h>
-
 #include <Core/Input/Input.h>
 
 namespace Omni {

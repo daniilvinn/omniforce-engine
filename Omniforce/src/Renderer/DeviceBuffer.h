@@ -22,12 +22,13 @@ namespace Omni {
 		VERTEX_BUFFER,
 		INDEX_BUFFER,
 		UNIFORM_BUFFER,
-		STORAGE_BUFFER
+		STORAGE_BUFFER,
+		STAGING_BUFFER
 	};
 
 	enum class OMNIFORCE_API DeviceBufferMemoryUsage {
-		FREQUENT_ACCESS,
-		ONE_TIME_HOST_ACCESS,
+		READ_BACK,
+		COHERENT_WRITE,
 		NO_HOST_ACCESS
 	};
 
@@ -50,6 +51,8 @@ namespace Omni {
 		virtual void Destroy() = 0;
 
 		virtual DeviceBufferSpecification GetSpecification() const = 0;
+
+		virtual void UploadData(uint64 offset, void* data, uint64 data_size) = 0;
 	};
 
 }

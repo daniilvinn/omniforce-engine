@@ -6,5 +6,7 @@ cmake_minimum_required (VERSION 3.23)
 project ("Omniforce Engine")
 
 # Include sub-projects.
-add_subdirectory ("Omniforce")
-add_subdirectory ("Sandbox")
+add_subdirectory ("Omniforce/vendor/imgui")
+add_subdirectory (Omniforce)
+add_subdirectory (Sandbox)
+add_subdirectory (Editor)

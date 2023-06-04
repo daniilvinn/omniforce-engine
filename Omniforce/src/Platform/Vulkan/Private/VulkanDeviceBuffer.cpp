@@ -5,47 +5,33 @@
 
 namespace Omni {
 
+#pragma region converts
 	VkBufferUsageFlags convert(DeviceBufferUsage usage) 
 	{
 		switch (usage)
 		{
-		case DeviceBufferUsage::VERTEX_BUFFER:
-			return VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-			break;
-		case DeviceBufferUsage::INDEX_BUFFER:
-			return VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-			break;
-		case DeviceBufferUsage::UNIFORM_BUFFER:
-			return VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-			break;
-		case DeviceBufferUsage::STORAGE_BUFFER:
-			return VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-			break;
-		default:
-			std::unreachable();
-			break;
+		case DeviceBufferUsage::VERTEX_BUFFER:						return VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+		case DeviceBufferUsage::INDEX_BUFFER:						return VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+		case DeviceBufferUsage::UNIFORM_BUFFER:						return VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		case DeviceBufferUsage::STORAGE_BUFFER:						return VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+		case DeviceBufferUsage::STAGING_BUFFER:						return VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		default:													std::unreachable();
 		}
 	}
 
 	VmaAllocationCreateFlags convert(DeviceBufferMemoryUsage usage) {
 		switch (usage)
 		{
-		case DeviceBufferMemoryUsage::FREQUENT_ACCESS:
-			return VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
-			break;
-		case DeviceBufferMemoryUsage::ONE_TIME_HOST_ACCESS:
-			return VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-			break;
-		case DeviceBufferMemoryUsage::NO_HOST_ACCESS:
-			return 0;
-		default:
-			std::unreachable();
-			break;
+		case DeviceBufferMemoryUsage::READ_BACK:				return VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;			
+		case DeviceBufferMemoryUsage::COHERENT_WRITE:			return VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;  
+		case DeviceBufferMemoryUsage::NO_HOST_ACCESS:				return 0;														
+		default:													std::unreachable();												
 		}
 	}
+#pragma endregion
 
 	VulkanDeviceBuffer::VulkanDeviceBuffer(const DeviceBufferSpecification& spec)
-		: m_Buffer(VK_NULL_HANDLE), m_Specification(spec)
+		: m_Buffer(VK_NULL_HANDLE), m_Specification(spec), m_Data(nullptr)
 	{
 		VulkanMemoryAllocator* alloc = VulkanMemoryAllocator::Get();
 		uint64 vma_flags = convert(spec.memory_usage);
@@ -60,7 +46,7 @@ namespace Omni {
 	}
 
 	VulkanDeviceBuffer::VulkanDeviceBuffer(const DeviceBufferSpecification& spec, void* data, uint64 data_size)
-		: m_Buffer(VK_NULL_HANDLE), m_Specification(spec)
+		: m_Buffer(VK_NULL_HANDLE), m_Specification(spec), m_Data(nullptr)
 	{
 		VulkanMemoryAllocator* alloc = VulkanMemoryAllocator::Get();
 		uint64 vma_flags = convert(spec.memory_usage);
@@ -73,9 +59,6 @@ namespace Omni {
 
 		if (m_Specification.memory_usage == DeviceBufferMemoryUsage::NO_HOST_ACCESS) {
 			buffer_create_info.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-		}
-		else if (m_Specification.flags & (BitMask)DeviceBufferFlags::CREATE_STAGING_BUFFER) {
-			buffer_create_info.usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 		}
 
 		m_Allocation = alloc->AllocateBuffer(&buffer_create_info, vma_flags, &m_Buffer);
@@ -91,6 +74,8 @@ namespace Omni {
 	{
 		VulkanMemoryAllocator* alloc = VulkanMemoryAllocator::Get();
 		alloc->DestroyBuffer(&m_Buffer, &m_Allocation);
+
+		if(m_Data) delete m_Data;
 	}
 
 	void VulkanDeviceBuffer::UploadData(uint64 offset, void* data, uint64 data_size)
@@ -101,9 +86,8 @@ namespace Omni {
 
 			DeviceBufferSpecification staging_buffer_spec = {};
 			staging_buffer_spec.size = data_size;
-			staging_buffer_spec.buffer_usage = m_Specification.buffer_usage;
-			staging_buffer_spec.memory_usage = DeviceBufferMemoryUsage::ONE_TIME_HOST_ACCESS;
-			staging_buffer_spec.flags = (uint64)DeviceBufferFlags::CREATE_STAGING_BUFFER;
+			staging_buffer_spec.buffer_usage = DeviceBufferUsage::STAGING_BUFFER;
+			staging_buffer_spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
 
 			VulkanDeviceBuffer staging_buffer(staging_buffer_spec, data, data_size);
 
@@ -140,11 +124,42 @@ namespace Omni {
 		}
 		else 
 		{
+			// TODO: flush memory ranges for non-coherent allocations so changes are visible on GPU
 			VulkanMemoryAllocator* allocator = VulkanMemoryAllocator::Get();
 			void* memory = allocator->MapMemory(m_Allocation);
 			memcpy((byte*)memory + offset, data, data_size);
 			allocator->UnmapMemory(m_Allocation);
 		}
+
+		// Further data should only be set for non-staging buffers, since staging buffer will not be used in rendering at all
+		if (m_Specification.flags & (uint64)DeviceBufferFlags::CREATE_STAGING_BUFFER)
+			return;
+
+		if (m_Specification.buffer_usage == DeviceBufferUsage::INDEX_BUFFER) 
+		{
+			if(!m_Data) m_Data = new IndexBufferData;
+
+			IndexBufferData* ibo_data = (IndexBufferData*)m_Data;
+			uint8 index_size = 0;
+			if (m_Specification.flags & (uint64)DeviceBufferFlags::INDEX_TYPE_UINT8)  index_size = 1;
+			if (m_Specification.flags & (uint64)DeviceBufferFlags::INDEX_TYPE_UINT16) index_size = 2;
+			if (m_Specification.flags & (uint64)DeviceBufferFlags::INDEX_TYPE_UINT32) index_size = 4;
+
+			OMNIFORCE_ASSERT_TAGGED(index_size, "Index size was not set. Unable to evaluate index count");
+
+			ibo_data->index_count = data_size / index_size;
+			ibo_data->index_type = ExtractIndexType(m_Specification.flags);
+
+		}
+
+		else if (m_Specification.buffer_usage == DeviceBufferUsage::VERTEX_BUFFER) {
+			if (!m_Data) m_Data = new VertexBufferData;
+
+			VertexBufferData* vbo_data = (VertexBufferData*)m_Data;
+			
+			vbo_data->vertex_count = data_size / sizeof(float32);
+		}
+		
 	}
 
 }

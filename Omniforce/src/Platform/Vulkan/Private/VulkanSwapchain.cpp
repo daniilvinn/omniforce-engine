@@ -57,7 +57,7 @@ namespace Omni {
 		m_SurfaceFormat = surface_formats[0];
 
 		for (auto& format : surface_formats) {
-			if (format.format == VK_FORMAT_B8G8R8A8_SRGB && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+			if (format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
 				m_SurfaceFormat = format;
 		}
 	}
@@ -141,10 +141,10 @@ namespace Omni {
 			VK_CHECK_RESULT(vkCreateImageView(device->Raw(), &image_view_create_info, nullptr, &image_view));
 
 			ImageSpecification swapchain_image_spec = {};
-			swapchain_image_spec.extent = (uvec2)m_Specification.extent;
+			swapchain_image_spec.extent = { (uint32)m_Specification.extent.x, (uint32)m_Specification.extent.y, 1 };
 			swapchain_image_spec.usage = ImageUsage::RENDER_TARGET;
 			swapchain_image_spec.type = ImageType::TYPE_2D;
-			swapchain_image_spec.format = VulkanToOmniImageFormat(m_SurfaceFormat.format);
+			swapchain_image_spec.format = convert(m_SurfaceFormat.format);
 
 			m_Images.push_back(std::make_shared<VulkanImage>(swapchain_image_spec, image, image_view));
 
@@ -178,7 +178,7 @@ namespace Omni {
 		device->ExecuteTransientCmdBuffer(image_layout_transition_command_buffer);
 
 		for (auto& image : m_Images) {
-			image->SetCurrentLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+			image->SetCurrentLayout(ImageLayout::PRESENT_SRC);
 		}
 
 		m_CurrentFrameIndex = 0;
@@ -214,7 +214,7 @@ namespace Omni {
 			VK_CHECK_RESULT(vkCreateFence(device->Raw(), &fence_create_info, nullptr, &fence));
 			m_Fences.push_back(fence);
 		}
-
+		
 		OMNIFORCE_CORE_TRACE(
 			"Created renderer swapchain. Spec - extent: {0}x{1}, VSync: {2}, frames in flight: {3}",
 			spec.extent.x,

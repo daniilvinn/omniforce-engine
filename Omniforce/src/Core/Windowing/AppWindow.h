@@ -41,6 +41,9 @@ namespace Omni {
 			m_EventBuffer.clear();
 		}
 
+		bool Minimized() const { return m_Minimized; }
+		void SetMinimized(bool minimized) { m_Minimized = minimized; }
+
 	protected:
 		AppWindow() : m_Allocator(8192) { m_EventBuffer.reserve(512); };
 		AppWindow(const AppWindow&) = delete;
@@ -49,6 +52,7 @@ namespace Omni {
 		std::vector<Event*> m_EventBuffer;
 		EventAlloc m_Allocator;
 		std::shared_mutex m_EventMutex;
+		bool m_Minimized;
 	};
 
 }

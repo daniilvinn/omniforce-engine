@@ -109,7 +109,7 @@ namespace Omni {
 		std::vector<VkExtensionProperties> supported_extensions(count);
 		vkEnumerateDeviceExtensionProperties(m_PhysicalDevice, nullptr, &count, supported_extensions.data());
 
-		for (auto& supported_ext : supported_extensions) {
+		for (const auto& supported_ext : supported_extensions) {
 			if (!strcmp(supported_ext.extensionName, extension.c_str())) {
 				return true;
 			}
@@ -146,23 +146,41 @@ namespace Omni {
 		VkDeviceQueueCreateInfo queue_create_infos[2] = { general_queue_create_info, async_compute_queue_create_info };
 		std::vector<const char*> enabled_extensions = GetRequiredExtensions();
 
-		VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamic_rendering_feature_enable_struct = {};
-		dynamic_rendering_feature_enable_struct.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
-		dynamic_rendering_feature_enable_struct.dynamicRendering = VK_TRUE;
-
 		VkPhysicalDeviceIndexTypeUint8FeaturesEXT uint8_index_feature_enable_struct = {};
 		uint8_index_feature_enable_struct.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT;
 		uint8_index_feature_enable_struct.indexTypeUint8 = VK_TRUE;
-		uint8_index_feature_enable_struct.pNext = &dynamic_rendering_feature_enable_struct;
+
+		VkPhysicalDeviceVulkan11Features vulkan_1_1_features = {};
+		vulkan_1_1_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+		vulkan_1_1_features.pNext = &uint8_index_feature_enable_struct;
+
+		VkPhysicalDeviceVulkan12Features vulkan_1_2_features = {};
+		vulkan_1_2_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+		vulkan_1_2_features.pNext = &vulkan_1_1_features;
+		vulkan_1_2_features.descriptorIndexing = true;
+		vulkan_1_2_features.shaderSampledImageArrayNonUniformIndexing = true;
+		vulkan_1_2_features.descriptorBindingPartiallyBound = true;
+		vulkan_1_2_features.runtimeDescriptorArray = true;
+		vulkan_1_2_features.scalarBlockLayout = true;
+
+		VkPhysicalDeviceVulkan13Features vulkan_1_3_features = {};
+		vulkan_1_3_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+		vulkan_1_3_features.pNext = &vulkan_1_2_features;
+		vulkan_1_3_features.dynamicRendering = VK_TRUE;
+
+		VkPhysicalDeviceFeatures2 device_features2 = {};
+		device_features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+		device_features2.features = enabled_features;
+		device_features2.pNext = &vulkan_1_3_features;
 
 		VkDeviceCreateInfo device_create_info = {};
 		device_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 		device_create_info.pQueueCreateInfos = queue_create_infos;
 		device_create_info.queueCreateInfoCount = 2;
-		device_create_info.pEnabledFeatures = &enabled_features;
+		device_create_info.pEnabledFeatures = {};
 		device_create_info.ppEnabledExtensionNames = enabled_extensions.data();
 		device_create_info.enabledExtensionCount = enabled_extensions.size();
-		device_create_info.pNext = &uint8_index_feature_enable_struct;
+		device_create_info.pNext = &device_features2;
 
 		VK_CHECK_RESULT(vkCreateDevice(m_PhysicalDevice->Raw(), &device_create_info, nullptr, &m_Device));
 		vkGetDeviceQueue(m_Device, m_PhysicalDevice->GetQueueFamilyIndices().graphics, 0, &m_GeneralQueue);
@@ -240,14 +258,8 @@ namespace Omni {
 		if (m_PhysicalDevice->IsExtensionSupported(VK_KHR_SWAPCHAIN_EXTENSION_NAME)) {
 			extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 		}
-		if (m_PhysicalDevice->IsExtensionSupported(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME)) {
-			extensions.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
-		}
 		if (m_PhysicalDevice->IsExtensionSupported(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME)) {
 			extensions.push_back(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME);
-		}
-		if (m_PhysicalDevice->IsExtensionSupported(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME)) {
-			extensions.push_back(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
 		}
 
 		OMNIFORCE_CORE_TRACE("Enabled Vulkan device extensions:");

@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <glm/glm.hpp>
 
 namespace Omni {
 
@@ -18,56 +19,84 @@ namespace Omni {
 	typedef double float64;
 
 	using BitMask = uint64;
+	using Flag = uint64;
 
 	template<typename T = float32>
 	struct vec2 {
 		union {
-			T x, r;
-		};
-		union {
-			T y, g;
+			T values[2];
+			struct {
+				union {
+					T x, r;
+				};
+				union {
+					T y, g;
+				};
+			};
 		};
 
-		explicit operator vec2<int32>() const	{ return { (int32)x, (int32)y }; }
-		explicit operator vec2<uint32>() const	{ return { (uint32)x, (uint32)y }; }
-		explicit operator vec2<float32>() const { return { (float32)x, (float32)y }; }
+		explicit constexpr operator vec2<int32>()   const	{ return { (int32)x, (int32)y }; }
+		explicit constexpr operator vec2<uint32>()  const	{ return { (uint32)x, (uint32)y }; }
+		explicit constexpr operator vec2<float32>() const	{ return { (float32)x, (float32)y }; }
+
+		T& operator[](uint32 index) { return values[index]; }
 	};
 
 	template<typename T = float32>
 	struct vec3 {
 		union {
-			T x, r;
-		};
-		union {
-			T y, g;
-		};
-		union {
-			T z, b;
+			T values[3];
+			struct {
+				union {
+					T x, r;
+				};
+				union {
+					T y, g;
+				};
+				union {
+					T z, b;
+				};
+			};
 		};
 
-		explicit operator vec3<int32>() const	{ return { (int32)x, (int32)y, (int32)z }; }
-		explicit operator vec3<uint32>() const	{ return { (uint32)x, (uint32)y, (uint32) z }; }
-		explicit operator vec3<float32>() const { return { (float32)x, (float32)y, (float32) z }; }
+		explicit constexpr operator vec3<int32>()   const	{ return { (int32)values }; }
+		explicit constexpr operator vec3<uint32>()  const	{ return { (uint32)values }; }
+		explicit constexpr operator vec3<float32>() const	{ return { (float32)values }; }
+
+		T& operator[](uint32 index) { return values[index]; }
 	};
 
 	template<typename T = float32>
 	struct vec4 {
 		union {
-			T x, r;
-		};
-		union {
-			T y, g;
-		};
-		union {
-			T z, b;
-		};
-		union {
-			T w, a;
+			T values[4];
+			struct {
+				union {
+					T x, r;
+				};
+				union {
+					T y, g;
+				};
+				union {
+					T z, b;
+				};
+				union {
+					T w, a;
+				};
+			};
 		};
 
-		explicit operator vec4<int32>() const	{ return { (int32)x, (int32)y, (int32)z, (int32)w }; }
-		explicit operator vec4<uint32>() const	{ return { (uint32)x, (uint32)y, (uint32) z, (uint32)w }; }
-		explicit operator vec4<float32>() const { return { (float32)x, (float32)y, (float32) z, (float32)w }; }
+		explicit constexpr operator vec4<int32>()   const { return { (int32)values }; }
+		explicit constexpr operator vec4<uint32>()  const { return { (uint32)values }; }
+		explicit constexpr operator vec4<float32>() const { return { (float32)values }; }
+
+		T& operator[](uint32 index) { return values[index]; }
+	};
+
+	template<typename T>
+	struct mat4 {
+		vec4<T> values[4];
+		vec4<T>& operator[](uint32 index) { return values[index]; }
 	};
 
 	using ivec2 = vec2<int32>;
@@ -81,5 +110,14 @@ namespace Omni {
 	using fvec2 = vec2<float32>;
 	using fvec3 = vec3<float32>;
 	using fvec4 = vec4<float32>;
+
+	using imat4 = mat4<int32>;
+	using umat4 = mat4<uint32>;
+	using fmat4 = mat4<float32>;
+
+	struct MiscData {
+		byte* data;
+		uint32 size;
+	};
 
 }

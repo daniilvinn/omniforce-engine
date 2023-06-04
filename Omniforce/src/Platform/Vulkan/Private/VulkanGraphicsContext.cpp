@@ -93,7 +93,7 @@ namespace Omni {
 	}
 
 	std::vector<const char*> VulkanGraphicsContext::GetVulkanExtensions()
-{
+	{
 		uint32 glfw_extension_count = 0;
 		const char** glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extension_count);
 
