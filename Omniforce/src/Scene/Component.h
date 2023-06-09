@@ -61,8 +61,9 @@ namespace Omni {
 		fvec4 color;
 		UUID texture;
 		int32 layer;
+		float32 aspect_ratio; // of a texture
 
-		SpriteComponent() : color{ 1.0f, 1.0f, 1.0f, 1.0f }, texture(0), layer(0) {};
+		SpriteComponent() : color{ 1.0f, 1.0f, 1.0f, 1.0f }, texture(0), layer(0), aspect_ratio(1.0f) {};
 		SpriteComponent(const fvec4& tint) : color(tint), texture(0), layer(0) {};
 		SpriteComponent(const fvec4& tint, const UUID& id) : color(tint), texture(id), layer(0) {};
 
@@ -71,9 +72,10 @@ namespace Omni {
 
 	struct OMNIFORCE_API CameraComponent {
 		Shared<Camera> camera;
+		bool primary;
 
-		CameraComponent() : camera(nullptr){}
-		CameraComponent(Shared<Camera> value) : camera(value) {}
+		CameraComponent() : camera(nullptr), primary(false) {}
+		CameraComponent(Shared<Camera> value, bool is_primary) : camera(value), primary(is_primary) {}
 
 		static const char* GetSerializableKey() { return "CameraComponent"; }
 	};

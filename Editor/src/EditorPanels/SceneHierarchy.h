@@ -11,6 +11,7 @@ namespace Omni {
 		~SceneHierarchyPanel();
 
 		void Render() override;
+		void SetContext(Scene* ctx) override;
 
 		Entity GetSelectedNode() const { return m_SelectedNode; }
 		bool IsNodeSelected() const { return m_IsSelected; }

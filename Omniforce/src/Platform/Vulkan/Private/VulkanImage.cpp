@@ -47,7 +47,7 @@ namespace Omni {
 
 	VulkanImage::~VulkanImage()
 	{
-		this->Destroy();
+
 	}
 
 	void VulkanImage::Destroy()

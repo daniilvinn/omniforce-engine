@@ -52,16 +52,14 @@ namespace Omni
 		renderer_config.vsync = false;
 
 		js->Execute(Input::Init);
-		js->Execute(AssetManager::Init);
 		js->Execute([renderer_config]() {
 			Renderer::Init(renderer_config);
 		});
 
 		js->Wait();
 
-		js->Execute([]() {
-			Renderer::LoadShaderPack();
-		});
+		js->Execute(Renderer::LoadShaderPack);
+		js->Execute(AssetManager::Init);
 
 		m_ImGuiRenderer = ImGuiRenderer::Create();
 		m_ImGuiRenderer->Launch(m_WindowSystem->GetWindow("main")->Raw());
@@ -80,13 +78,12 @@ namespace Omni
 
 	void Application::Destroy()
 	{
-		JobSystem* js = JobSystem::Get();
 
 		m_ImGuiRenderer->Destroy();
 
-		js->Wait();
-		js->Execute(Renderer::Shutdown);
-		js->Wait();
+		AssetManager::Shutdown();
+		Renderer::Shutdown();
+		
 		
 		OMNIFORCE_CORE_INFO("Engine shutdown success");
 	}

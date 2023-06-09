@@ -9,7 +9,8 @@ namespace Omni {
 
 	AssetManager::~AssetManager()
 	{
-
+		for (auto& [id, texture] : m_TextureRegistry)
+			texture->Destroy();
 	}
 
 	void AssetManager::Init()

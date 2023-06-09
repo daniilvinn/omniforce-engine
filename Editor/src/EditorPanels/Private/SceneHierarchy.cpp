@@ -36,6 +36,13 @@ namespace Omni {
 		}
 	}
 
+	void SceneHierarchyPanel::SetContext(Scene* ctx)
+	{
+		m_Context = ctx;
+		m_IsSelected = false;
+		m_SelectedNode = { (entt::entity)0, ctx };
+	}
+
 	void SceneHierarchyPanel::RenderHierarchyNode(Entity entity)
 	{
 		auto& tag_component = entity.GetComponent<TagComponent>();

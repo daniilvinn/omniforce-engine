@@ -4,8 +4,10 @@
 #include "SceneRenderer.h"
 #include "Sprite.h"
 #include "Core/UUID.h"
+#include "Core/Serializable.h"
 
 #include <entt/entt.hpp>
+#include <nlohmann/json_fwd.hpp>
 
 namespace Omni {
 
@@ -16,7 +18,7 @@ namespace Omni {
 
 	class Entity;
 
-	class OMNIFORCE_API Scene {
+	class OMNIFORCE_API Scene : public Serializable {
 	public:
 		Scene() = delete;
 		Scene(SceneType type);
@@ -32,6 +34,14 @@ namespace Omni {
 		Shared<Camera> GetCamera() const { return m_Camera; };
 		SceneRenderer* GetRenderer() const { return m_Renderer; }
 		UUID GetID() const { return m_Id; }
+
+		void Serialize(nlohmann::json& node) override;
+		void Deserialize(nlohmann::json& node) override;
+
+		/*
+		*	Editor only
+		*/
+		void EditorSetCamera(Shared<Camera> camera) { m_Camera = camera; }
 
 	private:
 		UUID m_Id;

@@ -7,16 +7,22 @@ namespace Omni {
 	// =======================
 	// Camera2D Implementation
 	Camera2D::Camera2D()
+		: Camera(CameraProjectionType::PROJECTION_2D)
 	{
 		m_ViewProjectionMatrix = glm::mat4(1.0f);
 		m_ProjectionMatrix = glm::mat4(1.0f);
 		m_ViewMatrix = glm::mat4(1.0f);
 		m_Rotation = 0.0f;
 		m_Position = glm::vec3(0.0f);
+		m_Scale = 1.0f;
 	}
 
 	void Camera2D::SetProjection(float left, float right, float bottom, float top, float zNear /*= 0.0f*/, float zFar /*= 1.0f*/)
 	{
+		m_ZNear = zNear;
+		m_ZFar = zFar;
+		m_AspectRatio = (std::abs(left) + std::abs(right)) / (std::abs(bottom) + std::abs(top));
+
 		m_ProjectionMatrix = glm::ortho(left, right, bottom, top, zNear, zFar);
 		m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
 	}
@@ -35,9 +41,16 @@ namespace Omni {
 		m_ViewProjectionMatrix = m_ProjectionMatrix * glm::inverse(m_ViewMatrix);
 	}
 
+	void Camera2D::SetScale(float32 scale)
+	{
+		m_Scale = scale;
+		SetProjection(-m_AspectRatio * m_Scale, m_AspectRatio * m_Scale, -m_Scale, m_Scale, m_ZNear, m_ZFar);
+	}
+
 	// =======================
 	// Camera3D Implementation	
 	Camera3D::Camera3D()
+		: Camera(CameraProjectionType::PROJECTION_3D)
 	{
 		m_ViewProjectionMatrix = glm::mat4(1.0f);
 		m_ProjectionMatrix = glm::mat4(1.0f);
@@ -55,6 +68,11 @@ namespace Omni {
 
 	void Camera3D::SetProjection(float fov, float ratio, float zNear, float zFar)
 	{
+		m_FieldOfView = fov;
+		m_AspectRatio = ratio;
+		m_ZNear = zNear;
+		m_ZFar = zFar;
+
 		m_ProjectionMatrix = glm::perspective(fov, ratio, zNear, zFar);
 		m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
 	}
@@ -75,6 +93,12 @@ namespace Omni {
 
 		m_ViewMatrix = glm::lookAt(m_Position, m_Position + m_FrontVector, m_UpVector);
 		m_ViewProjectionMatrix = m_ProjectionMatrix * glm::inverse(m_ViewMatrix);
+	}
+
+	void Camera3D::SetFOV(float32 fov)
+	{
+		m_FieldOfView = fov;
+		SetProjection(m_FieldOfView, m_AspectRatio, m_ZNear, m_ZFar);
 	}
 
 	glm::mat4 Camera3D::GetRotationMatrix() const
@@ -122,6 +146,7 @@ namespace Omni {
 
 		m_ViewMatrix = glm::lookAt(m_Position, m_Position + m_FrontVector, m_UpVector);
 		m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
+
 	}
 
 	void Camera3D::CalculateVectors()

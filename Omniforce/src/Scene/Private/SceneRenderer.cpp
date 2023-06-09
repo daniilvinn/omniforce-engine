@@ -150,6 +150,8 @@ namespace Omni {
 		m_MainCameraDataBuffer->Destroy();
 		for (auto set : s_GlobalSceneData.scene_descriptor_set)
 			set->Destroy();
+		for (auto& output : m_RendererOutputs)
+			output->Destroy();
 	}
 
 	void SceneRenderer::BeginScene(Shared<Camera> camera)

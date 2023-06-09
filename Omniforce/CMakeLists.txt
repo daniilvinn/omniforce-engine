@@ -31,7 +31,7 @@ target_include_directories(${ENGINE_TARGET}
         "vendor/imgui"
 )
 target_link_directories(${ENGINE_TARGET} INTERFACE "${Vulkan_SDK}\\Lib")
-target_compile_definitions(${ENGINE_TARGET} PUBLIC OMNIFORCE_STATIC)
+target_compile_definitions(${ENGINE_TARGET} PUBLIC OMNIFORCE_STATIC GLM_FORCE_DEPTH_ZERO_TO_ONE GLM_FORCE_SSE2)
 
 target_link_libraries(
     ${ENGINE_TARGET} 

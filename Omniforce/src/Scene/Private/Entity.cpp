@@ -1,4 +1,4 @@
-#include "../Entity.h"
+	#include "../Entity.h"
 #include "../Component.h"
 
 #include <array>
@@ -51,6 +51,7 @@ namespace Omni {
 
 			sprite_component_node.emplace("ColorTint", color_tint);
 			sprite_component_node.emplace("Layer", sprite_component.layer);
+			sprite_component_node.emplace("AspectRatio", sprite_component.aspect_ratio);
 
 			if (sprite_component.texture == m_OwnerScene->GetRenderer()->GetDummyWhiteTexture())
 				sprite_component_node.emplace("TextureID", nullptr);
@@ -58,6 +59,32 @@ namespace Omni {
 				sprite_component_node.emplace("TextureID", sprite_component.texture.Get());
 
 			node.emplace(sprite_component.GetSerializableKey(), sprite_component_node);
+		}
+		if (HasComponent<CameraComponent>()) {
+			auto& camera_component = GetComponent<CameraComponent>();
+
+			nlohmann::json camera_component_node = nlohmann::json::object();
+			Shared<Camera> camera = camera_component.camera;
+			camera_component_node.emplace("Primary", camera_component.primary);
+			camera_component_node.emplace("ProjectionType", camera_component.camera->GetType());
+			
+			float32 fov = 0.0f;
+			float32 orthographic_scale = 1.0f;
+			camera_component_node.emplace("NearClip", camera->GetNearClip());
+			camera_component_node.emplace("FarClip", camera->GetFarClip());
+
+			if (camera->GetType() == CameraProjectionType::PROJECTION_3D) {
+				Shared<Camera3D> camera_3D = ShareAs<Camera3D>(camera);
+				fov = camera_3D->GetFOV();
+			}
+			else if (camera->GetType() == CameraProjectionType::PROJECTION_2D) {
+				Shared<Camera2D> camera_2D = ShareAs<Camera2D>(camera);
+				orthographic_scale = camera_2D->GetScale();
+			}
+			camera_component_node.emplace("FOV", glm::degrees(fov));
+			camera_component_node.emplace("OrthographicScale", orthographic_scale);
+
+			node.emplace(camera_component.GetSerializableKey(), camera_component_node);
 		}
 	}
 
@@ -91,11 +118,42 @@ namespace Omni {
 				node[SpriteComponent::GetSerializableKey()]["ColorTint"].get<std::array<float32, 4>>();
 			sprite_component.color = { color_tint[0], color_tint[1], color_tint[2],color_tint[3] };
 			sprite_component.layer = node[SpriteComponent::GetSerializableKey()]["Layer"].get<uint64>();
+			sprite_component.aspect_ratio = node[SpriteComponent::GetSerializableKey()]["AspectRatio"].get<float32>();
 
 			if (node[SpriteComponent::GetSerializableKey()]["TextureID"].is_null())
 				sprite_component.texture = m_OwnerScene->GetRenderer()->GetDummyWhiteTexture();
 			else
 				sprite_component.texture = node[SpriteComponent::GetSerializableKey()]["TextureID"].get<uint64>();
+		}
+
+		if (node.contains(CameraComponent::GetSerializableKey())) {
+			CameraComponent& camera_component = AddComponent<CameraComponent>();
+			if (node[CameraComponent::GetSerializableKey()]["ProjectionType"] == CameraProjectionType::PROJECTION_3D) {
+				Shared<Camera3D> camera_3D = std::make_shared<Camera3D>();
+				camera_3D->SetProjection(
+					glm::radians(node[CameraComponent::GetSerializableKey()]["FOV"].get<float32>()),
+					16.0f / 90.0f, // HACK: fix this later
+					node[CameraComponent::GetSerializableKey()]["NearClip"].get<float32>(),
+					node[CameraComponent::GetSerializableKey()]["FarClip"].get<float32>()
+				);
+				camera_component.camera = camera_3D;
+			}
+			else if (node[CameraComponent::GetSerializableKey()]["ProjectionType"] == CameraProjectionType::PROJECTION_2D) {
+				Shared<Camera2D> camera_2D = std::make_shared<Camera2D>();
+				float32 aspect_ratio = 16.0f / 9.0f; // HACK: fix it as well
+				float32 scale = node[CameraComponent::GetSerializableKey()]["OrthographicScale"].get<float32>();
+				camera_2D->SetScale(scale);
+				camera_2D->SetProjection(
+					-scale * aspect_ratio,
+					scale * aspect_ratio,
+					-scale,
+					scale,
+					node[CameraComponent::GetSerializableKey()]["NearClip"].get<float32>(),
+					node[CameraComponent::GetSerializableKey()]["FarClip"].get<float32>()
+				);
+				camera_component.camera = camera_2D;
+			}
+			camera_component.primary = node[CameraComponent::GetSerializableKey()]["Primary"];
 		}
 
 	}

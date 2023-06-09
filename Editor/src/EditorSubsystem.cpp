@@ -42,7 +42,7 @@ public:
 			m_EntitySelected = true;
 		}
 
-		m_PropertiesPanel->SetEntity(m_SelectedEntity, m_EntitySelected);
+		m_PropertiesPanel->SetEntity(m_SelectedEntity, m_HierarchyPanel->IsNodeSelected());
 		m_PropertiesPanel->Render();
 
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 0.0f, 0.0f });
@@ -52,22 +52,34 @@ public:
 		ImGui::End();
 		ImGui::PopStyleVar();
 
-#if 0
-		ImGui::Begin("Debug", &debug_opened);
-		{
-			if (ImGui::Button("Generate dump")) OMNIFORCE_WRITE_LOGS_TO_FILE();
-		}
-		ImGui::End();
-#endif
-
 		m_AssetsPanel->Render();
 
-		auto camera = m_EditorScene->GetCamera();
-		Shared<Camera3D> camera_3D = ShareAs<Camera3D>(camera);
+		// set proper viewport aspect ratio
+		{
+			auto camera = m_EditorScene->GetCamera();
 
-		camera_3D->SetProjection(glm::radians(90.0f), viewport_frame_size.x / viewport_frame_size.y, 0.0f, 100.0f);
+			if (camera->GetType() == CameraProjectionType::PROJECTION_3D) {
+				Shared<Camera3D> camera_3D = ShareAs<Camera3D>(camera);
+				camera_3D->SetProjection(camera_3D->GetFOV(), viewport_frame_size.x / viewport_frame_size.y, 0.0f, 100.0f);
+			}
+			else if (camera->GetType() == CameraProjectionType::PROJECTION_2D) {
+				Shared<Camera2D> camera_2D = ShareAs<Camera2D>(camera);
+				float32 aspect_ratio = viewport_frame_size.x / viewport_frame_size.y;
+				float32 scale = camera_2D->GetScale();
+				camera_2D->SetProjection(
+					-scale * aspect_ratio, 
+					scale * aspect_ratio, 
+					-scale, 
+					scale, 
+					camera_2D->GetNearClip(), 
+					camera_2D->GetFarClip()
+				);
+			}
+
+		}
 
 		m_EditorScene->OnUpdate();
+		ControlEditorCamera();
 	}
 
 	void OnEvent(Event* e) override
@@ -101,7 +113,7 @@ public:
 	{
 		JobSystem::Get()->Wait();
 
-		m_EditorScene = new Scene(SceneType::SCENE_TYPE_2D);
+		m_EditorScene = new Scene(SceneType::SCENE_TYPE_3D);
 
 		m_HierarchyPanel = new SceneHierarchyPanel(m_EditorScene);
 		m_PropertiesPanel = new PropertiesPanel(m_EditorScene);
@@ -130,31 +142,7 @@ public:
 		}
 
 		nlohmann::json root_node = {};
-		root_node.emplace("Textures", nlohmann::json::object());
-		root_node.emplace("Entities", nlohmann::json::object());
-
-		nlohmann::json& texture_node = root_node["Textures"];
-
-		auto tex_registry = *AssetManager::Get()->GetTextureRegistry();
-
-		for (auto& [id, texture] : tex_registry) {
-			texture_node.emplace(std::to_string(texture->GetId()), texture->GetSpecification().path.string().erase(0, std::filesystem::current_path().string().size() + 1));
-		}
-
-		nlohmann::json& entities_node = root_node["Entities"];
-
-		auto& entities = m_EditorScene->GetEntities();
-		for (auto& entity : entities) {
-			uint64 tag = entity.GetComponent<UUIDComponent>().id.Get();
-			nlohmann::json entity_node;
-
-			entity.Serialize(entity_node);
-
-			entities_node.emplace(std::to_string(tag), entity_node);
-
-		}
-
-		root_node.emplace("Entities", entities_node);
+		m_EditorScene->Serialize(root_node);
 
 		std::ofstream out_stream(m_ProjectPath);
 		out_stream << root_node.dump(4);
@@ -178,28 +166,31 @@ public:
 			m_ProjectPath = filepath;
 
 			std::ifstream input(filepath);
-			nlohmann::json project = nlohmann::json::parse(input);
+			nlohmann::json root_node = nlohmann::json::parse(input);
 			input.close();
 
-			nlohmann::json textures = project["Textures"];
-
-			for (auto i = textures.begin(); i != textures.end(); i++) {
-				std::string texture_path = std::filesystem::current_path().string() + "\\" + i.value().get<std::string>();
-
-				Omni::UUID id = AssetManager::Get()->LoadTexture(texture_path, std::stoull(i.key()));
-
-				Shared<Image> texture = AssetManager::Get()->GetTexture(id);
-				m_EditorScene->GetRenderer()->AcquireTextureIndex(texture, SamplerFilteringMode::NEAREST);
-			}
-			
-			nlohmann::json& entities_node = project["Entities"];
-			for (auto i = entities_node.begin(); i != entities_node.end(); i++) {
-				Entity entity = m_EditorScene->CreateEntity(std::stoull(i.key()));
-				entity.Deserialize(i.value());
-			}
-
+			m_EditorScene->Deserialize(root_node);
+			m_HierarchyPanel->SetContext(m_EditorScene);
 		}
 	};
+
+	void ControlEditorCamera() {
+		Shared<Camera> camera = m_EditorScene->GetCamera();
+		Shared<Camera3D> camera_3D = ShareAs<Camera3D>(camera);
+		if (Input::KeyPressed(KeyCode::KEY_A))
+			camera_3D->Move({ -0.03f, 0.0f, 0.0f });
+		if (Input::KeyPressed(KeyCode::KEY_D))
+			camera_3D->Move({ 0.03f, 0.0f, 0.0f });
+		if (Input::KeyPressed(KeyCode::KEY_W))
+			camera_3D->Move({ 0.0f, 0.0f, 0.03f });
+		if (Input::KeyPressed(KeyCode::KEY_S))
+			camera_3D->Move({ 0.0f, 0.0f, -0.03f });
+		if (Input::KeyPressed(KeyCode::KEY_Q))
+			camera_3D->Rotate(-0.5f, 0.0f, 0.0f, false);
+		if (Input::KeyPressed(KeyCode::KEY_E))
+			camera_3D->Rotate(0.5f, 0.0f, 0.0f, false);
+
+	}
 
 	/*
 	*	DATA
