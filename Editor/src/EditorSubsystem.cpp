@@ -175,6 +175,7 @@ public:
 	};
 
 	void ControlEditorCamera() {
+#if 0
 		Shared<Camera> camera = m_EditorScene->GetCamera();
 		Shared<Camera3D> camera_3D = ShareAs<Camera3D>(camera);
 		if (Input::KeyPressed(KeyCode::KEY_A))
@@ -189,7 +190,7 @@ public:
 			camera_3D->Rotate(-0.5f, 0.0f, 0.0f, false);
 		if (Input::KeyPressed(KeyCode::KEY_E))
 			camera_3D->Rotate(0.5f, 0.0f, 0.0f, false);
-
+#endif
 	}
 
 	/*

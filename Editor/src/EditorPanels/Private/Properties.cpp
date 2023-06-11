@@ -39,12 +39,22 @@ namespace Omni {
 					if (ImGui::BeginPopup("Components popup")) {
 						ImGui::BeginDisabled(m_Entity.HasComponent<SpriteComponent>());
 						if (ImGui::MenuItem("Sprite component")) {
-							m_Entity.AddComponent<SpriteComponent>();
-							SpriteComponent& sc = m_Entity.GetComponent<SpriteComponent>();
-							sc.texture = m_Context->GetRenderer()->GetDummyWhiteTexture();
+							SpriteComponent& sprite_component = m_Entity.AddComponent<SpriteComponent>();
+							sprite_component.texture = m_Context->GetRenderer()->GetDummyWhiteTexture();
 							ImGui::CloseCurrentPopup();
 						}
 						ImGui::EndDisabled();
+
+						ImGui::BeginDisabled(m_Entity.HasComponent<CameraComponent>());
+						if (ImGui::MenuItem("Camera component")) {
+							CameraComponent& camera_component = m_Entity.AddComponent<CameraComponent>();
+							Shared<Camera3D> camera = std::make_shared<Camera3D>();
+							camera->SetProjection(glm::radians(80.0f), 16.0 / 9.0f, 0.1f, 100.0f);
+							camera_component.camera = camera;
+							camera_component.primary = false;
+						}
+						ImGui::EndDisabled();
+
 						ImGui::EndPopup();
 					}
 				}
@@ -167,11 +177,10 @@ namespace Omni {
 											Shared<Camera>& camera = camera_component.camera;
 											Shared<Camera2D> camera_2D = std::make_shared<Camera2D>();
 											camera_2D->SetProjection(-1.0f, 1.0f, -1.0f, 1.0f, 0.0f);
-											camera_2D->SetType(CameraProjectionType::PROJECTION_2D);
 
-											OMNIFORCE_CORE_WARNING("created 2d camera");
+											camera_2D->SetType(CameraProjectionType::PROJECTION_2D);
 											camera = ShareAs<Camera>(camera_2D);
-											m_Context->EditorSetCamera(camera);
+											m_Context->EditorSetCamera(camera); // remove this later
 											break;
 										}
 										case (int32)CameraProjectionType::PROJECTION_3D: {
@@ -181,9 +190,8 @@ namespace Omni {
 											camera_3D->Move({ 0.0f, 0.0f, -50.0f });
 
 											camera->SetType(CameraProjectionType::PROJECTION_3D);
-											OMNIFORCE_CORE_WARNING("created 3d camera");
 											camera = ShareAs<Camera>(camera_3D);
-											m_Context->EditorSetCamera(camera);
+											m_Context->EditorSetCamera(camera); // also this
 											break;
 										}
 
@@ -227,6 +235,15 @@ namespace Omni {
 									camera_2D->SetScale(orthographics_scale);
 							}
 						}
+
+						ImGui::TableNextRow();
+
+						ImGui::TableNextColumn();
+						ImGui::Text("Primary");
+
+						ImGui::TableNextColumn();
+						ImGui::Checkbox("##checkbox_camera_primary", &camera_component.primary);
+
 						ImGui::EndTable();
 						ImGui::PopStyleVar();
 						ImGui::TreePop();
