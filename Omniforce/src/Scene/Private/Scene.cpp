@@ -85,7 +85,7 @@ namespace Omni {
 
 		entity.GetComponent<TagComponent>().tag.reserve(256);
 
-		m_Entities.push_back(entity);
+		m_Entities.emplace(id, entity);
 
 		return entity;
 	}
@@ -104,14 +104,13 @@ namespace Omni {
 
 		nlohmann::json& entities_node = node["Entities"];
 
-		for (auto& entity : m_Entities) {
-			uint64 tag = entity.GetComponent<UUIDComponent>().id.Get();
+		for (auto& [id, entt] : m_Entities) {
 			nlohmann::json entity_node;
 
+			Entity entity(entt, this);
+
 			entity.Serialize(entity_node);
-
-			entities_node.emplace(std::to_string(tag), entity_node);
-
+			entities_node.emplace(std::to_string(id.Get()), entity_node);
 		}
 
 		node.emplace("Entities", entities_node);
@@ -148,6 +147,11 @@ namespace Omni {
 				break;
 			}
 		}
+	}
+
+	void Scene::ExplicitCopy(Shared<Scene> target)
+	{
+
 	}
 
 }

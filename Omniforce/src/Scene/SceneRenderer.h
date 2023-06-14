@@ -62,6 +62,8 @@ namespace Omni {
 
 		void RenderSprite(const Sprite& sprite);
 
+		void Copy(SceneRenderer* other);
+
 	private:
 		Shared<Camera> m_Camera;
 		SceneRendererSpecification m_Specification;
