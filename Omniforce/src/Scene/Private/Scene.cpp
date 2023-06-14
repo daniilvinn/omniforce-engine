@@ -50,6 +50,14 @@ namespace Omni {
 		});
 		auto view = m_Registry.view<SpriteComponent>();
 		
+		auto cameras_view = m_Registry.view<CameraComponent>();
+		for (auto& entity : cameras_view) {
+			TRSComponent& trs = m_Registry.get<TRSComponent>(entity);
+			CameraComponent& camera_component = m_Registry.get<CameraComponent>(entity);
+			camera_component.camera->SetPosition(trs.translation);
+			camera_component.camera->CalculateMatrices();
+		}
+
 		for (auto& entity : view) {
 			TRSComponent trs = m_Registry.get<TRSComponent>(entity);
 			SpriteComponent sprite_component = m_Registry.get<SpriteComponent>(entity);

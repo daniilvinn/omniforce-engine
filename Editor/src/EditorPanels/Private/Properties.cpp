@@ -180,7 +180,6 @@ namespace Omni {
 
 											camera_2D->SetType(CameraProjectionType::PROJECTION_2D);
 											camera = ShareAs<Camera>(camera_2D);
-											m_Context->EditorSetCamera(camera); // remove this later
 											break;
 										}
 										case (int32)CameraProjectionType::PROJECTION_3D: {
@@ -191,7 +190,6 @@ namespace Omni {
 
 											camera->SetType(CameraProjectionType::PROJECTION_3D);
 											camera = ShareAs<Camera>(camera_3D);
-											m_Context->EditorSetCamera(camera); // also this
 											break;
 										}
 

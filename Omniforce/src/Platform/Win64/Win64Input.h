@@ -18,6 +18,10 @@ namespace Omni {
 
 		vec2<int32> Impl_MousePosition(const std::string& window_tag) const override;
 
+		void Impl_LockAndHideMouse(const std::string& window_tag) override;
+
+		void Impl_ReleaseAndShowMouse(const std::string& window_tag) override;
+
 	};
 
 }

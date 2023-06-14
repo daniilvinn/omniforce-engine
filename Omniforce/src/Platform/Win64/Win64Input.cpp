@@ -40,4 +40,14 @@ namespace Omni {
 		return { (int32)pos.x, (int32)pos.y };
 	}
 
+	void Win64Input::Impl_LockAndHideMouse(const std::string& window_tag)
+	{
+		glfwSetInputMode((GLFWwindow*)Application::Get()->GetWindow(window_tag)->Raw(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	}
+
+	void Win64Input::Impl_ReleaseAndShowMouse(const std::string& window_tag)
+	{
+		glfwSetInputMode((GLFWwindow*)Application::Get()->GetWindow(window_tag)->Raw(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+	}
+
 }

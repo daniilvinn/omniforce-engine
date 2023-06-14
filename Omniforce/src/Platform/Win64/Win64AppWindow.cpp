@@ -78,7 +78,7 @@ namespace Omni {
 			case GLFW_PRESS:
 				impl_window->AllocateEvent<MouseButtonPressedEvent>(code);
 				break;
-			case GLFW_REPEAT:
+			case GLFW_RELEASE:
 				impl_window->AllocateEvent<MouseButtonReleasedEvent>(code);
 				break;
 			default:

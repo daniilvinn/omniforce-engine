@@ -4,6 +4,8 @@
 #include "EditorPanels/Properties.h"
 #include "EditorPanels/Assets.h"
 
+#include "EditorCamera.h"
+
 #include <filesystem>
 #include <fstream>
 
@@ -47,39 +49,18 @@ public:
 
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 0.0f, 0.0f });
 		ImGui::Begin("Viewport");
+			m_ViewportFocused = ImGui::IsWindowFocused();
 			ImVec2 viewport_frame_size = ImGui::GetContentRegionAvail();
 			UI::RenderImage(m_EditorScene->GetFinalImage(), SceneRenderer::GetSamplerNearest(), viewport_frame_size, 0, true);
+			m_EditorCamera->SetViewportSize(viewport_frame_size.x, viewport_frame_size.y);
 		ImGui::End();
 		ImGui::PopStyleVar();
 
 		m_AssetsPanel->Render();
 
-		// set proper viewport aspect ratio
-		{
-			auto camera = m_EditorScene->GetCamera();
-
-			if (camera->GetType() == CameraProjectionType::PROJECTION_3D) {
-				Shared<Camera3D> camera_3D = ShareAs<Camera3D>(camera);
-				camera_3D->SetProjection(camera_3D->GetFOV(), viewport_frame_size.x / viewport_frame_size.y, 0.0f, 100.0f);
-			}
-			else if (camera->GetType() == CameraProjectionType::PROJECTION_2D) {
-				Shared<Camera2D> camera_2D = ShareAs<Camera2D>(camera);
-				float32 aspect_ratio = viewport_frame_size.x / viewport_frame_size.y;
-				float32 scale = camera_2D->GetScale();
-				camera_2D->SetProjection(
-					-scale * aspect_ratio, 
-					scale * aspect_ratio, 
-					-scale, 
-					scale, 
-					camera_2D->GetNearClip(), 
-					camera_2D->GetFarClip()
-				);
-			}
-
-		}
-
 		m_EditorScene->OnUpdate();
-		ControlEditorCamera();
+		if(m_ViewportFocused)
+			m_EditorCamera->OnUpdate();
 	}
 
 	void OnEvent(Event* e) override
@@ -87,6 +68,9 @@ public:
 		EventDispatcher dispatcher(e);
 		dispatcher.Dispatch<WindowResizeEvent>(OMNIFORCE_BIND_EVENT_FUNCTION(OnWindowResize));
 		dispatcher.Dispatch<KeyPressedEvent>(OMNIFORCE_BIND_EVENT_FUNCTION(OnKeyPressed));
+
+		if (m_ViewportFocused) 
+			m_EditorCamera->OnEvent(e);
 	}
 
 	bool OnWindowResize(WindowResizeEvent* e) {
@@ -120,6 +104,9 @@ public:
 		m_AssetsPanel = new AssetsPanel(m_EditorScene);
 
 		m_ProjectPath = "";
+
+		m_EditorCamera = std::make_shared<EditorCamera>(45.0f, 1.778, 0.01, 1000.0f);
+		m_EditorScene->EditorSetCamera(ShareAs<Camera>(m_EditorCamera));
 	}
 
 	void SaveProject() {
@@ -170,35 +157,19 @@ public:
 			input.close();
 
 			m_EditorScene->Deserialize(root_node);
+			m_EditorScene->EditorSetCamera(m_EditorCamera);
 			m_HierarchyPanel->SetContext(m_EditorScene);
 		}
 	};
-
-	void ControlEditorCamera() {
-#if 0
-		Shared<Camera> camera = m_EditorScene->GetCamera();
-		Shared<Camera3D> camera_3D = ShareAs<Camera3D>(camera);
-		if (Input::KeyPressed(KeyCode::KEY_A))
-			camera_3D->Move({ -0.03f, 0.0f, 0.0f });
-		if (Input::KeyPressed(KeyCode::KEY_D))
-			camera_3D->Move({ 0.03f, 0.0f, 0.0f });
-		if (Input::KeyPressed(KeyCode::KEY_W))
-			camera_3D->Move({ 0.0f, 0.0f, 0.03f });
-		if (Input::KeyPressed(KeyCode::KEY_S))
-			camera_3D->Move({ 0.0f, 0.0f, -0.03f });
-		if (Input::KeyPressed(KeyCode::KEY_Q))
-			camera_3D->Rotate(-0.5f, 0.0f, 0.0f, false);
-		if (Input::KeyPressed(KeyCode::KEY_E))
-			camera_3D->Rotate(0.5f, 0.0f, 0.0f, false);
-#endif
-	}
 
 	/*
 	*	DATA
 	*/
 	Scene* m_EditorScene;
+	Shared<EditorCamera> m_EditorCamera;
 	Entity m_SelectedEntity;
 	bool m_EntitySelected = false;
+	bool m_ViewportFocused = false;
 
 	SceneHierarchyPanel* m_HierarchyPanel;
 	PropertiesPanel* m_PropertiesPanel;
