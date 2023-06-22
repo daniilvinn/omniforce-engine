@@ -29,6 +29,7 @@ namespace Omni {
 		void SetNearClip(float32 near) { m_ZNear = near; }
 		void SetFarClip(float32 far) { m_ZFar = far; }
 		void SetPosition(glm::vec3 position) { m_Position = position; }
+		virtual void SetAspectRatio(float32 ratio) = 0;
 
 	protected:
 		Camera(CameraProjectionType type) : m_Type(type) {}
@@ -56,6 +57,7 @@ namespace Omni {
 		void SetPosition(glm::vec3 position);
 		void SetRotation(float rotation);
 		void SetScale(float32 scale);
+		void SetAspectRatio(float32 ratio) override;
 
 		// Getters for common camera data
 		float32 GetRotation() const { return m_Rotation; }
@@ -87,10 +89,11 @@ namespace Omni {
 		glm::mat4 GetViewMatrix() const override { return m_ViewMatrix; };
 
 		// Setters for common camera data
-		void SetProjection(float fov, float ratio, float zNear, float zFar);
+		void SetProjection(float32 fov, float32 ratio, float32 zNear, float32 zFar);
 		void SetPosition(glm::vec3 position);
-		void SetRotation(float yaw, float pitch, float roll = 0.0f);
+		void SetRotation(float32 yaw, float32 pitch, float32 roll = 0.0f);
 		void SetFOV(float32 fov);
+		void SetAspectRatio(float32 ratio) override;
 
 		// Getters for common camera data
 		glm::mat4 GetRotationMatrix() const;
@@ -101,7 +104,7 @@ namespace Omni {
 
 		// Special methods to move / rotate 3D camera
 		void LookAt(glm::vec3 at);
-		void Rotate(float yawOffset, float pitchOffset, float rollOffset, bool lockPitch);
+		void Rotate(float32 yaw_offset, float pitch_offset, float roll_offset, bool lock_pitch);
 		void Move(glm::vec3 direction);
 
 

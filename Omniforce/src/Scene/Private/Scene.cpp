@@ -9,6 +9,17 @@
 
 namespace Omni {
 
+	template<typename Component>
+	static void ExplicitComponentCopy(entt::registry& src_registry, entt::registry& dst_registry, robin_hood::unordered_map<UUID, entt::entity>& map) {
+		auto components = src_registry.view<Component>();
+		for (auto& src_entity : components)
+		{
+			entt::entity dst_entity = map.at(src_registry.get<UUIDComponent>(src_entity).id);
+			auto& src_component = src_registry.get<Component>(src_entity);
+			dst_registry.emplace_or_replace<Component>(dst_entity, src_component);
+		}
+	};
+
 	Scene::Scene(SceneType type)
 		: m_Type(type)
 	{
@@ -26,7 +37,7 @@ namespace Omni {
 		}
 		else if (type == SceneType::SCENE_TYPE_2D) {
 			m_Camera = std::make_shared<Camera2D>();
-			auto camera_2D = ShareAs<Camera3D>(m_Camera);
+			auto camera_2D = ShareAs<Camera2D>(m_Camera);
 			float32 aspect_ratio = 16.0f / 9.0f;
 			camera_2D->SetProjection(-aspect_ratio, aspect_ratio, -1.0f, 1.0f);
 		}
@@ -34,6 +45,27 @@ namespace Omni {
 		Entity entity = CreateEntity();
 		entity.AddComponent<CameraComponent>(m_Camera, true);
 		entity.GetComponent<TagComponent>().tag = "Main camera";
+		entity.GetComponent<TRSComponent>().rotation = { 0.0f, -90.0, 0.0f };
+	}
+
+	Scene::Scene(Scene* other)
+	{
+		m_Renderer = other->m_Renderer;
+		m_Camera = other->m_Camera;
+
+		auto idComponents = m_Registry.view<UUIDComponent>();
+		for (auto entity : idComponents)
+		{
+			UUID uuid = m_Registry.get<UUIDComponent>(entity).id;
+			Entity e = CreateEntity(uuid);
+		}
+
+		ExplicitComponentCopy<UUIDComponent>(other->m_Registry, m_Registry, other->m_Entities);
+		ExplicitComponentCopy<TagComponent>(other->m_Registry, m_Registry, other->m_Entities);
+		ExplicitComponentCopy<TransformComponent>(other->m_Registry, m_Registry, other->m_Entities);
+		ExplicitComponentCopy<TRSComponent>(other->m_Registry, m_Registry, other->m_Entities);
+		ExplicitComponentCopy<SpriteComponent>(other->m_Registry, m_Registry, other->m_Entities);
+		ExplicitComponentCopy<CameraComponent>(other->m_Registry, m_Registry, other->m_Entities);
 	}
 
 	void Scene::Destroy()
@@ -43,8 +75,6 @@ namespace Omni {
 
 	void Scene::OnUpdate(float ts /*= 60.0f*/)
 	{
-		m_Renderer->BeginScene(m_Camera);
-
 		m_Registry.sort<SpriteComponent>([](const auto& lhs, const auto& rhs) {
 			return lhs.layer < rhs.layer;
 		});
@@ -55,24 +85,33 @@ namespace Omni {
 			TRSComponent& trs = m_Registry.get<TRSComponent>(entity);
 			CameraComponent& camera_component = m_Registry.get<CameraComponent>(entity);
 			camera_component.camera->SetPosition(trs.translation);
+
+			if (camera_component.camera->GetType() == CameraProjectionType::PROJECTION_3D) {
+				Shared<Camera3D> camera_3D = ShareAs<Camera3D>(camera_component.camera);
+				camera_3D->SetRotation(trs.rotation.y, trs.rotation.x);
+			}
+
 			camera_component.camera->CalculateMatrices();
 		}
 
-		for (auto& entity : view) {
-			TRSComponent trs = m_Registry.get<TRSComponent>(entity);
-			SpriteComponent sprite_component = m_Registry.get<SpriteComponent>(entity);
+		m_Renderer->BeginScene(m_Camera);
+		if (m_Camera != nullptr) {
+			for (auto& entity : view) {
+				TRSComponent trs = m_Registry.get<TRSComponent>(entity);
+				SpriteComponent sprite_component = m_Registry.get<SpriteComponent>(entity);
 
-			Sprite sprite;
-			sprite.texture_id = m_Renderer->GetTextureIndex(sprite_component.texture);
-			sprite.rotation = glm::radians(-trs.rotation.z);
-			sprite.position = { trs.translation.x * sprite_component.aspect_ratio, trs.translation.y, trs.translation.z };
-			sprite.size = { trs.scale.x * sprite_component.aspect_ratio, trs.scale.y };
-			sprite.color_tint = sprite_component.color;
+				Sprite sprite;
+				sprite.texture_id = m_Renderer->GetTextureIndex(sprite_component.texture);
+				sprite.rotation = glm::radians(-trs.rotation.z);
+				sprite.position = { trs.translation.x * sprite_component.aspect_ratio, trs.translation.y, trs.translation.z };
+				sprite.size = { trs.scale.x * sprite_component.aspect_ratio, trs.scale.y };
+				sprite.color_tint = sprite_component.color;
 
-			m_Renderer->RenderSprite(sprite);
+				m_Renderer->RenderSprite(sprite);
+			}
 		}
-
 		m_Renderer->EndScene();
+
 	}
 
 	Entity Scene::CreateEntity(const UUID& id)
@@ -88,6 +127,19 @@ namespace Omni {
 		m_Entities.emplace(id, entity);
 
 		return entity;
+	}
+
+	void Scene::LaunchRuntime()
+	{
+		m_Camera = nullptr;
+		auto view = m_Registry.view<CameraComponent>();
+		for (auto& entity : view) {
+			CameraComponent& camera_component = m_Registry.get<CameraComponent>(entity);
+			if (camera_component.primary) {
+				m_Camera = camera_component.camera;
+				break;
+			}
+		}
 	}
 
 	void Scene::Serialize(nlohmann::json& node)
@@ -147,11 +199,6 @@ namespace Omni {
 				break;
 			}
 		}
-	}
-
-	void Scene::ExplicitCopy(Shared<Scene> target)
-	{
-
 	}
 
 }

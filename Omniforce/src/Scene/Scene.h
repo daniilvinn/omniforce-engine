@@ -25,12 +25,15 @@ namespace Omni {
 	public:
 		Scene() = delete;
 		Scene(SceneType type);
+		Scene(Scene* other); // copy
 
 		void Destroy();
 
 		void OnUpdate(float ts = 60.0f);
 		Entity CreateEntity(const UUID& id = UUID());
+		void LaunchRuntime();
 
+		SceneType GetType() const { return m_Type; }
 		entt::registry* GetRegistry() { return &m_Registry; }
 		robin_hood::unordered_map<UUID, entt::entity>& GetEntities() { return m_Entities; }
 		Shared<Image> GetFinalImage() const { return m_Renderer->GetFinalImage(); }
@@ -45,17 +48,13 @@ namespace Omni {
 		*	Editor only
 		*/
 		void EditorSetCamera(Shared<Camera> camera) { m_Camera = camera; }
-		void ExplicitCopy(Shared<Scene> target); // explicit because it is not copy constructor
-
-	private:
-		void ExplicitComponentCopy();
 
 	private:
 		UUID m_Id;
 
 		SceneRenderer* m_Renderer;
 		SceneType m_Type;
-		Shared<Camera> m_Camera;
+		Shared<Camera> m_Camera = nullptr;
 
 		entt::registry m_Registry;
 		robin_hood::unordered_map<UUID, entt::entity> m_Entities;

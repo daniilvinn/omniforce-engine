@@ -47,19 +47,43 @@ public:
 		m_PropertiesPanel->SetEntity(m_SelectedEntity, m_HierarchyPanel->IsNodeSelected());
 		m_PropertiesPanel->Render();
 
+		ImGui::Begin("##Toolbar", nullptr, 
+			ImGuiWindowFlags_NoDecoration | 
+			ImGuiWindowFlags_NoScrollbar |
+			ImGuiWindowFlags_NoScrollWithMouse | 
+			ImGuiWindowFlags_NoTitleBar
+		);
+		if (ImGui::Button(m_InRuntime ? "Stop" : "Play")) {
+			m_InRuntime = !m_InRuntime;
+			if (m_InRuntime) {
+				if (m_RuntimeScene)
+					delete m_RuntimeScene;
+				m_RuntimeScene = new Scene(m_EditorScene); 
+				m_RuntimeScene->LaunchRuntime();
+				m_CurrentScene = m_RuntimeScene;
+			} else m_CurrentScene = m_EditorScene;
+		};
+		ImGui::End();
+
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 0.0f, 0.0f });
 		ImGui::Begin("Viewport");
 			m_ViewportFocused = ImGui::IsWindowFocused();
 			ImVec2 viewport_frame_size = ImGui::GetContentRegionAvail();
 			UI::RenderImage(m_EditorScene->GetFinalImage(), SceneRenderer::GetSamplerNearest(), viewport_frame_size, 0, true);
 			m_EditorCamera->SetViewportSize(viewport_frame_size.x, viewport_frame_size.y);
+			
+			if (m_InRuntime) {
+				m_RuntimeScene->GetCamera()->SetAspectRatio(viewport_frame_size.x / viewport_frame_size.y);
+			}
+
 		ImGui::End();
 		ImGui::PopStyleVar();
 
 		m_AssetsPanel->Render();
 
-		m_EditorScene->OnUpdate();
-		if(m_ViewportFocused)
+		m_CurrentScene->OnUpdate();
+
+		if(m_ViewportFocused && !m_InRuntime)
 			m_EditorCamera->OnUpdate();
 	}
 
@@ -107,6 +131,7 @@ public:
 
 		m_EditorCamera = std::make_shared<EditorCamera>(45.0f, 1.778, 0.01, 1000.0f);
 		m_EditorScene->EditorSetCamera(ShareAs<Camera>(m_EditorCamera));
+		m_CurrentScene = m_EditorScene;
 	}
 
 	void SaveProject() {
@@ -166,10 +191,13 @@ public:
 	*	DATA
 	*/
 	Scene* m_EditorScene;
+	Scene* m_RuntimeScene = nullptr;
+	Scene* m_CurrentScene;
 	Shared<EditorCamera> m_EditorCamera;
 	Entity m_SelectedEntity;
 	bool m_EntitySelected = false;
 	bool m_ViewportFocused = false;
+	bool m_InRuntime = false;
 
 	SceneHierarchyPanel* m_HierarchyPanel;
 	PropertiesPanel* m_PropertiesPanel;

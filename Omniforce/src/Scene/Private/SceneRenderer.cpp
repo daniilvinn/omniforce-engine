@@ -130,7 +130,6 @@ namespace Omni {
 			pipeline_spec.culling_mode = PipelineCullingMode::NONE;
 
 			m_SpritePass = Pipeline::Create(pipeline_spec);
-			ShaderLibrary::Get()->Unload("sprite.ofs");
 		}
 
 	}
@@ -156,10 +155,11 @@ namespace Omni {
 
 	void SceneRenderer::BeginScene(Shared<Camera> camera)
 	{
-		m_Camera = camera;
-
-		glm::mat4 matrices[3] = { m_Camera->GetViewMatrix(), m_Camera->GetProjectionMatrix(), m_Camera->GetViewProjectionMatrix() };
-		m_MainCameraDataBuffer->UploadData(Renderer::GetCurrentFrameIndex() * (sizeof glm::mat4 * 3), matrices, sizeof(matrices)); // TODO: bug here
+		if (camera) {
+			m_Camera = camera;
+			glm::mat4 matrices[3] = { m_Camera->GetViewMatrix(), m_Camera->GetProjectionMatrix(), m_Camera->GetViewProjectionMatrix() };
+			m_MainCameraDataBuffer->UploadData(Renderer::GetCurrentFrameIndex() * (sizeof glm::mat4 * 3), matrices, sizeof(matrices)); // TODO: bug here
+		}
 
 		m_CurrectMainRenderTarget = m_RendererOutputs[Renderer::GetCurrentFrameIndex()];
 
@@ -198,7 +198,6 @@ namespace Omni {
 			);
 		});
 		
-
 		m_SpriteQueue.clear();
 	}
 

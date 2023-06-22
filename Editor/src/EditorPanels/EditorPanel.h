@@ -5,7 +5,7 @@
 namespace Omni {
 
 	class EditorPanel {
-	protected:
+	public:
 		EditorPanel(Scene* ctx) : m_Context(ctx), m_IsOpen(false) {};
 		virtual ~EditorPanel() {};
 

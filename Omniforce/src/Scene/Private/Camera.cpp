@@ -43,6 +43,12 @@ namespace Omni {
 		SetProjection(-m_AspectRatio * m_Scale, m_AspectRatio * m_Scale, -m_Scale, m_Scale, m_ZNear, m_ZFar);
 	}
 
+	void Camera2D::SetAspectRatio(float32 ratio)
+	{
+		m_AspectRatio = ratio;
+		SetProjection(-m_AspectRatio * m_Scale, m_AspectRatio * m_Scale, -m_Scale, m_Scale, m_ZNear, m_ZFar);
+	}
+
 	void Camera2D::CalculateMatrices()
 	{
 		m_ViewMatrix = glm::inverse(glm::translate(glm::mat4(1.0f), m_Position) * glm::rotate(glm::mat4(1.0f), m_Rotation, glm::vec3(0.0f, 0.0f, 1.0f)));
@@ -93,6 +99,12 @@ namespace Omni {
 	void Camera3D::SetFOV(float32 fov)
 	{
 		m_FieldOfView = fov;
+		SetProjection(m_FieldOfView, m_AspectRatio, m_ZNear, m_ZFar);
+	}
+
+	void Camera3D::SetAspectRatio(float32 ratio)
+	{
+		m_AspectRatio = ratio;
 		SetProjection(m_FieldOfView, m_AspectRatio, m_ZNear, m_ZFar);
 	}
 
