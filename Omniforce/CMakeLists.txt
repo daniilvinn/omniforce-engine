@@ -24,11 +24,12 @@ find_package(nlohmann_json CONFIG REQUIRED)
 target_include_directories(${ENGINE_TARGET} 
     PUBLIC 
         "src/"
+        "vendor/imgui"
     PRIVATE 
         "${Vulkan_SDK}\\Include" 
         "${Vulkan_SDK}\\Source" 
         ${Stb_INCLUDE_DIR}
-        "vendor/imgui"
+        "vendor/Jolt"
 )
 target_link_directories(${ENGINE_TARGET} INTERFACE "${Vulkan_SDK}\\Lib")
 target_compile_definitions(${ENGINE_TARGET} PUBLIC OMNIFORCE_STATIC GLM_FORCE_DEPTH_ZERO_TO_ONE GLM_FORCE_SSE2)
@@ -51,6 +52,7 @@ target_link_libraries(
         vulkan-1.lib
         debug shaderc_sharedd.lib optimized shaderc_shared.lib
         debug shaderc_utild.lib optimized shaderc_util.lib
+        Jolt
 )
 
 set_property(TARGET ${ENGINE_TARGET} PROPERTY CXX_STANDARD 23)

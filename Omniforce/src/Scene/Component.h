@@ -80,4 +80,35 @@ namespace Omni {
 		static const char* GetSerializableKey() { return "CameraComponent"; }
 	};
 
+	struct OMNIFORCE_API RigidBody2DComponent {
+		enum class Type {STATIC, DYNAMIC, KINEMATIC} type = Type::STATIC;
+		float32 mass = 10.0f;
+		float32 linear_drag = 0.1f;
+		float32 angular_drag = 0.5f;
+		bool disable_gravity;
+		bool sensor_mode;
+		void* internal_body;
+
+		static const char* GetSerializableKey() { return "RigidBody2DComponent"; }
+	};
+
+	struct OMNIFORCE_API BoxColliderComponent {
+		fvec3 size = { 1.0f, 1.0f, 1.0f };
+		float32 convex_radius = 0.05f;
+		float32 restitution = 1.0f;
+		float32 friction = 1.0f;
+		float32 damping = 1.0f;
+
+		static const char* GetSerializableKey() { return "BoxColliderComponent"; }
+	};
+
+	struct OMNIFORCE_API SphereColliderComponent {
+		float32 radius = 1.0f;
+		float32 restitution = 1.0f;
+		float32 friction = 1.0f;
+		float32 damping = 1.0f;
+
+		static const char* GetSerializableKey() { return "SphereColliderComponent"; }
+	};
+
 }
