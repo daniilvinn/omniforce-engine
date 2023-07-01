@@ -11,9 +11,9 @@
 
 namespace Omni {
 
-	SceneRenderer* SceneRenderer::Create(const SceneRendererSpecification& spec)
+	Shared<SceneRenderer> SceneRenderer::Create(const SceneRendererSpecification& spec)
 	{
-		return new SceneRenderer(spec);
+		return std::make_shared<SceneRenderer>(spec);
 	}
 
 	SceneRenderer::SceneRenderer(const SceneRendererSpecification& spec)

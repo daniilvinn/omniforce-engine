@@ -35,7 +35,7 @@ namespace Omni {
 					if (ImGui::Button(" + ", { 0.0f, 0.0f })) {
 						ImGui::OpenPopup("Components popup");
 					}
-					
+
 					if (ImGui::BeginPopup("Components popup")) {
 						ImGui::BeginDisabled(m_Entity.HasComponent<SpriteComponent>());
 						if (ImGui::MenuItem("Sprite component")) {
@@ -53,6 +53,21 @@ namespace Omni {
 							camera_component.camera = camera;
 							camera_component.primary = false;
 						}
+						ImGui::EndDisabled();
+
+						ImGui::BeginDisabled(m_Entity.HasComponent<RigidBody2DComponent>());
+						if (ImGui::MenuItem("Rigid body 2D component"))
+							m_Entity.AddComponent<RigidBody2DComponent>();
+						ImGui::EndDisabled();
+
+						ImGui::BeginDisabled(m_Entity.HasComponent<BoxColliderComponent>() || m_Entity.HasComponent<SphereColliderComponent>());
+						if (ImGui::MenuItem("Box collider component"))
+							m_Entity.AddComponent<BoxColliderComponent>();
+						ImGui::EndDisabled();
+
+						ImGui::BeginDisabled(m_Entity.HasComponent<SphereColliderComponent>() || m_Entity.HasComponent<BoxColliderComponent>());
+						if (ImGui::MenuItem("Sphere collider component"))
+							m_Entity.AddComponent<SphereColliderComponent>();
 						ImGui::EndDisabled();
 
 						ImGui::EndPopup();
@@ -107,7 +122,7 @@ namespace Omni {
 						ImGui::DragInt("##", &sc.layer, 0.05, 0, INT32_MAX);
 						ImGui::Separator();
 
-						ImGui::ColorPicker4("Color tint", (float*)&sc.color, 
+						ImGui::ColorPicker4("Color tint", (float*)&sc.color,
 							ImGuiColorEditFlags_PickerHueWheel |
 							ImGuiColorEditFlags_AlphaBar |
 							ImGuiColorEditFlags_DisplayRGB
@@ -122,7 +137,7 @@ namespace Omni {
 							ImGui::Text("Material");
 
 							ImGui::TableNextColumn();
-							if (ImGui::Button("Browse files", {-FLT_MIN, 0.0f})) {
+							if (ImGui::Button("Browse files", { -FLT_MIN, 0.0f })) {
 								const char* filters[] = { "*.png", "*.jpg", "*.jpeg" };
 
 								char* filepath = tinyfd_openFileDialog(
@@ -242,6 +257,172 @@ namespace Omni {
 						ImGui::TableNextColumn();
 						ImGui::Checkbox("##checkbox_camera_primary", &camera_component.primary);
 
+						ImGui::EndTable();
+						ImGui::PopStyleVar();
+						ImGui::TreePop();
+					}
+				}
+
+				// Rigid body 2D
+				if (m_Entity.HasComponent<RigidBody2DComponent>()) {
+					if (ImGui::TreeNode("Rigid body 2D component")) {
+						RigidBody2DComponent& rb2d_component = m_Entity.GetComponent<RigidBody2DComponent>();
+
+						ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, { 5.0f, 5.0f });
+						ImGui::BeginTable("##rb2d_properties_table", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH);
+						{
+							ImGui::TableNextRow();
+							ImGui::TableNextColumn();
+							ImGui::Text("Motion type");
+							ImGui::TableNextColumn();
+
+							const char* motion_type_strings[] = { "Static", "Dynamic", "Kinematic" };
+							if (ImGui::BeginCombo("##motion_type_combo", motion_type_strings[(int32)rb2d_component.type])) {
+								for (int32 i = 0; i < IM_ARRAYSIZE(motion_type_strings); i++) {
+									bool selected = i == (int32)rb2d_component.type;
+									if (ImGui::Selectable(motion_type_strings[i], &selected))
+										rb2d_component.type = (RigidBody2DComponent::Type)i;
+								}
+								ImGui::EndCombo();
+							}
+
+							// Mass
+							ImGui::TableNextRow();
+							ImGui::TableNextColumn();
+							ImGui::Text("Mass (kg)");
+							ImGui::TableNextColumn();
+							ImGui::DragFloat("##rb2d_mass_property", &rb2d_component.mass, 0.1f, 0.001f, FLT_MAX);
+							if (rb2d_component.mass < 0.0f) rb2d_component.mass = 0.001f;
+
+							// Linear drag
+							ImGui::TableNextRow();
+							ImGui::TableNextColumn();
+							ImGui::Text("Linear drag");
+							ImGui::TableNextColumn();
+							ImGui::DragFloat("##rb2d_linear_drag_property", &rb2d_component.linear_drag, 0.01f, 0.01f, 1.0f);
+							if (rb2d_component.linear_drag < 0.0f) rb2d_component.linear_drag = 0.01f;
+
+							// Linear drag
+							ImGui::TableNextRow();
+							ImGui::TableNextColumn();
+							ImGui::Text("Angular drag");
+							ImGui::TableNextColumn();
+							ImGui::DragFloat("##rb2d_angular_drag_property", &rb2d_component.angular_drag, 0.01f, 0.01f, 1.0f);
+							if (rb2d_component.angular_drag < 0.0f) rb2d_component.angular_drag = 0.01f;
+
+							// Disable gravity
+							ImGui::TableNextRow();
+							ImGui::TableNextColumn();
+							ImGui::Text("Disable gravity");
+							ImGui::TableNextColumn();
+							ImGui::Checkbox("##rb2d_disable_gravity_property", &rb2d_component.disable_gravity);
+
+							// Sensor mode
+							ImGui::TableNextRow();
+							ImGui::TableNextColumn();
+							ImGui::Text("Sensor mode");
+							ImGui::TableNextColumn();
+							ImGui::Checkbox("##rb2d_sensor_mode_property", &rb2d_component.sensor_mode);
+						}
+						ImGui::EndTable();
+						ImGui::PopStyleVar();
+						ImGui::TreePop();
+					}
+				}
+				if (m_Entity.HasComponent<BoxColliderComponent>()) {
+					if (ImGui::TreeNode("Box collider component")) {
+						BoxColliderComponent& box_collider_component = m_Entity.GetComponent<BoxColliderComponent>();
+						ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, { 5.0f, 5.0f });
+						ImGui::BeginTable("##box_collider_properties", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH);
+						{
+							// Size
+							ImGui::TableNextRow();
+							ImGui::TableNextColumn();
+							ImGui::Text("Size");
+							ImGui::TableNextColumn();
+							ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+							if (ImGui::DragFloat3("##box_collider_size_property", (float32*)&box_collider_component.size, 0.01f, 0.01f, FLT_MAX)) {
+								if (box_collider_component.size.x < 0.0f) box_collider_component.size.x = 0.01f;
+								if (box_collider_component.size.y < 0.0f) box_collider_component.size.y = 0.01f;
+								if (box_collider_component.size.z < 0.0f) box_collider_component.size.z = 0.01f;
+							};
+
+							// convex radius
+							ImGui::TableNextRow();
+							ImGui::TableNextColumn();
+							ImGui::Text("Convex radius");
+							ImGui::TableNextColumn();
+							ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+							ImGui::SliderFloat("##box_collider_convex_radius_property", &box_collider_component.convex_radius, 0.0f, 25.0f);
+
+							// Friction
+							ImGui::TableNextRow();
+							ImGui::TableNextColumn();
+							ImGui::Text("Friction");
+							ImGui::TableNextColumn();
+							ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+							ImGui::SliderFloat("##box_collider_friction_property", &box_collider_component.friction, 0.0f, 1.0f);
+
+							// Restitution
+							ImGui::TableNextRow();
+							ImGui::TableNextColumn();
+							ImGui::Text("Restitution");
+							ImGui::TableNextColumn();
+							ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+							ImGui::SliderFloat("##box_collider_restitution_property", &box_collider_component.restitution, 0.0f, 1.0f);
+
+							// Damping
+							ImGui::TableNextRow();
+							ImGui::TableNextColumn();
+							ImGui::Text("Damping");
+							ImGui::TableNextColumn();
+							ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+							ImGui::SliderFloat("##box_collider_damping_property", &box_collider_component.damping, 0.0f, 1.0f);
+						}
+						ImGui::EndTable();
+						ImGui::PopStyleVar();
+						ImGui::TreePop();
+					}
+				}
+				if (m_Entity.HasComponent<SphereColliderComponent>()) {
+					if (ImGui::TreeNode("Sphere collider component")) {
+						SphereColliderComponent& sphere_collider_component = m_Entity.GetComponent<SphereColliderComponent>();
+						ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, { 5.0f, 5.0f });
+						ImGui::BeginTable("##sphere_collider_properties", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH);
+						{
+							// Size
+							ImGui::TableNextRow();
+							ImGui::TableNextColumn();
+							ImGui::Text("Radius");
+							ImGui::TableNextColumn();
+							ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+							if (ImGui::DragFloat("##sphere_collider_size_property", (float32*)&sphere_collider_component.radius, 0.01f, 0.01f, FLT_MAX))
+								if (sphere_collider_component.radius < 0.0f) sphere_collider_component.radius = 0.01f;
+
+							// Friction
+							ImGui::TableNextRow();
+							ImGui::TableNextColumn();
+							ImGui::Text("Friction");
+							ImGui::TableNextColumn();
+							ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+							ImGui::SliderFloat("##sphere_collider_friction_property", &sphere_collider_component.friction, 0.0f, 1.0f);
+
+							// Restitution
+							ImGui::TableNextRow();
+							ImGui::TableNextColumn();
+							ImGui::Text("Restitution");
+							ImGui::TableNextColumn();
+							ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+							ImGui::SliderFloat("##sphere_collider_restitution_property", &sphere_collider_component.restitution, 0.0f, 1.0f);
+
+							// Damping
+							ImGui::TableNextRow();
+							ImGui::TableNextColumn();
+							ImGui::Text("Damping");
+							ImGui::TableNextColumn();
+							ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+							ImGui::SliderFloat("##sphere_collider_damping_property", &sphere_collider_component.damping, 0.0f, 1.0f);
+						}
 						ImGui::EndTable();
 						ImGui::PopStyleVar();
 						ImGui::TreePop();

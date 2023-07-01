@@ -1,16 +1,15 @@
 #include "Application.h"
-#include <Log/Logger.h>
 
-#include <cassert>
+#include <Log/Logger.h>
 #include <Core/Events/ApplicationEvents.h>
 #include <Threading/JobSystem.h>
-
 #include <Core/Input/Input.h>
-
 #include <Renderer/Renderer.h>
 #include <Renderer/ShaderLibrary.h>
-
 #include <Asset/AssetManager.h>
+#include <Physics/PhysicsEngine.h>
+
+#include <cassert>
 
 namespace Omni 
 {
@@ -55,6 +54,7 @@ namespace Omni
 		js->Execute([renderer_config]() {
 			Renderer::Init(renderer_config);
 		});
+		js->Execute(PhysicsEngine::Init);
 
 		js->Wait();
 
@@ -78,12 +78,9 @@ namespace Omni
 
 	void Application::Destroy()
 	{
-
 		m_ImGuiRenderer->Destroy();
-
 		AssetManager::Shutdown();
 		Renderer::Shutdown();
-		
 		
 		OMNIFORCE_CORE_INFO("Engine shutdown success");
 	}

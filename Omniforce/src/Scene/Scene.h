@@ -38,7 +38,7 @@ namespace Omni {
 		robin_hood::unordered_map<UUID, entt::entity>& GetEntities() { return m_Entities; }
 		Shared<Image> GetFinalImage() const { return m_Renderer->GetFinalImage(); }
 		Shared<Camera> GetCamera() const { return m_Camera; };
-		SceneRenderer* GetRenderer() const { return m_Renderer; }
+		Shared<SceneRenderer> GetRenderer() const { return m_Renderer; }
 		UUID GetID() const { return m_Id; }
 
 		void Serialize(nlohmann::json& node) override;
@@ -52,7 +52,7 @@ namespace Omni {
 	private:
 		UUID m_Id;
 
-		SceneRenderer* m_Renderer;
+		Shared<SceneRenderer> m_Renderer;
 		SceneType m_Type;
 		Shared<Camera> m_Camera = nullptr;
 

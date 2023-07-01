@@ -28,7 +28,7 @@ namespace Omni {
 
 	class OMNIFORCE_API SceneRenderer {
 	public:
-		static SceneRenderer* Create(const SceneRendererSpecification& spec);
+		static Shared<SceneRenderer> Create(const SceneRendererSpecification& spec);
 
 		SceneRenderer(const SceneRendererSpecification& spec);
 		~SceneRenderer();
