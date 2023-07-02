@@ -61,7 +61,15 @@ public:
 				m_RuntimeScene = new Scene(m_EditorScene); 
 				m_RuntimeScene->LaunchRuntime();
 				m_CurrentScene = m_RuntimeScene;
-			} else m_CurrentScene = m_EditorScene;
+			}
+			else { 
+				m_RuntimeScene->ShutdownRuntime();
+				m_CurrentScene = m_EditorScene;
+			};
+			m_HierarchyPanel->SetContext(m_CurrentScene);
+			m_HierarchyPanel->SetSelectedNode(m_SelectedEntity, m_HierarchyPanel->IsNodeSelected());
+			m_PropertiesPanel->SetContext(m_CurrentScene);
+			m_PropertiesPanel->SetEntity(m_SelectedEntity, m_HierarchyPanel->IsNodeSelected());
 		};
 		ImGui::End();
 

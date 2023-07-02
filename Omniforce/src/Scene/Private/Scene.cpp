@@ -4,6 +4,7 @@
 #include "../Entity.h"
 #include "../Component.h"
 #include <Asset/AssetManager.h>
+#include <Physics/PhysicsEngine.h>
 
 #include <nlohmann/json.hpp>
 
@@ -69,6 +70,8 @@ namespace Omni {
 		ExplicitComponentCopy<RigidBody2DComponent>(other->m_Registry, m_Registry, other->m_Entities);
 		ExplicitComponentCopy<BoxColliderComponent>(other->m_Registry, m_Registry, other->m_Entities);
 		ExplicitComponentCopy<SphereColliderComponent>(other->m_Registry, m_Registry, other->m_Entities);
+
+		m_Entities = other->m_Entities;
 	}
 
 	void Scene::Destroy()
@@ -105,7 +108,7 @@ namespace Omni {
 
 				Sprite sprite;
 				sprite.texture_id = m_Renderer->GetTextureIndex(sprite_component.texture);
-				sprite.rotation = glm::radians(-trs.rotation.z);
+				sprite.rotation = glm::radians(trs.rotation.z);
 				sprite.position = { trs.translation.x * sprite_component.aspect_ratio, trs.translation.y, trs.translation.z };
 				sprite.size = { trs.scale.x * sprite_component.aspect_ratio, trs.scale.y };
 				sprite.color_tint = sprite_component.color;
@@ -115,6 +118,10 @@ namespace Omni {
 		}
 		m_Renderer->EndScene();
 
+		if (PhysicsEngine::Get()->HasContext()) {
+			PhysicsEngine::Get()->Update(1.0f / 1000.0f);
+			PhysicsEngine::Get()->FetchResults();
+		}
 	}
 
 	Entity Scene::CreateEntity(const UUID& id)
@@ -143,6 +150,12 @@ namespace Omni {
 				break;
 			}
 		}
+		PhysicsEngine::Get()->LaunchRuntime(this);
+	}
+
+	void Scene::ShutdownRuntime()
+	{
+		PhysicsEngine::Get()->Reset();
 	}
 
 	void Scene::Serialize(nlohmann::json& node)

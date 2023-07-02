@@ -28,10 +28,11 @@ namespace Omni {
 			}
 
 			ImGui::Separator();
-			m_Context->GetRegistry()->each([&](auto entity_id) {
+			auto& entities = m_Context->GetEntities();
+			for(auto& [uuid, entity_id] : entities) {
 				Entity entity(entity_id, m_Context);
 				RenderHierarchyNode(entity);
-			});
+			};
 			ImGui::End();
 		}
 	}
@@ -39,7 +40,6 @@ namespace Omni {
 	void SceneHierarchyPanel::SetContext(Scene* ctx)
 	{
 		m_Context = ctx;
-		m_IsSelected = false;
 		m_SelectedNode = { (entt::entity)0, ctx };
 	}
 

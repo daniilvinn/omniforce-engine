@@ -86,6 +86,45 @@ namespace Omni {
 
 			node.emplace(camera_component.GetSerializableKey(), camera_component_node);
 		}
+		if (HasComponent<RigidBody2DComponent>()) {
+			RigidBody2DComponent& rb2d_component = GetComponent<RigidBody2DComponent>();
+			nlohmann::json rb2d_component_node = nlohmann::json::object();
+			rb2d_component_node.emplace("MotionType", (uint32)rb2d_component.type);
+			rb2d_component_node.emplace("Mass", rb2d_component.mass);
+			rb2d_component_node.emplace("LinearDrag", rb2d_component.linear_drag);
+			rb2d_component_node.emplace("AngularDrag", rb2d_component.angular_drag);
+			rb2d_component_node.emplace("LinearDrag", rb2d_component.linear_drag);
+			rb2d_component_node.emplace("DisableGravity", rb2d_component.disable_gravity);
+			rb2d_component_node.emplace("SensorMode", rb2d_component.sensor_mode);
+
+			node.emplace(rb2d_component.GetSerializableKey(), rb2d_component_node);
+		}
+		if (HasComponent<BoxColliderComponent>()) {
+			BoxColliderComponent& box_collider_component = GetComponent<BoxColliderComponent>();
+			nlohmann::json box_collider_component_node = nlohmann::json::object();
+			std::array<float32, 3> size = { 
+				box_collider_component.size.x, 
+				box_collider_component.size.y, 
+				box_collider_component.size.z 
+			};
+			box_collider_component_node.emplace("Size", size);
+			box_collider_component_node.emplace("ConvexRadius", box_collider_component.convex_radius);
+			box_collider_component_node.emplace("Friction", box_collider_component.friction);
+			box_collider_component_node.emplace("Restitution", box_collider_component.restitution);
+			box_collider_component_node.emplace("Damping", box_collider_component.damping);
+
+			node.emplace(box_collider_component.GetSerializableKey(), box_collider_component_node);
+		}
+		if (HasComponent<SphereColliderComponent>()) {
+			SphereColliderComponent& sphere_collider_component = GetComponent<SphereColliderComponent>();
+			nlohmann::json sphere_collider_component_node = nlohmann::json::object();
+			sphere_collider_component_node.emplace("Radius", sphere_collider_component.radius);
+			sphere_collider_component_node.emplace("Friction", sphere_collider_component.friction);
+			sphere_collider_component_node.emplace("Restitution", sphere_collider_component.restitution);
+			sphere_collider_component_node.emplace("Damping", sphere_collider_component.damping);
+
+			node.emplace(sphere_collider_component.GetSerializableKey(), sphere_collider_component_node);
+		}
 	}
 
 	void Entity::Deserialize(nlohmann::json& node)
@@ -156,6 +195,33 @@ namespace Omni {
 			camera_component.primary = node[CameraComponent::GetSerializableKey()]["Primary"];
 		}
 
+		if (node.contains(RigidBody2DComponent::GetSerializableKey())) {
+			RigidBody2DComponent& rb2d_component = AddComponent<RigidBody2DComponent>();
+			rb2d_component.type = (RigidBody2DComponent::Type)node[RigidBody2DComponent::GetSerializableKey()]["MotionType"];
+			rb2d_component.mass = node[RigidBody2DComponent::GetSerializableKey()]["Mass"];
+			rb2d_component.linear_drag = node[RigidBody2DComponent::GetSerializableKey()]["LinearDrag"];
+			rb2d_component.angular_drag = node[RigidBody2DComponent::GetSerializableKey()]["AngularDrag"];
+			rb2d_component.disable_gravity = node[RigidBody2DComponent::GetSerializableKey()]["DisableGravity"];
+			rb2d_component.sensor_mode = node[RigidBody2DComponent::GetSerializableKey()]["SensorMode"];
+		}
+
+		if (node.contains(BoxColliderComponent::GetSerializableKey())) {
+			BoxColliderComponent& box_collider_component = AddComponent<BoxColliderComponent>();
+			std::array<float32, 3> size = node[BoxColliderComponent::GetSerializableKey()]["Size"];
+			box_collider_component.size = { size[0], size[1], size[2] };
+			box_collider_component.convex_radius = node[BoxColliderComponent::GetSerializableKey()]["ConvexRadius"];
+			box_collider_component.friction = node[BoxColliderComponent::GetSerializableKey()]["Friction"];
+			box_collider_component.restitution = node[BoxColliderComponent::GetSerializableKey()]["Restitution"];
+			box_collider_component.damping = node[BoxColliderComponent::GetSerializableKey()]["Damping"];
+		}
+
+		if (node.contains(SphereColliderComponent::GetSerializableKey())) {
+			SphereColliderComponent& box_collider_component = AddComponent<SphereColliderComponent>();
+			box_collider_component.radius = node[SphereColliderComponent::GetSerializableKey()]["Radius"];
+			box_collider_component.friction = node[SphereColliderComponent::GetSerializableKey()]["Friction"];
+			box_collider_component.restitution = node[SphereColliderComponent::GetSerializableKey()]["Restitution"];
+			box_collider_component.damping = node[SphereColliderComponent::GetSerializableKey()]["Damping"];
+		}
 	}
 
 }

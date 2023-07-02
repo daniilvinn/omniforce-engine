@@ -94,7 +94,7 @@ namespace Omni {
 
 	struct OMNIFORCE_API BoxColliderComponent {
 		fvec3 size = { 1.0f, 1.0f, 1.0f };
-		float32 convex_radius = 0.05f;
+		float32 convex_radius = 0.1f;
 		float32 restitution = 1.0f;
 		float32 friction = 1.0f;
 		float32 damping = 1.0f;

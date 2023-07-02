@@ -12,6 +12,7 @@ namespace Omni {
 
 		void Render() override;
 		void SetContext(Scene* ctx) override;
+		void SetSelectedNode(Entity node, bool is_selected) { m_SelectedNode = node; m_IsSelected = is_selected; }
 
 		Entity GetSelectedNode() const { return m_SelectedNode; }
 		bool IsNodeSelected() const { return m_IsSelected; }

@@ -32,6 +32,7 @@ namespace Omni {
 		void OnUpdate(float ts = 60.0f);
 		Entity CreateEntity(const UUID& id = UUID());
 		void LaunchRuntime();
+		void ShutdownRuntime();
 
 		SceneType GetType() const { return m_Type; }
 		entt::registry* GetRegistry() { return &m_Registry; }

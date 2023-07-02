@@ -24,6 +24,7 @@ namespace Omni {
 		static PhysicsEngine* Get() { return s_Instance; }
 
 		const PhysicsEngineLimits& GetLimits() const { return m_Limits; }
+		bool HasContext() const { return m_Context != nullptr; }
 		void SetGravity(fvec3 gravity);
 
 		void LaunchRuntime(Scene* context);
