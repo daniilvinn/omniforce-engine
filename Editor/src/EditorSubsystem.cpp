@@ -21,7 +21,7 @@ public:
 		Destroy();
 	}
 
-	void OnUpdate() override
+	void OnUpdate(float32 step) override
 	{
 		ImGui::BeginMainMenuBar();
 		if (ImGui::MenuItem("File")) {
@@ -89,10 +89,15 @@ public:
 
 		m_AssetsPanel->Render();
 
-		m_CurrentScene->OnUpdate();
+		m_CurrentScene->OnUpdate(step);
 
 		if(m_ViewportFocused && !m_InRuntime)
 			m_EditorCamera->OnUpdate();
+
+		ImGui::Begin("Debug");
+		ImGui::Text(fmt::format("Delta time: {}", step * 1000.0f).c_str());
+		ImGui::Text(fmt::format("FPS: {}", (uint32)(1000.0f / (step * 1000.0f))).c_str());
+		ImGui::End();
 	}
 
 	void OnEvent(Event* e) override

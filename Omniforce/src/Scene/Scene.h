@@ -29,7 +29,7 @@ namespace Omni {
 
 		void Destroy();
 
-		void OnUpdate(float ts = 60.0f);
+		void OnUpdate(float32 step);
 		Entity CreateEntity(const UUID& id = UUID());
 		void LaunchRuntime();
 		void ShutdownRuntime();

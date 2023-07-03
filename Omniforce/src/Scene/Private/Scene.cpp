@@ -79,7 +79,7 @@ namespace Omni {
 		m_Renderer->Destroy();
 	}
 
-	void Scene::OnUpdate(float ts /*= 60.0f*/)
+	void Scene::OnUpdate(float32 step)
 	{
 		m_Registry.sort<SpriteComponent>([](const auto& lhs, const auto& rhs) {
 			return lhs.layer < rhs.layer;
@@ -119,7 +119,7 @@ namespace Omni {
 		m_Renderer->EndScene();
 
 		if (PhysicsEngine::Get()->HasContext()) {
-			PhysicsEngine::Get()->Update(1.0f / 1000.0f);
+			PhysicsEngine::Get()->Update(step);
 			PhysicsEngine::Get()->FetchResults();
 		}
 	}

@@ -15,7 +15,7 @@ public:
 		Destroy();
 	}
 
-	void OnUpdate() override
+	void OnUpdate(float32 step) override
 	{
 		Shared<Image> swapchain_image = Renderer::GetSwapchainImage();
 

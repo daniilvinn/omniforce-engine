@@ -56,6 +56,12 @@ namespace Omni {
 		Subsystem* m_RootSystem;
 		WindowSystem* m_WindowSystem;
 		ImGuiRenderer* m_ImGuiRenderer;
+
+		struct DeltaTimeData {
+			float64 delta_time = 1.0f / 60.0f;
+			float64 last_frame_time = 0.0f;
+			float64 current_frame_time = 60.0f;
+		} m_DeltaTimeData;
 	};
 
 }

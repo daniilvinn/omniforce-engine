@@ -24,6 +24,8 @@ namespace Omni
 		static void LockAndHideMouse(const std::string& window_tag = "main") { return s_Instance->Impl_LockAndHideMouse(window_tag); }
 		static void ReleaseAndShowMouse(const std::string& window_tag = "main") { return s_Instance->Impl_ReleaseAndShowMouse(window_tag); }
 
+		static float32 Time() { return s_Instance->Impl_Time(); }
+
 	protected:
 		Input() {};
 
@@ -34,6 +36,7 @@ namespace Omni
 		virtual vec2<int32>	Impl_MousePosition(const std::string& window_tag) const = 0;
 		virtual void		Impl_LockAndHideMouse(const std::string& window_tag) = 0;
 		virtual void		Impl_ReleaseAndShowMouse(const std::string& window_tag) = 0;
+		virtual float32		Impl_Time() = 0;
 
 	protected:
 		static Input* s_Instance;

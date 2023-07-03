@@ -50,4 +50,9 @@ namespace Omni {
 		glfwSetInputMode((GLFWwindow*)Application::Get()->GetWindow(window_tag)->Raw(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 	}
 
+	float32 Win64Input::Impl_Time()
+	{
+		return glfwGetTime();
+	}
+
 }

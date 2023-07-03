@@ -8,8 +8,10 @@
 #include <Renderer/ShaderLibrary.h>
 #include <Asset/AssetManager.h>
 #include <Physics/PhysicsEngine.h>
+#include <Core/Input/Input.h>
 
 #include <cassert>
+#include <chrono>
 
 namespace Omni 
 {
@@ -70,7 +72,7 @@ namespace Omni
 		m_RootSystem->Launch();
 		while (m_Running) {
 			PreFrame();
-			m_RootSystem->OnUpdate();
+			m_RootSystem->OnUpdate(m_DeltaTimeData.delta_time);
 			PostFrame();
 		}
 		m_RootSystem->Destroy();
@@ -96,6 +98,9 @@ namespace Omni
 
 	void Application::PreFrame()
 	{
+		m_DeltaTimeData.delta_time = (m_DeltaTimeData.current_frame_time - m_DeltaTimeData.last_frame_time);
+		m_DeltaTimeData.last_frame_time = m_DeltaTimeData.current_frame_time;
+
 		m_WindowSystem->PollEvents();
 		Renderer::BeginFrame();
 		m_ImGuiRenderer->BeginFrame();
@@ -107,6 +112,8 @@ namespace Omni
 		Renderer::Render();
 		Renderer::EndFrame();
 		m_WindowSystem->ProcessEvents();
+
+		m_DeltaTimeData.current_frame_time = Input::Time();
 	}
 
 	Shared<AppWindow> Application::GetWindow(const std::string& tag) const
