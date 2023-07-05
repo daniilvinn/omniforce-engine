@@ -3,6 +3,7 @@
 #include <Scene/Scene.h>
 #include <Scene/Component.h>
 #include <Scene/Entity.h>
+#include <Core/Input/Input.h>
 
 #include "JoltUtils.h"
 
@@ -129,6 +130,7 @@ namespace Omni {
 		}
 
 		m_CoreSystem->OptimizeBroadPhase();
+		m_Timer.Reset();
 	}
 
 	void PhysicsEngine::Reset()
@@ -145,15 +147,20 @@ namespace Omni {
 		m_Context = nullptr;
 	}
 
-	void PhysicsEngine::Update(float32 step)
+	void PhysicsEngine::Update()
 	{
 		int32 optimal_collision_steps = 1;
-#if PHYSICS_COMPUTE_OPTIMAL_COLLISION_STEP_COUNT
-		// Calculate optimal step so I keep simulation stable even with low framerate and big step
-		// if we have 1.0 / 30.0 step, we have 2 collision steps. If we have 1.0 / 20.0 step, we have 3 collision steps and so on
-		optimal_collision_steps = (std::max(step, 1.0f / 60.0f) / (1.0f / 60.0f));
-#endif
-		m_CoreSystem->Update(step, optimal_collision_steps, s_InternalData.temp_allocator, s_InternalData.job_system);
+		float32 time_since_last_update = m_Timer.ElapsedMilliseconds();
+		if (time_since_last_update > (1000.0f / 120.0f)) {
+			uint32 required_physics_update_iterations = (int32)(time_since_last_update / (1000.0f / 120.0f));
+
+			OMNIFORCE_CORE_TRACE("{} - {}", required_physics_update_iterations, time_since_last_update);
+
+			for(uint32 i = 0; i < required_physics_update_iterations; i++)
+				m_CoreSystem->Update(1 / 120.0f, optimal_collision_steps, s_InternalData.temp_allocator, s_InternalData.job_system);
+			m_Timer.Reset();
+		}
+
 	}
 
 	void PhysicsEngine::FetchResults()

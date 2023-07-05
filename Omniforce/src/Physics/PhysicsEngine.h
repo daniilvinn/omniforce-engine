@@ -2,6 +2,7 @@
 
 #include <Foundation/Macros.h>
 #include <Foundation/Types.h>
+#include <Core/Timer.h>
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Physics/PhysicsSystem.h>
@@ -29,7 +30,7 @@ namespace Omni {
 
 		void LaunchRuntime(Scene* context);
 		void Reset();
-		void Update(float32 step);
+		void Update();
 
 		// Fetches results into scene which was set previosly by calling LaunchRuntime()
 		void FetchResults();
@@ -44,6 +45,8 @@ namespace Omni {
 		PhysicsEngineLimits m_Limits;
 
 		Scene* m_Context = nullptr;
+		float32 m_TimeSinceLastUpdate = 1 / 121.0f;
+		Timer m_Timer;
 	};
 
 }

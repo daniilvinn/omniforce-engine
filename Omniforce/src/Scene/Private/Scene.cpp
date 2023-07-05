@@ -119,7 +119,7 @@ namespace Omni {
 		m_Renderer->EndScene();
 
 		if (PhysicsEngine::Get()->HasContext()) {
-			PhysicsEngine::Get()->Update(step);
+			PhysicsEngine::Get()->Update();
 			PhysicsEngine::Get()->FetchResults();
 		}
 	}

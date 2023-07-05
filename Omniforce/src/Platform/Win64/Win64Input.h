@@ -22,7 +22,7 @@ namespace Omni {
 
 		void Impl_ReleaseAndShowMouse(const std::string& window_tag) override;
 
-		float32 Impl_Time() override;
+		float64 Impl_Time() override;
 
 	};
 
