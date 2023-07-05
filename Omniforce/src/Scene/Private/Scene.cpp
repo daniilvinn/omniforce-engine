@@ -51,14 +51,16 @@ namespace Omni {
 
 	Scene::Scene(Scene* other)
 	{
+		m_Registry.clear();
+
 		m_Renderer = other->m_Renderer;
 		m_Camera = other->m_Camera;
 
-		auto idComponents = m_Registry.view<UUIDComponent>();
+		auto idComponents = other->m_Registry.view<UUIDComponent>();
 		for (auto entity : idComponents)
 		{
-			UUID uuid = m_Registry.get<UUIDComponent>(entity).id;
-			Entity e = CreateEntity(uuid);
+			UUID uuid = other->m_Registry.get<UUIDComponent>(entity).id;
+			CreateEntity(entity, uuid);
 		}
 
 		ExplicitComponentCopy<UUIDComponent>(other->m_Registry, m_Registry, other->m_Entities);
@@ -70,8 +72,6 @@ namespace Omni {
 		ExplicitComponentCopy<RigidBody2DComponent>(other->m_Registry, m_Registry, other->m_Entities);
 		ExplicitComponentCopy<BoxColliderComponent>(other->m_Registry, m_Registry, other->m_Entities);
 		ExplicitComponentCopy<SphereColliderComponent>(other->m_Registry, m_Registry, other->m_Entities);
-
-		m_Entities = other->m_Entities;
 	}
 
 	void Scene::Destroy()
@@ -118,15 +118,31 @@ namespace Omni {
 		}
 		m_Renderer->EndScene();
 
-		if (PhysicsEngine::Get()->HasContext()) {
-			PhysicsEngine::Get()->Update();
-			PhysicsEngine::Get()->FetchResults();
+		PhysicsEngine* physics_engine = PhysicsEngine::Get();
+		if (physics_engine->HasContext()) {
+			physics_engine->Update();
+			physics_engine->FetchResults();
 		}
 	}
 
 	Entity Scene::CreateEntity(const UUID& id)
 	{
 		Entity entity(this);
+		entity.AddComponent<UUIDComponent>(id);
+		entity.AddComponent<TagComponent>("Object");
+		entity.AddComponent<TRSComponent>();
+		entity.AddComponent<TransformComponent>();
+
+		entity.GetComponent<TagComponent>().tag.reserve(256);
+
+		m_Entities.emplace(id, entity);
+
+		return entity;
+	}
+
+	Entity Scene::CreateEntity(entt::entity entity_id, const UUID& id /*= UUID()*/)
+	{
+		Entity entity(m_Registry.create(entity_id), this);
 		entity.AddComponent<UUIDComponent>(id);
 		entity.AddComponent<TagComponent>("Object");
 		entity.AddComponent<TRSComponent>();

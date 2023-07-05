@@ -28,8 +28,11 @@ public:
 			ImGui::OpenPopup("menu_bar_file");
 		};
 		if (ImGui::BeginPopup("menu_bar_file")) {
-			if (ImGui::MenuItem("Open project")) {
+			if (ImGui::MenuItem("Open project", "Ctrl + O")) {
 				LoadProject();
+			};
+			if (ImGui::MenuItem("Save project", "Ctrl + S")) {
+				SaveProject();
 			};
 			ImGui::EndPopup();
 		};
@@ -55,6 +58,11 @@ public:
 		);
 		if (ImGui::Button(m_InRuntime ? "Stop" : "Play")) {
 			m_InRuntime = !m_InRuntime;
+
+			Omni::UUID selected_node;
+			if(m_EntitySelected)
+				selected_node = m_SelectedEntity.GetComponent<UUIDComponent>();
+
 			if (m_InRuntime) {
 				if (m_RuntimeScene)
 					delete m_RuntimeScene;
@@ -66,10 +74,14 @@ public:
 				m_RuntimeScene->ShutdownRuntime();
 				m_CurrentScene = m_EditorScene;
 			};
+
+			if (m_EntitySelected) {
+				entt::entity entity_id = m_CurrentScene->GetEntities().at(selected_node);
+				m_SelectedEntity = Entity(m_SelectedEntity, m_CurrentScene);
+			}
 			m_HierarchyPanel->SetContext(m_CurrentScene);
-			m_HierarchyPanel->SetSelectedNode(m_SelectedEntity, m_HierarchyPanel->IsNodeSelected());
+			m_HierarchyPanel->SetSelectedNode(m_SelectedEntity, m_EntitySelected);
 			m_PropertiesPanel->SetContext(m_CurrentScene);
-			m_PropertiesPanel->SetEntity(m_SelectedEntity, m_HierarchyPanel->IsNodeSelected());
 		};
 		ImGui::End();
 
@@ -119,6 +131,8 @@ public:
 			if (Input::KeyPressed(KeyCode::KEY_LEFT_CONTROL) || Input::KeyPressed(KeyCode::KEY_RIGHT_CONTROL)) {
 				if (Input::KeyPressed(KeyCode::KEY_S))
 					SaveProject();
+				if (Input::KeyPressed(KeyCode::KEY_O))
+					LoadProject();
 			}
 		}
 		return false;
@@ -197,6 +211,7 @@ public:
 			m_EditorScene->Deserialize(root_node);
 			m_EditorScene->EditorSetCamera(m_EditorCamera);
 			m_HierarchyPanel->SetContext(m_EditorScene);
+			m_HierarchyPanel->SetSelectedNode({ (entt::entity)0, m_CurrentScene }, false);
 		}
 	};
 
