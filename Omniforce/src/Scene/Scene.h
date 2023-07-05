@@ -31,6 +31,7 @@ namespace Omni {
 
 		void OnUpdate(float32 step);
 		Entity CreateEntity(const UUID& id = UUID());
+		Entity CreateEntity(entt::entity entity_id, const UUID& id = UUID());
 		void LaunchRuntime();
 		void ShutdownRuntime();
 
