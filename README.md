@@ -1,5 +1,4 @@
 # Omniforce Engine
-## A game engine for 2D games.
 
 ## Features
 * High-performance 2D sprite renderer. It requires no VRAM to form vertex buffers, because it is not even used. All sprites are drawn in one draw call.
