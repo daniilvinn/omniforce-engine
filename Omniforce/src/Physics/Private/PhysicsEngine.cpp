@@ -63,7 +63,7 @@ namespace Omni {
 		m_Context = context;
 
 		// HACK
-		m_CoreSystem->SetGravity({ 0.0f, -9.81f, 0.0f });
+		m_CoreSystem->SetGravity({ 0.0f, -9.807f, 0.0f });
 
 		// Create and add Jolt bodies
 		auto registry = context->GetRegistry();
@@ -153,8 +153,6 @@ namespace Omni {
 		float32 time_since_last_update = m_Timer.ElapsedMilliseconds();
 		if (time_since_last_update > (1000.0f / 120.0f)) {
 			uint32 required_physics_update_iterations = (int32)(time_since_last_update / (1000.0f / 120.0f));
-
-			OMNIFORCE_CORE_TRACE("{} - {}", required_physics_update_iterations, time_since_last_update);
 
 			for(uint32 i = 0; i < required_physics_update_iterations; i++)
 				m_CoreSystem->Update(1 / 120.0f, optimal_collision_steps, s_InternalData.temp_allocator, s_InternalData.job_system);

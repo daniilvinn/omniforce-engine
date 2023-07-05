@@ -126,7 +126,6 @@ namespace Omni {
 
 	void Renderer::LoadShaderPack()
 	{
-		//ShaderLibrary::Get()->Load("assets/shaders/texture_pass.ofs");
 		ShaderLibrary::Get()->Load("assets/shaders/sprite.ofs");
 	}
 
