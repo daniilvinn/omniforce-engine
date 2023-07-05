@@ -29,9 +29,10 @@ namespace Omni {
 		template<typename T, typename... Args>
 		[[nodiscard]] T* Allocate(Args&&... args)
 		{
-			ConditionalLock<ThreadSafe> lock;
+			m_Mutex.Lock();
 			T* ptr = new (m_StackPointer) T(std::forward<Args>(args)...);
 			m_StackPointer += sizeof(T);
+			m_Mutex.Unlock();
 
 			return ptr;
 		};
@@ -39,14 +40,16 @@ namespace Omni {
 		// Since it is stack-based allocator for transient data (which will be freed in next frame), we simply set back 
 		void Free() 
 		{
-			ConditionalLock<ThreadSafe> lock;
+			m_Mutex.Lock();
 			m_StackPointer = m_Stack;
 			memset(m_Stack, 0, m_Size);
+			m_Mutex.Unlock();
 		}
 
 	private:
 		byte* m_Stack;
 		byte* m_StackPointer;
 		uint64 m_Size;
+		ConditionalLock<ThreadSafe> m_Mutex;
 	};
 }

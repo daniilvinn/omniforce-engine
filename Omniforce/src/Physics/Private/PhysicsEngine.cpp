@@ -147,12 +147,13 @@ namespace Omni {
 
 	void PhysicsEngine::Update(float32 step)
 	{
+		int32 optimal_collision_steps = 1;
 #if PHYSICS_COMPUTE_OPTIMAL_COLLISION_STEP_COUNT
 		// Calculate optimal step so I keep simulation stable even with low framerate and big step
 		// if we have 1.0 / 30.0 step, we have 2 collision steps. If we have 1.0 / 20.0 step, we have 3 collision steps and so on
-		float32 optimal_collision_steps = (std::max(step, 1.0f / 60.0f) / (1.0f / 60.0f));
+		optimal_collision_steps = (std::max(step, 1.0f / 60.0f) / (1.0f / 60.0f));
 #endif
-		m_CoreSystem->Update(step, (int32)1, s_InternalData.temp_allocator, s_InternalData.job_system);
+		m_CoreSystem->Update(step, optimal_collision_steps, s_InternalData.temp_allocator, s_InternalData.job_system);
 	}
 
 	void PhysicsEngine::FetchResults()
@@ -227,6 +228,8 @@ namespace Omni {
 		JPH::UnregisterTypes();
 		delete JPH::Factory::sInstance;
 		JPH::Factory::sInstance = nullptr;
+		delete s_InternalData.temp_allocator;
+		delete s_InternalData.job_system;
 	}
 
 }

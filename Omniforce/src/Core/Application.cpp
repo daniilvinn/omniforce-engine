@@ -43,7 +43,6 @@ namespace Omni
 		main_window_config.width = 1600;
 		main_window_config.height = 900;
 		main_window_config.fs_exclusive = false;
-		main_window_config.vsync = false;
 
 		m_WindowSystem->AddWindow(main_window_config);
 

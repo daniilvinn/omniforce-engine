@@ -28,11 +28,10 @@ namespace Omni {
 		void SetGravity(fvec3 gravity);
 
 		void LaunchRuntime(Scene* context);
-		// Removes (not destroys) all bodies in the physics scene
 		void Reset();
 		void Update(float32 step);
 
-		// Fetches results into scene
+		// Fetches results into scene which was set previosly by calling LaunchRuntime()
 		void FetchResults();
 
 	private:

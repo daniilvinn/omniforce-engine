@@ -25,7 +25,7 @@ namespace Omni {
 	public:
 		Scene() = delete;
 		Scene(SceneType type);
-		Scene(Scene* other); // copy
+		Scene(Scene* other);
 
 		void Destroy();
 

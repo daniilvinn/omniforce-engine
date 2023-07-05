@@ -12,8 +12,8 @@ namespace Omni {
 	template<>
 	class OMNIFORCE_API ConditionalLock<true> {
 	public:
-		ConditionalLock(){ m_Mutex.lock(); }
-		~ConditionalLock() { m_Mutex.unlock(); }
+		void Lock() { m_Mutex.lock(); };
+		void Unlock() { m_Mutex.unlock(); };
 
 	private:
 		std::shared_mutex m_Mutex;
@@ -21,6 +21,10 @@ namespace Omni {
 
 	template<>
 	class OMNIFORCE_API ConditionalLock<false> 
-	{};
+	{
+	public:
+		void Lock() {}
+		void Unlock() {}
+	};
 
 }

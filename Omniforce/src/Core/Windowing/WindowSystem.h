@@ -15,7 +15,6 @@ namespace Omni {
 			uint16 width;
 			uint16 height;
 			bool fs_exclusive;
-			bool vsync;
 		};
 
 		static WindowSystem* Init();

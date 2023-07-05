@@ -25,15 +25,13 @@ namespace Omni {
 		glfwSetWindowUserPointer(m_WindowHandle, this);
 
 		glfwSetWindowSizeCallback(m_WindowHandle, [](GLFWwindow* window, int width, int height) {
-			vec2<int32> resolution = { width, height };
+			ivec2 resolution = { width, height };
 
 			auto impl_window = (Win64AppWindow*)glfwGetWindowUserPointer(window);
 			impl_window->AllocateEvent<WindowResizeEvent>(resolution);
 
-			if (resolution.x || resolution.y)
-				impl_window->SetMinimized(true);
-			else
-				impl_window->SetMinimized(false);
+			bool minimized = resolution.x && resolution.y;
+			impl_window->SetMinimized(minimized);
 		});
 
 		glfwSetKeyCallback(m_WindowHandle, [](GLFWwindow* window, int key, int scancode, int action, int mods) {
@@ -43,22 +41,15 @@ namespace Omni {
 	
 			switch (action)
 			{
-			case GLFW_PRESS:
-				impl_window->AllocateEvent<KeyPressedEvent>(code, 0);
-				break;
-			case GLFW_REPEAT:
-				impl_window->AllocateEvent<KeyPressedEvent>(code, 1);
-				break;
-			case GLFW_RELEASE:
-				impl_window->AllocateEvent<KeyReleasedEvent>(code);
-				break;
-			default:
-				break;
+			case GLFW_PRESS:		impl_window->AllocateEvent<KeyPressedEvent>(code, 0);	break;
+			case GLFW_REPEAT:		impl_window->AllocateEvent<KeyPressedEvent>(code, 1);	break;
+			case GLFW_RELEASE:		impl_window->AllocateEvent<KeyReleasedEvent>(code);		break;
+			default:																		break;
 			}
 		});
 
 		glfwSetCursorPosCallback(m_WindowHandle, [](GLFWwindow* window, double xpos, double ypos) {
-			vec2<float32> pos = { xpos, ypos };
+			fvec2 pos = { xpos, ypos };
 			
 			auto impl_window = (Win64AppWindow*)glfwGetWindowUserPointer(window);
 			impl_window->AllocateEvent<MouseMovedEvent>(pos);
@@ -75,19 +66,14 @@ namespace Omni {
 			auto impl_window = (Win64AppWindow*)glfwGetWindowUserPointer(window);
 			switch (action)
 			{
-			case GLFW_PRESS:
-				impl_window->AllocateEvent<MouseButtonPressedEvent>(code);
-				break;
-			case GLFW_RELEASE:
-				impl_window->AllocateEvent<MouseButtonReleasedEvent>(code);
-				break;
-			default:
-				break;
+			case GLFW_PRESS:		impl_window->AllocateEvent<MouseButtonPressedEvent>(code);	break;
+			case GLFW_RELEASE:		impl_window->AllocateEvent<MouseButtonReleasedEvent>(code);	break;
+			default:																			break;
 			}
 		});
 
 		glfwSetScrollCallback(m_WindowHandle, [](GLFWwindow* window, double xoffset, double yoffset) {
-			vec2<float32> offset = { xoffset, yoffset };
+			fvec2 offset = { xoffset, yoffset };
 			
 			auto impl_window = (Win64AppWindow*)glfwGetWindowUserPointer(window);
 			impl_window->AllocateEvent<MouseScrolledEvent>(offset);
@@ -98,7 +84,6 @@ namespace Omni {
 
 			auto impl_window = (Win64AppWindow*)glfwGetWindowUserPointer(window);
 			impl_window->AllocateEvent<KeyTypedEvent>(code);
-
 		});
 	}
 
