@@ -71,8 +71,10 @@ namespace Omni {
 			m_InitialMousePosition = mouse;
 			if (Input::ButtonPressed(ButtonCode::MOUSE_BUTTON_RIGHT))
 				MousePan(delta);
+#if 1
 			else if (Input::ButtonPressed(ButtonCode::MOUSE_BUTTON_LEFT))
 				MouseRotate(delta);
+#endif
 			else if (Input::ButtonPressed(ButtonCode::MOUSE_BUTTON_MIDDLE))
 				MouseZoom(delta.y);
 			UpdateView();

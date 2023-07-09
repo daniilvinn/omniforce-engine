@@ -7,6 +7,7 @@
 #include <iostream>
 
 #include <fmt/format.h>
+#include <glm/gtx/matrix_decompose.hpp>
 
 namespace Omni {
 
@@ -65,6 +66,15 @@ namespace Omni {
 			else
 				return fmt::format("{}(B)", size);
 		}
+
+		inline void DecomposeMatrix(const glm::mat4& source, glm::vec3* translation, glm::vec3* rotation, glm::vec3* scale) {
+			glm::quat orientation;
+			glm::vec3 skew;
+			glm::vec4 perpective;
+
+			glm::decompose(source, *scale, orientation, *translation, skew, perpective);
+			*rotation = glm::degrees(glm::eulerAngles(orientation));
+		};
 
 	}
 }

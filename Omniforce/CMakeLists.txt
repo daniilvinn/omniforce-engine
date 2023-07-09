@@ -10,6 +10,8 @@ file (GLOB_RECURSE ENGINE_FILES
     "src/*.h"
     "src/*.cpp"
     "src/*.hpp"
+    "vendor/ImGuizmo/ImGuizmo.h"
+    "vendor/ImGuizmo/ImGuizmo.cpp"
 )
 
 add_library(${ENGINE_TARGET} ${ENGINE_FILES})
@@ -25,6 +27,7 @@ target_include_directories(${ENGINE_TARGET}
     PUBLIC 
         "src/"
         "vendor/imgui"
+        "vendor/ImGuizmo"
     PRIVATE 
         "${Vulkan_SDK}\\Include" 
         "${Vulkan_SDK}\\Source" 

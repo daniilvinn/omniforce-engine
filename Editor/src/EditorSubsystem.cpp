@@ -10,6 +10,7 @@
 #include <fstream>
 
 #include <tinyfiledialogs/tinyfiledialogs.h>
+#include <ImGuizmo.h>
 
 using namespace Omni;
 
@@ -23,6 +24,7 @@ public:
 
 	void OnUpdate(float32 step) override
 	{
+		// Main menu bar
 		ImGui::BeginMainMenuBar();
 		if (ImGui::MenuItem("File")) {
 			ImGui::OpenPopup("menu_bar_file");
@@ -40,16 +42,18 @@ public:
 
 		ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
 
+		//Render and process scene hierarchy panel
 		m_HierarchyPanel->Render();
-
 		if (m_HierarchyPanel->IsNodeSelected()) {
 			m_SelectedEntity = m_HierarchyPanel->GetSelectedNode();
 			m_EntitySelected = true;
 		}
 
+		// Properties panel
 		m_PropertiesPanel->SetEntity(m_SelectedEntity, m_HierarchyPanel->IsNodeSelected());
 		m_PropertiesPanel->Render();
 
+		// Render and process play/stop button
 		ImGui::Begin("##Toolbar", nullptr, 
 			ImGuiWindowFlags_NoDecoration | 
 			ImGuiWindowFlags_NoScrollbar |
@@ -85,6 +89,7 @@ public:
 		};
 		ImGui::End();
 
+		// Viewport panel
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 0.0f, 0.0f });
 		ImGui::Begin("Viewport");
 			m_ViewportFocused = ImGui::IsWindowFocused();
@@ -95,53 +100,45 @@ public:
 			if (m_InRuntime) {
 				m_RuntimeScene->GetCamera()->SetAspectRatio(viewport_frame_size.x / viewport_frame_size.y);
 			}
-
+			RenderGizmos();
 		ImGui::End();
 		ImGui::PopStyleVar();
 
+		// Asset panel
 		m_AssetsPanel->Render();
 
+		// Update editor camera and scene
 		m_CurrentScene->OnUpdate(step);
-
 		if(m_ViewportFocused && !m_InRuntime)
 			m_EditorCamera->OnUpdate();
 
+		// Debug
 		ImGui::Begin("Debug");
 		ImGui::Text(fmt::format("Delta time: {}", step * 1000.0f).c_str());
 		ImGui::Text(fmt::format("FPS: {}", (uint32)(1000.0f / (step * 1000.0f))).c_str());
 		ImGui::End();
-	}
 
-	void OnEvent(Event* e) override
-	{
-		EventDispatcher dispatcher(e);
-		dispatcher.Dispatch<WindowResizeEvent>(OMNIFORCE_BIND_EVENT_FUNCTION(OnWindowResize));
-		dispatcher.Dispatch<KeyPressedEvent>(OMNIFORCE_BIND_EVENT_FUNCTION(OnKeyPressed));
+		// Physics Settings
+		ImGui::Begin("Physics");
+		{
+			// TODO: fix bug here and in properties panel
+			// when engine crashes after trying to close / hide imgui window which contains tables.
+			PhysicsSettings physics_settings = m_EditorScene->GetPhysicsSettings();
+			if(ImGui::BeginTable("physics_settings_gravity", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH));
+			{
+				ImGui::TableNextRow();
 
-		if (m_ViewportFocused) 
-			m_EditorCamera->OnEvent(e);
-	}
+				ImGui::TableNextColumn();
+				ImGui::Text("Gravity");
 
-	bool OnWindowResize(WindowResizeEvent* e) {
-		return false;
-	}
-
-	bool OnKeyPressed(KeyPressedEvent* e) {
-		if (!e->GetRepeatCount()) {
-			if (Input::KeyPressed(KeyCode::KEY_LEFT_CONTROL) || Input::KeyPressed(KeyCode::KEY_RIGHT_CONTROL)) {
-				if (Input::KeyPressed(KeyCode::KEY_S))
-					SaveProject();
-				if (Input::KeyPressed(KeyCode::KEY_O))
-					LoadProject();
+				ImGui::TableNextColumn();
+				ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+				ImGui::DragFloat3("##physics_settings_gravity_drag_float", (float32*)&physics_settings.gravity, 0.01f, -99.0f, 99.0f);
+				ImGui::EndTable();
 			}
+			m_EditorScene->SetPhysicsSettings(physics_settings);
 		}
-		return false;
-	}
-
-	void Destroy() override
-	{
-		Renderer::WaitDevice();
-		m_EditorScene->Destroy();
+		ImGui::End();
 	}
 
 	void Launch() override
@@ -156,9 +153,51 @@ public:
 
 		m_ProjectPath = "";
 
-		m_EditorCamera = std::make_shared<EditorCamera>(45.0f, 1.778, 0.01, 1000.0f);
+		m_EditorCamera = std::make_shared<EditorCamera>(60.0f, 1.778, 0.01, 1000.0f);
 		m_EditorScene->EditorSetCamera(ShareAs<Camera>(m_EditorCamera));
 		m_CurrentScene = m_EditorScene;
+
+		ImGuizmo::SetOrthographic(true);
+	}
+
+	void Destroy() override
+	{
+		Renderer::WaitDevice();
+		m_EditorScene->Destroy();
+	}
+
+	void OnEvent(Event* e) override
+	{
+		EventDispatcher dispatcher(e);
+		dispatcher.Dispatch<WindowResizeEvent>(OMNIFORCE_BIND_EVENT_FUNCTION(OnWindowResize));
+		dispatcher.Dispatch<KeyPressedEvent>(OMNIFORCE_BIND_EVENT_FUNCTION(OnKeyPressed));
+
+		if (m_ViewportFocused)
+			m_EditorCamera->OnEvent(e);
+	}
+
+	bool OnWindowResize(WindowResizeEvent* e) {
+		return false;
+	}
+
+	bool OnKeyPressed(KeyPressedEvent* e) {
+		if (!e->GetRepeatCount()) {
+			if (Input::KeyPressed(KeyCode::KEY_LEFT_CONTROL) || Input::KeyPressed(KeyCode::KEY_RIGHT_CONTROL)) {
+				if (Input::KeyPressed(KeyCode::KEY_S))
+					SaveProject();
+				if (Input::KeyPressed(KeyCode::KEY_O))
+					LoadProject();
+				if (Input::KeyPressed(KeyCode::KEY_Q))
+					m_CurrentOperation = (ImGuizmo::OPERATION)0;
+				if (Input::KeyPressed(KeyCode::KEY_W))
+					m_CurrentOperation = ImGuizmo::OPERATION::TRANSLATE_X | ImGuizmo::OPERATION::TRANSLATE_Y;
+				if (Input::KeyPressed(KeyCode::KEY_E))
+					m_CurrentOperation = ImGuizmo::OPERATION::ROTATE_Z;
+				if (Input::KeyPressed(KeyCode::KEY_R))
+					m_CurrentOperation = ImGuizmo::OPERATION::SCALE_X | ImGuizmo::OPERATION::SCALE_Y;
+			}
+		}
+		return false;
 	}
 
 	void SaveProject() {
@@ -215,6 +254,36 @@ public:
 		}
 	};
 
+	void RenderGizmos() {
+		if (m_EntitySelected && m_CurrentOperation) {
+			TransformComponent& tc = m_SelectedEntity.GetComponent<TransformComponent>();
+			glm::mat4 view = m_EditorCamera->GetViewMatrix();
+			glm::mat4 proj = m_EditorCamera->GetProjectionMatrix();
+
+			ImGuizmo::SetOrthographic(false);
+			ImGuizmo::SetDrawlist();
+			ImGuizmo::SetRect(
+				ImGui::GetWindowPos().x,
+				ImGui::GetWindowPos().y,
+				ImGui::GetWindowWidth(),
+				ImGui::GetWindowHeight()
+			);
+			ImGuizmo::Manipulate(
+				(float*)&view,
+				(float*)&proj,
+				m_CurrentOperation,
+				ImGuizmo::MODE::WORLD,
+				(float*)&tc.matrix
+			);
+
+			if (ImGuizmo::IsUsing()) {
+				TRSComponent& trs = m_SelectedEntity.GetComponent<TRSComponent>();
+				Utils::DecomposeMatrix(tc.matrix, &trs.translation, &trs.rotation, &trs.scale);
+			}
+			
+		}	
+	}
+
 	/*
 	*	DATA
 	*/
@@ -232,6 +301,7 @@ public:
 	AssetsPanel* m_AssetsPanel;
 
 	std::filesystem::path m_ProjectPath;
+	ImGuizmo::OPERATION m_CurrentOperation = (ImGuizmo::OPERATION)0;
 };
 
 Subsystem* ConstructRootSystem()
