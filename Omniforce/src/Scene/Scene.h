@@ -5,6 +5,7 @@
 #include "Sprite.h"
 #include "Core/UUID.h"
 #include "Core/Serializable.h"
+#include "Physics/PhysicsSettings.h"
 
 #include <entt/entt.hpp>
 #include <nlohmann/json_fwd.hpp>
@@ -32,6 +33,7 @@ namespace Omni {
 		void OnUpdate(float32 step);
 		Entity CreateEntity(const UUID& id = UUID());
 		Entity CreateEntity(entt::entity entity_id, const UUID& id = UUID());
+		void RemoveEntity(Entity entity);
 		void LaunchRuntime();
 		void ShutdownRuntime();
 
@@ -42,6 +44,8 @@ namespace Omni {
 		Shared<Camera> GetCamera() const { return m_Camera; };
 		Shared<SceneRenderer> GetRenderer() const { return m_Renderer; }
 		UUID GetID() const { return m_Id; }
+		PhysicsSettings GetPhysicsSettings() const { return m_PhysicsSettings; }
+		void SetPhysicsSettings(const PhysicsSettings& settings);
 
 		void Serialize(nlohmann::json& node) override;
 		void Deserialize(nlohmann::json& node) override;
@@ -60,6 +64,8 @@ namespace Omni {
 
 		entt::registry m_Registry;
 		robin_hood::unordered_map<UUID, entt::entity> m_Entities;
+
+		PhysicsSettings m_PhysicsSettings;
 	};
 
 }

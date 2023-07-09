@@ -55,15 +55,19 @@ namespace Omni {
 
 	void PhysicsEngine::SetGravity(fvec3 gravity)
 	{
+		m_Settings.gravity = gravity;
 		m_CoreSystem->SetGravity({ gravity.x, gravity.y, gravity.z });
+	}
+
+	void PhysicsEngine::SetSettings(const PhysicsSettings& settings)
+	{
+		m_Settings = settings;
+		SetGravity(m_Settings.gravity);
 	}
 
 	void PhysicsEngine::LaunchRuntime(Scene* context)
 	{
 		m_Context = context;
-
-		// HACK
-		m_CoreSystem->SetGravity({ 0.0f, -9.807f, 0.0f });
 
 		// Create and add Jolt bodies
 		auto registry = context->GetRegistry();
@@ -79,7 +83,10 @@ namespace Omni {
 			body_creation_settings.mAllowedDOF = JPH::EAllowedDOF::XYPlane;
 			body_creation_settings.mMotionType = convert(rb2d_component.type);
 			body_creation_settings.mObjectLayer = rb2d_component.type == RigidBody2DComponent::Type::STATIC ? BodyLayers::NON_MOVING : BodyLayers::MOVING;
-			
+			body_creation_settings.mLinearDamping = rb2d_component.linear_drag;
+			body_creation_settings.mAngularDamping = rb2d_component.angular_drag;
+			body_creation_settings.mIsSensor = rb2d_component.sensor_mode;
+
 			JPH::BodyID body_id;
 
 			if (entity.HasComponent<BoxColliderComponent>()) {
@@ -209,8 +216,7 @@ namespace Omni {
 		m_CoreSystem->SetBodyActivationListener(&s_InternalData.body_activation_listener);
 		m_CoreSystem->SetContactListener(&s_InternalData.body_contact_listener);
 
-		// allocate 20 mb for physics engine temporal data
-		// TODO: recreate allocator if needed more memory
+		// allocate 50 mb for physics engine temporal data
 		s_InternalData.temp_allocator = new JPH::TempAllocatorImpl(50 * 1024 * 1024);
 
 		// for now I let Jolt to use all available threads except main thread. 

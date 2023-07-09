@@ -5,6 +5,7 @@
 // Core
 #include <Core/Application.h>
 #include <Core/Subsystem.h>
+#include <Core/Utils.h>
 #include <Log/Logger.h>
 #include <Memory/Common.h>
 #include <Threading/JobSystem.h>
@@ -15,6 +16,7 @@
 #include <Core/Events/MouseEvents.h>
 
 #include <Core/Input/Input.h>
+#include <Core/Timer.h>
 
 // Renderer
 #include <Renderer/Renderer.h>

@@ -1,6 +1,7 @@
 #include "../SceneHierarchy.h"
 
 #include <Scene/Component.h>
+#include <Core/Input/Input.h>
 
 #include <imgui.h>
 #include <entt/entt.hpp>
@@ -26,15 +27,16 @@ namespace Omni {
 				}
 				ImGui::EndPopup();
 			}
-
-			ImGui::Separator();
-			auto& entities = m_Context->GetEntities();
-			for(auto& [uuid, entity_id] : entities) {
-				Entity entity(entity_id, m_Context);
-				RenderHierarchyNode(entity);
-			};
-			ImGui::End();
+			
 		}
+
+		ImGui::Separator();
+		auto& entities = m_Context->GetEntities();
+		for(auto& [uuid, entity_id] : entities) {
+			Entity entity(entity_id, m_Context);
+			RenderHierarchyNode(entity);
+		};
+		ImGui::End();	
 	}
 
 	void SceneHierarchyPanel::SetContext(Scene* ctx)
@@ -50,8 +52,10 @@ namespace Omni {
 			| ImGuiTreeNodeFlags_OpenOnArrow;
 		bool node_opened = ImGui::TreeNodeEx((void*)(uint64)(uint32)(entt::entity)entity, flags, tag_component.tag.c_str());
 		if (ImGui::IsItemClicked()) {
-			m_SelectedNode = entity;
-			m_IsSelected = true;
+			if (Input::ButtonPressed(ButtonCode::MOUSE_BUTTON_LEFT)) {
+				m_SelectedNode = entity;
+				m_IsSelected = true;
+			}
 		}
 		if (node_opened) {
 			ImGui::TreePop();

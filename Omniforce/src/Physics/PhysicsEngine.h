@@ -3,6 +3,7 @@
 #include <Foundation/Macros.h>
 #include <Foundation/Types.h>
 #include <Core/Timer.h>
+#include "PhysicsSettings.h"
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Physics/PhysicsSystem.h>
@@ -27,6 +28,8 @@ namespace Omni {
 		const PhysicsEngineLimits& GetLimits() const { return m_Limits; }
 		bool HasContext() const { return m_Context != nullptr; }
 		void SetGravity(fvec3 gravity);
+		PhysicsSettings GetSettings() const { return m_Settings; }
+		void SetSettings(const PhysicsSettings& settings);
 
 		void LaunchRuntime(Scene* context);
 		void Reset();
@@ -43,6 +46,7 @@ namespace Omni {
 		static PhysicsEngine* s_Instance;
 		JPH::PhysicsSystem* m_CoreSystem;
 		PhysicsEngineLimits m_Limits;
+		PhysicsSettings m_Settings;
 
 		Scene* m_Context = nullptr;
 		float32 m_TimeSinceLastUpdate = 1 / 121.0f;

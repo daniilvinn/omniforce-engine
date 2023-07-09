@@ -111,7 +111,6 @@ namespace Omni {
 			box_collider_component_node.emplace("ConvexRadius", box_collider_component.convex_radius);
 			box_collider_component_node.emplace("Friction", box_collider_component.friction);
 			box_collider_component_node.emplace("Restitution", box_collider_component.restitution);
-			box_collider_component_node.emplace("Damping", box_collider_component.damping);
 
 			node.emplace(box_collider_component.GetSerializableKey(), box_collider_component_node);
 		}
@@ -121,7 +120,6 @@ namespace Omni {
 			sphere_collider_component_node.emplace("Radius", sphere_collider_component.radius);
 			sphere_collider_component_node.emplace("Friction", sphere_collider_component.friction);
 			sphere_collider_component_node.emplace("Restitution", sphere_collider_component.restitution);
-			sphere_collider_component_node.emplace("Damping", sphere_collider_component.damping);
 
 			node.emplace(sphere_collider_component.GetSerializableKey(), sphere_collider_component_node);
 		}
@@ -212,7 +210,6 @@ namespace Omni {
 			box_collider_component.convex_radius = node[BoxColliderComponent::GetSerializableKey()]["ConvexRadius"];
 			box_collider_component.friction = node[BoxColliderComponent::GetSerializableKey()]["Friction"];
 			box_collider_component.restitution = node[BoxColliderComponent::GetSerializableKey()]["Restitution"];
-			box_collider_component.damping = node[BoxColliderComponent::GetSerializableKey()]["Damping"];
 		}
 
 		if (node.contains(SphereColliderComponent::GetSerializableKey())) {
@@ -220,7 +217,6 @@ namespace Omni {
 			box_collider_component.radius = node[SphereColliderComponent::GetSerializableKey()]["Radius"];
 			box_collider_component.friction = node[SphereColliderComponent::GetSerializableKey()]["Friction"];
 			box_collider_component.restitution = node[SphereColliderComponent::GetSerializableKey()]["Restitution"];
-			box_collider_component.damping = node[SphereColliderComponent::GetSerializableKey()]["Damping"];
 		}
 	}
 

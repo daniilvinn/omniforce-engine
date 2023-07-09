@@ -155,6 +155,11 @@ namespace Omni {
 		return entity;
 	}
 
+	void Scene::RemoveEntity(Entity entity)
+	{
+		m_Registry.destroy(entity);
+	}
+
 	void Scene::LaunchRuntime()
 	{
 		m_Camera = nullptr;
@@ -172,6 +177,12 @@ namespace Omni {
 	void Scene::ShutdownRuntime()
 	{
 		PhysicsEngine::Get()->Reset();
+	}
+
+	void Scene::SetPhysicsSettings(const PhysicsSettings& settings)
+	{
+		m_PhysicsSettings = settings;
+		PhysicsEngine::Get()->SetSettings(settings);
 	}
 
 	void Scene::Serialize(nlohmann::json& node)

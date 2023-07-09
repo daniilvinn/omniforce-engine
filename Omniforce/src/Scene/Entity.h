@@ -28,9 +28,9 @@ namespace Omni {
 			return m_OwnerScene->GetRegistry()->get<Component>(m_Handle);
 		}
 
-		template<typename... Components>
-		void RemoveComponents() {
-			m_OwnerScene->GetRegistry()->remove<Components>(m_Handle);
+		template<typename Component>
+		void RemoveComponent() {
+			m_OwnerScene->GetRegistry()->remove<Component>(m_Handle);
 		}
 
 		template <typename Component>
