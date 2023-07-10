@@ -52,27 +52,25 @@ namespace Omni {
 		glm::mat4 GetProjectionMatrix() const override { return m_ProjectionMatrix; };
 		glm::mat4 GetViewMatrix() const override { return m_ViewMatrix; };
 
-		// Getters for common camera data
 		void SetProjection(float left, float right, float bottom, float top, float zNear = 0.0f, float zFar = 1.0f);
 		void SetPosition(glm::vec3 position);
 		void SetRotation(float rotation);
 		void SetScale(float32 scale);
 		void SetAspectRatio(float32 ratio) override;
 
-		// Getters for common camera data
 		float32 GetRotation() const { return m_Rotation; }
 		float32 GetScale() const { return m_Scale; }
 
-
 		void CalculateMatrices() override;
 
-	private:
+	protected:
 		glm::mat4 m_ViewProjectionMatrix;
 		glm::mat4 m_ProjectionMatrix;
 		glm::mat4 m_ViewMatrix;
 
 		float32 m_Rotation;
 		float32 m_Scale;
+		float32 m_AspectRatio;
 	};
 
 	// 3D camera, which uses perspective matrix as projection matrix.

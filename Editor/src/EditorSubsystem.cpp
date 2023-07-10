@@ -95,12 +95,15 @@ public:
 			m_ViewportFocused = ImGui::IsWindowFocused();
 			ImVec2 viewport_frame_size = ImGui::GetContentRegionAvail();
 			UI::RenderImage(m_EditorScene->GetFinalImage(), SceneRenderer::GetSamplerNearest(), viewport_frame_size, 0, true);
-			m_EditorCamera->SetViewportSize(viewport_frame_size.x, viewport_frame_size.y);
+			m_EditorCamera->SetAspectRatio(viewport_frame_size.x / viewport_frame_size.y);
 			
 			if (m_InRuntime) {
 				m_RuntimeScene->GetCamera()->SetAspectRatio(viewport_frame_size.x / viewport_frame_size.y);
+				m_CurrentOperation = (ImGuizmo::OPERATION)0;
 			}
-			RenderGizmos();
+			else {
+				RenderGizmos();
+			}
 		ImGui::End();
 		ImGui::PopStyleVar();
 
@@ -124,18 +127,10 @@ public:
 			// TODO: fix bug here and in properties panel
 			// when engine crashes after trying to close / hide imgui window which contains tables.
 			PhysicsSettings physics_settings = m_EditorScene->GetPhysicsSettings();
-			if(ImGui::BeginTable("physics_settings_gravity", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH));
-			{
-				ImGui::TableNextRow();
-
-				ImGui::TableNextColumn();
-				ImGui::Text("Gravity");
-
-				ImGui::TableNextColumn();
-				ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+				ImGui::Text("Material");
+				ImGui::SameLine();
 				ImGui::DragFloat3("##physics_settings_gravity_drag_float", (float32*)&physics_settings.gravity, 0.01f, -99.0f, 99.0f);
-				ImGui::EndTable();
-			}
+
 			m_EditorScene->SetPhysicsSettings(physics_settings);
 		}
 		ImGui::End();
@@ -153,7 +148,7 @@ public:
 
 		m_ProjectPath = "";
 
-		m_EditorCamera = std::make_shared<EditorCamera>(60.0f, 1.778, 0.01, 1000.0f);
+		m_EditorCamera = std::make_shared<EditorCamera>(16.0 / 9.0, 20.0f);
 		m_EditorScene->EditorSetCamera(ShareAs<Camera>(m_EditorCamera));
 		m_CurrentScene = m_EditorScene;
 
@@ -260,7 +255,7 @@ public:
 			glm::mat4 view = m_EditorCamera->GetViewMatrix();
 			glm::mat4 proj = m_EditorCamera->GetProjectionMatrix();
 
-			ImGuizmo::SetOrthographic(false);
+			ImGuizmo::SetOrthographic(true);
 			ImGuizmo::SetDrawlist();
 			ImGuizmo::SetRect(
 				ImGui::GetWindowPos().x,

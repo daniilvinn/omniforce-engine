@@ -21,7 +21,7 @@ namespace Omni {
 			if (m_Selected) {
 				std::string& tag = m_Entity.GetComponent<TagComponent>().tag;
 
-				ImGui::BeginTable("properties_entity_name", 3, ImGuiTableFlags_SizingStretchProp);
+				if(ImGui::BeginTable("properties_entity_name", 3, ImGuiTableFlags_SizingStretchProp))
 				{
 					ImGui::TableNextColumn();
 					ImGui::Text("Entity name: ");
@@ -72,14 +72,15 @@ namespace Omni {
 
 						ImGui::EndPopup();
 					}
+
+					ImGui::EndTable();
 				}
-				ImGui::EndTable();
 
 				glm::mat4& transform = m_Entity.GetComponent<TransformComponent>().matrix;
 				auto& trs_component = m_Entity.GetComponent<TRSComponent>();
 
 				ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, { 5.0f, 5.0f });
-				ImGui::BeginTable("Properties", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH);
+				if(ImGui::BeginTable("Properties", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH))
 				{
 					ImGui::TableNextRow();
 					ImGui::TableNextColumn();
@@ -107,8 +108,9 @@ namespace Omni {
 					ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
 					if (ImGui::DragFloat3("##floatS", glm::value_ptr(trs_component.scale), 0.01f))
 						RecalculateTransform();
+
+					ImGui::EndTable();
 				}
-				ImGui::EndTable();
 				ImGui::PopStyleVar();
 
 				if (m_Entity.HasComponent<SpriteComponent>()) {
@@ -135,7 +137,7 @@ namespace Omni {
 
 							ImGui::Separator();
 
-							ImGui::BeginTable("properties_entity_name", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV);
+							if(ImGui::BeginTable("properties_entity_name", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV));
 							{
 								ImGui::TableNextRow();
 								ImGui::TableNextColumn();
@@ -161,8 +163,9 @@ namespace Omni {
 										sc.aspect_ratio = { (float32)texture_resolution.x / (float32)texture_resolution.y };
 									}
 								};
+
+								ImGui::EndTable();
 							}
-							ImGui::EndTable();
 							ImGui::TreePop();
 						}
 					}
@@ -182,7 +185,7 @@ namespace Omni {
 							static int32 current_item = (int32)projection_type;
 
 							ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, { 5.0f, 5.0f });
-							ImGui::BeginTable("Camera component properties table", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH);
+							if(ImGui::BeginTable("Camera component properties table", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH))
 							{
 								ImGui::TableNextRow();
 								ImGui::TableNextColumn();
@@ -259,17 +262,17 @@ namespace Omni {
 									if (ImGui::DragFloat("##", &orthographics_scale, 0.01f, 0.01f, FLT_MAX))
 										camera_2D->SetScale(orthographics_scale);
 								}
+
+								ImGui::TableNextRow();
+
+								ImGui::TableNextColumn();
+								ImGui::Text("Primary");
+
+								ImGui::TableNextColumn();
+								ImGui::Checkbox("##checkbox_camera_primary", &camera_component.primary);
+
+								ImGui::EndTable();
 							}
-
-							ImGui::TableNextRow();
-
-							ImGui::TableNextColumn();
-							ImGui::Text("Primary");
-
-							ImGui::TableNextColumn();
-							ImGui::Checkbox("##checkbox_camera_primary", &camera_component.primary);
-
-							ImGui::EndTable();
 							ImGui::PopStyleVar();
 							ImGui::TreePop();
 						}
@@ -287,7 +290,7 @@ namespace Omni {
 							RigidBody2DComponent& rb2d_component = m_Entity.GetComponent<RigidBody2DComponent>();
 
 							ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, { 5.0f, 5.0f });
-							ImGui::BeginTable("##rb2d_properties_table", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH);
+							if(ImGui::BeginTable("##rb2d_properties_table", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH))
 							{
 								ImGui::TableNextRow();
 								ImGui::TableNextColumn();
@@ -341,8 +344,9 @@ namespace Omni {
 								ImGui::Text("Sensor mode");
 								ImGui::TableNextColumn();
 								ImGui::Checkbox("##rb2d_sensor_mode_property", &rb2d_component.sensor_mode);
+
+								ImGui::EndTable();
 							}
-							ImGui::EndTable();
 							ImGui::PopStyleVar();
 							ImGui::TreePop();
 						}
@@ -357,7 +361,7 @@ namespace Omni {
 						if (ImGui::TreeNode("Box collider component")) {
 							BoxColliderComponent& box_collider_component = m_Entity.GetComponent<BoxColliderComponent>();
 							ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, { 5.0f, 5.0f });
-							ImGui::BeginTable("##box_collider_properties", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH);
+							if(ImGui::BeginTable("##box_collider_properties", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH))
 							{
 								// Size
 								ImGui::TableNextRow();
@@ -394,8 +398,9 @@ namespace Omni {
 								ImGui::TableNextColumn();
 								ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
 								ImGui::SliderFloat("##box_collider_restitution_property", &box_collider_component.restitution, 0.0f, 1.0f);
+
+								ImGui::EndTable();
 							}
-							ImGui::EndTable();
 							ImGui::PopStyleVar();
 							ImGui::TreePop();
 						}
@@ -410,7 +415,7 @@ namespace Omni {
 						if (ImGui::TreeNode("Sphere collider component")) {
 							SphereColliderComponent& sphere_collider_component = m_Entity.GetComponent<SphereColliderComponent>();
 							ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, { 5.0f, 5.0f });
-							ImGui::BeginTable("##sphere_collider_properties", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH);
+							if(ImGui::BeginTable("##sphere_collider_properties", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH))
 							{
 								// Size
 								ImGui::TableNextRow();
@@ -436,16 +441,8 @@ namespace Omni {
 								ImGui::TableNextColumn();
 								ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
 								ImGui::SliderFloat("##sphere_collider_restitution_property", &sphere_collider_component.restitution, 0.0f, 1.0f);
-
-								// Damping
-								ImGui::TableNextRow();
-								ImGui::TableNextColumn();
-								ImGui::Text("Damping");
-								ImGui::TableNextColumn();
-								ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-								ImGui::SliderFloat("##sphere_collider_damping_property", &sphere_collider_component.damping, 0.0f, 1.0f);
+								ImGui::EndTable();
 							}
-							ImGui::EndTable();
 							ImGui::PopStyleVar();
 							ImGui::TreePop();
 						}

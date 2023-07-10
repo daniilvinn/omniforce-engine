@@ -8,54 +8,19 @@
 
 namespace Omni {
 
-	class EditorCamera : public Camera3D
+	class EditorCamera : public Camera2D
 	{
 	public:
 		EditorCamera() = default;
-		EditorCamera(float fov, float aspectRatio, float nearClip, float farClip);
+		EditorCamera(float32 aspect_ratio, float32 scale);
 
 		void OnUpdate();
 		void OnEvent(Event* e);
 
-		inline float GetDistance() const { return m_Distance; }
-		inline void SetDistance(float distance) { m_Distance = distance; }
-
-		inline void SetViewportSize(float width, float height) { m_ViewportWidth = width; m_ViewportHeight = height; UpdateProjection(); }
-
-		glm::vec3 GetUpDirection() const;
-		glm::vec3 GetRightDirection() const;
-		glm::vec3 GetForwardDirection() const;
-		const glm::vec3& GetPosition() const { return m_Position; }
-		glm::quat GetOrientation() const;
-
-		float GetPitch() const { return m_Pitch; }
-		float GetYaw() const { return m_Yaw; }
 	private:
-		void UpdateProjection();
-		void UpdateView();
+		ivec2 m_LastMousePosition = { 0, 0 };
+		bool m_FirstInteraction = true;
+		bool m_InteractionIsOver = true;
 
-		bool OnMouseScroll(MouseScrolledEvent* e);
-
-		void MousePan(const glm::vec2& delta);
-		void MouseRotate(const glm::vec2& delta);
-		void MouseZoom(float delta);
-
-		glm::vec3 CalculatePosition() const;
-
-		std::pair<float, float> PanSpeed() const;
-		float RotationSpeed() const;
-		float ZoomSpeed() const;
-	private:
-		float m_FieldOfView = 45.0f, m_AspectRatio = 1.778f, m_ZNear = 0.1f, m_ZFar = 1000.0f;
-
-		glm::vec3 m_FocalPoint = { 0.0f, 0.0f, 0.0f };
-		glm::vec2 m_InitialMousePosition = { 0.0f, 0.0f };
-
-		float m_Distance = 10.0f;
-
-		float m_ViewportWidth = 1600, m_ViewportHeight = 900;
-
-		bool m_FirstRotate = true;
 	};
-
 }
