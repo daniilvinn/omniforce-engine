@@ -117,7 +117,7 @@ namespace Omni {
 		// Load dummy white texture
 		{
 			ImageSpecification spec = ImageSpecification::Default();
-			spec.path = "assets\\textures\\opaque_white.png";
+			spec.path = "resources/textures/opaque_white.png";
 			m_DummyWhiteTexture = Image::Create(spec);
 			AcquireTextureIndex(m_DummyWhiteTexture, SamplerFilteringMode::LINEAR);
 		}

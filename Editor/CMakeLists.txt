@@ -9,6 +9,9 @@ file(GLOB_RECURSE SANDBOX_FILES
 
 add_executable(${EDITOR_TARGET} ${SANDBOX_FILES})
 
+add_custom_command(TARGET ${EDITOR_TARGET} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_directory 
+	"${CMAKE_SOURCE_DIR}/Resources" "$<TARGET_FILE_DIR:Editor>/resources")
+
 target_link_libraries(${EDITOR_TARGET} PUBLIC OmniforceEngine ${OMNI_IMGUI_TARGET})
 target_include_directories(${EDITOR_TARGET} PUBLIC ${IMGUI_INCLUDE_PATH} "src")
 

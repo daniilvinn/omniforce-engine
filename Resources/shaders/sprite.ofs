@@ -1,0 +1,78 @@
+#pragma lang : glsl
+#pragma stage : vertex
+#version 460 core
+#extension GL_KHR_vulkan_glsl : enable
+#extension GL_EXT_scalar_block_layout : require
+
+layout(set = _OMNI_SCENE_DESCRIPTOR_SET, binding = 1) uniform CameraData {
+	mat4 view;
+	mat4 proj;
+	mat4 view_proj;
+} camera;
+
+struct Sprite {
+	vec4 color_tint;
+	vec3 position;
+	vec2 size;
+	float rotation;
+	uint texture_index;
+};
+
+layout(set = _OMNI_SCENE_DESCRIPTOR_SET, binding = 2, scalar) buffer SpriteData {
+	Sprite sprites[];
+} sprite_data;
+
+vec3 vertices[6] = {
+	vec3( -1.0f,  -1.0f,  0.0f ),
+	vec3(  1.0f,  -1.0f,  0.0f ),
+	vec3(  1.0f,   1.0f,  0.0f ),
+	vec3(  1.0f,   1.0f,  0.0f ),
+	vec3( -1.0f,   1.0f,  0.0f ),
+	vec3( -1.0f,  -1.0f,  0.0f )
+};
+
+vec2 tex_coords[6] = {
+	vec2( 0.0f, 0.0f ),
+	vec2( 1.0f, 0.0f ),
+	vec2( 1.0f, 1.0f ),
+	vec2( 1.0f, 1.0f ),
+	vec2( 0.0f, 1.0f ),
+	vec2( 0.0f, 0.0f )
+};
+
+layout(location = 0) out vec2 tex_coord;
+layout(location = 1) out uint texture_index;
+layout(location = 2) out vec4 color_tint;
+
+void main() {
+	Sprite sprite = sprite_data.sprites[gl_InstanceIndex];
+
+	float sinRot = sin(sprite.rotation);
+    float cosRot = cos(sprite.rotation);
+    mat2 rot = mat2(vec2( cosRot, sinRot), vec2(-sinRot, cosRot));
+
+	vec2 rotated_vertex = rot * (vec3(sprite.size, 1.0f) * vertices[gl_VertexIndex]).xy;
+	gl_Position = camera.view_proj * vec4(sprite.position + vec3(rotated_vertex, 0.0f), 1);
+
+	tex_coord = tex_coords[gl_VertexIndex];
+	texture_index = sprite.texture_index;
+	color_tint = sprite.color_tint;
+}
+
+#pragma stage : fragment
+#version 460 core
+
+#extension GL_EXT_nonuniform_qualifier : require
+
+layout(location = 0) in vec2 v_TexCoord;
+layout(location = 1) flat in uint v_TextureIndex;
+layout(location = 2) in vec4 v_ColorTint;
+
+layout(set = _OMNI_SCENE_DESCRIPTOR_SET, binding = 0) uniform sampler2D texture_bank[65536];
+
+layout(location = 0) out vec4 final_color;
+
+void main() {
+	vec4 texel_color = texture(texture_bank[nonuniformEXT(v_TextureIndex)], v_TexCoord);
+	final_color = texel_color * v_ColorTint;
+}

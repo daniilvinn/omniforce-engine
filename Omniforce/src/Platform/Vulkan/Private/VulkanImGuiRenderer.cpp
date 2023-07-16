@@ -137,7 +137,7 @@ namespace Omni {
 
 		OMNIFORCE_CORE_TRACE("[ImGUiRenderer]: Min image count: {} | image count: {}", init_info.MinImageCount, init_info.ImageCount);
 
-		ImFont* m_MainFont = io.Fonts->AddFontFromFileTTF("assets/fonts/roboto.ttf", 16);
+		ImFont* m_MainFont = io.Fonts->AddFontFromFileTTF("resources/fonts/roboto.ttf", 16);
 
 		VkCommandBufferBeginInfo begin_info = {};
 		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;

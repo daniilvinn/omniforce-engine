@@ -149,7 +149,7 @@ namespace Omni {
 
 									char* filepath = tinyfd_openFileDialog(
 										"Open file",
-										std::filesystem::absolute("/assets/textures/").string().c_str(),
+										std::filesystem::absolute("assets/textures/").string().c_str(),
 										3,
 										filters,
 										NULL,

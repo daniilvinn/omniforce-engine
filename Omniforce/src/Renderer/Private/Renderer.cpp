@@ -126,7 +126,7 @@ namespace Omni {
 
 	void Renderer::LoadShaderPack()
 	{
-		ShaderLibrary::Get()->Load("assets/shaders/sprite.ofs");
+		ShaderLibrary::Get()->Load("resources/shaders/sprite.ofs");
 	}
 
 	void Renderer::Render()
