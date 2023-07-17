@@ -36,6 +36,9 @@ public:
 			if (ImGui::MenuItem("Save project", "Ctrl + S")) {
 				SaveProject();
 			};
+			if (ImGui::MenuItem("New project", "Ctrl + N")) {
+				NewProject();
+			};
 			ImGui::EndPopup();
 		};
 		ImGui::EndMainMenuBar();
@@ -92,18 +95,27 @@ public:
 		// Viewport panel
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 0.0f, 0.0f });
 		ImGui::Begin("Viewport");
+		{
+			ImVec2 viewportMinRegion = ImGui::GetWindowContentRegionMin();
+			ImVec2 viewportMaxRegion = ImGui::GetWindowContentRegionMax();
+			ImVec2 viewportOffset = ImGui::GetWindowPos();
+			m_ViewportBounds[0] = { viewportMinRegion.x + viewportOffset.x, viewportMinRegion.y + viewportOffset.y };
+			m_ViewportBounds[1] = { viewportMaxRegion.x + viewportOffset.x, viewportMaxRegion.y + viewportOffset.y };
+
 			m_ViewportFocused = ImGui::IsWindowFocused();
 			ImVec2 viewport_frame_size = ImGui::GetContentRegionAvail();
 			UI::RenderImage(m_EditorScene->GetFinalImage(), SceneRenderer::GetSamplerNearest(), viewport_frame_size, 0, true);
 			m_EditorCamera->SetAspectRatio(viewport_frame_size.x / viewport_frame_size.y);
 			
 			if (m_InRuntime) {
-				m_RuntimeScene->GetCamera()->SetAspectRatio(viewport_frame_size.x / viewport_frame_size.y);
+				if(m_RuntimeScene->GetCamera() != nullptr)
+					m_RuntimeScene->GetCamera()->SetAspectRatio(viewport_frame_size.x / viewport_frame_size.y);
 				m_CurrentOperation = (ImGuizmo::OPERATION)0;
 			}
 			else {
 				RenderGizmos();
 			}
+		}
 		ImGui::End();
 		ImGui::PopStyleVar();
 
@@ -189,7 +201,7 @@ public:
 				if (Input::KeyPressed(KeyCode::KEY_E))
 					m_CurrentOperation = ImGuizmo::OPERATION::ROTATE_Z;
 				if (Input::KeyPressed(KeyCode::KEY_R))
-					m_CurrentOperation = ImGuizmo::OPERATION::SCALE_X | ImGuizmo::OPERATION::SCALE_Y;
+					m_CurrentOperation = ImGuizmo::OPERATION::SCALE;
 			}
 		}
 		return false;
@@ -197,7 +209,7 @@ public:
 
 	void SaveProject() {
 		if (m_ProjectPath.empty()) {
-			const char* filters[] = { "*.json" };
+			const char* filters[] = { "*.omni" };
 
 			char* filepath = tinyfd_saveFileDialog(
 				"Save project",
@@ -211,7 +223,6 @@ public:
 				return;
 
 			m_ProjectPath = filepath;
-
 		}
 
 		nlohmann::json root_node = {};
@@ -225,29 +236,57 @@ public:
 
 	void LoadProject() 
 	{
-		const char* filters[] = { "*.json" };
+		const char* filters[] = { "*.omni" };
 
 		char* filepath = tinyfd_openFileDialog(
 			"Open project",
 			std::filesystem::current_path().string().c_str(),
 			1,
 			filters,
-			"Omniforce project files (*.json)",
+			"Omniforce project files (*.omni)",
 			false
 		);
-		if (filepath != NULL) {
-			m_ProjectPath = filepath;
 
-			std::ifstream input(filepath);
-			nlohmann::json root_node = nlohmann::json::parse(input);
-			input.close();
+		if (filepath == NULL)
+			return;
 
-			m_EditorScene->Deserialize(root_node);
-			m_EditorScene->EditorSetCamera(m_EditorCamera);
-			m_HierarchyPanel->SetContext(m_EditorScene);
-			m_HierarchyPanel->SetSelectedNode({ (entt::entity)0, m_CurrentScene }, false);
-		}
+		m_ProjectPath = filepath;
+
+		std::ifstream input(filepath);
+		nlohmann::json root_node = nlohmann::json::parse(input);
+		input.close();
+
+		m_EditorScene->Deserialize(root_node);
+		m_EditorScene->EditorSetCamera(m_EditorCamera);
+		m_HierarchyPanel->SetContext(m_EditorScene);
+		m_HierarchyPanel->SetSelectedNode({ (entt::entity)0, m_CurrentScene }, false);
+		
 	};
+
+	void NewProject() {
+		const char* filters[] = { "*.omni" };
+
+		char* filepath = tinyfd_saveFileDialog(
+			"Save project",
+			std::filesystem::current_path().string().c_str(),
+			1,
+			filters,
+			nullptr
+		);
+
+		if (filepath == NULL)
+			return;
+
+		m_ProjectPath = filepath;
+
+		auto textures_dir = m_ProjectPath.string() + "/assets/textures";
+		auto scripts_dir = m_ProjectPath.string() + "/assets/scripts";
+		auto audio_dir = m_ProjectPath.string() + "/assets/audio";
+
+		std::filesystem::create_directories(textures_dir);
+		std::filesystem::create_directories(scripts_dir);
+		std::filesystem::create_directories(audio_dir);
+	}
 
 	void RenderGizmos() {
 		if (m_EntitySelected && m_CurrentOperation) {
@@ -258,17 +297,33 @@ public:
 			ImGuizmo::SetOrthographic(true);
 			ImGuizmo::SetDrawlist();
 			ImGuizmo::SetRect(
-				ImGui::GetWindowPos().x,
-				ImGui::GetWindowPos().y,
-				ImGui::GetWindowWidth(),
-				ImGui::GetWindowHeight()
+				m_ViewportBounds[0].x, 
+				m_ViewportBounds[0].y, 
+				m_ViewportBounds[1].x - m_ViewportBounds[0].x, 
+				m_ViewportBounds[1].y - m_ViewportBounds[0].y
 			);
+
+			bool needs_snapping = Input::KeyPressed(KeyCode::KEY_LEFT_ALT);
+			float snap_value[2] = { 0.0f, 0.0f };
+			if (needs_snapping) {
+				if (m_CurrentOperation & ImGuizmo::OPERATION::ROTATE_Z) {
+					snap_value[0] = 45.0f;
+				}
+
+				else {
+					snap_value[0] = 0.5f;
+					snap_value[1] = 0.5f;
+				}
+			}
+
 			ImGuizmo::Manipulate(
 				(float*)&view,
 				(float*)&proj,
 				m_CurrentOperation,
 				ImGuizmo::MODE::WORLD,
-				(float*)&tc.matrix
+				(float*)&tc.matrix,
+				nullptr,
+				snap_value
 			);
 
 			if (ImGuizmo::IsUsing()) {
@@ -297,6 +352,9 @@ public:
 
 	std::filesystem::path m_ProjectPath;
 	ImGuizmo::OPERATION m_CurrentOperation = (ImGuizmo::OPERATION)0;
+
+	fvec2 m_ViewportBounds[2];
+
 };
 
 Subsystem* ConstructRootSystem()

@@ -252,7 +252,7 @@ namespace Omni {
 		OMNIFORCE_ASSERT_TAGGED(false, "Currently not implemented properly. Basic color pass is not inited.");
 		MiscData data;
 		data.size = sizeof(s_GlobalSceneData.textures[texture->GetId()]);
-		data.data = new uint8[data.size];
+		data.data = new byte[data.size];
 
 		memcpy(data.data, &s_GlobalSceneData.textures[texture->GetId()], sizeof(uint32));
 

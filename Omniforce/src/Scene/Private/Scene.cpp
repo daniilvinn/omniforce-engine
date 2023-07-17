@@ -109,7 +109,7 @@ namespace Omni {
 				Sprite sprite;
 				sprite.texture_id = m_Renderer->GetTextureIndex(sprite_component.texture);
 				sprite.rotation = glm::radians(trs.rotation.z);
-				sprite.position = { trs.translation.x * sprite_component.aspect_ratio, trs.translation.y, trs.translation.z };
+				sprite.position = { trs.translation.x, trs.translation.y, trs.translation.z };
 				sprite.size = { trs.scale.x * sprite_component.aspect_ratio, trs.scale.y };
 				sprite.color_tint = sprite_component.color;
 
@@ -219,7 +219,7 @@ namespace Omni {
 		nlohmann::json textures = node["Textures"];
 
 		for (auto i = textures.begin(); i != textures.end(); i++) {
-			std::string texture_path = std::filesystem::current_path().string() + "/" + i.value().get<std::string>();
+			std::string texture_path = std::filesystem::absolute(i.value().get<std::string>()).string();
 
 			Omni::UUID id = AssetManager::Get()->LoadTexture(texture_path, std::stoull(i.key()));
 
