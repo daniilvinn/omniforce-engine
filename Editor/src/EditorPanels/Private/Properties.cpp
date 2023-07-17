@@ -15,9 +15,9 @@ namespace Omni {
 
 	void PropertiesPanel::Render()
 	{
-		ImGui::Begin("Properties", &m_IsOpen);
 		if (m_IsOpen)
 		{
+			ImGui::Begin("Properties", &m_IsOpen);
 			if (m_Selected) {
 				std::string& tag = m_Entity.GetComponent<TagComponent>().tag;
 
@@ -449,8 +449,8 @@ namespace Omni {
 					}
 				}
 			}
+			ImGui::End();
 		}
-		ImGui::End();
 	}
 
 	void PropertiesPanel::SetEntity(Entity entity, bool selected)

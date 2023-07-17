@@ -29,6 +29,9 @@ public:
 		if (ImGui::MenuItem("File")) {
 			ImGui::OpenPopup("menu_bar_file");
 		};
+		if (ImGui::MenuItem("View")) {
+			ImGui::OpenPopup("menu_bar_view");
+		};
 		if (ImGui::BeginPopup("menu_bar_file")) {
 			if (ImGui::MenuItem("Open project", "Ctrl + O")) {
 				LoadProject();
@@ -41,6 +44,18 @@ public:
 			};
 			ImGui::EndPopup();
 		};
+		if (ImGui::BeginPopup("menu_bar_view")) {
+			if (ImGui::MenuItem("Scene hierarchy")) {
+				m_HierarchyPanel->Open(true);
+			}
+			if (ImGui::MenuItem("Properties")) {
+				m_PropertiesPanel->Open(true);
+			}
+			if (ImGui::MenuItem("Content browser")) {
+				m_AssetsPanel->Open(true);
+			}
+			ImGui::EndPopup();
+		}
 		ImGui::EndMainMenuBar();
 
 		ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
@@ -139,7 +154,7 @@ public:
 			// TODO: fix bug here and in properties panel
 			// when engine crashes after trying to close / hide imgui window which contains tables.
 			PhysicsSettings physics_settings = m_EditorScene->GetPhysicsSettings();
-				ImGui::Text("Material");
+				ImGui::Text("Gravity");
 				ImGui::SameLine();
 				ImGui::DragFloat3("##physics_settings_gravity_drag_float", (float32*)&physics_settings.gravity, 0.01f, -99.0f, 99.0f);
 

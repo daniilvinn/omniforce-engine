@@ -27,16 +27,14 @@ namespace Omni {
 				}
 				ImGui::EndPopup();
 			}
-			
+			ImGui::Separator();
+			auto& entities = m_Context->GetEntities();
+			for (auto& [uuid, entity_id] : entities) {
+				Entity entity(entity_id, m_Context);
+				RenderHierarchyNode(entity);
+			};
+			ImGui::End();
 		}
-
-		ImGui::Separator();
-		auto& entities = m_Context->GetEntities();
-		for(auto& [uuid, entity_id] : entities) {
-			Entity entity(entity_id, m_Context);
-			RenderHierarchyNode(entity);
-		};
-		ImGui::End();	
 	}
 
 	void SceneHierarchyPanel::SetContext(Scene* ctx)

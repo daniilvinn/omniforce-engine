@@ -15,38 +15,43 @@ namespace Omni {
 	AssetsPanel::AssetsPanel(Scene* ctx)
 		: EditorPanel(ctx)
 	{
-		
+		m_IsOpen = true;
 	}
 
 	void AssetsPanel::Render()
 	{
 		auto texture_registry = AssetManager::Get()->GetTextureRegistry();
 
-		ImGui::Begin("Assets");
-		{
-			ImGui::Columns(2);
+		if (m_IsOpen) {
+			ImGui::Begin("Assets", &m_IsOpen);
+			ImGui::BeginTable("content_browser", 2);
+			ImGui::TableSetupColumn("test", ImGuiTableColumnFlags_WidthFixed, ImGui::GetWindowWidth() - 225, 0);
+
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
 			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 5);
 			ImGui::Text("Asset registry");
-			
-			ImGui::NextColumn();
-			if (ImGui::Button("Browse files", { -FLT_MIN, 0.0f })) {
+
+			ImGui::TableNextColumn();
+			if (ImGui::Button("Browse files", { 200.0f, 0.0f })) {
 				const char* filters[] = {"*.png", "*.jpg", "*.jpeg"};
 
 				char* filepath = tinyfd_openFileDialog(
 					"Open file",
-					(std::filesystem::current_path().string() + "\\assets").c_str(),
+					std::filesystem::absolute("assets").string().c_str(),
 					3,
 					filters,
 					NULL,
 					false
 				);
 
-				if (filepath != NULL) {
-					UUID tex_uuid = AssetManager::Get()->LoadTexture(std::filesystem::path(filepath));
-					auto texture_resolution = AssetManager::Get()->GetTexture(tex_uuid)->GetSpecification().extent;
-				}
+				if (filepath != NULL)
+					return;
+
+				UUID tex_uuid = AssetManager::Get()->LoadTexture(std::filesystem::path(filepath));
+				auto texture_resolution = AssetManager::Get()->GetTexture(tex_uuid)->GetSpecification().extent;
 			}
-			ImGui::Columns();
+			ImGui::EndTable();
 			ImGui::Separator();
 
 			for (auto& texture : *texture_registry) {
@@ -61,9 +66,7 @@ namespace Omni {
 				);
 				ImGui::Separator();
 			}
-
+			ImGui::End();
 		}
-		ImGui::End();
 	}
-
 }
