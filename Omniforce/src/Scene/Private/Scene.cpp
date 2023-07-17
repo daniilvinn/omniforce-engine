@@ -28,25 +28,6 @@ namespace Omni {
 		renderer_spec.anisotropic_filtering = 16;
 
 		m_Renderer = SceneRenderer::Create(renderer_spec);
-
-		if (type == SceneType::SCENE_TYPE_3D) {
-			m_Camera = std::make_shared<Camera3D>();
-
-			auto camera_3D = ShareAs<Camera3D>(m_Camera);
-			camera_3D->SetProjection(glm::radians(90.0f), 16.0 / 9.0, 0.0f, 100.0f);
-			camera_3D->Move({ 0.0f, 0.0f, -50.0f });
-		}
-		else if (type == SceneType::SCENE_TYPE_2D) {
-			m_Camera = std::make_shared<Camera2D>();
-			auto camera_2D = ShareAs<Camera2D>(m_Camera);
-			float32 aspect_ratio = 16.0f / 9.0f;
-			camera_2D->SetProjection(-aspect_ratio, aspect_ratio, -1.0f, 1.0f);
-		}
-
-		Entity entity = CreateEntity();
-		entity.AddComponent<CameraComponent>(m_Camera, true);
-		entity.GetComponent<TagComponent>().tag = "Main camera";
-		entity.GetComponent<TRSComponent>().rotation = { 0.0f, -90.0, 0.0f };
 	}
 
 	Scene::Scene(Scene* other)
