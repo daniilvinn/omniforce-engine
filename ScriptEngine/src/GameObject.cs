@@ -4,7 +4,7 @@ namespace Omni
     {
 
         public abstract void OnInit();
-        public abstract void OnUpdate(float ts);
+        public abstract void OnUpdate();
         public virtual void OnContactEnter() { }
         public virtual void OnContactPersisted() { }
         public virtual void OnContactRemoved() { }

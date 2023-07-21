@@ -96,7 +96,7 @@ namespace Omni {
 		OMNIFORCE_ASSERT_TAGGED(base_entity_class != NULL, "[ScriptEngine]: failed extract to base game object class from C# assembly");
 
 		s_ScriptEngineData.on_init_method = mono_class_get_method_from_name(base_entity_class, "OnInit", 0);
-		s_ScriptEngineData.on_update_method = mono_class_get_method_from_name(base_entity_class, "OnUpdate", 1);
+		s_ScriptEngineData.on_update_method = mono_class_get_method_from_name(base_entity_class, "OnUpdate", 0);
 
 		// App assembly
 		s_Internals.app_assembly = (MonoAssembly*)ReadAssembly(FileSystem::GetWorkingDirectory().append("assets/scripts/bin/gamescripts.dll"));
@@ -147,6 +147,36 @@ namespace Omni {
 		return s_ScriptEngineData.has_assemblies;
 	}
 
+	void ScriptEngine::CallOnInit(Entity e)
+	{
+		UUIDComponent& uuid_component = e.GetComponent<UUIDComponent>();
+		ScriptComponent& script_component = e.GetComponent<ScriptComponent>();
+		UUID uuid = uuid_component.id;
+
+		MonoObject* exc;
+		mono_runtime_invoke(
+			s_ScriptEngineData.init_methods[uuid],
+			script_component.runtime_managed_object,
+			nullptr,
+			&exc
+		);
+	}
+
+	void ScriptEngine::CallOnUpdate(Entity e)
+	{
+		UUIDComponent& uuid_component = e.GetComponent<UUIDComponent>();
+		ScriptComponent& script_component = e.GetComponent<ScriptComponent>();
+		UUID uuid = uuid_component.id;
+
+		MonoObject* exc;
+		mono_runtime_invoke(
+			s_ScriptEngineData.update_methods[uuid],
+			script_component.runtime_managed_object,
+			nullptr,
+			&exc
+		);
+	}
+
 	void ScriptEngine::LaunchRuntime(Scene* context)
 	{
 		m_Context = context;
@@ -183,6 +213,9 @@ namespace Omni {
 			ScriptComponent& script_component = entity.GetComponent<ScriptComponent>();
 			script_component.runtime_managed_object = nullptr;
 		}
+
+		s_ScriptEngineData.init_methods.clear();
+		s_ScriptEngineData.update_methods.clear();
 
 		m_Context = nullptr;
 	}

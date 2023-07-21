@@ -123,6 +123,13 @@ namespace Omni {
 
 			node.emplace(sphere_collider_component.GetSerializableKey(), sphere_collider_component_node);
 		}
+		if (HasComponent<ScriptComponent>()) {
+			ScriptComponent& script_component = GetComponent<ScriptComponent>();
+			nlohmann::json script_component_node = nlohmann::json::object();
+			script_component_node.emplace("ClassName", script_component.class_name);
+
+			node.emplace(ScriptComponent::GetSerializableKey(), script_component_node);
+		}
 	}
 
 	void Entity::Deserialize(nlohmann::json& node)
@@ -217,6 +224,10 @@ namespace Omni {
 			box_collider_component.radius = node[SphereColliderComponent::GetSerializableKey()]["Radius"];
 			box_collider_component.friction = node[SphereColliderComponent::GetSerializableKey()]["Friction"];
 			box_collider_component.restitution = node[SphereColliderComponent::GetSerializableKey()]["Restitution"];
+		}
+		if (node.contains(ScriptComponent::GetSerializableKey())) {
+			ScriptComponent& script_component = AddComponent<ScriptComponent>();
+			script_component.class_name = node[ScriptComponent::GetSerializableKey()]["ClassName"];
 		}
 	}
 

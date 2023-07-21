@@ -2,6 +2,7 @@
 
 #include <Foundation/Macros.h>
 #include <Foundation/Types.h>
+#include <Scene/Entity.h>
 
 #include <filesystem>
 
@@ -17,14 +18,17 @@ namespace Omni {
 		static void Shutdown();
 		static ScriptEngine* Get() { return s_Instance; }
 
+		void LaunchRuntime(Scene* context);
+		void ShutdownRuntime();
+		bool HasContext() { return m_Context != nullptr; };
+
 		void LoadAssemblies();
 		void UnloadAssemblies();
 		void ReloadAssemblies();
-
 		bool HasAssemblies() const;
 
-		void LaunchRuntime(Scene* context);
-		void ShutdownRuntime();
+		void CallOnInit(Entity e);
+		void CallOnUpdate(Entity e);
 
 	private:
 		ScriptEngine();
@@ -37,7 +41,7 @@ namespace Omni {
 
 	private:
 		inline static ScriptEngine* s_Instance = nullptr;
-		Scene* m_Context;
+		Scene* m_Context = nullptr;
 
 	};
 

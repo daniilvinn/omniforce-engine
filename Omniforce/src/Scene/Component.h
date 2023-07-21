@@ -117,7 +117,7 @@ namespace Omni {
 			class_name.reserve(256);
 		}
 
-		static const char* GetSerializableKey() { return "SphereColliderComponent"; }
+		static const char* GetSerializableKey() { return "ScriptComponent"; }
 	};
 
 

@@ -55,6 +55,7 @@ namespace Omni {
 		ExplicitComponentCopy<RigidBody2DComponent>(other->m_Registry, m_Registry, other->m_Entities);
 		ExplicitComponentCopy<BoxColliderComponent>(other->m_Registry, m_Registry, other->m_Entities);
 		ExplicitComponentCopy<SphereColliderComponent>(other->m_Registry, m_Registry, other->m_Entities);
+		ExplicitComponentCopy<ScriptComponent>(other->m_Registry, m_Registry, other->m_Entities);
 	}
 
 	void Scene::Destroy()
@@ -100,6 +101,14 @@ namespace Omni {
 			}
 		}
 		m_Renderer->EndScene();
+
+		ScriptEngine* script_engine = ScriptEngine::Get();
+		if (script_engine->HasContext()) {
+			auto script_component_view = m_Registry.view<ScriptComponent>();
+			for (auto& e : script_component_view) {
+				script_engine->CallOnUpdate(Entity(e, this));
+			}
+		}
 
 		PhysicsEngine* physics_engine = PhysicsEngine::Get();
 		if (physics_engine->HasContext()) {
@@ -155,7 +164,13 @@ namespace Omni {
 			}
 		}
 		PhysicsEngine::Get()->LaunchRuntime(this);
-		ScriptEngine::Get()->LaunchRuntime(this);
+
+		ScriptEngine* script_engine = ScriptEngine::Get();
+		script_engine->LaunchRuntime(this);
+		auto script_component_view = m_Registry.view<ScriptComponent>();
+		for (auto& e : script_component_view) {
+			script_engine->CallOnInit(Entity(e, this));
+		}
 	}
 
 	void Scene::ShutdownRuntime()
