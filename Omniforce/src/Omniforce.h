@@ -37,6 +37,12 @@
 // Asset
 #include <Asset/AssetManager.h>
 
+// File system
+#include <Filesystem/Filesystem.h>
+
+// Scripts
+#include <Scripting/ScriptEngine.h>
+
 // ImGui
 #include <imgui.h>
 

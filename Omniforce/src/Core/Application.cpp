@@ -9,6 +9,7 @@
 #include <Asset/AssetManager.h>
 #include <Physics/PhysicsEngine.h>
 #include <Core/Input/Input.h>
+#include <Scripting/ScriptEngine.h>
 
 #include <cassert>
 #include <chrono>
@@ -51,10 +52,10 @@ namespace Omni
 		renderer_config.frames_in_flight = 2;
 		renderer_config.vsync = false;
 
-		js->Execute(Input::Init);
 		js->Execute([renderer_config]() {
 			Renderer::Init(renderer_config);
 		});
+		js->Execute(Input::Init);
 		js->Execute(PhysicsEngine::Init);
 
 		js->Wait();
@@ -64,6 +65,8 @@ namespace Omni
 
 		m_ImGuiRenderer = ImGuiRenderer::Create();
 		m_ImGuiRenderer->Launch(m_WindowSystem->GetWindow("main")->Raw());
+
+		ScriptEngine::Init();
 	}
 
 	void Application::Run()

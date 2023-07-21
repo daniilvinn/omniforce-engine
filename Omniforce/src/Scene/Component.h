@@ -108,4 +108,18 @@ namespace Omni {
 		static const char* GetSerializableKey() { return "SphereColliderComponent"; }
 	};
 
+	struct OMNIFORCE_API ScriptComponent {
+		std::string class_name = "";
+		void* runtime_managed_object = nullptr;
+
+		ScriptComponent()
+		{
+			class_name.reserve(256);
+		}
+
+		static const char* GetSerializableKey() { return "SphereColliderComponent"; }
+	};
+
+
+
 }

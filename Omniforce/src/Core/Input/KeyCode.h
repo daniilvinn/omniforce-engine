@@ -2,7 +2,7 @@
 
 namespace Omni {
 
-	enum class KeyCode : int32 {
+	enum class KeyCode : uint32 {
 
 		KEY_UNKNOWN			 = -1,
 		KEY_SPACE			 = 32,

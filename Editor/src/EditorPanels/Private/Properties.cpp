@@ -4,6 +4,8 @@
 #include <Scene/SceneRenderer.h>
 #include <Asset/AssetManager.h>
 
+#include <Filesystem/Filesystem.h>
+
 #include <glm/glm.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -68,6 +70,11 @@ namespace Omni {
 						ImGui::BeginDisabled(m_Entity.HasComponent<SphereColliderComponent>() || m_Entity.HasComponent<BoxColliderComponent>());
 						if (ImGui::MenuItem("Sphere collider component"))
 							m_Entity.AddComponent<SphereColliderComponent>();
+						ImGui::EndDisabled();
+
+						ImGui::BeginDisabled(m_Entity.HasComponent<ScriptComponent>());
+						if (ImGui::MenuItem("Script component"))
+							m_Entity.AddComponent<ScriptComponent>();
 						ImGui::EndDisabled();
 
 						ImGui::EndPopup();
@@ -157,7 +164,15 @@ namespace Omni {
 									);
 
 									if (filepath != NULL) {
-										sc.texture = AssetManager::Get()->LoadTexture(std::filesystem::path(filepath));
+										std::filesystem::path full_texture_path(filepath);
+										std::filesystem::path texture_path = FileSystem::GetWorkingDirectory().append("assets/textures").append(full_texture_path.filename().string());
+
+										std::filesystem::copy_file(filepath,
+											texture_path,
+											std::filesystem::copy_options::overwrite_existing
+										);
+
+										sc.texture = AssetManager::Get()->LoadTexture(texture_path);
 										m_Context->GetRenderer()->AcquireTextureIndex(AssetManager::Get()->GetTexture(sc.texture), SamplerFilteringMode::NEAREST);
 										uvec3 texture_resolution = AssetManager::Get()->GetTexture(sc.texture)->GetSpecification().extent;
 										sc.aspect_ratio = { (float32)texture_resolution.x / (float32)texture_resolution.y };
@@ -443,6 +458,32 @@ namespace Omni {
 								ImGui::SliderFloat("##sphere_collider_restitution_property", &sphere_collider_component.restitution, 0.0f, 1.0f);
 								ImGui::EndTable();
 							}
+							ImGui::PopStyleVar();
+							ImGui::TreePop();
+						}
+					}
+				}
+				if (m_Entity.HasComponent<ScriptComponent>()) {
+					if (ImGui::Button(" - ##script_component")) {
+						m_Entity.RemoveComponent<SphereColliderComponent>();
+					}
+					else {
+						ImGui::SameLine();
+						if (ImGui::TreeNode("Script component")) {
+							ScriptComponent& script_component = m_Entity.GetComponent<ScriptComponent>();
+							ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, { 5.0f, 5.0f });
+
+							if (ImGui::BeginTable("##script_component_properties", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH)) {
+								ImGui::TableNextRow();
+								ImGui::TableNextColumn();
+								ImGui::Text("Script name");
+
+								ImGui::TableNextColumn();
+								ImGui::InputText("##", script_component.class_name.data(), script_component.class_name.capacity());
+								script_component.class_name.resize(strlen(script_component.class_name.c_str()));
+								ImGui::EndTable();
+							}
+
 							ImGui::PopStyleVar();
 							ImGui::TreePop();
 						}

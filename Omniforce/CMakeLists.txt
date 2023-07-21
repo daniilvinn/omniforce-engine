@@ -33,8 +33,9 @@ target_include_directories(${ENGINE_TARGET}
         "${Vulkan_SDK}\\Source" 
         ${Stb_INCLUDE_DIR}
         "vendor/Jolt"
+        "vendor/mono/include/mono-2.0"
 )
-target_link_directories(${ENGINE_TARGET} INTERFACE "${Vulkan_SDK}\\Lib")
+target_link_directories(${ENGINE_TARGET} INTERFACE "${Vulkan_SDK}\\Lib" PUBLIC "vendor/mono/lib")
 target_compile_definitions(${ENGINE_TARGET} PUBLIC OMNIFORCE_STATIC GLM_FORCE_DEPTH_ZERO_TO_ONE GLM_FORCE_SSE2)
 
 target_link_libraries(
@@ -56,6 +57,12 @@ target_link_libraries(
         debug shaderc_sharedd.lib optimized shaderc_shared.lib
         debug shaderc_utild.lib optimized shaderc_util.lib
         Jolt
+        libmono-static-sgen.lib
+        MonoPosixHelper.lib
+        Ws2_32.lib
+        Winmm.lib
+        Version.lib
+        Bcrypt.lib
 )
 
 set_property(TARGET ${ENGINE_TARGET} PROPERTY CXX_STANDARD 23)

@@ -185,7 +185,7 @@ namespace Omni {
 			m_SpriteQueue.size() * sizeof(Sprite)
 		);
 
-		Renderer::RenderQuad(m_SpritePass, m_SpriteQueue.size(), { nullptr, 0 });
+		Renderer::RenderQuads(m_SpritePass, m_SpriteQueue.size(), { nullptr, 0 });
 		Renderer::EndRender(m_CurrectMainRenderTarget);
 		Renderer::Submit([=]() {
 			m_CurrectMainRenderTarget->SetLayout(
@@ -245,19 +245,6 @@ namespace Omni {
 		s_GlobalSceneData.textures.erase(image->GetId());
 
 		return true;
-	}
-
-	void SceneRenderer::RenderMesh(Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo, Shared<Image> texture)
-	{
-		OMNIFORCE_ASSERT_TAGGED(false, "Currently not implemented properly. Basic color pass is not inited.");
-		MiscData data;
-		data.size = sizeof(s_GlobalSceneData.textures[texture->GetId()]);
-		data.data = new byte[data.size];
-
-		memcpy(data.data, &s_GlobalSceneData.textures[texture->GetId()], sizeof(uint32));
-
-		Renderer::BindSet(s_GlobalSceneData.scene_descriptor_set[Renderer::GetCurrentFrameIndex()], m_BasicColorPass, 0);
-		Renderer::RenderMesh(m_BasicColorPass, vbo, ibo, data);
 	}
 
 	void SceneRenderer::RenderSprite(const Sprite& sprite)

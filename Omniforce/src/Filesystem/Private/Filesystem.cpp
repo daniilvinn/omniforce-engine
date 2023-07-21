@@ -5,6 +5,10 @@
 
 namespace Omni {
 
+	struct FileSystemData {
+		std::filesystem::path working_directory = std::filesystem::current_path();
+	} s_FileSystemData;
+
 	Omni::Shared<File> FileSystem::ReadFile(std::filesystem::path path, const BitMask& flags)
 	{
 		byte* data;
@@ -51,6 +55,16 @@ namespace Omni {
 	bool FileSystem::DestroyDirectory(std::filesystem::path path)
 	{
 		return std::filesystem::remove(path);
+	}
+
+	void FileSystem::SetWorkingDirectory(std::filesystem::path path)
+	{
+		s_FileSystemData.working_directory = path;
+	}
+
+	std::filesystem::path FileSystem::GetWorkingDirectory()
+	{
+		return s_FileSystemData.working_directory;
 	}
 
 }

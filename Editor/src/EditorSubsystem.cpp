@@ -148,8 +148,8 @@ public:
 		ImGui::Text(fmt::format("FPS: {}", (uint32)(1000.0f / (step * 1000.0f))).c_str());
 		ImGui::End();
 
-		// Physics Settings
-		ImGui::Begin("Physics");
+		// Utils
+		ImGui::Begin("Utils");
 		{
 			// TODO: fix bug here and in properties panel
 			// when engine crashes after trying to close / hide imgui window which contains tables.
@@ -159,6 +159,9 @@ public:
 				ImGui::DragFloat3("##physics_settings_gravity_drag_float", (float32*)&physics_settings.gravity, 0.01f, -99.0f, 99.0f);
 
 			m_EditorScene->SetPhysicsSettings(physics_settings);
+
+			if (ImGui::Button("Reload script assemblies"))
+				ScriptEngine::Get()->ReloadAssemblies();
 		}
 		ImGui::End();
 	}
@@ -224,26 +227,14 @@ public:
 
 	void SaveProject() {
 		if (m_ProjectPath.empty()) {
-			const char* filters[] = { "*.omni" };
-
-			char* filepath = tinyfd_saveFileDialog(
-				"Save project",
-				std::filesystem::current_path().string().c_str(),
-				1,
-				filters,
-				nullptr
-			);
-
-			if (filepath == NULL)
-				return;
-
-			m_ProjectPath = filepath;
+			NewProject(); // it will still lead to calling SaveProject() second time, so we can return
+			return;
 		}
 
 		nlohmann::json root_node = {};
 		m_EditorScene->Serialize(root_node);
 
-		std::ofstream out_stream(m_ProjectPath);
+		std::ofstream out_stream(m_ProjectPath.string() + "/" + m_ProjectFilename);
 		out_stream << root_node.dump(4);
 		out_stream.close();
 		
@@ -266,16 +257,34 @@ public:
 			return;
 
 		m_ProjectPath = filepath;
+		m_ProjectFilename = m_ProjectPath.filename().string();
+		m_ProjectPath.remove_filename();
 
 		std::ifstream input(filepath);
 		nlohmann::json root_node = nlohmann::json::parse(input);
 		input.close();
 
+		FileSystem::SetWorkingDirectory(m_ProjectPath);
+			
+		// unloading textures from memory and releasing their indices
+		AssetManager* asset_manager = AssetManager::Get();
+		Shared<SceneRenderer> renderer = m_EditorScene->GetRenderer();
+		auto texture_registry = *asset_manager->GetTextureRegistry();
+		for (auto& [id, texture] : texture_registry) {
+			renderer->ReleaseTextureIndex(texture);
+			texture->Destroy();
+		}
+		texture_registry.clear();
+
 		m_EditorScene->Deserialize(root_node);
 		m_EditorScene->EditorSetCamera(m_EditorCamera);
 		m_HierarchyPanel->SetContext(m_EditorScene);
 		m_HierarchyPanel->SetSelectedNode({ (entt::entity)0, m_CurrentScene }, false);
-		
+
+		ScriptEngine* script_engine = ScriptEngine::Get();
+		if (script_engine->HasAssemblies())
+			script_engine->UnloadAssemblies();
+		script_engine->LoadAssemblies();
 	};
 
 	void NewProject() {
@@ -293,6 +302,10 @@ public:
 			return;
 
 		m_ProjectPath = filepath;
+		m_ProjectFilename = m_ProjectPath.filename().string();
+		m_ProjectPath.remove_filename();
+
+		SaveProject();
 
 		auto textures_dir = m_ProjectPath.string() + "/assets/textures";
 		auto scripts_dir = m_ProjectPath.string() + "/assets/scripts";
@@ -301,6 +314,9 @@ public:
 		std::filesystem::create_directories(textures_dir);
 		std::filesystem::create_directories(scripts_dir);
 		std::filesystem::create_directories(audio_dir);
+
+		std::filesystem::copy("resources/scripting/ScriptsProject", m_ProjectPath.string() + "/assets/scripts", std::filesystem::copy_options::recursive);
+		std::filesystem::copy("resources/scripting/bin/Debug/ScriptEngine.dll", m_ProjectPath.string() + "/assets/scripts/ScriptEngine.dll");
 	}
 
 	void RenderGizmos() {
@@ -366,6 +382,7 @@ public:
 	AssetsPanel* m_AssetsPanel;
 
 	std::filesystem::path m_ProjectPath;
+	std::string m_ProjectFilename;
 	ImGuizmo::OPERATION m_CurrentOperation = (ImGuizmo::OPERATION)0;
 
 	fvec2 m_ViewportBounds[2];

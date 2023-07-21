@@ -5,6 +5,8 @@
 #include "../Component.h"
 #include <Asset/AssetManager.h>
 #include <Physics/PhysicsEngine.h>
+#include <Filesystem/Filesystem.h>
+#include <Scripting/ScriptEngine.h>
 
 #include <nlohmann/json.hpp>
 
@@ -153,11 +155,13 @@ namespace Omni {
 			}
 		}
 		PhysicsEngine::Get()->LaunchRuntime(this);
+		ScriptEngine::Get()->LaunchRuntime(this);
 	}
 
 	void Scene::ShutdownRuntime()
 	{
 		PhysicsEngine::Get()->Reset();
+		ScriptEngine::Get()->ShutdownRuntime();
 	}
 
 	void Scene::SetPhysicsSettings(const PhysicsSettings& settings)
@@ -175,7 +179,7 @@ namespace Omni {
 
 		auto tex_registry = AssetManager::Get()->GetTextureRegistry();
 		for (auto& [id, texture] : *tex_registry) {
-			texture_node.emplace(std::to_string(texture->GetId()), texture->GetSpecification().path.string().erase(0, std::filesystem::current_path().string().size() + 1));
+			texture_node.emplace(std::to_string(texture->GetId()), texture->GetSpecification().path.string().erase(0, FileSystem::GetWorkingDirectory().string().size()));
 		}
 
 		nlohmann::json& entities_node = node["Entities"];
@@ -200,9 +204,9 @@ namespace Omni {
 		nlohmann::json textures = node["Textures"];
 
 		for (auto i = textures.begin(); i != textures.end(); i++) {
-			std::string texture_path = std::filesystem::absolute(i.value().get<std::string>()).string();
+			std::string texture_path = FileSystem::GetWorkingDirectory().string() + "/" + i.value().get<std::string>();
 
-			Omni::UUID id = AssetManager::Get()->LoadTexture(texture_path, std::stoull(i.key()));
+			Omni::UUID id = AssetManager::Get()->LoadTexture(FileSystem::GetWorkingDirectory().append(texture_path), std::stoull(i.key()));
 
 			Shared<Image> texture = AssetManager::Get()->GetTexture(id);
 			m_Renderer->AcquireTextureIndex(texture, SamplerFilteringMode::NEAREST);

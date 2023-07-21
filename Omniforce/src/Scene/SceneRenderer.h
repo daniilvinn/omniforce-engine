@@ -34,35 +34,29 @@ namespace Omni {
 		~SceneRenderer();
 
 		void Destroy();
+		void Copy(SceneRenderer* other);
 
 		void BeginScene(Shared<Camera> camera);
 		void EndScene();
 		
 		Shared<Image> GetFinalImage();
-
 		static Shared<ImageSampler> GetSamplerNearest() { return s_SamplerNearest; }
 		static Shared<ImageSampler> GetSamplerLinear() { return s_SamplerLinear; }
 		UUID GetDummyWhiteTexture() const { return m_DummyWhiteTexture->GetId(); }
-
 		/*
 		* @brief Adds texture to a global renderer data
 		* @return returns an index the texture can be accessed with
 		*/
 		uint16 AcquireTextureIndex(Shared<Image> image, SamplerFilteringMode filtering_mode);
-
 		/*
 		* @brief Removes texture to a global renderer data
 		* @return true if successful, false if no texture found
 		*/
 		bool ReleaseTextureIndex(Shared<Image> image);
-
 		uint32 GetTextureIndex(const UUID& uuid) const { return s_GlobalSceneData.textures.at(uuid); };
 
-		void RenderMesh(Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo, Shared<Image> texture);
-
 		void RenderSprite(const Sprite& sprite);
-
-		void Copy(SceneRenderer* other);
+		void RenderLine(const fvec2& p1, const fvec2& p2, const fvec4& color);
 
 	private:
 		Shared<Camera> m_Camera;
@@ -79,8 +73,8 @@ namespace Omni {
 		uint32 m_SpriteBufferSize; // size in bytes per frame in flight, not overall size
 		std::vector<Sprite> m_SpriteQueue;
 
-		Shared<Pipeline> m_BasicColorPass;
 		Shared<Pipeline> m_SpritePass;
+		Shared<Pipeline> m_LinePass;
 
 		struct GlobalSceneRenderData {
 			const uint32 max_textures = UINT16_MAX + 1;
