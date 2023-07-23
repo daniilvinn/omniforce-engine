@@ -3,21 +3,23 @@
 // Use whatever namespace you want
 namespace test
 {
-    // Must inherin from Omni.GameObject to create script
+    // Must inherit from Omni.GameObject to create script
     public class MyScript : GameObject
     {
         // Must implement OnInit()
+        // Represents constructor and called before first frame starts
         public override void OnInit()
         {
-            Debug.Log(ToString());
+            Debug.Log(MessageSeverity.TRACE, "test");
         }
 
         // Must implement OnUpdate(float ts), where ts is time step
-        public override void OnUpdate(float ts)
+        // Called every frame
+        public override void OnUpdate()
         {
-            Debug.Log(ts.ToString());
+            if(Input.KeyPressed(KeyCode.KEY_W)) {
+                Debug.Log(MessageSeverity.INFO, "Test internal call");
+            }
         }
-    }
-
-    
+    }  
 }

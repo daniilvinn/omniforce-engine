@@ -7,6 +7,8 @@
 #include <Scene/Component.h>
 #include <Scene/Entity.h>
 
+#include "ScriptAPI.h"
+
 #include <mono/jit/jit.h>
 #include <mono/metadata/assembly.h>
 #include <mono/metadata/reflection.h>
@@ -26,6 +28,7 @@ namespace Omni {
 	struct ScriptEngineData {
 		MonoMethod* on_init_method;
 		MonoMethod* on_update_method;
+		MonoMethod* base_entity_class_ctor;
 		bool has_assemblies = false;
 		robin_hood::unordered_map<std::string, MonoClass*> available_classes_list;
 		robin_hood::unordered_map<UUID, MonoMethod*> init_methods;
@@ -73,6 +76,8 @@ namespace Omni {
 		else
 			OMNIFORCE_CORE_INFO("[ScriptEngine]: initialized root domain");
 		s_ScriptEngineData.Reset(); // initialize
+
+		ScriptAPI::AddInternalCalls();
 	}
 
 	void ScriptEngine::LoadAssemblies()
@@ -97,6 +102,7 @@ namespace Omni {
 
 		s_ScriptEngineData.on_init_method = mono_class_get_method_from_name(base_entity_class, "OnInit", 0);
 		s_ScriptEngineData.on_update_method = mono_class_get_method_from_name(base_entity_class, "OnUpdate", 0);
+		s_ScriptEngineData.base_entity_class_ctor = mono_class_get_method_from_name(base_entity_class, ".ctor", 1);
 
 		// App assembly
 		s_Internals.app_assembly = (MonoAssembly*)ReadAssembly(FileSystem::GetWorkingDirectory().append("assets/scripts/bin/gamescripts.dll"));
@@ -187,10 +193,23 @@ namespace Omni {
 		for (entt::entity e : view) {
 			Entity entity(e, context);
 			ScriptComponent& script_component = entity.GetComponent<ScriptComponent>();
+			UUIDComponent& uuid_component = entity.GetComponent<UUIDComponent>();
+
+			if (s_ScriptEngineData.available_classes_list.find(script_component.class_name) == s_ScriptEngineData.available_classes_list.end()) {
+				OMNIFORCE_CLIENT_ERROR("No script class with name \"{}\" was found", script_component.class_name);
+				entity.RemoveComponent<ScriptComponent>();
+				continue;
+			}
 
 			script_component.runtime_managed_object = mono_object_new(s_Internals.app_domain, s_ScriptEngineData.available_classes_list[script_component.class_name]);
 
-			UUIDComponent& uuid_component = entity.GetComponent<UUIDComponent>();
+			// call base class constructor
+			{
+				void* parameter = &uuid_component.id;
+				MonoObject* exception = nullptr;
+				mono_runtime_invoke(s_ScriptEngineData.base_entity_class_ctor, script_component.runtime_managed_object, &parameter, &exception);
+			}
+
 			s_ScriptEngineData.init_methods.emplace(
 				uuid_component.id, 
 				mono_object_get_virtual_method((MonoObject*)script_component.runtime_managed_object, s_ScriptEngineData.on_init_method)

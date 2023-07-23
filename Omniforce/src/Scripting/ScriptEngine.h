@@ -20,7 +20,8 @@ namespace Omni {
 
 		void LaunchRuntime(Scene* context);
 		void ShutdownRuntime();
-		bool HasContext() { return m_Context != nullptr; };
+		Scene* GetContext() const { return m_Context; }
+		bool HasContext() { return m_Context != nullptr; }
 
 		void LoadAssemblies();
 		void UnloadAssemblies();

@@ -1,1 +1,2 @@
-dotnet msbuild
+dotnet msbuild 
+PAUSE

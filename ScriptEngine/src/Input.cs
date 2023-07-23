@@ -1,5 +1,3 @@
-using System.Runtime.CompilerServices;
-
 namespace Omni
 {
     public enum KeyCode : int
@@ -145,13 +143,16 @@ namespace Omni
 
     public class Input
     {
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        public extern static bool KeyPressed(KeyCode key_code);
+        
+        public static bool KeyPressed(KeyCode key_code) 
+        { 
+            return Omni.EngineAPI.Input_KeyPressed(key_code);
+        }
 
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        public extern static bool ButtonPressed(ButtonCode button_code);
-
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        public extern static double Time();
+        //[MethodImpl(MethodImplOptions.InternalCall)]
+        //public extern static bool ButtonPressed(ButtonCode button_code);
+        //
+        //[MethodImpl(MethodImplOptions.InternalCall)]
+        //public extern static double Time();
     }
 }
