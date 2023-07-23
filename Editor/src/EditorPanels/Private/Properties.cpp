@@ -221,7 +221,7 @@ namespace Omni {
 											case (int32)CameraProjectionType::PROJECTION_2D: {
 												Shared<Camera>& camera = camera_component.camera;
 												Shared<Camera2D> camera_2D = std::make_shared<Camera2D>();
-												camera_2D->SetProjection(-1.0f, 1.0f, -1.0f, 1.0f, 0.0f);
+												camera_2D->SetProjection(-1.0f, 1.0f, -1.0f, 1.0f, -1.0f);
 
 												camera_2D->SetType(CameraProjectionType::PROJECTION_2D);
 												camera = ShareAs<Camera>(camera_2D);
@@ -465,7 +465,7 @@ namespace Omni {
 				}
 				if (m_Entity.HasComponent<ScriptComponent>()) {
 					if (ImGui::Button(" - ##script_component")) {
-						m_Entity.RemoveComponent<SphereColliderComponent>();
+						m_Entity.RemoveComponent<ScriptComponent>();
 					}
 					else {
 						ImGui::SameLine();

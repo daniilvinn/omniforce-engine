@@ -61,6 +61,7 @@ public:
 		ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
 
 		//Render and process scene hierarchy panel
+		ImGui::BeginDisabled(m_InRuntime);
 		m_HierarchyPanel->Render();
 		if (m_HierarchyPanel->IsNodeSelected()) {
 			m_SelectedEntity = m_HierarchyPanel->GetSelectedNode();
@@ -70,6 +71,33 @@ public:
 		// Properties panel
 		m_PropertiesPanel->SetEntity(m_SelectedEntity, m_HierarchyPanel->IsNodeSelected());
 		m_PropertiesPanel->Render();
+
+		// Asset panel
+		m_AssetsPanel->Render();
+
+		// Debug
+		ImGui::Begin("Debug");
+		ImGui::Text(fmt::format("Delta time: {}", step * 1000.0f).c_str());
+		ImGui::Text(fmt::format("FPS: {}", (uint32)(1000.0f / (step * 1000.0f))).c_str());
+		ImGui::End();
+
+		// Utils
+		ImGui::Begin("Utils");
+		{
+			// TODO: fix bug here and in properties panel
+			// when engine crashes after trying to close / hide imgui window which contains tables.
+			PhysicsSettings physics_settings = m_EditorScene->GetPhysicsSettings();
+			ImGui::Text("Gravity");
+			ImGui::SameLine();
+			ImGui::DragFloat3("##physics_settings_gravity_drag_float", (float32*)&physics_settings.gravity, 0.01f, -99.0f, 99.0f);
+
+			m_EditorScene->SetPhysicsSettings(physics_settings);
+
+			if (ImGui::Button("Reload script assemblies"))
+				ScriptEngine::Get()->ReloadAssemblies();
+		}
+		ImGui::End();
+		ImGui::EndDisabled();
 
 		// Render and process play/stop button
 		ImGui::Begin("##Toolbar", nullptr, 
@@ -134,36 +162,12 @@ public:
 		ImGui::End();
 		ImGui::PopStyleVar();
 
-		// Asset panel
-		m_AssetsPanel->Render();
+		
 
 		// Update editor camera and scene
 		m_CurrentScene->OnUpdate(step);
 		if(m_ViewportFocused && !m_InRuntime)
 			m_EditorCamera->OnUpdate();
-
-		// Debug
-		ImGui::Begin("Debug");
-		ImGui::Text(fmt::format("Delta time: {}", step * 1000.0f).c_str());
-		ImGui::Text(fmt::format("FPS: {}", (uint32)(1000.0f / (step * 1000.0f))).c_str());
-		ImGui::End();
-
-		// Utils
-		ImGui::Begin("Utils");
-		{
-			// TODO: fix bug here and in properties panel
-			// when engine crashes after trying to close / hide imgui window which contains tables.
-			PhysicsSettings physics_settings = m_EditorScene->GetPhysicsSettings();
-				ImGui::Text("Gravity");
-				ImGui::SameLine();
-				ImGui::DragFloat3("##physics_settings_gravity_drag_float", (float32*)&physics_settings.gravity, 0.01f, -99.0f, 99.0f);
-
-			m_EditorScene->SetPhysicsSettings(physics_settings);
-
-			if (ImGui::Button("Reload script assemblies"))
-				ScriptEngine::Get()->ReloadAssemblies();
-		}
-		ImGui::End();
 	}
 
 	void Launch() override

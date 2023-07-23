@@ -102,18 +102,18 @@ namespace Omni {
 		}
 		m_Renderer->EndScene();
 
+		PhysicsEngine* physics_engine = PhysicsEngine::Get();
+		if (physics_engine->HasContext()) {
+			physics_engine->Update();
+			physics_engine->FetchResults();
+		}
+
 		ScriptEngine* script_engine = ScriptEngine::Get();
 		if (script_engine->HasContext()) {
 			auto script_component_view = m_Registry.view<ScriptComponent>();
 			for (auto& e : script_component_view) {
 				script_engine->CallOnUpdate(Entity(e, this));
 			}
-		}
-
-		PhysicsEngine* physics_engine = PhysicsEngine::Get();
-		if (physics_engine->HasContext()) {
-			physics_engine->Update();
-			physics_engine->FetchResults();
 		}
 	}
 
