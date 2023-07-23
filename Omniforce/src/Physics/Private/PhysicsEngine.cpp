@@ -80,14 +80,14 @@ namespace Omni {
 			
 			JPH::BodyCreationSettings body_creation_settings;
 			body_creation_settings.mGravityFactor = (float32)!rb2d_component.disable_gravity;
-			body_creation_settings.mAllowedDOF = JPH::EAllowedDOF::XYPlane;
+			body_creation_settings.mAllowedDOFs = JPH::EAllowedDOFs::Plane2D;
 			body_creation_settings.mMotionType = convert(rb2d_component.type);
 			body_creation_settings.mObjectLayer = rb2d_component.type == RigidBody2DComponent::Type::STATIC ? BodyLayers::NON_MOVING : BodyLayers::MOVING;
 			body_creation_settings.mLinearDamping = rb2d_component.linear_drag;
 			body_creation_settings.mAngularDamping = rb2d_component.angular_drag;
 			body_creation_settings.mIsSensor = rb2d_component.sensor_mode;
 
-			JPH::BodyID body_id;
+			JPH::BodyID* body_id = new JPH::BodyID;
 
 			if (entity.HasComponent<BoxColliderComponent>()) {
 				BoxColliderComponent& box_collider_component = entity.GetComponent<BoxColliderComponent>();
@@ -112,7 +112,7 @@ namespace Omni {
 
 				body_creation_settings.mUserData = entity.GetComponent<UUIDComponent>().id.Get();
 				body_creation_settings.SetShape(box_shape_settings.Create().Get());
-				body_id = body_interface.CreateAndAddBody(body_creation_settings, JPH::EActivation::Activate);
+				*body_id = body_interface.CreateAndAddBody(body_creation_settings, JPH::EActivation::Activate);
 			}
 			else if (entity.HasComponent<SphereColliderComponent>()) {
 				SphereColliderComponent& sphere_collider_component = entity.GetComponent<SphereColliderComponent>();
@@ -131,9 +131,9 @@ namespace Omni {
 				body_creation_settings.mRotation = JPH::Quat(q.x, q.y, q.z, q.w);
 				body_creation_settings.mUserData = entity.GetComponent<UUIDComponent>().id.Get();
 				body_creation_settings.SetShape(sphere_shape_settings.Create().Get());
-				body_id = body_interface.CreateAndAddBody(body_creation_settings, JPH::EActivation::Activate);
+				*body_id = body_interface.CreateAndAddBody(body_creation_settings, JPH::EActivation::Activate);
 			}
-			rb2d_component.internal_body = (void*)&(body_id);
+			rb2d_component.internal_body = body_id;
 		}
 
 		m_CoreSystem->OptimizeBroadPhase();
@@ -156,16 +156,34 @@ namespace Omni {
 
 	void PhysicsEngine::Update()
 	{
+		// fetch new objects' position which was changed from scripts
+		auto group = m_Context->GetRegistry()->group<RigidBody2DComponent, ScriptComponent>(entt::get<TRSComponent>);
+		JPH::BodyInterface& body_interface = m_CoreSystem->GetBodyInterface();
+
+		for (auto& e : group) {
+			Entity entity(e, m_Context);
+			OMNIFORCE_ASSERT(entity.HasComponent<RigidBody2DComponent>() && entity.HasComponent<ScriptComponent>());
+
+			TRSComponent& trs = entity.GetComponent<TRSComponent>();
+			RigidBody2DComponent& rb2d_component = entity.GetComponent<RigidBody2DComponent>();
+			
+			body_interface.SetPosition(
+				*(JPH::BodyID*)rb2d_component.internal_body, 
+				{ trs.translation.x, trs.translation.y, trs.translation.z }, 
+				JPH::EActivation::Activate
+			);
+ 		}
+
+		// update
 		int32 optimal_collision_steps = 1;
 		float32 time_since_last_update = m_Timer.ElapsedMilliseconds();
 		if (time_since_last_update > (1000.0f / 120.0f)) {
 			uint32 required_physics_update_iterations = (int32)(time_since_last_update / (1000.0f / 120.0f));
 
-			for(uint32 i = 0; i < required_physics_update_iterations; i++)
+			for (uint32 i = 0; i < required_physics_update_iterations; i++)
 				m_CoreSystem->Update(1 / 120.0f, optimal_collision_steps, s_InternalData.temp_allocator, s_InternalData.job_system);
 			m_Timer.Reset();
 		}
-
 	}
 
 	void PhysicsEngine::FetchResults()

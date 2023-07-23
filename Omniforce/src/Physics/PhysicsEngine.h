@@ -34,8 +34,6 @@ namespace Omni {
 		void LaunchRuntime(Scene* context);
 		void Reset();
 		void Update();
-
-		// Fetches results into scene which was set previosly by calling LaunchRuntime()
 		void FetchResults();
 
 	private:
