@@ -216,6 +216,8 @@ public:
 					SaveProject();
 				if (Input::KeyPressed(KeyCode::KEY_O))
 					LoadProject();
+				if (Input::KeyPressed(KeyCode::KEY_N))
+					NewProject();
 				if (Input::KeyPressed(KeyCode::KEY_Q))
 					m_CurrentOperation = (ImGuizmo::OPERATION)0;
 				if (Input::KeyPressed(KeyCode::KEY_W))
@@ -295,7 +297,7 @@ public:
 		const char* filters[] = { "*.omni" };
 
 		char* filepath = tinyfd_saveFileDialog(
-			"Save project",
+			"New project",
 			std::filesystem::current_path().string().c_str(),
 			1,
 			filters,
@@ -308,6 +310,8 @@ public:
 		m_ProjectPath = filepath;
 		m_ProjectFilename = m_ProjectPath.filename().string();
 		m_ProjectPath.remove_filename();
+
+		FileSystem::SetWorkingDirectory(m_ProjectPath);
 
 		SaveProject();
 
