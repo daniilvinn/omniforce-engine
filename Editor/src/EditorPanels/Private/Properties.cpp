@@ -171,7 +171,7 @@ namespace Omni {
 											texture_path,
 											std::filesystem::copy_options::overwrite_existing
 										);
-
+										
 										sc.texture = AssetManager::Get()->LoadTexture(texture_path);
 										m_Context->GetRenderer()->AcquireTextureIndex(AssetManager::Get()->GetTexture(sc.texture), SamplerFilteringMode::NEAREST);
 										uvec3 texture_resolution = AssetManager::Get()->GetTexture(sc.texture)->GetSpecification().extent;

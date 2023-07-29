@@ -49,7 +49,7 @@ namespace Omni
 
 		RendererConfig renderer_config = {};
 		renderer_config.main_window = m_WindowSystem->GetWindow("main").get();
-		renderer_config.frames_in_flight = 2;
+		renderer_config.frames_in_flight = 3;
 		renderer_config.vsync = false;
 
 		js->Execute([renderer_config]() {

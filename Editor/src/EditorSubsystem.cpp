@@ -187,6 +187,10 @@ public:
 		m_CurrentScene = m_EditorScene;
 
 		ImGuizmo::SetOrthographic(true);
+		
+		m_ProjectPath = "resources/SandboxProject";
+		m_ProjectFilename = "Sandbox.omni";
+		FileSystem::SetWorkingDirectory(m_ProjectPath);
 	}
 
 	void Destroy() override

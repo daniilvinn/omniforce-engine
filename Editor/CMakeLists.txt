@@ -11,15 +11,7 @@ add_executable(${EDITOR_TARGET} ${SANDBOX_FILES})
 
 
 add_custom_command(TARGET ${EDITOR_TARGET} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_directory_if_different
-	"${CMAKE_SOURCE_DIR}/Resources/shaders" "$<TARGET_FILE_DIR:Editor>/resources/shaders")
-add_custom_command(TARGET ${EDITOR_TARGET} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_directory_if_different
-	"${CMAKE_SOURCE_DIR}/Resources/fonts" "$<TARGET_FILE_DIR:Editor>/resources/fonts")
-add_custom_command(TARGET ${EDITOR_TARGET} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_directory_if_different
-	"${CMAKE_SOURCE_DIR}/Resources/textures" "$<TARGET_FILE_DIR:Editor>/resources/textures")
-add_custom_command(TARGET ${EDITOR_TARGET} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_directory_if_different 
-	"${CMAKE_SOURCE_DIR}/Resources/scripting" "$<TARGET_FILE_DIR:Editor>/resources/scripting")
-add_custom_command(TARGET ${EDITOR_TARGET} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_directory_if_different
-	"${CMAKE_SOURCE_DIR}/Resources/mono" "$<TARGET_FILE_DIR:Editor>/resources/mono")
+	"${CMAKE_SOURCE_DIR}/Resources" "$<TARGET_FILE_DIR:Editor>/resources")
 
 target_link_libraries(${EDITOR_TARGET} PUBLIC OmniforceEngine ${OMNI_IMGUI_TARGET})
 target_include_directories(${EDITOR_TARGET} PUBLIC ${IMGUI_INCLUDE_PATH} "src")
