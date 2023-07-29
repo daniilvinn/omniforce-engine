@@ -8,6 +8,7 @@
 #include <Scene/Entity.h>
 
 #include "ScriptAPI.h"
+#include "../ScriptClass.h"
 
 #include <mono/jit/jit.h>
 #include <mono/metadata/assembly.h>
@@ -19,30 +20,11 @@
 namespace Omni {
 
 	struct Internals {
-		MonoDomain* root_romain = nullptr;
-		MonoDomain* app_domain = nullptr;
-		MonoAssembly* core_assembly = nullptr;
-		MonoAssembly* app_assembly = nullptr;
+		MonoDomain* mRootDomain = nullptr;
+		MonoDomain* mAppDomain = nullptr;
+		MonoAssembly* mCoreAssembly = nullptr;
+		MonoAssembly* mAppAssembly = nullptr;
 	} s_Internals;
-
-	struct ScriptEngineData {
-		MonoMethod* on_init_method;
-		MonoMethod* on_update_method;
-		MonoMethod* base_entity_class_ctor;
-		bool has_assemblies = false;
-		robin_hood::unordered_map<std::string, MonoClass*> available_classes_list;
-		robin_hood::unordered_map<UUID, MonoMethod*> init_methods;
-		robin_hood::unordered_map<UUID, MonoMethod*> update_methods;
-
-		void Reset() {
-			available_classes_list.clear();
-			init_methods.clear();
-			update_methods.clear();
-			on_init_method = nullptr;
-			on_update_method = nullptr;
-			has_assemblies = false;
-		}
-	} s_ScriptEngineData;
 
 	void ScriptEngine::Init()
 	{
@@ -70,44 +52,54 @@ namespace Omni {
 		mono_set_assemblies_path("resources/mono/lib");
 
 		// Root domain
-		s_Internals.root_romain = mono_jit_init("OmniScriptEngine");
-		if (s_Internals.root_romain == nullptr)
+		mRootDomain = mono_jit_init("OmniScriptEngine");
+		if (mRootDomain == nullptr)
 			OMNIFORCE_CORE_INFO("[ScriptEngine]: failed to initialize root domain");
 		else
 			OMNIFORCE_CORE_INFO("[ScriptEngine]: initialized root domain");
-		s_ScriptEngineData.Reset(); // initialize
+		ResetData(); // initialize
 
 		ScriptAPI::AddInternalCalls();
 	}
 
+	MonoImage* ScriptEngine::GetCoreImage()
+	{
+		return mono_assembly_get_image(mCoreAssembly);
+	}
+
+	MonoImage* ScriptEngine::GetAppImage()
+	{
+		return mono_assembly_get_image(mAppAssembly);
+	}
+
 	void ScriptEngine::LoadAssemblies()
 	{
-		s_Internals.app_domain = mono_domain_create_appdomain((char*)"ScriptEngine.dll", nullptr);
-		mono_domain_set(s_Internals.app_domain, true);
+		mAppDomain = mono_domain_create_appdomain((char*)"ScriptEngine.dll", nullptr);
+		mono_domain_set(mAppDomain, true);
 
-		OMNIFORCE_ASSERT_TAGGED(s_Internals.app_domain != NULL, "Failed to create app domain");
+		OMNIFORCE_ASSERT_TAGGED(mAppDomain != NULL, "Failed to create app domain");
 
 		// Engine core assembly
 		// TODO: compile C# engine core only in release mode
 		if (OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG) {
-			s_Internals.core_assembly = (MonoAssembly*)ReadAssembly("resources/scripting/bin/Debug/ScriptEngine.dll");
+			mCoreAssembly = (MonoAssembly*)ReadAssembly("resources/scripting/bin/Debug/ScriptEngine.dll");
 		}
 		else if (OMNIFORCE_BUILD_CONFIG == OMNIFORCE_RELEASE_CONFIG) {
-			s_Internals.core_assembly = (MonoAssembly*)ReadAssembly("resources/scripting/bin/Release/ScriptEngine.dll");
+			mCoreAssembly = (MonoAssembly*)ReadAssembly("resources/scripting/bin/Debug/ScriptEngine.dll");
 		}
 
-		MonoImage* engine_core_image = mono_assembly_get_image(s_Internals.core_assembly);
-		MonoClass* base_entity_class = mono_class_from_name(engine_core_image, "Omni", "GameObject");
-		OMNIFORCE_ASSERT_TAGGED(base_entity_class != NULL, "[ScriptEngine]: failed extract to base game object class from C# assembly");
+		MonoImage* engine_core_image = mono_assembly_get_image(mCoreAssembly);
+		mScriptBase = ScriptClass("Omni", "GameObject", true);
+		OMNIFORCE_ASSERT_TAGGED(mScriptBase.IsValid(), "[ScriptEngine]: failed to extract base game object class from C# assembly");
 
-		s_ScriptEngineData.on_init_method = mono_class_get_method_from_name(base_entity_class, "OnInit", 0);
-		s_ScriptEngineData.on_update_method = mono_class_get_method_from_name(base_entity_class, "OnUpdate", 0);
-		s_ScriptEngineData.base_entity_class_ctor = mono_class_get_method_from_name(base_entity_class, ".ctor", 1);
+		mInitMethodBase = mScriptBase.GetMethod("OnInit", 0);
+		mUpdateMethodBase = mScriptBase.GetMethod("OnUpdate", 0);
+		mBaseCtor = mScriptBase.GetMethod(".ctor", 1);
 
 		// App assembly
-		s_Internals.app_assembly = (MonoAssembly*)ReadAssembly(FileSystem::GetWorkingDirectory().append("assets/scripts/bin/gamescripts.dll"));
+		mAppAssembly = ReadAssembly(FileSystem::GetWorkingDirectory().append("assets/scripts/bin/gamescripts.dll"));
 
-		MonoImage* app_image = mono_assembly_get_image(s_Internals.app_assembly);
+		MonoImage* app_image = mono_assembly_get_image(mAppAssembly);
 		const MonoTableInfo* typedef_table = mono_image_get_table_info(app_image, MONO_TABLE_TYPEDEF);
 		int32_t numTypes = mono_table_info_get_rows(typedef_table);
 
@@ -121,66 +113,30 @@ namespace Omni {
 
 			MonoClass* mono_class = mono_class_from_name(app_image, type_namespace.c_str(), type_name.c_str());
 
-			if (!mono_class_is_subclass_of(mono_class, base_entity_class, false))
+			if (!mono_class_is_subclass_of(mono_class, mScriptBase.Raw(), false))
 				continue;
 
-			if (type_namespace.length())
-				type_namespace.push_back('.');
+			ScriptClass script_class(type_namespace, type_name, false);
 
-			s_ScriptEngineData.available_classes_list.emplace(fmt::format("{}{}", type_namespace, type_name), mono_class);
+			mAvailableClassesList.emplace(script_class.GetFullName(), script_class);
 		}
 
-		s_ScriptEngineData.has_assemblies = true;
+		mAssembliesLoaded = true;
 	}
 
 	void ScriptEngine::UnloadAssemblies()
 	{
 		mono_domain_set(mono_get_root_domain(), false);
-		mono_domain_unload(s_Internals.app_domain);
+		mono_domain_unload(mAppDomain);
 		OMNIFORCE_CORE_TRACE("[ScriptEngine]: unloading assemblies...");
-		s_Internals.app_domain = NULL;
-		s_ScriptEngineData.Reset();
+		mAppDomain = NULL;
+		ResetData();
 	}
 
 	void ScriptEngine::ReloadAssemblies()
 	{
 		UnloadAssemblies();
 		LoadAssemblies();
-	}
-
-	bool ScriptEngine::HasAssemblies() const
-	{
-		return s_ScriptEngineData.has_assemblies;
-	}
-
-	void ScriptEngine::CallOnInit(Entity e)
-	{
-		UUIDComponent& uuid_component = e.GetComponent<UUIDComponent>();
-		ScriptComponent& script_component = e.GetComponent<ScriptComponent>();
-		UUID uuid = uuid_component.id;
-
-		MonoObject* exc;
-		mono_runtime_invoke(
-			s_ScriptEngineData.init_methods[uuid],
-			script_component.runtime_managed_object,
-			nullptr,
-			&exc
-		);
-	}
-
-	void ScriptEngine::CallOnUpdate(Entity e)
-	{
-		UUIDComponent& uuid_component = e.GetComponent<UUIDComponent>();
-		ScriptComponent& script_component = e.GetComponent<ScriptComponent>();
-		UUID uuid = uuid_component.id;
-
-		MonoObject* exc;
-		mono_runtime_invoke(
-			s_ScriptEngineData.update_methods[uuid],
-			script_component.runtime_managed_object,
-			nullptr,
-			&exc
-		);
 	}
 
 	void ScriptEngine::LaunchRuntime(Scene* context)
@@ -195,51 +151,37 @@ namespace Omni {
 			ScriptComponent& script_component = entity.GetComponent<ScriptComponent>();
 			UUIDComponent& uuid_component = entity.GetComponent<UUIDComponent>();
 
-			if (s_ScriptEngineData.available_classes_list.find(script_component.class_name) == s_ScriptEngineData.available_classes_list.end()) {
+			if (mAvailableClassesList.find(script_component.class_name) == mAvailableClassesList.end()) {
 				OMNIFORCE_CLIENT_ERROR("No script class with name \"{}\" was found", script_component.class_name);
 				entity.RemoveComponent<ScriptComponent>();
 				continue;
 			}
 
-			script_component.runtime_managed_object = mono_object_new(s_Internals.app_domain, s_ScriptEngineData.available_classes_list[script_component.class_name]);
-
-			// call base class constructor
-			{
-				void* parameter = &uuid_component.id;
-				MonoObject* exception = nullptr;
-				mono_runtime_invoke(s_ScriptEngineData.base_entity_class_ctor, script_component.runtime_managed_object, &parameter, &exception);
-			}
-
-			s_ScriptEngineData.init_methods.emplace(
-				uuid_component.id, 
-				mono_object_get_virtual_method((MonoObject*)script_component.runtime_managed_object, s_ScriptEngineData.on_init_method)
-			);
-			s_ScriptEngineData.update_methods.emplace(
-				uuid_component.id,
-				mono_object_get_virtual_method((MonoObject*)script_component.runtime_managed_object, s_ScriptEngineData.on_update_method)
-			);
+			script_component.script_object = mAvailableClassesList[script_component.class_name].AllocateObject(uuid_component.id);
 		}
 	}
 
 	void ScriptEngine::ShutdownRuntime()
 	{
-		mono_gc_collect(mono_gc_max_generation());
 		entt::registry* registry = m_Context->GetRegistry();
 		auto view = registry->view<ScriptComponent>();
 
 		for (entt::entity e : view) {
 			Entity entity(e, m_Context);
 			ScriptComponent& script_component = entity.GetComponent<ScriptComponent>();
-			script_component.runtime_managed_object = nullptr;
+			script_component.script_object.reset();
 		}
 
-		s_ScriptEngineData.init_methods.clear();
-		s_ScriptEngineData.update_methods.clear();
+		mono_gc_collect(mono_gc_max_generation());
+
+		mOnInitMethods.clear();
+		mOnUpdateMethods.clear();
+
 
 		m_Context = nullptr;
 	}
 
-	void* ScriptEngine::ReadAssembly(std::filesystem::path path)
+	MonoAssembly* ScriptEngine::ReadAssembly(std::filesystem::path path)
 	{
 		std::ifstream input_stream(path, std::ios::ate | std::ios::binary);
 
@@ -266,6 +208,16 @@ namespace Omni {
 		OMNIFORCE_CORE_TRACE("[ScriptEngine]: loaded {}", path.filename().string());
 
 		return mono_assembly;
+	}
+
+	void ScriptEngine::ResetData()
+	{
+		mAvailableClassesList.clear();
+		mOnInitMethods.clear();
+		mOnUpdateMethods.clear();
+		mInitMethodBase = nullptr;
+		mUpdateMethodBase = nullptr;
+		mAssembliesLoaded = false;
 	}
 
 }

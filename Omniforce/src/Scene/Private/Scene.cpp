@@ -112,7 +112,8 @@ namespace Omni {
 		if (script_engine->HasContext()) {
 			auto script_component_view = m_Registry.view<ScriptComponent>();
 			for (auto& e : script_component_view) {
-				script_engine->CallOnUpdate(Entity(e, this));
+				Entity entity(e, this);
+				entity.GetComponent<ScriptComponent>().script_object->InvokeUpdate();
 			}
 		}
 	}
@@ -169,7 +170,8 @@ namespace Omni {
 		script_engine->LaunchRuntime(this);
 		auto script_component_view = m_Registry.view<ScriptComponent>();
 		for (auto& e : script_component_view) {
-			script_engine->CallOnInit(Entity(e, this));
+			Entity entity(e, this);
+			entity.GetComponent<ScriptComponent>().script_object->InvokeInit();
 		}
 	}
 

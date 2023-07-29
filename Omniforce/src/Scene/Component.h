@@ -3,6 +3,7 @@
 #include "SceneCommon.h"
 #include <glm/glm.hpp>
 #include <Core/UUID.h>
+#include <Scripting/RuntimeScriptInstance.h>
 
 namespace Omni {
 
@@ -109,8 +110,8 @@ namespace Omni {
 	};
 
 	struct OMNIFORCE_API ScriptComponent {
-		std::string class_name = "";
-		void* runtime_managed_object = nullptr;
+		std::string class_name;
+		Shared<RuntimeScriptInstance> script_object;
 
 		ScriptComponent()
 		{
