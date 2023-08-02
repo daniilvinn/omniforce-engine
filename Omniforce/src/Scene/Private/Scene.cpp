@@ -223,7 +223,7 @@ namespace Omni {
 		for (auto i = textures.begin(); i != textures.end(); i++) {
 			std::string texture_path = FileSystem::GetWorkingDirectory().string() + "/" + i.value().get<std::string>();
 
-			Omni::UUID id = AssetManager::Get()->LoadTexture(FileSystem::GetWorkingDirectory().append(texture_path), std::stoull(i.key()));
+			UUID id = AssetManager::Get()->LoadTexture(FileSystem::GetWorkingDirectory().append(texture_path), std::stoull(i.key()));
 
 			Shared<Image> texture = AssetManager::Get()->GetTexture(id);
 			m_Renderer->AcquireTextureIndex(texture, SamplerFilteringMode::NEAREST);
@@ -245,5 +245,4 @@ namespace Omni {
 			}
 		}
 	}
-
 }

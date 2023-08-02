@@ -34,7 +34,6 @@ namespace Omni {
 		~SceneRenderer();
 
 		void Destroy();
-		void Copy(SceneRenderer* other);
 
 		void BeginScene(Shared<Camera> camera);
 		void EndScene();

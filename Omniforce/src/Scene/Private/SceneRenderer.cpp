@@ -252,9 +252,4 @@ namespace Omni {
 		m_SpriteQueue.push_back(sprite);
 	}
 
-	void SceneRenderer::Copy(SceneRenderer* other)
-	{
-
-	}
-
 }

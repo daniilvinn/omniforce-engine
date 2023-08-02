@@ -37,15 +37,15 @@ namespace Omni {
 		void LaunchRuntime();
 		void ShutdownRuntime();
 
-		SceneType GetType() const { return m_Type; }
-		entt::registry* GetRegistry() { return &m_Registry; }
-		robin_hood::unordered_map<UUID, entt::entity>& GetEntities() { return m_Entities; }
-		Shared<Image> GetFinalImage() const { return m_Renderer->GetFinalImage(); }
-		Shared<Camera> GetCamera() const { return m_Camera; };
-		Shared<SceneRenderer> GetRenderer() const { return m_Renderer; }
-		UUID GetID() const { return m_Id; }
-		PhysicsSettings GetPhysicsSettings() const { return m_PhysicsSettings; }
-		void SetPhysicsSettings(const PhysicsSettings& settings);
+		SceneType										GetType() const { return m_Type; }
+		entt::registry*									GetRegistry() { return &m_Registry; }
+		robin_hood::unordered_map<UUID, entt::entity>&	GetEntities() { return m_Entities; }
+		Shared<Image>									GetFinalImage() const { return m_Renderer->GetFinalImage(); }
+		Shared<Camera>									GetCamera() const { return m_Camera; };
+		Shared<SceneRenderer>							GetRenderer() const { return m_Renderer; }
+		UUID											GetID() const { return m_Id; }
+		PhysicsSettings									GetPhysicsSettings() const { return m_PhysicsSettings; }
+		void											SetPhysicsSettings(const PhysicsSettings& settings);
 
 		void Serialize(nlohmann::json& node) override;
 		void Deserialize(nlohmann::json& node) override;
