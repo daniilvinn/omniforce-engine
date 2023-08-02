@@ -22,5 +22,22 @@ namespace Omni
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern static void Transform_SetScale(ulong entity_id, Vector3 scale);
 
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static string TagComponent_GetTag(ulong entity_id);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static void RigidBody2D_GetLinearVelocity(ulong entity_id, out Vector3 LinearVelocity);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static void RigidBody2D_SetLinearVelocity(ulong entity_id, ref Vector3 LinearVelocity);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static void RigidBody2D_AddLinearImpulse(ulong entity_id, ref Vector3 impulse);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static void RigidBody2D_AddForce(ulong entity_id, ref Vector3 force);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static void RigidBody2D_AddTorque(ulong entity_id, ref Vector3 torque);
     }
 }

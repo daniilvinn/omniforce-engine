@@ -276,6 +276,7 @@ public:
 
 		FileSystem::SetWorkingDirectory(m_ProjectPath);
 			
+		Renderer::WaitDevice();
 		// unloading textures from memory and releasing their indices
 		AssetManager* asset_manager = AssetManager::Get();
 		Shared<SceneRenderer> renderer = m_EditorScene->GetRenderer();

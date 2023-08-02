@@ -3,6 +3,7 @@
 #include <Foundation/Macros.h>
 #include <Foundation/Types.h>
 #include <Core/Timer.h>
+#include <Scene/Entity.h>
 #include "PhysicsSettings.h"
 
 #include <Jolt/Jolt.h>
@@ -35,6 +36,12 @@ namespace Omni {
 		void Reset();
 		void Update();
 		void FetchResults();
+
+		fvec3 GetLinearVelocity(Entity entity);
+		void SetLinearVelocity(Entity entity, fvec3 velocity);
+		void AddForce(Entity entity, fvec3 force);
+		void AddTorque(Entity entity, fvec3 torque);
+		void AddLinearImpulse(Entity entity, fvec3 impulse);
 
 	private:
 		PhysicsEngine();

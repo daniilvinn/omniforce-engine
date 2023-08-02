@@ -1,16 +1,18 @@
+using System;
+
 namespace Omni
 {
     public abstract class GameObject
     {
         protected GameObject()
         {
-            entity_id = 0;
+            GameObjectID = 0;
         }
 
-        internal GameObject(ulong entity_id)
+        internal GameObject(ulong ID)
         {
-            this.entity_id = entity_id;
-            transform = new Transform(ref this.entity_id);
+            GameObjectID = ID;
+            transform = new Transform(this);
         }
 
         public abstract void OnInit();
@@ -19,7 +21,14 @@ namespace Omni
         public virtual void OnContactPersisted() { }
         public virtual void OnContactRemoved() { }
 
-        protected readonly ulong entity_id;
+        public T GetComponent<T>() where T : Component, new()
+        {
+            T component = new T();
+            component.Owner = this;
+            return component;
+        }
+
+        public readonly ulong GameObjectID;
         public Transform transform;
     }
 }

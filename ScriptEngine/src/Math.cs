@@ -65,23 +65,23 @@
 
     public class Transform
     {
-        public Transform(ref ulong entity_id)
+        public Transform(GameObject owner)
         {
-            this.entity_id = entity_id;
+            Owner = owner;
         }
 
         public Vector3 translation
         {
-            get { return EngineAPI.Transform_GetTranslation(entity_id); }
-            set { EngineAPI.Transform_SetTranslation(entity_id, value); }
+            get { return EngineAPI.Transform_GetTranslation(Owner.GameObjectID); }
+            set { EngineAPI.Transform_SetTranslation(Owner.GameObjectID, value); }
         }
 
         public Vector3 scale
         {
-            get { return EngineAPI.Transform_GetScale(entity_id); }
-            set { EngineAPI.Transform_SetScale(entity_id, value); }
+            get { return EngineAPI.Transform_GetScale(Owner.GameObjectID); }
+            set { EngineAPI.Transform_SetScale(Owner.GameObjectID, value); }
         }
 
-        private readonly ulong entity_id;
+        private readonly GameObject Owner;
     }
 }

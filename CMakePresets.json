@@ -1,11 +1,11 @@
 {
-    "version": 3,
+  "version": 3,
   "configurePresets": [
     {
       "name": "windows-base",
       "hidden": true,
       "generator": "Visual Studio 17 2022",
-      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "binaryDir": "${sourceDir}/bin",
       "installDir": "${sourceDir}/out/install/${presetName}",
       "cacheVariables": {
         "CMAKE_C_COMPILER": "cl.exe",

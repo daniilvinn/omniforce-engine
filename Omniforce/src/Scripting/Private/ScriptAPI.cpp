@@ -3,10 +3,9 @@
 #include <Core/Input/Input.h>
 #include <Core/UUID.h>
 #include <Log/Logger.h>
-
 #include <Scene/Component.h>
-
 #include <Scripting/ScriptEngine.h>
+#include <Physics/PhysicsEngine.h>
 
 #include <mono/jit/jit.h>
 
@@ -62,6 +61,52 @@ namespace Omni {
 		mono_free(msg);
 	}
 
+	MonoString* TagComponent_GetTag(uint64 entity_id) {
+		ScriptEngine* script_engine = ScriptEngine::Get();
+		Scene* context = script_engine->GetContext();
+		Entity entity(context->GetEntities()[entity_id], context);
+		return mono_string_new(script_engine->GetDomain(), entity.GetComponent<TagComponent>().tag.c_str());
+	}
+
+	void RigidBody2D_AddLinearImpulse(uint64 entity_id, fvec3* impulse) {
+		ScriptEngine* script_engine = ScriptEngine::Get();
+		Scene* context = script_engine->GetContext();
+		Entity entity(context->GetEntities()[entity_id], context);
+		PhysicsEngine::Get()->AddLinearImpulse(entity, *impulse);
+	}
+
+	void RigidBody2D_GetLinearVelocity(uint64 entity_id, fvec3* value) {
+		ScriptEngine* script_engine = ScriptEngine::Get();
+		Scene* context = script_engine->GetContext();
+		Entity entity(context->GetEntities()[entity_id], context);
+
+		*value = PhysicsEngine::Get()->GetLinearVelocity(entity);
+	}
+
+	void RigidBody2D_SetLinearVelocity(uint64 entity_id, fvec3* value) {
+		ScriptEngine* script_engine = ScriptEngine::Get();
+		Scene* context = script_engine->GetContext();
+		Entity entity(context->GetEntities()[entity_id], context);
+
+		PhysicsEngine::Get()->SetLinearVelocity(entity, *value);
+	}
+
+	void RigidBody2D_AddForce(uint64 entity_id, fvec3* value) {
+		ScriptEngine* script_engine = ScriptEngine::Get();
+		Scene* context = script_engine->GetContext();
+		Entity entity(context->GetEntities()[entity_id], context);
+
+		PhysicsEngine::Get()->AddForce(entity, *value);
+	}
+
+	void RigidBody2D_AddTorque(uint64 entity_id, fvec3* value) {
+		ScriptEngine* script_engine = ScriptEngine::Get();
+		Scene* context = script_engine->GetContext();
+		Entity entity(context->GetEntities()[entity_id], context);
+
+		PhysicsEngine::Get()->AddTorque(entity, *value);
+	}
+
 	void ScriptAPI::AddInternalCalls()
 	{
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(Input_KeyPressed);
@@ -70,6 +115,12 @@ namespace Omni {
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(Transform_SetTranslation);
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(Transform_GetScale);
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(Transform_SetScale);
+		OMNI_REGISTER_SCRIPT_API_FUNCTION(TagComponent_GetTag);
+		OMNI_REGISTER_SCRIPT_API_FUNCTION(RigidBody2D_AddLinearImpulse);
+		OMNI_REGISTER_SCRIPT_API_FUNCTION(RigidBody2D_GetLinearVelocity);
+		OMNI_REGISTER_SCRIPT_API_FUNCTION(RigidBody2D_SetLinearVelocity);
+		OMNI_REGISTER_SCRIPT_API_FUNCTION(RigidBody2D_AddForce);
+		OMNI_REGISTER_SCRIPT_API_FUNCTION(RigidBody2D_AddTorque);
 	}
 
 }
