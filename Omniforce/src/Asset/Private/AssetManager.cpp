@@ -39,4 +39,10 @@ namespace Omni {
 		return image->GetId();
 	}
 
+	void AssetManager::FullUnload()
+	{
+		m_TextureRegistry.clear();
+		m_UUIDs.clear();
+	}
+
 }

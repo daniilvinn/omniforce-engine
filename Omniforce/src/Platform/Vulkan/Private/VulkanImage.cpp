@@ -59,6 +59,7 @@ namespace Omni {
 
 		vkDestroyImageView(device->Raw(), m_ImageView, nullptr);
 		allocator->DestroyImage(&m_Image, &m_Allocation);
+		
 
 		m_ImageView = VK_NULL_HANDLE;
 	}
@@ -276,6 +277,8 @@ namespace Omni {
 		m_Specification.type = ImageType::TYPE_2D;
 		m_Specification.usage = ImageUsage::TEXTURE;
 		m_Specification.format = ImageFormat::RGBA32_UNORM;
+
+		staging_buffer.Destroy();
 	}
 
 	void VulkanImage::CreateRenderTarget()

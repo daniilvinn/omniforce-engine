@@ -270,13 +270,10 @@ public:
 		m_ProjectFilename = m_ProjectPath.filename().string();
 		m_ProjectPath.remove_filename();
 
-		std::ifstream input(filepath);
-		nlohmann::json root_node = nlohmann::json::parse(input);
-		input.close();
-
 		FileSystem::SetWorkingDirectory(m_ProjectPath);
 			
 		Renderer::WaitDevice();
+
 		// unloading textures from memory and releasing their indices
 		AssetManager* asset_manager = AssetManager::Get();
 		Shared<SceneRenderer> renderer = m_EditorScene->GetRenderer();
@@ -285,7 +282,11 @@ public:
 			renderer->ReleaseTextureIndex(texture);
 			texture->Destroy();
 		}
-		texture_registry.clear();
+		asset_manager->FullUnload();
+
+		std::ifstream input(filepath);
+		nlohmann::json root_node = nlohmann::json::parse(input);
+		input.close();
 
 		m_EditorScene->Deserialize(root_node);
 		m_EditorScene->EditorSetCamera(m_EditorCamera);
@@ -318,8 +319,6 @@ public:
 
 		FileSystem::SetWorkingDirectory(m_ProjectPath);
 
-		SaveProject();
-
 		auto textures_dir = m_ProjectPath.string() + "/assets/textures";
 		auto scripts_dir = m_ProjectPath.string() + "/assets/scripts";
 		auto audio_dir = m_ProjectPath.string() + "/assets/audio";
@@ -330,6 +329,9 @@ public:
 
 		std::filesystem::copy("resources/scripting/ScriptsProject", m_ProjectPath.string() + "/assets/scripts", std::filesystem::copy_options::recursive);
 		std::filesystem::copy("resources/scripting/bin/Debug/ScriptEngine.dll", m_ProjectPath.string() + "/assets/scripts/ScriptEngine.dll");
+
+		if(m_ProjectPath.string().length())
+			SaveProject();
 	}
 
 	void RenderGizmos() {

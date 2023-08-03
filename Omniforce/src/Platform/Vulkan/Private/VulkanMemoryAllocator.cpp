@@ -38,11 +38,11 @@ namespace Omni {
 
 	VulkanMemoryAllocator::~VulkanMemoryAllocator()
 	{
-		vmaDestroyAllocator(m_Allocator);
 		OMNIFORCE_CORE_TRACE("Destroying vulkan memory allocator: ");
 		OMNIFORCE_CORE_TRACE("\tTotal memory allocated: {0}", Utils::FormatAllocationSize(m_Statistics.allocated));
 		OMNIFORCE_CORE_TRACE("\tTotal memory freed: {0}", Utils::FormatAllocationSize(m_Statistics.freed));
 		OMNIFORCE_CORE_TRACE("\tIn use at the moment: {0}", Utils::FormatAllocationSize(m_Statistics.currently_allocated));
+		vmaDestroyAllocator(m_Allocator);
 	}
 
 	void VulkanMemoryAllocator::Init()
