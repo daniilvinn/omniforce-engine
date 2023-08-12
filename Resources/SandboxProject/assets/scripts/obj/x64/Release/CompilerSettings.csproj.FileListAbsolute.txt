@@ -1,8 +1,0 @@
-E:\dev\omniforce-engine\Resources\SandboxProject\assets\scripts\bin\gamescripts.dll
-E:\dev\omniforce-engine\Resources\SandboxProject\assets\scripts\bin\gamescripts.pdb
-E:\dev\omniforce-engine\Resources\SandboxProject\assets\scripts\bin\ScriptEngine.dll
-E:\dev\omniforce-engine\Resources\SandboxProject\assets\scripts\obj\x64\Release\CompilerSettings.csproj.AssemblyReference.cache
-E:\dev\omniforce-engine\Resources\SandboxProject\assets\scripts\obj\x64\Release\CompilerSettings.csproj.CoreCompileInputs.cache
-E:\dev\omniforce-engine\Resources\SandboxProject\assets\scripts\obj\x64\Release\CompilerSettings.csproj.CopyComplete
-E:\dev\omniforce-engine\Resources\SandboxProject\assets\scripts\obj\x64\Release\gamescripts.dll
-E:\dev\omniforce-engine\Resources\SandboxProject\assets\scripts\obj\x64\Release\gamescripts.pdb

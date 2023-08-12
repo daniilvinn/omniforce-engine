@@ -9,15 +9,12 @@ file(GLOB_RECURSE SANDBOX_FILES
 
 add_executable(${EDITOR_TARGET} ${SANDBOX_FILES})
 
-
-add_custom_command(TARGET ${EDITOR_TARGET} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_directory_if_different
-	"${CMAKE_SOURCE_DIR}/Resources" "$<TARGET_FILE_DIR:Editor>/resources")
-
 target_link_libraries(${EDITOR_TARGET} PUBLIC OmniforceEngine ${OMNI_IMGUI_TARGET})
 target_include_directories(${EDITOR_TARGET} PUBLIC ${IMGUI_INCLUDE_PATH} "src")
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET ${EDITOR_TARGET} PROPERTY CXX_STANDARD 23)
+  set_property(TARGET ${EDITOR_TARGET} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endif()
 
 if(WIN32)

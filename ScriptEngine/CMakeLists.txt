@@ -10,7 +10,7 @@ add_library(${SCRIPT_ENGINE_TARGET} SHARED ${FILES_TO_COMPILE})
 set_property(TARGET ${SCRIPT_ENGINE_TARGET} PROPERTY VS_DOTNET_TARGET_FRAMEWORK_VERSION "v4.7.2")
 
 set_target_properties(${SCRIPT_ENGINE_TARGET} PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/Resources/scripting/bin"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/Editor/Resources/scripting/bin"
 )
 
 target_compile_options(${SCRIPT_ENGINE_TARGET} PRIVATE "/langversion:8")
