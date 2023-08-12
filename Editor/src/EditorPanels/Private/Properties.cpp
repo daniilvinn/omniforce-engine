@@ -151,7 +151,11 @@ namespace Omni {
 								ImGui::Text("Material");
 
 								ImGui::TableNextColumn();
-								if (ImGui::Button("Browse files", { -FLT_MIN, 0.0f })) {
+
+								
+
+								ImGui::SameLine();
+								if (ImGui::Button("Browse", { -FLT_MIN, 0.0f })) {
 									const char* filters[] = { "*.png", "*.jpg", "*.jpeg" };
 
 									char* filepath = tinyfd_openFileDialog(

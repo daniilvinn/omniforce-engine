@@ -125,30 +125,12 @@ namespace Omni {
 
 			std::vector<SpvReflectBlockVariable*> reflect_push_constant_ranges(push_constant_range_count);
 			spvReflectEnumeratePushConstants(&reflect_module, &push_constant_range_count, reflect_push_constant_ranges.data());
-#if 1
+
 			for (auto& reflect_range : reflect_push_constant_ranges) {
 				push_constant_range.size = reflect_range->size; // TODO: some dodgy stuff here
 				push_constant_range.offset = 0;
 				push_constant_range.stageFlags = VK_SHADER_STAGE_ALL;
 			}
-#elif 0
-
-			for (auto& reflect_range : reflect_push_constant_ranges) {
-				for (auto& range : m_Ranges) {
-					if (range.offset == reflect_range->offset && range.size == reflect_range->size) {
-						range.stageFlags |= convert(stage_data.first);
-						continue;
-					}
-				}
-
-				VkPushConstantRange push_constant_range = {};
-				push_constant_range.size = reflect_range->size;
-				push_constant_range.offset = reflect_range->offset;
-				push_constant_range.stageFlags = VK_SHADER_STAGE_ALL;
-
-				m_Ranges.push_back(push_constant_range);
-			}
-#endif
 
 			spvReflectDestroyShaderModule(&reflect_module);
 		}

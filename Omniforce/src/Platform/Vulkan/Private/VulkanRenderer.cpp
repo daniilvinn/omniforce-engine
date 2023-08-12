@@ -250,6 +250,21 @@ namespace Omni {
 		});
 	}
 
+	void VulkanRenderer::RenderLines(Shared<Pipeline> pipeline, uint32 amount, MiscData data)
+	{
+		Renderer::Submit([=]()mutable {
+			Shared<VulkanPipeline> vk_pipeline = ShareAs<VulkanPipeline>(pipeline);
+
+			if (data.size)
+			{
+				vkCmdPushConstants(m_CurrentCmdBuffer->Raw(), vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
+				delete[] data.data;
+			}
+			vkCmdBindPipeline(m_CurrentCmdBuffer->Raw(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
+			vkCmdDraw(m_CurrentCmdBuffer->Raw(), 6, amount, 0, 0);
+		});
+	}
+
 	void VulkanRenderer::RenderImGui()
 	{
 		auto image = m_Swapchain->GetCurrentImage();
