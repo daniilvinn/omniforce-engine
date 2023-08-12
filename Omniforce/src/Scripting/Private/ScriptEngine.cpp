@@ -37,6 +37,7 @@ namespace Omni {
 	}
 
 	ScriptEngine::ScriptEngine()
+		: m_CallbackArgsAllocator()
 	{
 		InitMonoInternals();
 	}
@@ -139,6 +140,23 @@ namespace Omni {
 		LoadAssemblies();
 	}
 
+	void ScriptEngine::OnUpdate()
+	{
+		for (auto& callback_info : m_PendingCallbacks) {
+			Shared<RuntimeScriptInstance> object = callback_info.entity.GetComponent<ScriptComponent>().script_object;
+			object->InvokeMethod(callback_info.method, callback_info.args.data());
+		}
+
+		m_PendingCallbacks.clear();
+		m_CallbackArgsAllocator.Free();
+
+		if (m_GCTimer.ElapsedMilliseconds() > 100) {
+			mono_gc_collect(mono_gc_max_generation());
+			m_GCTimer.Reset();
+		}
+		
+	}
+
 	void ScriptEngine::LaunchRuntime(Scene* context)
 	{
 		m_Context = context;
@@ -159,6 +177,9 @@ namespace Omni {
 
 			script_component.script_object = mAvailableClassesList[script_component.class_name].AllocateObject(uuid_component.id);
 		}
+
+		auto group = registry->group<RigidBody2DComponent, ScriptComponent>();
+		m_PendingCallbacks.reserve(group.size());
 	}
 
 	void ScriptEngine::ShutdownRuntime()

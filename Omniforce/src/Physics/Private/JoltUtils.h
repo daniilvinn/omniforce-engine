@@ -10,11 +10,10 @@
 #include <Jolt/Physics/PhysicsSystem.h>
 #include <Jolt/Physics/Body/BodyActivationListener.h>
 
-/*
-*	TODO: add CMake option to trace contact and activation listeners' callbacks
-*/
-
 namespace Omni {
+
+	class OMNIFORCE_API ScriptEngine;
+	class OMNIFORCE_API Scene;
 
 	void PhysicsEngineTraceImpl(const char* fmt, ...);
 	bool PhysicsEngineAssertFailedImpl(const char* expression, const char* message, const char* file, uint32 line);
@@ -62,6 +61,8 @@ namespace Omni {
 	class BodyContantListener : public JPH::ContactListener
 	{
 	public:
+		BodyContantListener();
+
 		virtual JPH::ValidateResult	OnContactValidate(
 			const JPH::Body& inBody1, 
 			const JPH::Body& inBody2, 
@@ -81,6 +82,9 @@ namespace Omni {
 			JPH::ContactSettings& settings) override;
 
 		virtual void OnContactRemoved(const JPH::SubShapeIDPair& subshape_pair) override;
+
+	private:
+		ScriptEngine* m_ScriptEngine;
 	};
 
 	class BodyActivationListener : public JPH::BodyActivationListener

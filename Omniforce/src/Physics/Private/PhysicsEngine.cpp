@@ -53,6 +53,7 @@ namespace Omni {
 		JPH::Factory::sInstance = new JPH::Factory;
 		JPH::RegisterTypes();
 
+		s_InternalData.body_contact_listener = BodyContantListener();
 		m_CoreSystem = new JPH::PhysicsSystem;
 
 		m_CoreSystem->Init(
@@ -141,6 +142,7 @@ namespace Omni {
 			body_creation_settings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
 			body_creation_settings.mMassPropertiesOverride.mMass = rb2d_component.mass;
 
+			// TODO: optimize caching by adding arena allocator for body IDs
 			JPH::BodyID* body_id = new JPH::BodyID;
 
 			if (entity.HasComponent<BoxColliderComponent>()) {

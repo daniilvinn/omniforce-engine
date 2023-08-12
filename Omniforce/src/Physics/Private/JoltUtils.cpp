@@ -2,6 +2,10 @@
 
 #include <Foundation/Types.h>
 #include <Log/Logger.h>
+#include <Scripting/ScriptEngine.h>
+#include <Scripting/PendingCallbackInfo.h>
+#include <Scene/Scene.h>
+#include <Scene/Component.h>
 #include "../PhysicsMaterial.h"
 
 #include <cstdarg>
@@ -98,6 +102,11 @@ namespace Omni {
 		}
 	}
 
+	BodyContantListener::BodyContantListener()
+	{
+		m_ScriptEngine = ScriptEngine::Get();
+	}
+
 	JPH::ValidateResult BodyContantListener::OnContactValidate(
 		const JPH::Body& inBody1, 
 		const JPH::Body& inBody2, 
@@ -121,6 +130,35 @@ namespace Omni {
 
 		settings.mCombinedFriction = std::sqrt(friction1 * friction2);
 		settings.mCombinedRestitution = std::max(restitution1, restitution2);
+
+		Scene* scene_context = m_ScriptEngine->Get()->GetContext();
+		auto& entities = scene_context->GetEntities();
+		Entity entity1(entities[body1.GetUserData()], scene_context);
+		Entity entity2(entities[body2.GetUserData()], scene_context);
+
+		if (entity1.HasComponent<ScriptComponent>()) {
+			TransientAllocator<false>& args_allocator = m_ScriptEngine->GetCallbackArgsAllocator();
+			UUID* uuid = args_allocator.Allocate<UUID>(body2.GetUserData());
+
+			PendingCallbackInfo callback_info = {};
+			callback_info.entity = entity1;
+			callback_info.args = { uuid };
+			callback_info.method = "OnContactAdded";
+
+			m_ScriptEngine->AddPendingCallback(callback_info);
+		}
+
+		if (entity2.HasComponent<ScriptComponent>()) {
+			TransientAllocator<false>& args_allocator = m_ScriptEngine->GetCallbackArgsAllocator();
+			UUID* uuid = args_allocator.Allocate<UUID>(body1.GetUserData());
+
+			PendingCallbackInfo callback_info = {};
+			callback_info.entity = entity2;
+			callback_info.args = { uuid };
+			callback_info.method = "OnContactAdded";
+
+			m_ScriptEngine->AddPendingCallback(callback_info);
+		}
 	}
 
 	void BodyContantListener::OnContactPersisted(
@@ -136,11 +174,40 @@ namespace Omni {
 
 		settings.mCombinedFriction = std::sqrt(friction1 * friction2);
 		settings.mCombinedRestitution = std::max(restitution1, restitution2);
+
+		Scene* scene_context = m_ScriptEngine->Get()->GetContext();
+		auto& entities = scene_context->GetEntities();
+		Entity entity1(entities[body1.GetUserData()], scene_context);
+		Entity entity2(entities[body1.GetUserData()], scene_context);
+
+		if (entity1.HasComponent<ScriptComponent>()) {
+			TransientAllocator<false>& args_allocator = m_ScriptEngine->GetCallbackArgsAllocator();
+			UUID* uuid = args_allocator.Allocate<UUID>(body1.GetUserData());
+
+			PendingCallbackInfo callback_info = {};
+			callback_info.entity = entity1;
+			callback_info.args = { uuid };
+			callback_info.method = "OnContactPersisted";
+
+			m_ScriptEngine->AddPendingCallback(callback_info);
+		}
+
+		if (entity2.HasComponent<ScriptComponent>()) {
+			TransientAllocator<false>& args_allocator = m_ScriptEngine->GetCallbackArgsAllocator();
+			UUID* uuid = args_allocator.Allocate<UUID>(body2.GetUserData());
+
+			PendingCallbackInfo callback_info = {};
+			callback_info.entity = entity2;
+			callback_info.args = { uuid };
+			callback_info.method = "OnContactPersisted";
+
+			m_ScriptEngine->AddPendingCallback(callback_info);
+		}
 	}
 
 	void BodyContantListener::OnContactRemoved(const JPH::SubShapeIDPair& subshape_pair)
 	{
-		// ignore
+		
 	}
 
 }

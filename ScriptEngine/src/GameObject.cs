@@ -2,7 +2,7 @@ using System;
 
 namespace Omni
 {
-    public abstract class GameObject
+    public class GameObject
     {
         protected GameObject()
         {
@@ -15,11 +15,11 @@ namespace Omni
             transform = new Transform(this);
         }
 
-        public abstract void OnInit();
-        public abstract void OnUpdate();
-        public virtual void OnContactEnter() { }
-        public virtual void OnContactPersisted() { }
-        public virtual void OnContactRemoved() { }
+        public virtual void OnInit() { }
+        public virtual void OnUpdate() { }
+        public virtual void OnContactAdded(UUID object_id) { }
+        public virtual void OnContactPersisted(UUID object_id) { }
+        public virtual void OnContactRemoved(UUID object_id) { }
 
         public T GetComponent<T>() where T : Component, new()
         {

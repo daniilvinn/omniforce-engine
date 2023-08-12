@@ -1,14 +1,18 @@
 #pragma once
 
+#include "MonoForwardDecl.h"
+
 #include <Foundation/Macros.h>
 #include <Foundation/Types.h>
 #include <Scene/Entity.h>
+#include <Memory/Allocator.h>
+#include <Core/Timer.h>
 #include "ScriptClass.h"
+#include "PendingCallbackInfo.h"
 
 #include <filesystem>
-#include <robin_hood.h>
 
-#include "MonoForwardDecl.h"
+#include <robin_hood.h>
 
 namespace Omni {
 
@@ -29,10 +33,14 @@ namespace Omni {
 		MonoImage* GetAppImage();
 		MonoDomain* GetDomain() { return mAppDomain; }
 		ScriptClass GetBaseObject() const { return mScriptBase; }
+		TransientAllocator<false>& GetCallbackArgsAllocator() { return m_CallbackArgsAllocator; }
 
 		void LoadAssemblies();
 		void UnloadAssemblies();
 		void ReloadAssemblies();
+
+		inline void AddPendingCallback(PendingCallbackInfo info) { m_PendingCallbacks.push_back(info); }
+		void OnUpdate();
 
 	private:
 		ScriptEngine();
@@ -53,17 +61,24 @@ namespace Omni {
 		MonoDomain* mAppDomain = nullptr;
 		MonoAssembly* mCoreAssembly = nullptr;
 		MonoAssembly* mAppAssembly = nullptr;
+
 		ScriptClass mScriptBase;
+		robin_hood::unordered_map<std::string, ScriptClass> mAvailableClassesList;
 
 		MonoMethod* mInitMethodBase;
 		MonoMethod* mUpdateMethodBase;
 		MonoMethod* mBaseCtor;
-		robin_hood::unordered_map<std::string, ScriptClass> mAvailableClassesList;
 		robin_hood::unordered_map<UUID, MonoMethod*> mOnInitMethods;
 		robin_hood::unordered_map<UUID, MonoMethod*> mOnUpdateMethods;
 
+		TransientAllocator<false> m_CallbackArgsAllocator;
+		std::vector<PendingCallbackInfo> m_PendingCallbacks;
+		Timer m_GCTimer;
+
 		friend class ScriptClass;
 		friend class RuntimeScriptInstance;
+
+		
 	};
 
 }

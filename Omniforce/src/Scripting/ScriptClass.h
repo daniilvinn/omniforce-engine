@@ -8,8 +8,6 @@
 #include <Core/UUID.h>
 #include "RuntimeScriptInstance.h"
 
-#include <fmt/format.h>
-
 #include <string>
 #include <string_view>
 
@@ -35,6 +33,7 @@ namespace Omni {
 		std::string m_Name;
 
 		friend class ScriptEngine;
+		std::unordered_map<std::string, MonoMethod*> mMethodList;
 	};
 
 }

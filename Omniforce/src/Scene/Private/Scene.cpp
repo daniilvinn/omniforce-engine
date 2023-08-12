@@ -110,6 +110,8 @@ namespace Omni {
 
 		ScriptEngine* script_engine = ScriptEngine::Get();
 		if (script_engine->HasContext()) {
+			script_engine->OnUpdate();
+
 			auto script_component_view = m_Registry.view<ScriptComponent>();
 			for (auto& e : script_component_view) {
 				Entity entity(e, this);

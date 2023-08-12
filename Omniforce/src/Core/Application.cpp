@@ -55,6 +55,9 @@ namespace Omni
 		js->Execute([renderer_config]() {
 			Renderer::Init(renderer_config);
 		});
+		
+		ScriptEngine::Init();
+
 		js->Execute(Input::Init);
 		js->Execute(PhysicsEngine::Init);
 
@@ -65,8 +68,6 @@ namespace Omni
 
 		m_ImGuiRenderer = ImGuiRenderer::Create();
 		m_ImGuiRenderer->Launch(m_WindowSystem->GetWindow("main")->Raw());
-
-		ScriptEngine::Init();
 	}
 
 	void Application::Run()

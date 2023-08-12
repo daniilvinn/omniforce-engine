@@ -17,11 +17,15 @@ namespace Omni {
 		RuntimeScriptInstance(ScriptClass* script_class, UUID id);
 		~RuntimeScriptInstance();
 
+		MonoObject* Raw() const { return mManagedObject; }
+
 		void InvokeInit();
-		void InvokeUpdate();		
+		void InvokeUpdate();
+		void InvokeMethod(std::string method_name, void** params);
 
 	private:
 		MonoObject* mManagedObject;
+		ScriptClass* mClass;
 		uint32 mGCHandle;
 		MonoMethod* mOnInit;
 		MonoMethod* mOnUpdate;
