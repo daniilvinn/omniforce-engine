@@ -40,10 +40,10 @@ namespace Omni {
 		m_Camera = other->m_Camera;
 
 		auto idComponents = other->m_Registry.view<UUIDComponent>();
-		for (auto entity : idComponents)
+		for (auto entity = idComponents.rbegin(); entity != idComponents.rend(); entity++)
 		{
-			UUID uuid = other->m_Registry.get<UUIDComponent>(entity).id;
-			CreateEntity(entity, uuid);
+			UUID uuid = other->m_Registry.get<UUIDComponent>(*entity).id;
+			CreateEntity(*entity, uuid);
 		}
 
 		ExplicitComponentCopy<UUIDComponent>(other->m_Registry, m_Registry, other->m_Entities);
@@ -56,6 +56,9 @@ namespace Omni {
 		ExplicitComponentCopy<BoxColliderComponent>(other->m_Registry, m_Registry, other->m_Entities);
 		ExplicitComponentCopy<SphereColliderComponent>(other->m_Registry, m_Registry, other->m_Entities);
 		ExplicitComponentCopy<ScriptComponent>(other->m_Registry, m_Registry, other->m_Entities);
+		ExplicitComponentCopy<HierarchyNodeComponent>(other->m_Registry, m_Registry, other->m_Entities);
+
+		m_PhysicsSettings = other->GetPhysicsSettings();
 	}
 
 	void Scene::Destroy()
@@ -122,11 +125,14 @@ namespace Omni {
 
 	Entity Scene::CreateEntity(const UUID& id)
 	{
+		int size = m_Entities.size();
+
 		Entity entity(this);
 		entity.AddComponent<UUIDComponent>(id);
 		entity.AddComponent<TagComponent>("Object");
 		entity.AddComponent<TRSComponent>();
 		entity.AddComponent<TransformComponent>();
+		entity.AddComponent<HierarchyNodeComponent>();
 
 		entity.GetComponent<TagComponent>().tag.reserve(256);
 
@@ -150,9 +156,59 @@ namespace Omni {
 		return entity;
 	}
 
+	Entity Scene::GetEntity(std::string_view tag)
+	{
+		auto view = m_Registry.view<TagComponent>();
+		for (auto entity : view)
+		{
+			const TagComponent& tc = view.get<TagComponent>(entity);
+			if (tc.tag == tag)
+				return Entity( entity, this );
+		}
+		return {};
+	}
+
+	Entity Scene::GetEntity(UUID id)
+	{
+		return Entity(m_Entities[id], this);
+	}
+
 	void Scene::RemoveEntity(Entity entity)
 	{
+		UUIDComponent uuid_component = entity.GetComponent<UUIDComponent>();
+		HierarchyNodeComponent& hierarchy_node_component = entity.GetComponent<HierarchyNodeComponent>();
+
+		for (auto& child : hierarchy_node_component.children) {
+			HierarchyNodeComponent& child_node_component = GetEntity(child).GetComponent<HierarchyNodeComponent>();
+			child_node_component.parent = hierarchy_node_component.parent == 0 ? UUID(0) : hierarchy_node_component.parent;
+		}
+		if (hierarchy_node_component.parent) {
+			Entity parent = GetEntity(hierarchy_node_component.parent);
+			HierarchyNodeComponent& parent_node_component = parent.GetComponent<HierarchyNodeComponent>();
+
+			for (auto& child : hierarchy_node_component.children)
+				parent_node_component.children.push_back(child);
+
+			for (auto i = parent_node_component.children.begin(); i != parent_node_component.children.end(); i++) {
+				if (*i == uuid_component.id) {
+					parent_node_component.children.erase(i);
+					break;
+				}
+			}
+		}
+
+		m_Entities.erase(entity.GetComponent<UUIDComponent>());
 		m_Registry.destroy(entity);
+	}
+
+	void Scene::RemoveEntityWithChildren(Entity entity)
+	{
+		UUIDComponent uuid_component = entity.GetComponent<UUIDComponent>();
+		HierarchyNodeComponent& hierarchy_node_component = entity.GetComponent<HierarchyNodeComponent>();
+		for (auto& child : hierarchy_node_component.children) {
+			RemoveEntityWithChildren(GetEntity(child));
+		}
+		RemoveEntity(entity);
 	}
 
 	void Scene::LaunchRuntime()
@@ -166,7 +222,9 @@ namespace Omni {
 				break;
 			}
 		}
-		PhysicsEngine::Get()->LaunchRuntime(this);
+		PhysicsEngine* physics_engine = PhysicsEngine::Get();
+		physics_engine->LaunchRuntime(this);
+		physics_engine->SetSettings(m_PhysicsSettings);
 
 		ScriptEngine* script_engine = ScriptEngine::Get();
 		script_engine->LaunchRuntime(this);

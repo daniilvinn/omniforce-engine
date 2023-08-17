@@ -41,6 +41,7 @@ namespace Omni {
 
 		inline void AddPendingCallback(PendingCallbackInfo info) { m_PendingCallbacks.push_back(info); }
 		void OnUpdate();
+		void DispatchExceptionHandling(MonoObject* exception);
 
 	private:
 		ScriptEngine();

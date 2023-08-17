@@ -39,5 +39,14 @@ namespace Omni
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern static void RigidBody2D_AddTorque(ulong entity_id, ref Vector3 torque);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static void Physics_GetGravity(out Vector3 Gravity);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static void Physics_SetGravity(ref Vector3 Gravity);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static void Entity_GetEntity(string name, out UUID object_id);
     }
 }

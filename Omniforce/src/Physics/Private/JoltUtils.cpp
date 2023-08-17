@@ -178,11 +178,11 @@ namespace Omni {
 		Scene* scene_context = m_ScriptEngine->Get()->GetContext();
 		auto& entities = scene_context->GetEntities();
 		Entity entity1(entities[body1.GetUserData()], scene_context);
-		Entity entity2(entities[body1.GetUserData()], scene_context);
+		Entity entity2(entities[body2.GetUserData()], scene_context);
 
 		if (entity1.HasComponent<ScriptComponent>()) {
 			TransientAllocator<false>& args_allocator = m_ScriptEngine->GetCallbackArgsAllocator();
-			UUID* uuid = args_allocator.Allocate<UUID>(body1.GetUserData());
+			UUID* uuid = args_allocator.Allocate<UUID>(body2.GetUserData());
 
 			PendingCallbackInfo callback_info = {};
 			callback_info.entity = entity1;
@@ -194,7 +194,7 @@ namespace Omni {
 
 		if (entity2.HasComponent<ScriptComponent>()) {
 			TransientAllocator<false>& args_allocator = m_ScriptEngine->GetCallbackArgsAllocator();
-			UUID* uuid = args_allocator.Allocate<UUID>(body2.GetUserData());
+			UUID* uuid = args_allocator.Allocate<UUID>(body1.GetUserData());
 
 			PendingCallbackInfo callback_info = {};
 			callback_info.entity = entity2;

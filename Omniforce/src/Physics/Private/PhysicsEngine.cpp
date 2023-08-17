@@ -141,6 +141,8 @@ namespace Omni {
 			body_creation_settings.mIsSensor = rb2d_component.sensor_mode;
 			body_creation_settings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
 			body_creation_settings.mMassPropertiesOverride.mMass = rb2d_component.mass;
+			// TODO: implement setting max linear velocity
+			// body_creation_settings.mMaxLinearVelocity = rb2d_component.max_linear_velocity;			
 
 			// TODO: optimize caching by adding arena allocator for body IDs
 			JPH::BodyID* body_id = new JPH::BodyID;

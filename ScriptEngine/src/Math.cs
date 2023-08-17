@@ -10,6 +10,14 @@
             this.y = y;
         }
 
+        public static Vector2 operator *(Vector2 vec, float scalar)
+        {
+            vec.x *= scalar;
+            vec.y *= scalar;
+
+            return vec;
+        }
+
         public override string ToString()
         {
             return $"{x} {y}";
@@ -25,6 +33,16 @@
             this.x = x;
             this.y = y;
             this.z = z;
+        }
+
+        // TODO: introduce SIMD
+        public static Vector3 operator *(Vector3 vec, float scalar)
+        {
+            vec.x *= scalar;
+            vec.y *= scalar;
+            vec.z *= scalar;
+
+            return vec;
         }
 
         public override string ToString()
@@ -55,6 +73,16 @@
             y = v.y;
             z = v.z;
             this.w = w;
+        }
+
+        public static Vector4 operator *(Vector4 vec, float scalar)
+        {
+            vec.x *= scalar;
+            vec.y *= scalar;
+            vec.z *= scalar;
+            vec.w *= scalar;
+
+            return vec;
         }
 
         public override string ToString()

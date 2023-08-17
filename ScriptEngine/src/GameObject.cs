@@ -28,6 +28,12 @@ namespace Omni
             return component;
         }
 
+        public static GameObject GetGameObject(string name) 
+        { 
+            EngineAPI.Entity_GetEntity(name, out UUID object_id);
+            return object_id.AsGameObject();
+        }
+
         public readonly ulong GameObjectID;
         public Transform transform;
     }

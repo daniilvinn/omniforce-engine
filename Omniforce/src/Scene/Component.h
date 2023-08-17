@@ -121,6 +121,12 @@ namespace Omni {
 		static const char* GetSerializableKey() { return "ScriptComponent"; }
 	};
 
+	struct OMNIFORCE_API HierarchyNodeComponent {
+		UUID parent = 0;
+		std::vector<UUID> children;
+
+		HierarchyNodeComponent() = default;
+	};
 
 
 }

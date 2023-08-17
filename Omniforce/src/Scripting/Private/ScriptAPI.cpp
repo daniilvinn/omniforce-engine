@@ -107,6 +107,27 @@ namespace Omni {
 		PhysicsEngine::Get()->AddTorque(entity, *value);
 	}
 
+	void Physics_GetGravity(fvec3* value) {
+		*value = ScriptEngine::Get()->GetContext()->GetPhysicsSettings().gravity;
+	}
+
+	void Physics_SetGravity(fvec3* value) {
+		Scene* context = ScriptEngine::Get()->GetContext();
+		PhysicsSettings physics_settings = context->GetPhysicsSettings();
+		physics_settings.gravity = *value;
+		context->SetPhysicsSettings(physics_settings);
+	}
+
+	void Entity_GetEntity(MonoString* name, UUID* out_id) 
+	{
+		Scene* context = ScriptEngine::Get()->GetContext();
+		std::string_view str_view(mono_string_to_utf8(name));
+		Entity e = context->GetEntity(str_view);
+		mono_free((void*)str_view.data());
+		
+		*out_id = e.GetComponent<UUIDComponent>();
+	}
+
 	void ScriptAPI::AddInternalCalls()
 	{
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(Input_KeyPressed);
@@ -121,6 +142,9 @@ namespace Omni {
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(RigidBody2D_SetLinearVelocity);
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(RigidBody2D_AddForce);
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(RigidBody2D_AddTorque);
+		OMNI_REGISTER_SCRIPT_API_FUNCTION(Physics_GetGravity);
+		OMNI_REGISTER_SCRIPT_API_FUNCTION(Physics_SetGravity);
+		OMNI_REGISTER_SCRIPT_API_FUNCTION(Entity_GetEntity);
 	}
 
 }

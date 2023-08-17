@@ -86,12 +86,12 @@ public:
 		{
 			// TODO: fix bug here and in properties panel
 			// when engine crashes after trying to close / hide imgui window which contains tables.
-			PhysicsSettings physics_settings = m_EditorScene->GetPhysicsSettings();
+			PhysicsSettings physics_settings = m_CurrentScene->GetPhysicsSettings();
 			ImGui::Text("Gravity");
 			ImGui::SameLine();
-			ImGui::DragFloat3("##physics_settings_gravity_drag_float", (float32*)&physics_settings.gravity, 0.01f, -99.0f, 99.0f);
 
-			m_EditorScene->SetPhysicsSettings(physics_settings);
+			if(ImGui::DragFloat3("##physics_settings_gravity_drag_float", (float32*)&physics_settings.gravity, 0.01f, -99.0f, 99.0f))
+				m_CurrentScene->SetPhysicsSettings(physics_settings);
 
 			if (ImGui::Button("Reload script assemblies"))
 				ScriptEngine::Get()->ReloadAssemblies();

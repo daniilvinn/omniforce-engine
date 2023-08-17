@@ -33,7 +33,10 @@ namespace Omni {
 		void OnUpdate(float32 step);
 		Entity CreateEntity(const UUID& id = UUID());
 		Entity CreateEntity(entt::entity entity_id, const UUID& id = UUID());
+		Entity GetEntity(UUID id);
+		Entity GetEntity(std::string_view tag);
 		void RemoveEntity(Entity entity);
+		void RemoveEntityWithChildren(Entity entity);
 		void LaunchRuntime();
 		void ShutdownRuntime();
 

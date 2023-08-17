@@ -83,10 +83,10 @@ namespace Omni {
 		// Engine core assembly
 		// TODO: compile C# engine core only in release mode
 		if (OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG) {
-			mCoreAssembly = (MonoAssembly*)ReadAssembly("resources/scripting/bin/Debug/ScriptEngine.dll");
+			mCoreAssembly = (MonoAssembly*)ReadAssembly(FileSystem::GetWorkingDirectory().append("assets/scripts/bin/ScriptEngine.dll"));
 		}
 		else if (OMNIFORCE_BUILD_CONFIG == OMNIFORCE_RELEASE_CONFIG) {
-			mCoreAssembly = (MonoAssembly*)ReadAssembly("resources/scripting/bin/Debug/ScriptEngine.dll");
+			mCoreAssembly = (MonoAssembly*)ReadAssembly(FileSystem::GetWorkingDirectory().append("assets/scripts/bin/ScriptEngine.dll"));
 		}
 
 		MonoImage* engine_core_image = mono_assembly_get_image(mCoreAssembly);
@@ -155,6 +155,19 @@ namespace Omni {
 			m_GCTimer.Reset();
 		}
 		
+	}
+
+	void ScriptEngine::DispatchExceptionHandling(MonoObject* exception)
+	{
+		MonoClass* exception_class = mono_object_get_class(exception);
+		MonoClassField* message_field = mono_class_get_field_from_name(exception_class, "_message");
+
+		MonoObject* to_string_failed_exc;
+		MonoObject* value_object = mono_field_get_value_object(ScriptEngine::Get()->GetDomain(), message_field, exception);
+		MonoString* mono_string = mono_object_to_string(value_object, &to_string_failed_exc);
+
+		char* error_message = mono_string_to_utf8(mono_string);
+		OMNIFORCE_CORE_ERROR("[Scripts]: {}", error_message);
 	}
 
 	void ScriptEngine::LaunchRuntime(Scene* context)

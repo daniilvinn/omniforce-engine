@@ -18,7 +18,7 @@ namespace Omni
             return a.ID != b.ID;
         }
 
-        GameObject AsGameObject() {
+        public GameObject AsGameObject() {
             return new GameObject(ID);
         }
 

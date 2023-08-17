@@ -40,12 +40,16 @@ namespace Omni {
 
 	void RuntimeScriptInstance::InvokeMethod(std::string method_name, void** params)
 	{
-		MonoObject* exc;
+		MonoObject* exc = nullptr;
 
 		MonoMethod* method = mClass->GetMethod(method_name, 0);
 		if (!method)
 			return;
+
 		mono_runtime_invoke(method, mManagedObject, params, & exc);
+
+		if (exc)
+			ScriptEngine::Get()->DispatchExceptionHandling(exc);
 	}
 
 }
