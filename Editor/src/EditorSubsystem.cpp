@@ -63,9 +63,9 @@ public:
 		//Render and process scene hierarchy panel
 		ImGui::BeginDisabled(m_InRuntime);
 		m_HierarchyPanel->Render();
-		if (m_HierarchyPanel->IsNodeSelected()) {
+		if (m_EntitySelected = m_HierarchyPanel->IsNodeSelected()) 
+		{
 			m_SelectedEntity = m_HierarchyPanel->GetSelectedNode();
-			m_EntitySelected = true;
 		}
 
 		// Properties panel
@@ -336,7 +336,9 @@ public:
 
 	void RenderGizmos() {
 		if (m_EntitySelected && m_CurrentOperation) {
-			TransformComponent& tc = m_SelectedEntity.GetComponent<TransformComponent>();
+			TRSComponent trs = m_SelectedEntity.GetWorldTransform();
+
+			glm::mat4 model = Utils::ComposeMatrix(trs.translation, trs.rotation, trs.scale);
 			glm::mat4 view = m_EditorCamera->GetViewMatrix();
 			glm::mat4 proj = m_EditorCamera->GetProjectionMatrix();
 
@@ -367,14 +369,23 @@ public:
 				(float*)&proj,
 				m_CurrentOperation,
 				ImGuizmo::MODE::WORLD,
-				(float*)&tc.matrix,
+				(float*)&model,
 				nullptr,
 				snap_value
 			);
 
 			if (ImGuizmo::IsUsing()) {
 				TRSComponent& trs = m_SelectedEntity.GetComponent<TRSComponent>();
-				Utils::DecomposeMatrix(tc.matrix, &trs.translation, &trs.rotation, &trs.scale);
+				Utils::DecomposeMatrix(model, &trs.translation, &trs.rotation, &trs.scale);
+
+				if (m_SelectedEntity.GetComponent<HierarchyNodeComponent>().parent.Valid()) {
+					Entity parent_entity = m_SelectedEntity.GetParent();
+
+					TRSComponent parent_trs = parent_entity.GetWorldTransform();
+					trs.translation -= parent_trs.translation;
+					trs.rotation -= parent_trs.scale;
+				}
+
 			}
 			
 		}	

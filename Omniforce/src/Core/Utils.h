@@ -7,7 +7,9 @@
 #include <iostream>
 
 #include <fmt/format.h>
+#include <glm/glm.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 namespace Omni {
 
@@ -76,5 +78,15 @@ namespace Omni {
 			*rotation = glm::degrees(glm::eulerAngles(orientation));
 		};
 
+		inline glm::mat4 ComposeMatrix(const glm::vec3& translation, const glm::vec3& rotation, const glm::vec3& scale)
+		{
+			return glm::translate(glm::mat4(1.0f), translation) *
+				glm::rotate(glm::mat4(1.0f), glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f)) *
+				glm::rotate(glm::mat4(1.0f), glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f)) *
+				glm::rotate(glm::mat4(1.0f), glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f)) *
+				glm::scale(glm::mat4(1.0f), scale);
+
+		}
+		
 	}
 }

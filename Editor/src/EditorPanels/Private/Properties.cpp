@@ -3,6 +3,7 @@
 #include <Scene/Component.h>
 #include <Scene/SceneRenderer.h>
 #include <Asset/AssetManager.h>
+#include <Core/Utils.h>
 
 #include <Filesystem/Filesystem.h>
 
@@ -96,7 +97,7 @@ namespace Omni {
 					ImGui::TableNextColumn();
 					ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
 					if (ImGui::DragFloat3("##floatT", glm::value_ptr(trs_component.translation), 0.1f))
-						RecalculateTransform();
+						transform = Utils::ComposeMatrix(trs_component.translation, trs_component.rotation, trs_component.scale);
 
 					ImGui::TableNextRow();
 					ImGui::TableNextColumn();
@@ -105,7 +106,7 @@ namespace Omni {
 					ImGui::TableNextColumn();
 					ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
 					if (ImGui::DragFloat3("##floatR", glm::value_ptr(trs_component.rotation), 0.1f))
-						RecalculateTransform();
+						transform = Utils::ComposeMatrix(trs_component.translation, trs_component.rotation, trs_component.scale);
 
 					ImGui::TableNextRow();
 					ImGui::TableNextColumn();
@@ -114,7 +115,7 @@ namespace Omni {
 					ImGui::TableNextColumn();
 					ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
 					if (ImGui::DragFloat3("##floatS", glm::value_ptr(trs_component.scale), 0.01f))
-						RecalculateTransform();
+						transform = Utils::ComposeMatrix(trs_component.translation, trs_component.rotation, trs_component.scale);
 
 					ImGui::EndTable();
 				}
@@ -501,19 +502,6 @@ namespace Omni {
 	void PropertiesPanel::SetEntity(Entity entity, bool selected)
 	{
 		m_Entity = entity; m_Selected = selected;
-	}
-
-	void PropertiesPanel::RecalculateTransform()
-	{
-		glm::mat4& matrix = m_Entity.GetComponent<TransformComponent>().matrix;
-		auto& trs_component = m_Entity.GetComponent<TRSComponent>();
-
-		matrix = glm::translate(glm::mat4(1.0f), trs_component.translation) *
-			glm::rotate(glm::mat4(1.0f), glm::radians(trs_component.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f)) *
-			glm::rotate(glm::mat4(1.0f), glm::radians(trs_component.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f)) *
-			glm::rotate(glm::mat4(1.0f), glm::radians(trs_component.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f)) *
-			glm::scale(glm::mat4(1.0f), trs_component.scale);
-
 	}
 
 }

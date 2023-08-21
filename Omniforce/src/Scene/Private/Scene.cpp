@@ -71,17 +71,21 @@ namespace Omni {
 		m_Registry.sort<SpriteComponent>([](const auto& lhs, const auto& rhs) {
 			return lhs.layer < rhs.layer;
 		});
-		auto view = m_Registry.view<SpriteComponent>();
-		
+
+		auto sprite_view = m_Registry.view<SpriteComponent>();
 		auto cameras_view = m_Registry.view<CameraComponent>();
-		for (auto& entity : cameras_view) {
-			TRSComponent& trs = m_Registry.get<TRSComponent>(entity);
-			CameraComponent& camera_component = m_Registry.get<CameraComponent>(entity);
-			camera_component.camera->SetPosition(trs.translation);
+
+		for (auto& e : cameras_view) {
+			Entity entity(e, this);
+
+			TRSComponent world_transform = entity.GetWorldTransform();
+			CameraComponent& camera_component = entity.GetComponent<CameraComponent>();
+
+			camera_component.camera->SetPosition(world_transform.translation);
 
 			if (camera_component.camera->GetType() == CameraProjectionType::PROJECTION_3D) {
 				Shared<Camera3D> camera_3D = ShareAs<Camera3D>(camera_component.camera);
-				camera_3D->SetRotation(trs.rotation.y, trs.rotation.x);
+				camera_3D->SetRotation(world_transform.rotation.y, world_transform.rotation.x);
 			}
 
 			camera_component.camera->CalculateMatrices();
@@ -89,9 +93,11 @@ namespace Omni {
 
 		m_Renderer->BeginScene(m_Camera);
 		if (m_Camera != nullptr) {
-			for (auto& entity : view) {
-				TRSComponent trs = m_Registry.get<TRSComponent>(entity);
-				SpriteComponent sprite_component = m_Registry.get<SpriteComponent>(entity);
+			for (auto& e : sprite_view) {
+				Entity entity(e, this);
+
+				TRSComponent trs = entity.GetWorldTransform();
+				SpriteComponent sprite_component = entity.GetComponent<SpriteComponent>();
 
 				Sprite sprite;
 				sprite.texture_id = m_Renderer->GetTextureIndex(sprite_component.texture);
@@ -125,20 +131,7 @@ namespace Omni {
 
 	Entity Scene::CreateEntity(const UUID& id)
 	{
-		int size = m_Entities.size();
-
-		Entity entity(this);
-		entity.AddComponent<UUIDComponent>(id);
-		entity.AddComponent<TagComponent>("Object");
-		entity.AddComponent<TRSComponent>();
-		entity.AddComponent<TransformComponent>();
-		entity.AddComponent<HierarchyNodeComponent>();
-
-		entity.GetComponent<TagComponent>().tag.reserve(256);
-
-		m_Entities.emplace(id, entity);
-
-		return entity;
+		return CreateChildEntity(Entity(), id);
 	}
 
 	Entity Scene::CreateEntity(entt::entity entity_id, const UUID& id /*= UUID()*/)
@@ -148,6 +141,23 @@ namespace Omni {
 		entity.AddComponent<TagComponent>("Object");
 		entity.AddComponent<TRSComponent>();
 		entity.AddComponent<TransformComponent>();
+		entity.AddComponent<HierarchyNodeComponent>().parent = {};
+
+		entity.GetComponent<TagComponent>().tag.reserve(256);
+
+		m_Entities.emplace(id, entity);
+
+		return entity;
+	}
+
+	Entity Scene::CreateChildEntity(Entity parent, const UUID& id /*= UUID()*/)
+	{
+		Entity entity(this);
+		entity.AddComponent<UUIDComponent>(id);
+		entity.AddComponent<TagComponent>("Object");
+		entity.AddComponent<TRSComponent>();
+		entity.AddComponent<TransformComponent>();
+		entity.AddComponent<HierarchyNodeComponent>();
 
 		entity.GetComponent<TagComponent>().tag.reserve(256);
 
@@ -241,6 +251,11 @@ namespace Omni {
 		ScriptEngine::Get()->ShutdownRuntime();
 	}
 
+	fvec3 Scene::TraverseSceneHierarchy(Entity node, TRSComponent origin)
+	{
+		return { 0, 0, 0 };
+	}
+
 	void Scene::SetPhysicsSettings(const PhysicsSettings& settings)
 	{
 		m_PhysicsSettings = settings;
@@ -250,7 +265,7 @@ namespace Omni {
 	void Scene::Serialize(nlohmann::json& node)
 	{
 		node.emplace("Textures", nlohmann::json::object());
-		node.emplace("Entities", nlohmann::json::object());
+		node.emplace("GameObjects", nlohmann::json::object());
 
 		nlohmann::json& texture_node = node["Textures"];
 
@@ -261,16 +276,19 @@ namespace Omni {
 
 		nlohmann::json& entities_node = node["Entities"];
 
-		for (auto& [id, entt] : m_Entities) {
-			nlohmann::json entity_node;
+		auto view = m_Registry.view<UUIDComponent>();
 
-			Entity entity(entt, this);
+		for (auto& e : view) {
+			Entity entity(e, this);
 
-			entity.Serialize(entity_node);
-			entities_node.emplace(std::to_string(id.Get()), entity_node);
+			if (!entity.GetComponent<HierarchyNodeComponent>().parent.Get()) {
+				nlohmann::json entity_node;
+				entity.Serialize(entity_node);
+				entities_node.emplace(std::to_string(entity.GetComponent<UUIDComponent>().id), entity_node);
+			}
 		}
 
-		node.emplace("Entities", entities_node);
+		node.emplace("GameObjects", entities_node);
 	}
 
 	void Scene::Deserialize(nlohmann::json& node)
@@ -280,7 +298,7 @@ namespace Omni {
 
 		nlohmann::json textures = node["Textures"];
 
-		for (auto i = textures.begin(); i != textures.end(); i++) {
+		for (auto i : textures.items()) {
 			std::string texture_path = FileSystem::GetWorkingDirectory().string() + "/" + i.value().get<std::string>();
 
 			UUID id = AssetManager::Get()->LoadTexture(FileSystem::GetWorkingDirectory().append(texture_path), std::stoull(i.key()));
@@ -290,7 +308,7 @@ namespace Omni {
 		}
 
 		nlohmann::json& entities_node = node["Entities"];
-		for (auto i = entities_node.begin(); i != entities_node.end(); i++) {
+		for (auto i : entities_node.items()) {
 			Entity entity = CreateEntity(std::stoull(i.key()));
 			entity.Deserialize(i.value());
 		}

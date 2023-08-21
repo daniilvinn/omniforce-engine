@@ -126,6 +126,8 @@ namespace Omni {
 		std::vector<UUID> children;
 
 		HierarchyNodeComponent() = default;
+
+		static const char* GetSerializableKey() { return "Children"; }
 	};
 
 

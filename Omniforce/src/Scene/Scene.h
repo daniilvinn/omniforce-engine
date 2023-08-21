@@ -6,6 +6,7 @@
 #include "Core/UUID.h"
 #include "Core/Serializable.h"
 #include "Physics/PhysicsSettings.h"
+#include "Component.h"
 
 #include <entt/entt.hpp>
 #include <nlohmann/json_fwd.hpp>
@@ -33,16 +34,19 @@ namespace Omni {
 		void OnUpdate(float32 step);
 		Entity CreateEntity(const UUID& id = UUID());
 		Entity CreateEntity(entt::entity entity_id, const UUID& id = UUID());
-		Entity GetEntity(UUID id);
-		Entity GetEntity(std::string_view tag);
+		Entity CreateChildEntity(Entity parent, const UUID& id = UUID());
 		void RemoveEntity(Entity entity);
 		void RemoveEntityWithChildren(Entity entity);
 		void LaunchRuntime();
 		void ShutdownRuntime();
+		fvec3 TraverseSceneHierarchy(Entity node, TRSComponent origin);
+		
 
 		SceneType										GetType() const { return m_Type; }
 		entt::registry*									GetRegistry() { return &m_Registry; }
 		robin_hood::unordered_map<UUID, entt::entity>&	GetEntities() { return m_Entities; }
+		Entity											GetEntity(UUID id);
+		Entity											GetEntity(std::string_view tag);
 		Shared<Image>									GetFinalImage() const { return m_Renderer->GetFinalImage(); }
 		Shared<Camera>									GetCamera() const { return m_Camera; };
 		Shared<SceneRenderer>							GetRenderer() const { return m_Renderer; }
@@ -67,6 +71,8 @@ namespace Omni {
 
 		entt::registry m_Registry;
 		robin_hood::unordered_map<UUID, entt::entity> m_Entities;
+
+		Entity* m_RootNode; // all nodes' parent, origin of the world
 
 		PhysicsSettings m_PhysicsSettings;
 	};

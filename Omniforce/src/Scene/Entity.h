@@ -2,7 +2,6 @@
 
 #include "SceneCommon.h"
 #include "Scene.h"
-
 #include <Core/Serializable.h>
 
 #include <entt/entt.hpp>
@@ -38,8 +37,20 @@ namespace Omni {
 			return (bool)m_OwnerScene->GetRegistry()->try_get<Component>(m_Handle);
 		}
 
+		inline operator bool() {
+			return (uint32)m_Handle != UINT32_MAX;
+		}
+
+		UUID GetID();
+		TRSComponent GetWorldTransform();
+		Entity GetParent() {
+			UUID parent_id = GetComponent<HierarchyNodeComponent>().parent;
+			return parent_id.Valid() ? m_OwnerScene->GetEntity(parent_id) : Entity();
+		}
+
 		void Serialize(nlohmann::json& node) override;
 		void Deserialize(nlohmann::json& node) override;
+
 
 	private:
 		entt::entity m_Handle;

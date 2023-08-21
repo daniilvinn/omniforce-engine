@@ -18,6 +18,7 @@ namespace Omni {
 		UUID(const UUID& other);
 
 		uint64 Get() const { return m_UUID; }
+		bool Valid() const { return m_UUID != 0; }
 
 		operator uint64() const { return m_UUID; }
 

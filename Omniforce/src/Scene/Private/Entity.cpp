@@ -21,7 +21,13 @@ namespace Omni {
 
 	Entity::Entity()
 	{
+		m_Handle = (entt::entity)UINT32_MAX;
+		m_OwnerScene = nullptr;
+	}
 
+	UUID Entity::GetID()
+	{
+		return GetComponent<UUIDComponent>().id;
 	}
 
 	void Entity::Serialize(nlohmann::json& node)
@@ -36,6 +42,17 @@ namespace Omni {
 		trs_node.emplace("Scale", std::initializer_list<float32>({ trs.scale.x, trs.scale.y, trs.scale.z }));
 
 		node.emplace(TRSComponent::GetSerializableKey(), trs_node);
+
+		HierarchyNodeComponent& hierarchy_component = GetComponent<HierarchyNodeComponent>();
+		nlohmann::json children_node = nlohmann::json::object();
+		for (auto& entity_id : hierarchy_component.children) {
+			Entity e = m_OwnerScene->GetEntity(entity_id);
+
+			nlohmann::json child_node = nlohmann::json::object();
+			e.Serialize(child_node);
+			children_node.emplace(std::to_string(e.GetComponent<UUIDComponent>().id), child_node);
+		}
+		node.emplace(HierarchyNodeComponent::GetSerializableKey(), children_node);
 
 		if (HasComponent<SpriteComponent>()) {
 			auto& sprite_component = GetComponent<SpriteComponent>();
@@ -148,6 +165,14 @@ namespace Omni {
 		trs_component.rotation =	{ rotation[0], rotation[1], rotation[2] };
 		trs_component.scale =		{ scale[0], scale[1], scale[2] };
 
+		if (node.contains(HierarchyNodeComponent::GetSerializableKey())) {
+			nlohmann::json children_node = node[HierarchyNodeComponent::GetSerializableKey()];
+			for (auto i : children_node.items()) {
+				Entity child = m_OwnerScene->CreateChildEntity(*this, std::stoull(i.key()));
+				child.Serialize(i.value());
+			}
+		}
+
 		TransformComponent& transform_component = GetComponent<TransformComponent>();
 		transform_component.matrix = glm::translate(glm::mat4(1.0f), trs_component.translation) *
 			glm::rotate(glm::mat4(1.0f), glm::radians(trs_component.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f)) *
@@ -229,6 +254,22 @@ namespace Omni {
 			ScriptComponent& script_component = AddComponent<ScriptComponent>();
 			script_component.class_name = node[ScriptComponent::GetSerializableKey()]["ClassName"];
 		}
+	}
+
+	TRSComponent Entity::GetWorldTransform()
+	{
+		if (!GetComponent<HierarchyNodeComponent>().parent.Get())
+			return GetComponent<TRSComponent>();
+		
+		Entity parent = m_OwnerScene->GetEntity(GetComponent<HierarchyNodeComponent>().parent);
+		TRSComponent trs = GetComponent<TRSComponent>();
+		TRSComponent parent_trs = parent.GetWorldTransform();
+
+		trs.translation += parent_trs.translation;
+		trs.rotation += parent_trs.scale; // TODO: do actual rotating around parent
+
+		return trs;
+		
 	}
 
 }

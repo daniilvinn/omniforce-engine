@@ -29,10 +29,10 @@ namespace Omni {
 			}
 			ImGui::Separator();
 
-			auto entities = m_Context->GetRegistry()->view<UUIDComponent>();
+			auto entities = m_Context->GetRegistry()->group<UUIDComponent, TagComponent>();
 			for (auto& entity_id : entities) {
 				Entity entity(entity_id, m_Context);
-				if(entity.GetComponent<HierarchyNodeComponent>().parent == 0)
+				if(!entity.GetComponent<HierarchyNodeComponent>().parent)
 					RenderHierarchyNode(entity);
 			};
 			ImGui::End();
@@ -51,16 +51,21 @@ namespace Omni {
 		UUIDComponent& uc = entity.GetComponent<UUIDComponent>();
 		HierarchyNodeComponent& hierarchy_node_component = entity.GetComponent<HierarchyNodeComponent>();
 
-		bool entity_was_deleted = false;
+		ImGuiTreeNodeFlags flags = ((m_SelectedNode.GetID() == entity.GetID()) ? ImGuiTreeNodeFlags_Selected : 0) | ImGuiTreeNodeFlags_OpenOnDoubleClick
+			| ImGuiTreeNodeFlags_OpenOnArrow;
+		bool node_opened = ImGui::TreeNodeEx((void*)(uint64)(uint32)(entt::entity)entity, flags, tag_component.tag.c_str());
+
+		if (ImGui::IsItemHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
+			ImGui::OpenPopup(fmt::format("hierarchy_node_popup{}", uc.id).c_str());
+		}
+
 		if (ImGui::BeginPopup(fmt::format("hierarchy_node_popup{}", uc.id).c_str())) {
 			if (ImGui::MenuItem("Delete")) {
-				entity_was_deleted = true;
 				m_Context->RemoveEntity(entity);
 				m_IsSelected = false;
 				m_SelectedNode = { (entt::entity)0, nullptr };
 			}
 			if (ImGui::MenuItem("Delete with children")) {
-				entity_was_deleted = true;
 				m_Context->RemoveEntityWithChildren(entity);
 				m_IsSelected = false;
 				m_SelectedNode = { (entt::entity)0, nullptr };
@@ -71,19 +76,8 @@ namespace Omni {
 				e.GetComponent<HierarchyNodeComponent>().parent = uc.id;
 				m_IsSelected = true;
 				m_SelectedNode = e;
-				ImGui::SetNextItemOpen(true);
 			}
 			ImGui::EndPopup();
-
-			if (entity_was_deleted)
-				return;
-		}
-		ImGuiTreeNodeFlags flags = ((m_SelectedNode == entity) ? ImGuiTreeNodeFlags_Selected : 0) | ImGuiTreeNodeFlags_OpenOnDoubleClick
-			| ImGuiTreeNodeFlags_OpenOnArrow;
-		bool node_opened = ImGui::TreeNodeEx((void*)(uint64)(uint32)(entt::entity)entity, flags, tag_component.tag.c_str());
-
-		if (ImGui::IsItemHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
-			ImGui::OpenPopup(fmt::format("hierarchy_node_popup{}", uc.id).c_str());
 		}
 
 		ImGuiDragDropFlags drag_and_drop_flags = ImGuiDragDropFlags_None;
