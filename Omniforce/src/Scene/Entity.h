@@ -23,7 +23,8 @@ namespace Omni {
 
 		template<typename Component>
 		Component& GetComponent() {
-			OMNIFORCE_ASSERT_TAGGED(HasComponent<Component>(), "No component found");
+			OMNIFORCE_ASSERT_TAGGED(m_Handle != entt::null && m_OwnerScene, "Entity is not constructed");
+			OMNIFORCE_ASSERT_TAGGED(HasComponent<Component>(), "Component not found");
 			return m_OwnerScene->GetRegistry()->get<Component>(m_Handle);
 		}
 
@@ -38,7 +39,16 @@ namespace Omni {
 		}
 
 		inline operator bool() {
-			return (uint32)m_Handle != UINT32_MAX;
+			return m_Handle != entt::null;
+		}
+
+		inline bool operator==(const Entity& other) const {
+			return (m_Handle == other.m_Handle) && (m_OwnerScene == other.m_OwnerScene);
+		}
+
+		void Invalidate() { // make this entity handle no longer valid
+			m_Handle = entt::null;
+			m_OwnerScene = nullptr;
 		}
 
 		UUID GetID();

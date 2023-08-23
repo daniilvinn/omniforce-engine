@@ -37,6 +37,10 @@ namespace Omni {
 
 		template<typename T>
 		explicit constexpr operator vec2<T>()   const	{ return { (T)x, (T)y }; }
+		vec2 operator+(const vec2& other) { return { x + other.x, y + other.y }; }
+		vec2 operator-(const vec2& other) { return { x - other.x, y - other.y }; }
+		vec2& operator+=(const vec2& other) { this = this + other; return *this; }
+		vec2& operator-=(const vec2& other) { this = this - other; return *this; }
 	};
 
 	template<typename T = float32>
@@ -53,6 +57,10 @@ namespace Omni {
 
 		template<typename T>
 		explicit constexpr operator vec3<T>() const	{ return { T(x), T(y), T(z)}; }
+		vec3 operator+(const vec3& other) { return { x + other.x, y + other.y, z + other.z }; }
+		vec3 operator-(const vec3& other) { return { x - other.x, y - other.y, z - other.z }; }
+		vec3& operator+=(const vec3& other) { this = this + other; return *this; }
+		vec3& operator-=(const vec3& other) { this = this - other; return *this; }
 	};
 
 	template<typename T = float32>
@@ -72,6 +80,11 @@ namespace Omni {
 
 		template<typename T>
 		explicit constexpr operator vec4<T>()   const { return { (T)x, (T)y, T(z), (T)w }; }
+
+		vec4 operator+(const vec4& other) { return { x + other.x, y + other.y, z + other.z, w + other.w }; }
+		vec4 operator-(const vec4& other) { return { x - other.x, y - other.y, z - other.z, w - other.w }; }
+		vec4& operator+=(const vec4& other) { this = this + other; return *this; }
+		vec4& operator-=(const vec4& other) { this = this - other; return *this; }
 
 	};
 

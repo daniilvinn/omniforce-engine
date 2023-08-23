@@ -44,14 +44,14 @@
 #ifdef OMNIFORCE_DEBUG
 	#define OMNIFORCE_ASSERT(expression)														\
 		do {																					\
-			if(!expression) {																	\
+			if(!(expression)) {																	\
 				OMNIFORCE_CORE_ERROR("Assertion failed: {0}({1})", __FILE__, __LINE__);			\
 				__debugbreak();																	\
 			}																					\
 		} while (false)
 	#define OMNIFORCE_ASSERT_TAGGED(expression, ...)											\
 		do {																					\
-			if(!expression) {																	\
+			if(!(expression)) {																	\
 				OMNIFORCE_CORE_ERROR(															\
 					"Assertion failed: {0}({1}) | {2}",											\
 					__FILE__,																	\
