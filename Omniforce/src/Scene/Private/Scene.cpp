@@ -157,11 +157,15 @@ namespace Omni {
 		entity.AddComponent<TagComponent>("Object");
 		entity.AddComponent<TRSComponent>();
 		entity.AddComponent<TransformComponent>();
-		entity.AddComponent<HierarchyNodeComponent>();
+		entity.AddComponent<HierarchyNodeComponent>().parent = parent ? parent.GetID() : UUID(0);
 
 		entity.GetComponent<TagComponent>().tag.reserve(256);
 
+		if(parent)
+			parent.GetComponent<HierarchyNodeComponent>().children.push_back(id);
+
 		m_Entities.emplace(id, entity);
+
 
 		return entity;
 	}
@@ -192,7 +196,7 @@ namespace Omni {
 			HierarchyNodeComponent& child_node_component = GetEntity(child).GetComponent<HierarchyNodeComponent>();
 			child_node_component.parent = hierarchy_node_component.parent == 0 ? UUID(0) : hierarchy_node_component.parent;
 		}
-		if (hierarchy_node_component.parent) {
+		if (hierarchy_node_component.parent.Valid()) {
 			Entity parent = GetEntity(hierarchy_node_component.parent);
 			HierarchyNodeComponent& parent_node_component = parent.GetComponent<HierarchyNodeComponent>();
 
@@ -207,7 +211,7 @@ namespace Omni {
 			}
 		}
 
-		m_Entities.erase(entity.GetComponent<UUIDComponent>());
+		m_Entities.erase(entity.GetID());
 		m_Registry.destroy(entity);
 	}
 
@@ -274,7 +278,7 @@ namespace Omni {
 			texture_node.emplace(std::to_string(texture->GetId()), texture->GetSpecification().path.string().erase(0, FileSystem::GetWorkingDirectory().string().size()));
 		}
 
-		nlohmann::json& entities_node = node["Entities"];
+		nlohmann::json& entities_node = node["GameObjects"];
 
 		auto view = m_Registry.view<UUIDComponent>();
 
@@ -299,7 +303,7 @@ namespace Omni {
 		nlohmann::json textures = node["Textures"];
 
 		for (auto i : textures.items()) {
-			std::string texture_path = FileSystem::GetWorkingDirectory().string() + "/" + i.value().get<std::string>();
+			std::string texture_path = i.value().get<std::string>();
 
 			UUID id = AssetManager::Get()->LoadTexture(FileSystem::GetWorkingDirectory().append(texture_path), std::stoull(i.key()));
 
@@ -307,7 +311,7 @@ namespace Omni {
 			m_Renderer->AcquireTextureIndex(texture, SamplerFilteringMode::NEAREST);
 		}
 
-		nlohmann::json& entities_node = node["Entities"];
+		nlohmann::json& entities_node = node["GameObjects"];
 		for (auto i : entities_node.items()) {
 			Entity entity = CreateEntity(std::stoull(i.key()));
 			entity.Deserialize(i.value());

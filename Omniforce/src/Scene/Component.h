@@ -15,6 +15,8 @@ namespace Omni {
 
 		operator UUID& () { return id; }
 
+		static const char* GetSerializableKey() { return "UUIDComponent"; }
+
 	};
 
 	struct OMNIFORCE_API TagComponent {
@@ -86,6 +88,7 @@ namespace Omni {
 		float32 angular_drag = 0.5f;
 		bool disable_gravity = false;
 		bool sensor_mode = false;
+		bool lock_z_axis = false;
 		void* internal_body = nullptr;
 
 		static const char* GetSerializableKey() { return "RigidBody2DComponent"; }

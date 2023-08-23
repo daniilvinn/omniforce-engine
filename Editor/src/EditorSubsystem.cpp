@@ -266,6 +266,19 @@ public:
 		if (filepath == NULL)
 			return;
 
+		std::ifstream input(filepath);
+		nlohmann::json root_node;
+		try
+		{
+			root_node = nlohmann::json::parse(input);
+		}
+		catch (const std::exception&)
+		{
+			OMNIFORCE_CLIENT_ERROR("Failed to load project at location: {}", filepath);
+			return;
+		}
+		input.close();
+
 		m_ProjectPath = filepath;
 		m_ProjectFilename = m_ProjectPath.filename().string();
 		m_ProjectPath.remove_filename();
@@ -283,10 +296,6 @@ public:
 			texture->Destroy();
 		}
 		asset_manager->FullUnload();
-
-		std::ifstream input(filepath);
-		nlohmann::json root_node = nlohmann::json::parse(input);
-		input.close();
 
 		m_EditorScene->Deserialize(root_node);
 		m_EditorScene->EditorSetCamera(m_EditorCamera);
@@ -375,16 +384,19 @@ public:
 			);
 
 			if (ImGuizmo::IsUsing()) {
-				TRSComponent& trs = m_SelectedEntity.GetComponent<TRSComponent>();
-				Utils::DecomposeMatrix(model, &trs.translation, &trs.rotation, &trs.scale);
+				TRSComponent& trs_component = m_SelectedEntity.GetComponent<TRSComponent>();
 
 				if (m_SelectedEntity.GetComponent<HierarchyNodeComponent>().parent.Valid()) {
 					Entity parent_entity = m_SelectedEntity.GetParent();
 
 					TRSComponent parent_trs = parent_entity.GetWorldTransform();
-					trs.translation -= parent_trs.translation;
-					trs.rotation -= parent_trs.scale;
+
+					glm::mat4 parent_transform = Utils::ComposeMatrix(parent_trs.translation, parent_trs.rotation, glm::vec3(1.0f));
+
+					model = glm::inverse(parent_transform) * model;
 				}
+
+				Utils::DecomposeMatrix(model, &trs_component.translation, &trs_component.rotation, &trs_component.scale);
 
 			}
 			

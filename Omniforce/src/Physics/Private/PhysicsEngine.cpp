@@ -133,7 +133,7 @@ namespace Omni {
 			
 			JPH::BodyCreationSettings body_creation_settings;
 			body_creation_settings.mGravityFactor = (float32)!rb2d_component.disable_gravity;
-			body_creation_settings.mAllowedDOFs = JPH::EAllowedDOFs::Plane2D;
+			body_creation_settings.mAllowedDOFs = JPH::EAllowedDOFs::Plane2D & (rb2d_component.lock_z_axis ? ~JPH::EAllowedDOFs::RotationZ : (JPH::EAllowedDOFs)0xFF);
 			body_creation_settings.mMotionType = convert(rb2d_component.type);
 			body_creation_settings.mObjectLayer = rb2d_component.type == RigidBody2DComponent::Type::STATIC ? BodyLayers::NON_MOVING : BodyLayers::MOVING;
 			body_creation_settings.mLinearDamping = rb2d_component.linear_drag;

@@ -21,7 +21,7 @@ namespace Omni {
 
 	Entity::Entity()
 	{
-		m_Handle = (entt::entity)UINT32_MAX;
+		m_Handle = (entt::entity)entt::null;
 		m_OwnerScene = nullptr;
 	}
 
@@ -113,6 +113,7 @@ namespace Omni {
 			rb2d_component_node.emplace("LinearDrag", rb2d_component.linear_drag);
 			rb2d_component_node.emplace("DisableGravity", rb2d_component.disable_gravity);
 			rb2d_component_node.emplace("SensorMode", rb2d_component.sensor_mode);
+			rb2d_component_node.emplace("ZLock", rb2d_component.lock_z_axis);
 
 			node.emplace(rb2d_component.GetSerializableKey(), rb2d_component_node);
 		}
@@ -169,7 +170,7 @@ namespace Omni {
 			nlohmann::json children_node = node[HierarchyNodeComponent::GetSerializableKey()];
 			for (auto i : children_node.items()) {
 				Entity child = m_OwnerScene->CreateChildEntity(*this, std::stoull(i.key()));
-				child.Serialize(i.value());
+				child.Deserialize(i.value());
 			}
 		}
 
@@ -233,6 +234,7 @@ namespace Omni {
 			rb2d_component.angular_drag = node[RigidBody2DComponent::GetSerializableKey()]["AngularDrag"];
 			rb2d_component.disable_gravity = node[RigidBody2DComponent::GetSerializableKey()]["DisableGravity"];
 			rb2d_component.sensor_mode = node[RigidBody2DComponent::GetSerializableKey()]["SensorMode"];
+			rb2d_component.lock_z_axis = node[RigidBody2DComponent::GetSerializableKey()]["ZLock"];
 		}
 
 		if (node.contains(BoxColliderComponent::GetSerializableKey())) {
@@ -258,18 +260,26 @@ namespace Omni {
 
 	TRSComponent Entity::GetWorldTransform()
 	{
+		
+
 		if (!GetComponent<HierarchyNodeComponent>().parent.Get())
 			return GetComponent<TRSComponent>();
-		
+
 		Entity parent = m_OwnerScene->GetEntity(GetComponent<HierarchyNodeComponent>().parent);
 		TRSComponent trs = GetComponent<TRSComponent>();
 		TRSComponent parent_trs = parent.GetWorldTransform();
 
+		trs.rotation += parent_trs.rotation;
 		trs.translation += parent_trs.translation;
-		trs.rotation += parent_trs.scale; // TODO: do actual rotating around parent
+
+		glm::mat3 rotation_matrix = glm::rotate(glm::mat4(1.0f), glm::radians(parent_trs.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f)) *
+									glm::rotate(glm::mat4(1.0f), glm::radians(parent_trs.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f)) *
+									glm::rotate(glm::mat4(1.0f), glm::radians(parent_trs.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+
+		trs.translation = parent_trs.translation + rotation_matrix * (trs.translation - parent_trs.translation);
 
 		return trs;
-		
+
 	}
 
 }

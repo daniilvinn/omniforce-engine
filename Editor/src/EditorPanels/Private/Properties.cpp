@@ -365,6 +365,13 @@ namespace Omni {
 								ImGui::TableNextColumn();
 								ImGui::Checkbox("##rb2d_sensor_mode_property", &rb2d_component.sensor_mode);
 
+								// lock Z axis
+								ImGui::TableNextRow();
+								ImGui::TableNextColumn();
+								ImGui::Text("Lock Z rotation");
+								ImGui::TableNextColumn();
+								ImGui::Checkbox("##rb2d_z_lock_property", &rb2d_component.lock_z_axis);
+
 								ImGui::EndTable();
 							}
 							ImGui::PopStyleVar();
