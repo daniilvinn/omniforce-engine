@@ -1,12 +1,40 @@
 namespace Omni
 {
 
-    public abstract class Component
+    public class TransformComponent
+    {
+        public TransformComponent(GameObject owner)
+        {
+            Owner = owner;
+        }
+
+        public Vector3 Translation
+        {
+            get { return EngineAPI.TransformComponent_GetTranslation(Owner.GameObjectID); }
+            set { EngineAPI.TransformComponent_SetTranslation(Owner.GameObjectID, value); }
+        }
+
+        public Vector3 Rotation
+        {
+            get { return EngineAPI.TransformComponent_GetRotation(Owner.GameObjectID); }
+            set { EngineAPI.TransformComponent_SetRotation(Owner.GameObjectID, value); }
+        }
+
+        public Vector3 Scale
+        {
+            get { return EngineAPI.TransformComponent_GetScale(Owner.GameObjectID); }
+            set { EngineAPI.TransformComponent_SetScale(Owner.GameObjectID, value); }
+        }
+
+        private readonly GameObject Owner;
+    }
+
+    public abstract class GameObjectComponent
     {
         public GameObject Owner { get; internal set; }
     }
 
-    public class TagComponent : Component
+    public class TagComponent : GameObjectComponent
     {
         public string Tag { 
             get 
@@ -17,7 +45,7 @@ namespace Omni
         }
     }
 
-    public class RigidBody2D : Component
+    public class RigidBody2D : GameObjectComponent
     {
         public void AddLinearImpulse (Vector3 impulse)
         {
@@ -47,6 +75,35 @@ namespace Omni
             EngineAPI.RigidBody2D_AddTorque(Owner.GameObjectID, ref torque);
         }
 
+    }
+
+    public class SpriteComponent : GameObjectComponent 
+    {
+        public int Layer
+        {
+            get
+            {
+                EngineAPI.SpriteComponent_GetLayer(Owner.GameObjectID, out int layer);
+                return layer;
+            }
+            set
+            {
+                EngineAPI.SpriteComponent_SetLayer(Owner.GameObjectID, ref value);
+            }
+        }
+
+        public Vector4 Tint
+        {
+            get
+            {
+                EngineAPI.SpriteComponent_GetTint(Owner.GameObjectID, out Vector4 color);
+                return color;
+            }
+            set
+            {
+                EngineAPI.SpriteComponent_SetTint(Owner.GameObjectID, ref value);
+            }
+        }
     }
 
 }

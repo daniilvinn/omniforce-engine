@@ -91,25 +91,12 @@
         }
     }
 
-    public class Transform
+    static public class Math
     {
-        public Transform(GameObject owner)
+        static public Vector3 Lerp () 
         {
-            Owner = owner;
+            return new Vector3(0.0f, 0.0f, 0.0f);
         }
-
-        public Vector3 translation
-        {
-            get { return EngineAPI.Transform_GetTranslation(Owner.GameObjectID); }
-            set { EngineAPI.Transform_SetTranslation(Owner.GameObjectID, value); }
-        }
-
-        public Vector3 scale
-        {
-            get { return EngineAPI.Transform_GetScale(Owner.GameObjectID); }
-            set { EngineAPI.Transform_SetScale(Owner.GameObjectID, value); }
-        }
-
-        private readonly GameObject Owner;
     }
+
 }

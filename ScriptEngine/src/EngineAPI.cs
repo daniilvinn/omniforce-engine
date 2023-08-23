@@ -11,16 +11,22 @@ namespace Omni
         public extern static void Logger_Log(MessageSeverity severity, string msg);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        public extern static Vector3 Transform_GetTranslation(ulong entity_id);
+        public extern static Vector3 TransformComponent_GetTranslation(ulong entity_id);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        public extern static void Transform_SetTranslation(ulong entity_id, Vector3 translation);
+        public extern static void TransformComponent_SetTranslation(ulong entity_id, Vector3 translation);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        public extern static Vector3 Transform_GetScale(ulong entity_id);
+        public extern static Vector3 TransformComponent_GetRotation(ulong entity_id);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        public extern static void Transform_SetScale(ulong entity_id, Vector3 scale);
+        public extern static void TransformComponent_SetRotation(ulong entity_id, Vector3 rotation);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static Vector3 TransformComponent_GetScale(ulong entity_id);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static void TransformComponent_SetScale(ulong entity_id, Vector3 scale);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern static string TagComponent_GetTag(ulong entity_id);
@@ -48,5 +54,18 @@ namespace Omni
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern static void Entity_GetEntity(string name, out UUID object_id);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static void SpriteComponent_GetLayer(ulong entity_id, out int layer);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static void SpriteComponent_SetLayer(ulong entity_id, ref int layer);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static void SpriteComponent_GetTint(ulong entity_id, out Vector4 tint);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static void SpriteComponent_SetTint(ulong entity_id, ref Vector4 tint);
+
     }
 }

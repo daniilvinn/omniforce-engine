@@ -12,7 +12,7 @@ namespace Omni
         internal GameObject(ulong ID)
         {
             GameObjectID = ID;
-            transform = new Transform(this);
+            Transform = new TransformComponent(this);
         }
 
         public virtual void OnInit() { }
@@ -21,7 +21,7 @@ namespace Omni
         public virtual void OnContactPersisted(UUID object_id) { }
         public virtual void OnContactRemoved(UUID object_id) { }
 
-        public T GetComponent<T>() where T : Component, new()
+        public T GetComponent<T>() where T : GameObjectComponent, new()
         {
             T component = new T();
             component.Owner = this;
@@ -35,6 +35,6 @@ namespace Omni
         }
 
         public readonly ulong GameObjectID;
-        public Transform transform;
+        public TransformComponent Transform;
     }
 }
