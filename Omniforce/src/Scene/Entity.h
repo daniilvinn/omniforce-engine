@@ -2,7 +2,6 @@
 
 #include "SceneCommon.h"
 #include "Scene.h"
-
 #include <Core/Serializable.h>
 
 #include <entt/entt.hpp>
@@ -24,13 +23,14 @@ namespace Omni {
 
 		template<typename Component>
 		Component& GetComponent() {
-			OMNIFORCE_ASSERT_TAGGED(HasComponent<Component>(), "No component found");
+			OMNIFORCE_ASSERT_TAGGED(m_Handle != entt::null && m_OwnerScene, "Entity is not constructed");
+			OMNIFORCE_ASSERT_TAGGED(HasComponent<Component>(), "Component not found");
 			return m_OwnerScene->GetRegistry()->get<Component>(m_Handle);
 		}
 
-		template<typename... Components>
-		void RemoveComponents() {
-			m_OwnerScene->GetRegistry()->remove<Components>(m_Handle);
+		template<typename Component>
+		void RemoveComponent() {
+			m_OwnerScene->GetRegistry()->remove<Component>(m_Handle);
 		}
 
 		template <typename Component>
@@ -38,8 +38,29 @@ namespace Omni {
 			return (bool)m_OwnerScene->GetRegistry()->try_get<Component>(m_Handle);
 		}
 
+		inline operator bool() {
+			return m_Handle != entt::null;
+		}
+
+		inline bool operator==(const Entity& other) const {
+			return (m_Handle == other.m_Handle) && (m_OwnerScene == other.m_OwnerScene);
+		}
+
+		void Invalidate() { // make this entity handle no longer valid
+			m_Handle = entt::null;
+			m_OwnerScene = nullptr;
+		}
+
+		UUID GetID();
+		TRSComponent GetWorldTransform();
+		Entity GetParent() {
+			UUID parent_id = GetComponent<HierarchyNodeComponent>().parent;
+			return parent_id.Valid() ? m_OwnerScene->GetEntity(parent_id) : Entity();
+		}
+
 		void Serialize(nlohmann::json& node) override;
 		void Deserialize(nlohmann::json& node) override;
+
 
 	private:
 		entt::entity m_Handle;

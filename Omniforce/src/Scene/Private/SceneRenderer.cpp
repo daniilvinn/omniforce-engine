@@ -11,9 +11,9 @@
 
 namespace Omni {
 
-	SceneRenderer* SceneRenderer::Create(const SceneRendererSpecification& spec)
+	Shared<SceneRenderer> SceneRenderer::Create(const SceneRendererSpecification& spec)
 	{
-		return new SceneRenderer(spec);
+		return std::make_shared<SceneRenderer>(spec);
 	}
 
 	SceneRenderer::SceneRenderer(const SceneRendererSpecification& spec)
@@ -117,7 +117,7 @@ namespace Omni {
 		// Load dummy white texture
 		{
 			ImageSpecification spec = ImageSpecification::Default();
-			spec.path = "assets\\textures\\opaque_white.png";
+			spec.path = "resources/textures/opaque_white.png";
 			m_DummyWhiteTexture = Image::Create(spec);
 			AcquireTextureIndex(m_DummyWhiteTexture, SamplerFilteringMode::LINEAR);
 		}
@@ -130,7 +130,6 @@ namespace Omni {
 			pipeline_spec.culling_mode = PipelineCullingMode::NONE;
 
 			m_SpritePass = Pipeline::Create(pipeline_spec);
-			ShaderLibrary::Get()->Unload("sprite.ofs");
 		}
 
 	}
@@ -150,14 +149,17 @@ namespace Omni {
 		m_MainCameraDataBuffer->Destroy();
 		for (auto set : s_GlobalSceneData.scene_descriptor_set)
 			set->Destroy();
+		for (auto& output : m_RendererOutputs)
+			output->Destroy();
 	}
 
 	void SceneRenderer::BeginScene(Shared<Camera> camera)
 	{
-		m_Camera = camera;
-
-		glm::mat4 matrices[3] = { m_Camera->GetViewMatrix(), m_Camera->GetProjectionMatrix(), m_Camera->GetViewProjectionMatrix() };
-		m_MainCameraDataBuffer->UploadData(Renderer::GetCurrentFrameIndex() * (sizeof glm::mat4 * 3), matrices, sizeof(matrices)); // TODO: bug here
+		if (camera) {
+			m_Camera = camera;
+			glm::mat4 matrices[3] = { m_Camera->GetViewMatrix(), m_Camera->GetProjectionMatrix(), m_Camera->GetViewProjectionMatrix() };
+			m_MainCameraDataBuffer->UploadData(Renderer::GetCurrentFrameIndex() * (sizeof glm::mat4 * 3), matrices, sizeof(matrices)); // TODO: bug here
+		}
 
 		m_CurrectMainRenderTarget = m_RendererOutputs[Renderer::GetCurrentFrameIndex()];
 
@@ -183,7 +185,7 @@ namespace Omni {
 			m_SpriteQueue.size() * sizeof(Sprite)
 		);
 
-		Renderer::RenderQuad(m_SpritePass, m_SpriteQueue.size(), { nullptr, 0 });
+		Renderer::RenderQuads(m_SpritePass, m_SpriteQueue.size(), { nullptr, 0 });
 		Renderer::EndRender(m_CurrectMainRenderTarget);
 		Renderer::Submit([=]() {
 			m_CurrectMainRenderTarget->SetLayout(
@@ -196,7 +198,6 @@ namespace Omni {
 			);
 		});
 		
-
 		m_SpriteQueue.clear();
 	}
 
@@ -244,19 +245,6 @@ namespace Omni {
 		s_GlobalSceneData.textures.erase(image->GetId());
 
 		return true;
-	}
-
-	void SceneRenderer::RenderMesh(Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo, Shared<Image> texture)
-	{
-		OMNIFORCE_ASSERT_TAGGED(false, "Currently not implemented properly. Basic color pass is not inited.");
-		MiscData data;
-		data.size = sizeof(s_GlobalSceneData.textures[texture->GetId()]);
-		data.data = new uint8[data.size];
-
-		memcpy(data.data, &s_GlobalSceneData.textures[texture->GetId()], sizeof(uint32));
-
-		Renderer::BindSet(s_GlobalSceneData.scene_descriptor_set[Renderer::GetCurrentFrameIndex()], m_BasicColorPass, 0);
-		Renderer::RenderMesh(m_BasicColorPass, vbo, ibo, data);
 	}
 
 	void SceneRenderer::RenderSprite(const Sprite& sprite)

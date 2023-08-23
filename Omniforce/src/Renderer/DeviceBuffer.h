@@ -32,12 +32,18 @@ namespace Omni {
 		NO_HOST_ACCESS
 	};
 
+	enum class OMNIFORCE_API DeviceBufferMemoryHeap {
+		DEVICE, // buffer is allocated in VRAM
+		HOST	// buffer is allocated in system RAM
+	};
+
 	struct OMNIFORCE_API DeviceBufferSpecification
 	{
 		uint64 size;
 		BitMask flags;
 		DeviceBufferUsage buffer_usage;
 		DeviceBufferMemoryUsage memory_usage;
+		DeviceBufferMemoryHeap heap;
 	};
 
 	class OMNIFORCE_API DeviceBuffer 

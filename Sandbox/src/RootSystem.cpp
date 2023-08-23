@@ -15,7 +15,7 @@ public:
 		Destroy();
 	}
 
-	void OnUpdate() override
+	void OnUpdate(float32 step) override
 	{
 		Shared<Image> swapchain_image = Renderer::GetSwapchainImage();
 
@@ -82,7 +82,7 @@ public:
 	*	DATA
 	*/
 	Shared<Camera3D> m_Camera;
-	SceneRenderer* m_Renderer;
+	Shared<SceneRenderer> m_Renderer;
 	Scene* m_Scene;
 	uint32 m_SelectedEntity = 0;
 	bool m_EntitySelected = false;

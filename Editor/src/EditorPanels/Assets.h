@@ -11,9 +11,6 @@ namespace Omni {
 
 		void Render() override;
 
-	private:
-
-
 	};
 
 }

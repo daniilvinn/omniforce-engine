@@ -9,7 +9,8 @@ namespace Omni {
 
 	AssetManager::~AssetManager()
 	{
-
+		for (auto& [id, texture] : m_TextureRegistry)
+			texture->Destroy();
 	}
 
 	void AssetManager::Init()
@@ -36,6 +37,12 @@ namespace Omni {
 		m_UUIDs.emplace(path.string(), image->GetId());
 
 		return image->GetId();
+	}
+
+	void AssetManager::FullUnload()
+	{
+		m_TextureRegistry.clear();
+		m_UUIDs.clear();
 	}
 
 }

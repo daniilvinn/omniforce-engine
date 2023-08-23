@@ -13,6 +13,17 @@ namespace Omni {
 
 	Omni::ShaderCompiler m_Compiler;
 
+	ShaderLibrary::ShaderLibrary()
+	{
+
+	}
+
+	ShaderLibrary::~ShaderLibrary()
+	{
+		for (auto& [key, shader] : m_Library)
+			shader->Destroy();
+	}
+
 	void ShaderLibrary::Init()
 	{
 		s_Instance = new ShaderLibrary;

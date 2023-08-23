@@ -123,7 +123,7 @@ namespace Omni {
 				else
 				{
 					location = previous_location_width;
-					previous_location_width += location_compute_result;
+					previous_location_width += (int32)location_compute_result;
 				}
 
 				vertex_input_attributes.push_back({
@@ -137,7 +137,7 @@ namespace Omni {
 			vertex_input_state.vertexBindingDescriptionCount = 1;
 			vertex_input_state.pVertexBindingDescriptions = &vertex_input_binding;
 			vertex_input_state.pVertexAttributeDescriptions = vertex_input_attributes.data();
-			vertex_input_state.vertexAttributeDescriptionCount = vertex_input_attributes.size();
+			vertex_input_state.vertexAttributeDescriptionCount = (uint32)vertex_input_attributes.size();
 		}
 		else {
 			vertex_input_state.vertexBindingDescriptionCount = 0;

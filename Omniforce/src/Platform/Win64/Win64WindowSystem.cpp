@@ -28,11 +28,10 @@ namespace Omni {
 		window_config.title = config.title;
 		window_config.width = config.width;
 		window_config.height = config.height;
-		window_config.vsync = config.vsync;
 		window_config.fullscreen = config.fs_exclusive;
 
 		Shared<AppWindow> window = AppWindow::Create(window_config);
-		m_ActiveWindows.insert({ config.tag, window });
+		m_ActiveWindows.emplace(config.tag, window);
 	}
 
 	void Win64WindowSystem::RemoveWindow(const std::string& tag)

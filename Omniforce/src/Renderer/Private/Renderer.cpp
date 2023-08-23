@@ -89,12 +89,12 @@ namespace Omni {
 		s_RendererAPI->RenderMesh(pipeline, vbo, ibo, data);
 	}
 
-	void Renderer::RenderQuad(Shared<Pipeline> pipeline, MiscData data)
+	void Renderer::RenderQuads(Shared<Pipeline> pipeline, MiscData data)
 	{
 		s_RendererAPI->RenderQuad(pipeline, data);
 	}
 
-	void Renderer::RenderQuad(Shared<Pipeline> pipeline, uint32 amount, MiscData data)
+	void Renderer::RenderQuads(Shared<Pipeline> pipeline, uint32 amount, MiscData data)
 	{
 		s_RendererAPI->RenderQuad(pipeline, amount, data);
 	}
@@ -126,8 +126,7 @@ namespace Omni {
 
 	void Renderer::LoadShaderPack()
 	{
-		//ShaderLibrary::Get()->Load("assets/shaders/texture_pass.ofs");
-		ShaderLibrary::Get()->Load("assets/shaders/sprite.ofs");
+		ShaderLibrary::Get()->Load("resources/shaders/sprite.ofs");
 	}
 
 	void Renderer::Render()

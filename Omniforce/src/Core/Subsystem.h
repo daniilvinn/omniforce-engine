@@ -13,7 +13,7 @@ namespace Omni {
 
 		virtual void Launch() = 0;
 		virtual void Destroy() = 0;
-		virtual void OnUpdate() = 0;
+		virtual void OnUpdate(float32 step) = 0;
 		virtual void OnEvent(Event* e) = 0;
 
 	};

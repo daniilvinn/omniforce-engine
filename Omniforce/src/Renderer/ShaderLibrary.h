@@ -13,6 +13,9 @@ namespace Omni {
 	*/
 	class OMNIFORCE_API ShaderLibrary {
 	public:
+		ShaderLibrary();
+		~ShaderLibrary();
+
 		static void Init();
 		static void Destroy();
 		static ShaderLibrary* Get() { return s_Instance; };

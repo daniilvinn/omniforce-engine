@@ -28,7 +28,7 @@ namespace Omni {
 		Shared<Image> GetTexture(const UUID& id) const { return m_TextureRegistry.at(id); }
 		UUID GetUUID(std::filesystem::path path) const { return m_UUIDs.at(path.string()); }
 		auto* GetTextureRegistry() const { return &m_TextureRegistry; }
-
+		void FullUnload();
 
 	private:
 		inline static AssetManager* s_Instance;

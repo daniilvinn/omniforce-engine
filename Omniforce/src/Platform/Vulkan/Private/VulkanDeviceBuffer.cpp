@@ -67,7 +67,7 @@ namespace Omni {
 
 	VulkanDeviceBuffer::~VulkanDeviceBuffer()
 	{
-		this->Destroy();
+		
 	}
 
 	void VulkanDeviceBuffer::Destroy()

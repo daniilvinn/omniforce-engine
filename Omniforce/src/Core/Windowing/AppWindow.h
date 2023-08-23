@@ -13,12 +13,11 @@ namespace Omni {
 	class OMNIFORCE_API AppWindow {
 	public:
 		struct Config {
-			EventCallback event_callback;
-			std::string title;
-			uint16 width;
-			uint16 height;
-			bool fullscreen;
-			bool vsync;
+			EventCallback event_callback = nullptr;
+			std::string title = "Blank";
+			uint16 width = 1600;
+			uint16 height = 900;
+			bool fullscreen = false;
 		};
 
 		virtual ~AppWindow() {};
@@ -52,7 +51,7 @@ namespace Omni {
 		std::vector<Event*> m_EventBuffer;
 		EventAlloc m_Allocator;
 		std::shared_mutex m_EventMutex;
-		bool m_Minimized;
+		bool m_Minimized = false;
 	};
 
 }

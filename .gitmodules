@@ -1,3 +1,9 @@
 [submodule "Omniforce/vendor/imgui"]
 	path = Omniforce/vendor/imgui
 	url = https://github.com/Darianopolis/imgui-dynamic.git
+[submodule "Omniforce/vendor/Jolt"]
+	path = Omniforce/vendor/Jolt
+	url = https://github.com/jrouwe/JoltPhysics.git
+[submodule "Omniforce/vendor/ImGuizmo"]
+	path = Omniforce/vendor/ImGuizmo
+	url = https://github.com/CedricGuillemet/ImGuizmo.git

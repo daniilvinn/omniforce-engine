@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Foundation/Macros.h>
-#include <Memory/Common.h>
 #include <Core/Subsystem.h>
 #include <Core/Windowing/WindowSystem.h>
 
@@ -56,6 +55,12 @@ namespace Omni {
 		Subsystem* m_RootSystem;
 		WindowSystem* m_WindowSystem;
 		ImGuiRenderer* m_ImGuiRenderer;
+
+		struct DeltaTimeData {
+			float32 delta_time = 1.0f / 60.0f;
+			float32 last_frame_time = 0.0f;
+			float32 current_frame_time = 60.0f;
+		} m_DeltaTimeData;
 	};
 
 }

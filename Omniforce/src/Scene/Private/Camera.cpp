@@ -7,16 +7,22 @@ namespace Omni {
 	// =======================
 	// Camera2D Implementation
 	Camera2D::Camera2D()
+		: Camera(CameraProjectionType::PROJECTION_2D)
 	{
 		m_ViewProjectionMatrix = glm::mat4(1.0f);
 		m_ProjectionMatrix = glm::mat4(1.0f);
 		m_ViewMatrix = glm::mat4(1.0f);
 		m_Rotation = 0.0f;
 		m_Position = glm::vec3(0.0f);
+		m_Scale = 1.0f;
 	}
 
 	void Camera2D::SetProjection(float left, float right, float bottom, float top, float zNear /*= 0.0f*/, float zFar /*= 1.0f*/)
 	{
+		m_ZNear = zNear;
+		m_ZFar = zFar;
+		m_AspectRatio = (std::abs(left) + std::abs(right)) / (std::abs(bottom) + std::abs(top));
+
 		m_ProjectionMatrix = glm::ortho(left, right, bottom, top, zNear, zFar);
 		m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
 	}
@@ -24,37 +30,55 @@ namespace Omni {
 	void Camera2D::SetPosition(glm::vec3 position)
 	{
 		m_Position = position;
-		m_ViewMatrix = glm::translate(glm::mat4(1.0f), position) * glm::rotate(glm::mat4(1.0f), m_Rotation, glm::vec3(0.0f, 0.0f, 1.0f));
-		m_ViewProjectionMatrix = m_ProjectionMatrix * glm::inverse(m_ViewMatrix);
 	}
 
 	void Camera2D::SetRotation(float rotation)
 	{
 		m_Rotation = rotation;
-		m_ViewMatrix = glm::translate(glm::mat4(1.0f), m_Position) * glm::rotate(glm::mat4(1.0f), rotation, glm::vec3(0.0f, 0.0f, 1.0f));
-		m_ViewProjectionMatrix = m_ProjectionMatrix * glm::inverse(m_ViewMatrix);
+	}
+
+	void Camera2D::SetScale(float32 scale)
+	{
+		m_Scale = scale;
+		SetProjection(-m_AspectRatio * m_Scale, m_AspectRatio * m_Scale, -m_Scale, m_Scale, m_ZNear, m_ZFar);
+	}
+
+	void Camera2D::SetAspectRatio(float32 ratio)
+	{
+		m_AspectRatio = ratio;
+		SetProjection(-m_AspectRatio * m_Scale, m_AspectRatio * m_Scale, -m_Scale, m_Scale, m_ZNear, m_ZFar);
+	}
+
+	void Camera2D::CalculateMatrices()
+	{
+		m_ViewMatrix = glm::inverse(glm::translate(glm::mat4(1.0f), m_Position) * glm::rotate(glm::mat4(1.0f), m_Rotation, glm::vec3(0.0f, 0.0f, 1.0f)));
+		m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
 	}
 
 	// =======================
 	// Camera3D Implementation	
 	Camera3D::Camera3D()
+		: Camera(CameraProjectionType::PROJECTION_3D)
 	{
 		m_ViewProjectionMatrix = glm::mat4(1.0f);
 		m_ProjectionMatrix = glm::mat4(1.0f);
 		m_ViewMatrix = glm::mat4(1.0f);
 		m_Position = glm::vec3(0.0f);
 		m_FrontVector = glm::normalize(glm::vec3(0.0f, 0.0f, -1.0f));
-		m_Yaw = -90.0f;
+		m_Yaw = 0.0f;
 		m_Pitch = 0.0f;
 		m_Roll = 0.0f;
-		m_MouseSensivity = 0.1f;
-		m_MovementSpeed = 0.1f;
 
 		CalculateVectors();
 	}
 
 	void Camera3D::SetProjection(float fov, float ratio, float zNear, float zFar)
 	{
+		m_FieldOfView = fov;
+		m_AspectRatio = ratio;
+		m_ZNear = zNear;
+		m_ZFar = zFar;
+
 		m_ProjectionMatrix = glm::perspective(fov, ratio, zNear, zFar);
 		m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
 	}
@@ -62,8 +86,6 @@ namespace Omni {
 	void Camera3D::SetPosition(glm::vec3 position)
 	{
 		m_Position = position;
-		m_ViewMatrix = glm::lookAt(m_Position, m_Position + m_FrontVector, m_UpVector);
-		m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
 	}
 
 	void Camera3D::SetRotation(float yaw, float pitch, float roll /*= 0.0f*/)
@@ -72,9 +94,18 @@ namespace Omni {
 		m_Pitch = pitch;
 
 		CalculateVectors();
+	}
 
-		m_ViewMatrix = glm::lookAt(m_Position, m_Position + m_FrontVector, m_UpVector);
-		m_ViewProjectionMatrix = m_ProjectionMatrix * glm::inverse(m_ViewMatrix);
+	void Camera3D::SetFOV(float32 fov)
+	{
+		m_FieldOfView = fov;
+		SetProjection(m_FieldOfView, m_AspectRatio, m_ZNear, m_ZFar);
+	}
+
+	void Camera3D::SetAspectRatio(float32 ratio)
+	{
+		m_AspectRatio = ratio;
+		SetProjection(m_FieldOfView, m_AspectRatio, m_ZNear, m_ZFar);
 	}
 
 	glm::mat4 Camera3D::GetRotationMatrix() const
@@ -90,23 +121,23 @@ namespace Omni {
 
 	void Camera3D::Rotate(float yawOffset, float pitchOffset, float rollOffset, bool lockPitch)
 	{
-		m_Yaw += yawOffset * m_MouseSensivity;
+		m_Yaw += yawOffset;
 
 		// If pitch is locked (must be in -89.0f to 89.0f range) AND pitch is less than -89.0f OR greater than 89.0f
 		if (lockPitch)
 		{
-			if (m_Pitch + pitchOffset * m_MouseSensivity > 89.0f)
+			if (m_Pitch + pitchOffset> 89.0f)
 				m_Pitch = 89.0f;
-			else if (m_Pitch + pitchOffset * m_MouseSensivity < -89.0f)
+			else if (m_Pitch + pitchOffset < -89.0f)
 				m_Pitch = -89.0f;
 			else
-				m_Pitch += pitchOffset * m_MouseSensivity;
+				m_Pitch += pitchOffset;
 		}
 		else {
-			m_Pitch += pitchOffset * m_MouseSensivity;
+			m_Pitch += pitchOffset;
 		}
 
-		m_Roll += rollOffset * m_MouseSensivity;
+		m_Roll += rollOffset;
 
 		CalculateVectors();
 
@@ -116,10 +147,16 @@ namespace Omni {
 
 	void Camera3D::Move(glm::vec3 direction)
 	{
-		m_Position += m_RightVector * direction.x * m_MovementSpeed;
-		m_Position += m_UpVector * direction.y * m_MovementSpeed;
-		m_Position += m_FrontVector * direction.z * m_MovementSpeed;
+		m_Position += m_RightVector * direction.x;
+		m_Position += m_UpVector * direction.y;
+		m_Position += m_FrontVector * direction.z;
 
+		m_ViewMatrix = glm::lookAt(m_Position, m_Position + m_FrontVector, m_UpVector);
+		m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
+	}
+
+	void Camera3D::CalculateMatrices()
+	{
 		m_ViewMatrix = glm::lookAt(m_Position, m_Position + m_FrontVector, m_UpVector);
 		m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
 	}
