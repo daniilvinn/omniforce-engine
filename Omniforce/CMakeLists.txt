@@ -2,6 +2,8 @@
 # project specific logic here.
 #
 
+include("../utils.cmake")
+
 # Add source to this project's executable.
 set(ENGINE_TARGET OmniforceEngine CACHE INTERNAL "")
 set(Vulkan_SDK $ENV{VULKAN_SDK})
@@ -13,6 +15,8 @@ file (GLOB_RECURSE ENGINE_FILES
     "vendor/ImGuizmo/ImGuizmo.h"
     "vendor/ImGuizmo/ImGuizmo.cpp"
 )
+
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ENGINE_FILES})
 
 add_library(${ENGINE_TARGET} ${ENGINE_FILES})
 
@@ -66,3 +70,5 @@ target_link_libraries(
 )
 
 set_property(TARGET ${ENGINE_TARGET} PROPERTY CXX_STANDARD 23)
+
+omni_set_project_ide_folder(${ENGINE_TARGET} ${CMAKE_CURRENT_SOURCE_DIR})
