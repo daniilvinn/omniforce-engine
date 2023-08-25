@@ -50,7 +50,7 @@ namespace Omni {
 	void ScriptEngine::InitMonoInternals()
 	{
 		// assemblies path
-		mono_set_assemblies_path("resources/mono/lib");
+		mono_set_assemblies_path("Resources/mono/lib");
 
 		// Root domain
 		mRootDomain = mono_jit_init("OmniScriptEngine");
@@ -75,6 +75,7 @@ namespace Omni {
 
 	void ScriptEngine::LoadAssemblies()
 	{
+		
 		mAppDomain = mono_domain_create_appdomain((char*)"ScriptEngine.dll", nullptr);
 		mono_domain_set(mAppDomain, true);
 

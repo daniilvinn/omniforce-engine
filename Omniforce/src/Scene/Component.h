@@ -2,6 +2,7 @@
 
 #include "SceneCommon.h"
 #include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <Core/UUID.h>
 #include <Scripting/RuntimeScriptInstance.h>
 
@@ -32,7 +33,7 @@ namespace Omni {
 
 	struct OMNIFORCE_API TRSComponent {
 		glm::vec3 translation = glm::vec3(0.0f);
-		glm::vec3 rotation = glm::vec3(0.0f);
+		glm::quat rotation = glm::quat({0.0f, 0.0f, 0.0f});
 		glm::vec3 scale = glm::vec3(1.0f);
 
 		TRSComponent() {}

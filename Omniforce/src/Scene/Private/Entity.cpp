@@ -3,7 +3,7 @@
 
 #include <array>
 
-#include <glm/gtx/matrix_decompose.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 namespace Omni {
 
@@ -38,7 +38,7 @@ namespace Omni {
 		TRSComponent& trs = GetComponent<TRSComponent>();
 		nlohmann::json trs_node;
 		trs_node.emplace("Translation", std::initializer_list<float32>({ trs.translation.x, trs.translation.y, trs.translation.z }));
-		trs_node.emplace("Rotation", std::initializer_list<float32>({ trs.rotation.x, trs.rotation.y, trs.rotation.z }));
+		trs_node.emplace("Rotation", std::initializer_list<float32>({ trs.rotation.w, trs.rotation.x, trs.rotation.y, trs.rotation.z }));
 		trs_node.emplace("Scale", std::initializer_list<float32>({ trs.scale.x, trs.scale.y, trs.scale.z }));
 
 		node.emplace(TRSComponent::GetSerializableKey(), trs_node);
@@ -156,14 +156,15 @@ namespace Omni {
 		tag_component.tag = node[TagComponent::GetSerializableKey()];
 
 		TRSComponent& trs_component = GetComponent<TRSComponent>();
-		std::array<float32, 3> translation, rotation, scale;
+		std::array<float32, 3> translation, scale;
+		std::array<float32, 4> rotation;
 
 		translation =	node[TRSComponent::GetSerializableKey()]["Translation"].get<std::array<float32, 3>>();
-		rotation =		node[TRSComponent::GetSerializableKey()]["Rotation"].get<std::array<float32, 3>>();
+		rotation =		node[TRSComponent::GetSerializableKey()]["Rotation"].get<std::array<float32, 4>>();
 		scale =			node[TRSComponent::GetSerializableKey()]["Scale"].get<std::array<float32, 3>>();
 
 		trs_component.translation = { translation[0], translation[1], translation[2] };
-		trs_component.rotation =	{ rotation[0], rotation[1], rotation[2] };
+		trs_component.rotation =	glm::quat(rotation[0], rotation[1], rotation[2], rotation[3]);
 		trs_component.scale =		{ scale[0], scale[1], scale[2] };
 
 		if (node.contains(HierarchyNodeComponent::GetSerializableKey())) {
@@ -260,8 +261,6 @@ namespace Omni {
 
 	TRSComponent Entity::GetWorldTransform()
 	{
-		
-
 		if (!GetComponent<HierarchyNodeComponent>().parent.Get())
 			return GetComponent<TRSComponent>();
 
@@ -269,17 +268,12 @@ namespace Omni {
 		TRSComponent trs = GetComponent<TRSComponent>();
 		TRSComponent parent_trs = parent.GetWorldTransform();
 
-		trs.rotation += parent_trs.rotation;
+		trs.rotation *= parent_trs.rotation;
 		trs.translation += parent_trs.translation;
 
-		glm::mat3 rotation_matrix = glm::rotate(glm::mat4(1.0f), glm::radians(parent_trs.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f)) *
-									glm::rotate(glm::mat4(1.0f), glm::radians(parent_trs.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f)) *
-									glm::rotate(glm::mat4(1.0f), glm::radians(parent_trs.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
-
-		trs.translation = parent_trs.translation + rotation_matrix * (trs.translation - parent_trs.translation);
+		trs.translation = parent_trs.translation + parent_trs.rotation * (trs.translation - parent_trs.translation);
 
 		return trs;
-
 	}
 
 }

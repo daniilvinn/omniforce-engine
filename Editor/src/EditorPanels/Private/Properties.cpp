@@ -96,8 +96,7 @@ namespace Omni {
 					ImGui::SameLine();
 					ImGui::TableNextColumn();
 					ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-					if (ImGui::DragFloat3("##floatT", glm::value_ptr(trs_component.translation), 0.1f))
-						transform = Utils::ComposeMatrix(trs_component.translation, trs_component.rotation, trs_component.scale);
+					ImGui::DragFloat3("##floatT", glm::value_ptr(trs_component.translation), 0.1f);
 
 					ImGui::TableNextRow();
 					ImGui::TableNextColumn();
@@ -105,8 +104,11 @@ namespace Omni {
 					ImGui::SameLine();
 					ImGui::TableNextColumn();
 					ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-					if (ImGui::DragFloat3("##floatR", glm::value_ptr(trs_component.rotation), 0.1f))
-						transform = Utils::ComposeMatrix(trs_component.translation, trs_component.rotation, trs_component.scale);
+
+					glm::vec3 euler_angles = glm::eulerAngles(trs_component.rotation);
+					euler_angles = glm::degrees(euler_angles);
+					if (ImGui::DragFloat3("##floatR", glm::value_ptr(euler_angles), 0.1f))
+						trs_component.rotation = glm::quat(glm::radians(euler_angles));
 
 					ImGui::TableNextRow();
 					ImGui::TableNextColumn();
@@ -114,9 +116,8 @@ namespace Omni {
 					ImGui::SameLine();
 					ImGui::TableNextColumn();
 					ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-					if (ImGui::DragFloat3("##floatS", glm::value_ptr(trs_component.scale), 0.01f))
-						transform = Utils::ComposeMatrix(trs_component.translation, trs_component.rotation, trs_component.scale);
-
+					ImGui::DragFloat3("##floatS", glm::value_ptr(trs_component.scale), 0.01f);
+					
 					ImGui::EndTable();
 				}
 				ImGui::PopStyleVar();

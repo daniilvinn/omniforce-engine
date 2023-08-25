@@ -147,7 +147,7 @@ public:
 
 			m_ViewportFocused = ImGui::IsWindowFocused();
 			ImVec2 viewport_frame_size = ImGui::GetContentRegionAvail();
-			UI::RenderImage(m_EditorScene->GetFinalImage(), SceneRenderer::GetSamplerNearest(), viewport_frame_size, 0, true);
+			UI::RenderImage(m_EditorScene->GetFinalImage(), SceneRenderer::GetSamplerLinear(), viewport_frame_size, 0, true);
 			m_EditorCamera->SetAspectRatio(viewport_frame_size.x / viewport_frame_size.y);
 			
 			if (m_InRuntime) {
@@ -354,9 +354,9 @@ public:
 			ImGuizmo::SetOrthographic(true);
 			ImGuizmo::SetDrawlist();
 			ImGuizmo::SetRect(
-				m_ViewportBounds[0].x, 
-				m_ViewportBounds[0].y, 
-				m_ViewportBounds[1].x - m_ViewportBounds[0].x, 
+				m_ViewportBounds[0].x,
+				m_ViewportBounds[0].y,
+				m_ViewportBounds[1].x - m_ViewportBounds[0].x,
 				m_ViewportBounds[1].y - m_ViewportBounds[0].y
 			);
 
@@ -399,9 +399,11 @@ public:
 				Utils::DecomposeMatrix(model, &trs_component.translation, &trs_component.rotation, &trs_component.scale);
 
 			}
-			
-		}	
+
+		}
 	}
+
+
 
 	/*
 	*	DATA

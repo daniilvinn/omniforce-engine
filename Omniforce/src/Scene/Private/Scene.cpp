@@ -68,6 +68,7 @@ namespace Omni {
 
 	void Scene::OnUpdate(float32 step)
 	{
+		// Sort sprite components by their layer, so they and their depth are rendered correctly
 		m_Registry.sort<SpriteComponent>([](const auto& lhs, const auto& rhs) {
 			return lhs.layer < rhs.layer;
 		});
@@ -75,6 +76,7 @@ namespace Omni {
 		auto sprite_view = m_Registry.view<SpriteComponent>();
 		auto cameras_view = m_Registry.view<CameraComponent>();
 
+		// Update camera components so view matches camera entity's position and rotation
 		for (auto& e : cameras_view) {
 			Entity entity(e, this);
 
@@ -91,7 +93,9 @@ namespace Omni {
 			camera_component.camera->CalculateMatrices();
 		}
 
+		// Begin rendering
 		m_Renderer->BeginScene(m_Camera);
+		// If primary camera was not found, then it is nullptr and we cannot render
 		if (m_Camera != nullptr) {
 			for (auto& e : sprite_view) {
 				Entity entity(e, this);
@@ -99,24 +103,39 @@ namespace Omni {
 				TRSComponent trs = entity.GetWorldTransform();
 				SpriteComponent sprite_component = entity.GetComponent<SpriteComponent>();
 
+				// normalize quaternion
+				trs.rotation = glm::normalize(trs.rotation);
+
+				// pack to 2 uints
+				glm::uvec2 packed_quat = { 
+					glm::packSnorm2x16({trs.rotation.x, trs.rotation.y}), 
+					glm::packSnorm2x16({trs.rotation.z, trs.rotation.w})
+				};
+
+				// Assemble sprite structure
 				Sprite sprite;
 				sprite.texture_id = m_Renderer->GetTextureIndex(sprite_component.texture);
-				sprite.rotation = glm::radians(trs.rotation.z);
+				sprite.rotation = packed_quat;
 				sprite.position = { trs.translation.x, trs.translation.y, trs.translation.z };
 				sprite.size = { trs.scale.x * sprite_component.aspect_ratio, trs.scale.y };
 				sprite.color_tint = sprite_component.color;
 
+				// Add sprite to a render queue
 				m_Renderer->RenderSprite(sprite);
 			}
 		}
+		// End rendering and submit sprites to GPU
 		m_Renderer->EndScene();
 
+		// Simulate physics world and fetch results into a TRSComponent (if physics engine has no context, then we
+		// are in editor mode and no simulation needed)
 		PhysicsEngine* physics_engine = PhysicsEngine::Get();
 		if (physics_engine->HasContext()) {
 			physics_engine->Update();
 			physics_engine->FetchResults();
 		}
 
+		// Update scripts (if script engine has no context, then we are in editor mode and no scripts update needed)
 		ScriptEngine* script_engine = ScriptEngine::Get();
 		if (script_engine->HasContext()) {
 			script_engine->OnUpdate();

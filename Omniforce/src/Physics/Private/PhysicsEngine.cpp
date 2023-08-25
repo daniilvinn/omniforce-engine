@@ -165,8 +165,7 @@ namespace Omni {
 				auto& trs = entity.GetComponent<TRSComponent>();
 				body_creation_settings.mPosition = { trs.translation.x, trs.translation.y, trs.translation.z };
 
-				glm::quat q({ glm::radians(trs.rotation.x), glm::radians(trs.rotation.y), glm::radians(trs.rotation.z) });
-				body_creation_settings.mRotation = JPH::Quat(q.x, q.y, q.z, q.w);
+				body_creation_settings.mRotation = JPH::Quat(trs.rotation.x, trs.rotation.y, trs.rotation.z, trs.rotation.w);
 
 				body_creation_settings.mUserData = entity.GetComponent<UUIDComponent>().id.Get();
 				JPH::ShapeSettings::ShapeResult shape_result = box_shape_settings.Create();
@@ -183,6 +182,8 @@ namespace Omni {
 						sphere_collider_component.restitution
 					)
 				);
+
+				
 
 				auto& trs = entity.GetComponent<TRSComponent>();
 				body_creation_settings.mPosition = { trs.translation.x, trs.translation.y, trs.translation.z };
@@ -262,9 +263,7 @@ namespace Omni {
 			JPH::Quat rotation = body_interface.GetRotation(id);
 
 			trs_component.translation = { position.GetX(),position.GetY(),position.GetZ() };
-
-			glm::vec3 euler_angles = glm::eulerAngles(glm::quat( rotation.GetX(), rotation.GetY(),rotation.GetZ(),rotation.GetW()));
-			trs_component.rotation = { 0.0, 0.0, glm::degrees(euler_angles.x) };
+			trs_component.rotation = glm::quat(rotation.GetW(), rotation.GetX(), rotation.GetY(), rotation.GetZ());
 		}
 	}
 
