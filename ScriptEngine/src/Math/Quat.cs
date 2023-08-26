@@ -34,6 +34,11 @@
             return EngineAPI.QuatNormalize(this);
         }
 
+        public readonly Quat Inverse()
+        {
+            return EngineAPI.QuatInverse(this);
+        }
+
         public float x, y, z, w;
 
     }

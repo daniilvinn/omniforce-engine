@@ -170,19 +170,39 @@ namespace Omni {
 		entity.GetComponent<SpriteComponent>().color = *tint;
 	}
 
-	glm::vec3 Vector3MultiplyByScalar(glm::vec3 vector, float scalar) {
+	glm::vec2 Vector2MultiplyByScalar(glm::vec2 vector, float32 scalar) {
 		return vector * scalar;
+	}
+
+	glm::vec3 Vector3MultiplyByScalar(glm::vec3 vector, float32 scalar) {
+		return vector * scalar;
+	}
+
+	glm::vec4 Vector4MultiplyByScalar(glm::vec4 vector, float32 scalar) {
+		return vector * scalar;
+	}
+
+	glm::vec2 Vector2Lerp(glm::vec2 v1, glm::vec2 v2, float32 factor) {
+		return v1 * (1 - factor) + v2 * factor;
+	}
+
+	glm::vec2 Vector3Lerp(glm::vec3 v1, glm::vec3 v2, float32 factor) {
+		return v1 * (1 - factor) + v2 * factor;
+	}
+
+	glm::vec2 Vector4Lerp(glm::vec4 v1, glm::vec4 v2, float32 factor) {
+		return v1 * (1 - factor) + v2 * factor;
 	}
 
 	glm::quat BuildQuatFromEulerAngles(glm::vec3 angles) {
 		return glm::quat(angles);
 	}
 
-	glm::quat QuatRotate(glm::quat quat, float angle, glm::vec3 axis) {
+	glm::quat QuatRotate(glm::quat quat, float32 angle, glm::vec3 axis) {
 		return glm::rotate(quat, angle, axis);
 	}
 
-	glm::quat QuatSlerp(glm::quat x, glm::quat y, float factor) {
+	glm::quat QuatSlerp(glm::quat x, glm::quat y, float32 factor) {
 		return glm::slerp(x, y, factor);
 	}
 
@@ -192,6 +212,10 @@ namespace Omni {
 
 	glm::vec3 QuatToEulerAngles(glm::quat quat) {
 		return glm::eulerAngles(quat);
+	}
+
+	glm::quat QuatInverse(glm::quat quat) {
+		return glm::inverse(quat);
 	}
 
 	void ScriptAPI::AddInternalCalls()
@@ -217,11 +241,17 @@ namespace Omni {
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(Physics_GetGravity);
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(Physics_SetGravity);
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(Entity_GetEntity);
+		OMNI_REGISTER_SCRIPT_API_FUNCTION(Vector2MultiplyByScalar);
+		OMNI_REGISTER_SCRIPT_API_FUNCTION(Vector3MultiplyByScalar);
+		OMNI_REGISTER_SCRIPT_API_FUNCTION(Vector4MultiplyByScalar);
+		OMNI_REGISTER_SCRIPT_API_FUNCTION(Vector3Lerp);
+		OMNI_REGISTER_SCRIPT_API_FUNCTION(Vector2Lerp);
+		OMNI_REGISTER_SCRIPT_API_FUNCTION(Vector4Lerp);
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(BuildQuatFromEulerAngles);
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(QuatRotate);
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(QuatSlerp);
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(QuatNormalize);
-		OMNI_REGISTER_SCRIPT_API_FUNCTION(Vector3MultiplyByScalar);
+		OMNI_REGISTER_SCRIPT_API_FUNCTION(QuatInverse);
 	}
 
 }

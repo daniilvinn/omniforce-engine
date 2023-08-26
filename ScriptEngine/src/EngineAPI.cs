@@ -68,6 +68,24 @@ namespace Omni
         public extern static void SpriteComponent_SetTint(ulong entity_id, ref Vector4 tint);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static Vector3 Vector2MultiplyByScalar(Vector2 vec, float scalar);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static Vector3 Vector3MultiplyByScalar(Vector3 vec, float scalar);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static Vector3 Vector4MultiplyByScalar(Vector4 vec, float scalar);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static Vector2 Vector2Lerp(Vector2 vec1, Vector2 vec2, float factor);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static Vector3 Vector3Lerp(Vector3 vec1, Vector3 vec2, float factor);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static Vector4 Vector4Lerp(Vector4 vec1, Vector4 vec2, float factor);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
         public extern static Quat BuildQuatFromEulerAngles(Vector3 eulerAngles);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
@@ -82,7 +100,7 @@ namespace Omni
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern static Vector3 QuatToEulerAngles(Quat quat);
 
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        public extern static Vector3 Vector3MultiplyByScalar(Vector3 vec, float scalar);
+        public extern static Quat QuatInverse(Quat quat);
+
     }
 }
