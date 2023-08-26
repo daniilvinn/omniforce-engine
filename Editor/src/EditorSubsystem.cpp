@@ -337,7 +337,7 @@ public:
 		std::filesystem::create_directories(audio_dir);
 
 		std::filesystem::copy("resources/scripting/ScriptsProject", m_ProjectPath.string() + "/assets/scripts", std::filesystem::copy_options::recursive);
-		std::filesystem::copy("resources/scripting/bin/Debug/ScriptEngine.dll", m_ProjectPath.string() + "/assets/scripts/ScriptEngine.dll");
+		std::filesystem::copy("resources/scripting/bin/ScriptEngine.dll", m_ProjectPath.string() + "/assets/scripts/assemblies/ScriptEngine.dll");
 
 		if(m_ProjectPath.string().length())
 			SaveProject();

@@ -81,14 +81,7 @@ namespace Omni {
 
 		OMNIFORCE_ASSERT_TAGGED(mAppDomain != NULL, "Failed to create app domain");
 
-		// Engine core assembly
-		// TODO: compile C# engine core only in release mode
-		if (OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG) {
-			mCoreAssembly = (MonoAssembly*)ReadAssembly(FileSystem::GetWorkingDirectory().append("assets/scripts/bin/ScriptEngine.dll"));
-		}
-		else if (OMNIFORCE_BUILD_CONFIG == OMNIFORCE_RELEASE_CONFIG) {
-			mCoreAssembly = (MonoAssembly*)ReadAssembly(FileSystem::GetWorkingDirectory().append("assets/scripts/bin/ScriptEngine.dll"));
-		}
+		mCoreAssembly = (MonoAssembly*)ReadAssembly(FileSystem::GetWorkingDirectory().append("assets/scripts/assemblies/ScriptEngine.dll"));
 
 		MonoImage* engine_core_image = mono_assembly_get_image(mCoreAssembly);
 		mScriptBase = ScriptClass("Omni", "GameObject", true);
@@ -99,7 +92,7 @@ namespace Omni {
 		mBaseCtor = mScriptBase.GetMethod(".ctor", 1);
 
 		// App assembly
-		mAppAssembly = ReadAssembly(FileSystem::GetWorkingDirectory().append("assets/scripts/bin/gamescripts.dll"));
+		mAppAssembly = ReadAssembly(FileSystem::GetWorkingDirectory().append("assets/scripts/assemblies/gamescripts.dll"));
 
 		MonoImage* app_image = mono_assembly_get_image(mAppAssembly);
 		const MonoTableInfo* typedef_table = mono_image_get_table_info(app_image, MONO_TABLE_TYPEDEF);

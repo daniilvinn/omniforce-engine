@@ -188,7 +188,7 @@ namespace Omni {
 			std::array<float32, 4> color_tint =
 				node[SpriteComponent::GetSerializableKey()]["ColorTint"].get<std::array<float32, 4>>();
 			sprite_component.color = { color_tint[0], color_tint[1], color_tint[2],color_tint[3] };
-			sprite_component.layer = node[SpriteComponent::GetSerializableKey()]["Layer"].get<uint64>();
+			sprite_component.layer = node[SpriteComponent::GetSerializableKey()]["Layer"].get<int32>();
 			sprite_component.aspect_ratio = node[SpriteComponent::GetSerializableKey()]["AspectRatio"].get<float32>();
 
 			if (node[SpriteComponent::GetSerializableKey()]["TextureID"].is_null())
