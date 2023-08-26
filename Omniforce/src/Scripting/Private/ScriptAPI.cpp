@@ -27,14 +27,14 @@ namespace Omni {
 		entity.GetComponent<TRSComponent>().translation = translation;
 	}
 
-	glm::vec3 TransformComponent_GetRotation(uint64 entity_id) {
+	glm::quat TransformComponent_GetRotation(uint64 entity_id) {
 		ScriptEngine* script_engine = ScriptEngine::Get();
 		Scene* context = script_engine->GetContext();
 		Entity entity(context->GetEntities()[entity_id], context);
 		return entity.GetComponent<TRSComponent>().rotation;
 	}
 
-	void TransformComponent_SetRotation(uint64 entity_id, glm::vec3 rotation) {
+	void TransformComponent_SetRotation(uint64 entity_id, glm::quat rotation) {
 		ScriptEngine* script_engine = ScriptEngine::Get();
 		Scene* context = script_engine->GetContext();
 		Entity entity(context->GetEntities()[entity_id], context);
@@ -170,6 +170,30 @@ namespace Omni {
 		entity.GetComponent<SpriteComponent>().color = *tint;
 	}
 
+	glm::vec3 Vector3MultiplyByScalar(glm::vec3 vector, float scalar) {
+		return vector * scalar;
+	}
+
+	glm::quat BuildQuatFromEulerAngles(glm::vec3 angles) {
+		return glm::quat(angles);
+	}
+
+	glm::quat QuatRotate(glm::quat quat, float angle, glm::vec3 axis) {
+		return glm::rotate(quat, angle, axis);
+	}
+
+	glm::quat QuatSlerp(glm::quat x, glm::quat y, float factor) {
+		return glm::slerp(x, y, factor);
+	}
+
+	glm::quat QuatNormalize(glm::quat x) {
+		return glm::normalize(x);
+	}
+
+	glm::vec3 QuatToEulerAngles(glm::quat quat) {
+		return glm::eulerAngles(quat);
+	}
+
 	void ScriptAPI::AddInternalCalls()
 	{
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(Input_KeyPressed);
@@ -193,6 +217,11 @@ namespace Omni {
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(Physics_GetGravity);
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(Physics_SetGravity);
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(Entity_GetEntity);
+		OMNI_REGISTER_SCRIPT_API_FUNCTION(BuildQuatFromEulerAngles);
+		OMNI_REGISTER_SCRIPT_API_FUNCTION(QuatRotate);
+		OMNI_REGISTER_SCRIPT_API_FUNCTION(QuatSlerp);
+		OMNI_REGISTER_SCRIPT_API_FUNCTION(QuatNormalize);
+		OMNI_REGISTER_SCRIPT_API_FUNCTION(Vector3MultiplyByScalar);
 	}
 
 }

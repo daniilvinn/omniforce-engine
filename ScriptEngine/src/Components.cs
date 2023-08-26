@@ -14,7 +14,7 @@ namespace Omni
             set { EngineAPI.TransformComponent_SetTranslation(Owner.GameObjectID, value); }
         }
 
-        public Vector3 Rotation
+        public Quat Rotation
         {
             get { return EngineAPI.TransformComponent_GetRotation(Owner.GameObjectID); }
             set { EngineAPI.TransformComponent_SetRotation(Owner.GameObjectID, value); }

@@ -1,102 +1,48 @@
 ﻿namespace Omni
 {
-    public struct Vector2
+
+    public static partial class Math
     {
-        public float x, y;
-
-        public Vector2(float x, float y)
+        public static Vector2 Lerp(Vector2 x, Vector2 y, float factor)
         {
-            this.x = x;
-            this.y = y;
+            return x * (1.0f - factor) + (y * factor);
         }
 
-        public static Vector2 operator *(Vector2 vec, float scalar)
+        public static Vector3 Lerp(Vector3 x, Vector3 y, float factor)
         {
-            vec.x *= scalar;
-            vec.y *= scalar;
-
-            return vec;
+            return x * (1.0f - factor) + (y *  factor);
         }
 
-        public override string ToString()
+        public static Vector4 Lerp(Vector4 x, Vector4 y, float factor)
         {
-            return $"{x} {y}";
+            return x * (1.0f - factor) + (y * factor);
         }
-    }
 
-    public struct Vector3
-    {
-        public float x, y, z;
-
-        public Vector3(float x, float y, float z)
+        public static float Radians(float value)
         {
-            this.x = x;
-            this.y = y;
-            this.z = z;
+            return value * 0.01745329251994329576923690768489f;
         }
 
-        // TODO: introduce SIMD
-        public static Vector3 operator *(Vector3 vec, float scalar)
+        public static double Radians(double value)
         {
-            vec.x *= scalar;
-            vec.y *= scalar;
-            vec.z *= scalar;
-
-            return vec;
+            return value * 0.01745329251994329576923690768489;
         }
 
-        public override string ToString()
+        public static float Degrees(float value)
         {
-            return $"{x} {y} {z}";
-        }
-    }
-
-    public struct Vector4
-    {
-        public float x, y, z, w;
-        public Vector3 xyz { 
-            get { return new Vector3(x, y, z); }
-            private set { }
+            return value * 57.295779513082320876798154814105f;
         }
 
-        public Vector4(float x, float y, float z, float w)
+        public static double Degrees(double value)
         {
-            this.x = x;
-            this.y = y;
-            this.z = z;
-            this.w = w;
+            return value * 57.295779513082320876798154814105;
         }
 
-        public Vector4(Vector3 v, float w) 
-        { 
-            x = v.x;
-            y = v.y;
-            z = v.z;
-            this.w = w;
-        }
-
-        public static Vector4 operator *(Vector4 vec, float scalar)
+        public static Quat Slerp(Quat x, Quat y, float factor)
         {
-            vec.x *= scalar;
-            vec.y *= scalar;
-            vec.z *= scalar;
-            vec.w *= scalar;
-
-            return vec;
+            return EngineAPI.QuatSlerp(x, y, factor);
         }
 
-        public override string ToString()
-        {
-            return $"{x} {y} {z} {w}";
-        }
-    }
-
-    static public class Math
-    {
-        static public Vector3 Lerp () 
-        {
-            return new Vector3(0.0f, 0.0f, 0.0f);
-        }
     }
 
 }

@@ -17,10 +17,10 @@ namespace Omni
         public extern static void TransformComponent_SetTranslation(ulong entity_id, Vector3 translation);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        public extern static Vector3 TransformComponent_GetRotation(ulong entity_id);
+        public extern static Quat TransformComponent_GetRotation(ulong entity_id);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        public extern static void TransformComponent_SetRotation(ulong entity_id, Vector3 rotation);
+        public extern static void TransformComponent_SetRotation(ulong entity_id, Quat rotation);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern static Vector3 TransformComponent_GetScale(ulong entity_id);
@@ -67,5 +67,22 @@ namespace Omni
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern static void SpriteComponent_SetTint(ulong entity_id, ref Vector4 tint);
 
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static Quat BuildQuatFromEulerAngles(Vector3 eulerAngles);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static Quat QuatRotate(Quat quat, float angle, Vector3 axis);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static Quat QuatSlerp(Quat x, Quat y, float factor);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static Quat QuatNormalize(Quat quat);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static Vector3 QuatToEulerAngles(Quat quat);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static Vector3 Vector3MultiplyByScalar(Vector3 vec, float scalar);
     }
 }
