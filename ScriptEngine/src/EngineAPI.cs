@@ -8,6 +8,9 @@ namespace Omni
         public extern static bool Input_KeyPressed(KeyCode key_code);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static float Input_GetDeltaTime();
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
         public extern static void Logger_Log(MessageSeverity severity, string msg);
 
         [MethodImpl(MethodImplOptions.InternalCall)]

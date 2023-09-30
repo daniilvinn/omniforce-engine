@@ -27,7 +27,7 @@ namespace Omni {
 
 			datetime += std::to_string(tt->tm_year + 1900);
 			
-			if (tt->tm_mon < 9)
+			if (tt->tm_mon < 10)
 				datetime += "0";
 
 			datetime += std::to_string(tt->tm_mon + 1);

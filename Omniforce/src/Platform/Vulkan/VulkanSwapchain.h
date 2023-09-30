@@ -55,7 +55,9 @@ namespace Omni {
 		std::vector<SwapchainSemaphores> m_Semaphores;
 		std::vector<VkFence> m_Fences;
 
-		uint32 m_CurrentFrameIndex;
+		const uint32 m_SwachainImageCount = 3;
+
+		uint32 m_CurrentFrameIndex = 0;
 		uint32 m_CurrentImageIndex = 0;
 	};
 

@@ -21,22 +21,28 @@
         public Vector3 EulerAngles
         {
             get { return EngineAPI.QuatToEulerAngles(this); }
+            private set { }
         }
 
         // angle in radians
-        public readonly Quat Rotate(float angle, Vector3 axis)
+        public Quat Rotate(float angle, Vector3 axis)
         {
             return EngineAPI.QuatRotate(this, angle, axis);
         }
 
-        public readonly Quat Normalize()
+        public Quat Normalize()
         {
             return EngineAPI.QuatNormalize(this);
         }
 
-        public readonly Quat Inverse()
+        public Quat Inverse()
         {
             return EngineAPI.QuatInverse(this);
+        }
+
+        public override string ToString()
+        {
+            return $"{x} {y} {z} {w}";
         }
 
         public float x, y, z, w;

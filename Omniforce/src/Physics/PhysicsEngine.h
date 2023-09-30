@@ -43,6 +43,9 @@ namespace Omni {
 		void AddTorque(Entity entity, fvec3 torque);
 		void AddLinearImpulse(Entity entity, fvec3 impulse);
 
+		JPH::BodyInterface& GetBodyInterface() { return m_CoreSystem->GetBodyInterface(); }
+		JPH::BodyInterface& GetBodyInterfaceNoLock() { return m_CoreSystem->GetBodyInterfaceNoLock(); }
+
 	private:
 		PhysicsEngine();
 		~PhysicsEngine();

@@ -84,7 +84,6 @@ namespace Omni {
 					ImGui::EndTable();
 				}
 
-				glm::mat4& transform = m_Entity.GetComponent<TransformComponent>().matrix;
 				auto& trs_component = m_Entity.GetComponent<TRSComponent>();
 
 				ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, { 5.0f, 5.0f });

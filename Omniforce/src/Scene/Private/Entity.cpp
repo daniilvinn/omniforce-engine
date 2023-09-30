@@ -175,13 +175,6 @@ namespace Omni {
 			}
 		}
 
-		TransformComponent& transform_component = GetComponent<TransformComponent>();
-		transform_component.matrix = glm::translate(glm::mat4(1.0f), trs_component.translation) *
-			glm::rotate(glm::mat4(1.0f), glm::radians(trs_component.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f)) *
-			glm::rotate(glm::mat4(1.0f), glm::radians(trs_component.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f)) *
-			glm::rotate(glm::mat4(1.0f), glm::radians(trs_component.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f)) *
-			glm::scale(glm::mat4(1.0f), trs_component.scale);
-
 		if (node.contains(SpriteComponent::GetSerializableKey())) {
 			SpriteComponent& sprite_component = AddComponent<SpriteComponent>();
 

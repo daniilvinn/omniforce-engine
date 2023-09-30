@@ -230,7 +230,12 @@ namespace Omni {
 			body_interface.SetPosition(
 				*(JPH::BodyID*)rb2d_component.internal_body, 
 				{ trs.translation.x, trs.translation.y, trs.translation.z }, 
-				JPH::EActivation::Activate
+				JPH::EActivation::DontActivate
+			);
+			body_interface.SetRotation(
+				*(JPH::BodyID*)rb2d_component.internal_body,
+				{ trs.rotation.x, trs.rotation.y, trs.rotation.z, trs.rotation.w },
+				JPH::EActivation::DontActivate
 			);
  		}
 		

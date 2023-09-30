@@ -33,6 +33,7 @@ namespace Omni {
 		~Application();
 
 		static Application* Get() { return s_Instance; }
+		float GetDeltaTime() const { return m_DeltaTimeData.delta_time; }
 
 		void Launch(Options& options);
 		void Run();

@@ -95,10 +95,28 @@ namespace Omni {
 		{
 			ImGuiDragDropFlags target_flags = 0;
 			target_flags |= ImGuiDragDropFlags_AcceptNoDrawDefaultRect; // Don't display the yellow rectangle
-			const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("Scene_hierarchy_move_node_payload", target_flags);
+			const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("hierarchy_move_node_payload", target_flags);
 			if (payload)
 			{
 				UUID id(*(uint64*)payload->Data);
+				Entity moved_entity = m_Context->GetEntity(id);
+
+				HierarchyNodeComponent& moded_entity_hier = moved_entity.GetComponent<HierarchyNodeComponent>();
+
+				if (moved_entity.HasInHierarchy(entity))
+					return;
+
+				if (moved_entity.GetParent()) {
+					Entity previous_parent = moved_entity.GetParent();
+					HierarchyNodeComponent& prev_parent_hierarchy = previous_parent.GetComponent<HierarchyNodeComponent>();
+					for (auto i = prev_parent_hierarchy.children.begin(); i != prev_parent_hierarchy.children.end(); i++) {
+						if (*i == id) {
+							prev_parent_hierarchy.children.erase(i);
+							break;
+						}
+					}
+				}
+
 				hierarchy_node_component.children.push_back(id);
 
 				Entity child = m_Context->GetEntity(id);

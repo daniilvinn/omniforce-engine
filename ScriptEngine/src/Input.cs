@@ -141,7 +141,7 @@ namespace Omni
 		MOUSE_BUTTON_MIDDLE		= MOUSE_BUTTON_3
     };
 
-    public class Input
+    public static class Input
     {
         
         public static bool KeyPressed(KeyCode key_code) 
@@ -149,10 +149,10 @@ namespace Omni
             return Omni.EngineAPI.Input_KeyPressed(key_code);
         }
 
-        //[MethodImpl(MethodImplOptions.InternalCall)]
-        //public extern static bool ButtonPressed(ButtonCode button_code);
-        //
-        //[MethodImpl(MethodImplOptions.InternalCall)]
-        //public extern static double Time();
+        public static float DeltaTime
+        {
+            get { return EngineAPI.Input_GetDeltaTime(); }
+            private set { }
+        }
     }
 }

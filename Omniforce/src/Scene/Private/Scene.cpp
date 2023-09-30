@@ -48,7 +48,6 @@ namespace Omni {
 
 		ExplicitComponentCopy<UUIDComponent>(other->m_Registry, m_Registry, other->m_Entities);
 		ExplicitComponentCopy<TagComponent>(other->m_Registry, m_Registry, other->m_Entities);
-		ExplicitComponentCopy<TransformComponent>(other->m_Registry, m_Registry, other->m_Entities);
 		ExplicitComponentCopy<TRSComponent>(other->m_Registry, m_Registry, other->m_Entities);
 		ExplicitComponentCopy<SpriteComponent>(other->m_Registry, m_Registry, other->m_Entities);
 		ExplicitComponentCopy<CameraComponent>(other->m_Registry, m_Registry, other->m_Entities);
@@ -105,7 +104,7 @@ namespace Omni {
 
 				// normalize quaternion
 				trs.rotation = glm::normalize(trs.rotation);
-
+				
 				// pack to 2 uints
 				glm::uvec2 packed_quat = { 
 					glm::packSnorm2x16({trs.rotation.x, trs.rotation.y}), 
@@ -159,7 +158,6 @@ namespace Omni {
 		entity.AddComponent<UUIDComponent>(id);
 		entity.AddComponent<TagComponent>("Object");
 		entity.AddComponent<TRSComponent>();
-		entity.AddComponent<TransformComponent>();
 		entity.AddComponent<HierarchyNodeComponent>().parent = {};
 
 		entity.GetComponent<TagComponent>().tag.reserve(256);
@@ -175,7 +173,6 @@ namespace Omni {
 		entity.AddComponent<UUIDComponent>(id);
 		entity.AddComponent<TagComponent>("Object");
 		entity.AddComponent<TRSComponent>();
-		entity.AddComponent<TransformComponent>();
 		entity.AddComponent<HierarchyNodeComponent>().parent = parent ? parent.GetID() : UUID(0);
 
 		entity.GetComponent<TagComponent>().tag.reserve(256);

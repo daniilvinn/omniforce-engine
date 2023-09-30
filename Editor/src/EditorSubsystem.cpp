@@ -2,7 +2,7 @@
 
 #include "EditorPanels/SceneHierarchy.h"
 #include "EditorPanels/Properties.h"
-#include "EditorPanels/Assets.h"
+#include "EditorPanels/ContentBrowser.h"
 
 #include "EditorCamera.h"
 
@@ -178,7 +178,7 @@ public:
 
 		m_HierarchyPanel = new SceneHierarchyPanel(m_EditorScene);
 		m_PropertiesPanel = new PropertiesPanel(m_EditorScene);
-		m_AssetsPanel = new AssetsPanel(m_EditorScene);
+		m_AssetsPanel = new ContentBrowser(m_EditorScene);
 
 		m_ProjectPath = "";
 
@@ -301,6 +301,7 @@ public:
 		m_EditorScene->EditorSetCamera(m_EditorCamera);
 		m_HierarchyPanel->SetContext(m_EditorScene);
 		m_HierarchyPanel->SetSelectedNode({ (entt::entity)0, m_CurrentScene }, false);
+		m_AssetsPanel->SetContext(m_EditorScene);
 
 		ScriptEngine* script_engine = ScriptEngine::Get();
 		if (script_engine->HasAssemblies())
@@ -419,7 +420,7 @@ public:
 
 	SceneHierarchyPanel* m_HierarchyPanel;
 	PropertiesPanel* m_PropertiesPanel;
-	AssetsPanel* m_AssetsPanel;
+	ContentBrowser* m_AssetsPanel;
 
 	std::filesystem::path m_ProjectPath;
 	std::string m_ProjectFilename;

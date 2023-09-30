@@ -48,17 +48,6 @@ namespace Omni {
 
 	};
 
-	struct OMNIFORCE_API TransformComponent {
-		glm::mat4 matrix = glm::mat4(1.0f);
-		
-		TransformComponent() {}
-		TransformComponent(const glm::mat4& transform) : matrix(transform) {}
-
-		operator glm::mat4&() { return matrix; }
-
-		static const char* GetSerializableKey() { return "TransformComponent"; }
-	};
-
 	struct OMNIFORCE_API SpriteComponent {
 		fvec4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
 		UUID texture = 0;

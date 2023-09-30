@@ -1,5 +1,6 @@
 #include "ScriptAPI.h"
 
+#include <Core/Application.h>
 #include <Core/Input/Input.h>
 #include <Core/UUID.h>
 #include <Log/Logger.h>
@@ -13,6 +14,14 @@
 
 namespace Omni {
 
+	bool Input_KeyPressed(KeyCode code) {
+		return Input::KeyPressed(code);
+	}
+
+	float Input_GetDeltaTime() {
+		return Application::Get()->GetDeltaTime();
+	}
+
 	glm::vec3 TransformComponent_GetTranslation(uint64 entity_id) {
 		ScriptEngine* script_engine = ScriptEngine::Get();
 		Scene* context = script_engine->GetContext();
@@ -25,7 +34,7 @@ namespace Omni {
 		Scene* context = script_engine->GetContext();
 		Entity entity(context->GetEntities()[entity_id], context);
 		entity.GetComponent<TRSComponent>().translation = translation;
-	}
+	} 
 
 	glm::quat TransformComponent_GetRotation(uint64 entity_id) {
 		ScriptEngine* script_engine = ScriptEngine::Get();
@@ -54,10 +63,6 @@ namespace Omni {
 		Scene* context = script_engine->GetContext();
 		Entity entity(context->GetEntities()[entity_id], context);
 		entity.GetComponent<TRSComponent>().scale = scale;
-	}
-
-	bool Input_KeyPressed(KeyCode code) {
-		return Input::KeyPressed(code);
 	}
 
 	void Logger_Log(Logger::Level severity, MonoString* message) {
@@ -221,6 +226,7 @@ namespace Omni {
 	void ScriptAPI::AddInternalCalls()
 	{
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(Input_KeyPressed);
+		OMNI_REGISTER_SCRIPT_API_FUNCTION(Input_GetDeltaTime);
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(Logger_Log);
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(TagComponent_GetTag);
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(TransformComponent_GetTranslation);
@@ -248,6 +254,7 @@ namespace Omni {
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(Vector2Lerp);
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(Vector4Lerp);
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(BuildQuatFromEulerAngles);
+		OMNI_REGISTER_SCRIPT_API_FUNCTION(QuatToEulerAngles);
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(QuatRotate);
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(QuatSlerp);
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(QuatNormalize);

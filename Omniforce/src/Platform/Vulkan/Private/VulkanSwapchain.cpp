@@ -67,8 +67,8 @@ namespace Omni {
 		auto device = VulkanGraphicsContext::Get()->GetDevice();
 
 		m_Specification = spec;
-		m_Images.reserve(m_Specification.frames_in_flight);
-		m_Semaphores.reserve(3);
+		m_Images.reserve(m_SwachainImageCount);
+		m_Semaphores.reserve(spec.frames_in_flight);
 
 		if (m_Swapchain) [[likely]]
 		{
@@ -89,7 +89,7 @@ namespace Omni {
 		swapchain_create_info.oldSwapchain = VK_NULL_HANDLE;
 		swapchain_create_info.imageFormat = m_SurfaceFormat.format;
 		swapchain_create_info.imageColorSpace = m_SurfaceFormat.colorSpace;
-		swapchain_create_info.minImageCount = spec.frames_in_flight;
+		swapchain_create_info.minImageCount = 3;
 		swapchain_create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		swapchain_create_info.imageExtent = { extent.x, extent.y };
 		swapchain_create_info.imageArrayLayers = 1;
@@ -105,12 +105,12 @@ namespace Omni {
 
 		VK_CHECK_RESULT(vkCreateSwapchainKHR(device->Raw(), &swapchain_create_info, nullptr, &m_Swapchain));
 
-		VK_CHECK_RESULT(vkGetSwapchainImagesKHR(device->Raw(), m_Swapchain, (uint32*)&m_Specification.frames_in_flight, nullptr));
+		VK_CHECK_RESULT(vkGetSwapchainImagesKHR(device->Raw(), m_Swapchain, (uint32*)&m_SwachainImageCount, nullptr));
 
-		m_Images.reserve(m_Specification.frames_in_flight);
-		std::vector<VkImage> pure_swapchain_images(m_Specification.frames_in_flight);
+		m_Images.reserve(m_SwachainImageCount);
+		std::vector<VkImage> pure_swapchain_images(m_SwachainImageCount);
 
-		VK_CHECK_RESULT(vkGetSwapchainImagesKHR(device->Raw(), m_Swapchain, (uint32*)&m_Specification.frames_in_flight, pure_swapchain_images.data()));
+		VK_CHECK_RESULT(vkGetSwapchainImagesKHR(device->Raw(), m_Swapchain, (uint32*)&m_SwachainImageCount, pure_swapchain_images.data()));
 
 		VkCommandBuffer image_layout_transition_command_buffer = device->AllocateTransientCmdBuffer();
 
@@ -216,11 +216,11 @@ namespace Omni {
 		}
 		
 		OMNIFORCE_CORE_TRACE(
-			"Created renderer swapchain. Spec - extent: {0}x{1}, VSync: {2}, frames in flight: {3}",
+			"Created renderer swapchain. Spec - extent: {0}x{1}, VSync: {2}, image count: {3}",
 			spec.extent.x,
 			spec.extent.y,
 			spec.vsync ? "on" : "off",
-			spec.frames_in_flight
+			m_SwachainImageCount
 		);
 	}
 

@@ -29,7 +29,7 @@ namespace Omni {
 			DescriptorSetSpecification global_set_spec = {};
 			global_set_spec.bindings = std::move(bindings);
 
-			for (int i = 0; i < 3; i++) {
+			for (int i = 0; i < Renderer::GetConfig().frames_in_flight; i++) {
 				auto set = DescriptorSet::Create(global_set_spec);
 				s_GlobalSceneData.scene_descriptor_set.push_back(set);
 			}

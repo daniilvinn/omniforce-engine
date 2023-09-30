@@ -7,6 +7,7 @@
 #include <Scene/Scene.h>
 #include <Scene/Component.h>
 #include "../PhysicsMaterial.h"
+#include "../PhysicsEngine.h"
 
 #include <cstdarg>
 
@@ -207,7 +208,38 @@ namespace Omni {
 
 	void BodyContantListener::OnContactRemoved(const JPH::SubShapeIDPair& subshape_pair)
 	{
+		// we are already in PhysicsEngine::Update(), which means that lock has already been taken,
+		// so we acquire body interface without lock to avoid deadlock
+		JPH::BodyInterface& body_interface = PhysicsEngine::Get()->GetBodyInterfaceNoLock();
 		
+		Scene* scene_context = m_ScriptEngine->Get()->GetContext();
+		auto& entities = scene_context->GetEntities();
+		Entity entity1(entities[body_interface.GetUserData(subshape_pair.GetBody1ID())], scene_context);
+		Entity entity2(entities[body_interface.GetUserData(subshape_pair.GetBody2ID())], scene_context);
+
+		if (entity1.HasComponent<ScriptComponent>()) {
+			TransientAllocator<false>& args_allocator = m_ScriptEngine->GetCallbackArgsAllocator();
+			UUID* uuid = args_allocator.Allocate<UUID>(body_interface.GetUserData(subshape_pair.GetBody2ID()));
+
+			PendingCallbackInfo callback_info = {};
+			callback_info.entity = entity1;
+			callback_info.args = { uuid };
+			callback_info.method = "OnContactRemoved";
+
+			m_ScriptEngine->AddPendingCallback(callback_info);
+		}
+
+		if (entity2.HasComponent<ScriptComponent>()) {
+			TransientAllocator<false>& args_allocator = m_ScriptEngine->GetCallbackArgsAllocator();
+			UUID* uuid = args_allocator.Allocate<UUID>(body_interface.GetUserData(subshape_pair.GetBody1ID()));
+
+			PendingCallbackInfo callback_info = {};
+			callback_info.entity = entity2;
+			callback_info.args = { uuid };
+			callback_info.method = "OnContactRemoved";
+
+			m_ScriptEngine->AddPendingCallback(callback_info);
+		}
 	}
 
 }

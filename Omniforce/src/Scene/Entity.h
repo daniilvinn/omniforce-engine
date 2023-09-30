@@ -58,6 +58,31 @@ namespace Omni {
 			return parent_id.Valid() ? m_OwnerScene->GetEntity(parent_id) : Entity();
 		}
 
+		std::vector<UUID>& Children() {
+			return GetComponent<HierarchyNodeComponent>().children;
+		}
+
+		bool HasInHierarchy(Entity entity) {
+			std::vector<UUID>& children = Children();
+
+			if (children.empty())
+				return false;
+
+			for (UUID child : children)
+			{
+				if (child == entity.GetID())
+					return true;
+			}
+
+			for (UUID child : children)
+			{
+				if (m_OwnerScene->GetEntity(child).HasInHierarchy(entity))
+					return true;
+			}
+
+			return false;
+		}
+
 		void Serialize(nlohmann::json& node) override;
 		void Deserialize(nlohmann::json& node) override;
 
