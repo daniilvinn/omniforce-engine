@@ -14,6 +14,7 @@ endif()
 # Include sub-projects.
 add_subdirectory ("Omniforce/vendor/Jolt/Build")
 add_subdirectory ("Omniforce/vendor/imgui")
+add_subdirectory ("Omniforce/vendor/Assimp")
 add_subdirectory (Omniforce)
 add_subdirectory (Sandbox)
 add_subdirectory (Editor)

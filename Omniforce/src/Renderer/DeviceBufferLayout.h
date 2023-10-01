@@ -20,6 +20,7 @@ namespace Omni {
 	class DeviceBufferLayout
 	{
 	public:
+		DeviceBufferLayout() {}
 		DeviceBufferLayout(const std::initializer_list<DeviceBufferLayoutElement> list) : m_Elements(list)
 		{
 			for (auto& element : m_Elements)

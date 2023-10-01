@@ -39,6 +39,11 @@ namespace Omni {
 		return image->GetId();
 	}
 
+	AssetHandle AssetManager::LoadMesh(std::filesystem::path path, const UUID& id /*= UUID()*/)
+	{
+		return UUID(0);
+	}
+
 	void AssetManager::FullUnload()
 	{
 		m_TextureRegistry.clear();

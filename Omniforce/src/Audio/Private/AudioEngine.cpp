@@ -18,6 +18,7 @@ namespace Omni {
 		ma_result result = ma_engine_init(NULL, &m_Engine);
 		if (result != MA_SUCCESS)
 			OMNIFORCE_CORE_CRITICAL("[AudioEngine]: failed to initialize");
+		
 	}
 
 	AudioEngine::~AudioEngine()

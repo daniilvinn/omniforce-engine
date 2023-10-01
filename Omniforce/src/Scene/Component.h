@@ -8,6 +8,8 @@
 
 namespace Omni {
 
+	using AssetHandle = UUID;
+
 	struct OMNIFORCE_API UUIDComponent {
 		UUID id;
 
@@ -121,6 +123,11 @@ namespace Omni {
 		HierarchyNodeComponent() = default;
 
 		static const char* GetSerializableKey() { return "Children"; }
+	};
+
+	struct OMNIFORCE_API MeshComponent {
+		AssetHandle mesh_handle;
+
 	};
 
 

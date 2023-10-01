@@ -7,3 +7,6 @@
 [submodule "Omniforce/vendor/ImGuizmo"]
 	path = Omniforce/vendor/ImGuizmo
 	url = https://github.com/CedricGuillemet/ImGuizmo.git
+[submodule "Omniforce/vendor/Assimp"]
+	path = Omniforce/vendor/Assimp
+	url = https://github.com/assimp/assimp.git

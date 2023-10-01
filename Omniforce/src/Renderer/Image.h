@@ -74,7 +74,7 @@ namespace Omni {
 		};
 	};
 
-	class OMNIFORCE_API Image 
+	class OMNIFORCE_API Image
 	{
 	public:
 		static Shared<Image> Create(const ImageSpecification& spec, const UUID& id = UUID());

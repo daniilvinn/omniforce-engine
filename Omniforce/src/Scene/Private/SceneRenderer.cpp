@@ -179,6 +179,7 @@ namespace Omni {
 
 	void SceneRenderer::EndScene()
 	{
+		// Draw 2D
 		m_SpriteDataBuffer->UploadData(
 			Renderer::GetCurrentFrameIndex() * m_SpriteBufferSize,
 			m_SpriteQueue.data(),
@@ -199,6 +200,8 @@ namespace Omni {
 		});
 		
 		m_SpriteQueue.clear();
+
+		// Draw 3D
 	}
 
 	Shared<Image> SceneRenderer::GetFinalImage()
