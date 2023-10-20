@@ -7,6 +7,7 @@
 #include <Core/Utils.h>
 
 #include <Asset/AssetManager.h>
+#include <Asset/AssetCompressor.h>
 #include <Platform/Vulkan/VulkanCommon.h>
 
 namespace Omni {
@@ -116,13 +117,14 @@ namespace Omni {
 		}
 		// Load dummy white texture
 		{
-			std::vector<byte> image_data(64);
+			std::vector<RGBA32> image_data(16);
 			std::memset(image_data.data(), 255, 64); // just set every byte to 255, so we have white non-transparent pixels
+			std::vector<byte> bc7_compressed = AssetCompressor::CompressBC7(image_data, 4, 4);
 
 			ImageSpecification image_spec = ImageSpecification::Default();
 			image_spec.usage = ImageUsage::TEXTURE;
 			image_spec.extent = { 4, 4, 1 };
-			image_spec.pixels = std::move(image_data);
+			image_spec.pixels = std::move(bc7_compressed);
 			image_spec.format = ImageFormat::RGBA32_UNORM;
 			image_spec.type = ImageType::TYPE_2D;
 			image_spec.mip_levels = 1;

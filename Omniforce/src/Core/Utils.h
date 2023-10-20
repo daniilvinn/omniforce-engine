@@ -118,8 +118,6 @@ namespace Omni {
 				current_height /= 2;
 			}
 
-			std::cout << storage_req;
-
 			return storage_req;
 		}
 

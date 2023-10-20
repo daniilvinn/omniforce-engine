@@ -3,9 +3,15 @@
 #include "Log/Logger.h"
 
 #include <glm/glm.hpp>
+#include <bc7enc.h>
 
 namespace Omni {
 
+
+	void AssetCompressor::Init()
+	{
+		bc7enc_compress_block_init();
+	}
 
 	CompressedAsset AssetCompressor::Compress(Shared<AssetBase> asset)
 	{
@@ -22,11 +28,6 @@ namespace Omni {
 	Shared<AssetBase> AssetCompressor::Uncompress(CompressedAsset compressed_asset)
 	{
 		return nullptr;
-	}
-
-	uint64 AssetCompressor::ComputeCompressedSize(byte* data, uint64 data_size)
-	{
-		return 0;
 	}
 
 	std::vector<RGBA32> AssetCompressor::GenerateMipMaps(const std::vector<RGBA32>& mip0_data, uint32 image_width, uint32 image_height)
@@ -46,9 +47,6 @@ namespace Omni {
 		// mip to the beginning of current computing (not computed from!) mip's storage
 		RGBA32* src_mip_pointer = storage.data();
 		RGBA32* dst_mip_pointer = src_mip_pointer + image_width * image_height;
-
-		uint32 src_offset = 0;
-		uint32 dst_offset = 0;
 
 		// compute num of mip levels
 		uint8 num_mip_levels = Utils::ComputeNumMipLevelsBC7(image_width, image_height);
@@ -94,4 +92,59 @@ namespace Omni {
 
 		return storage;
 	}
+
+	std::vector<byte> AssetCompressor::CompressBC7(const std::vector<RGBA32>& source, uint32 mip0_width, uint32 mip0_height)
+	{
+		std::vector<byte> compressed_data(source.size()); // actual size in bytes is exactly 4 times smaller
+		
+		uint32 current_source_width = mip0_width;
+		uint32 current_source_height = mip0_height;
+
+		uint32 mip_offset = 0; // offset of current mip in source data array
+		bc7enc_compress_block_params params;
+		bc7enc_compress_block_params_init(&params);
+		bc7enc_compress_block_params_init_linear_weights(&params);
+
+		constexpr int32 BlockSize = 4;
+
+		RGBA32 source_block[BlockSize * BlockSize];
+
+		for (;;) {
+
+			int32 bc_width = current_source_width / BlockSize;
+			int32 bc_height = current_source_height / BlockSize;
+
+			#pragma omp parallel for private(source_block)
+			for (int32 iy = 0; iy < bc_height; ++iy) {
+				for (int32 ix = 0; ix < bc_width; ++ix) {
+					int32 px = ix * BlockSize;
+					int32 py = iy * BlockSize;
+					for (int32 lx = 0; lx < BlockSize; ++lx) {
+						for (int32 ly = 0; ly < BlockSize; ++ly) {
+							uint32 index = mip_offset + ((px + lx) + (py + ly) * current_source_width);
+							source_block[lx + ly * BlockSize] = reinterpret_cast<const RGBA32*>(source.data())[index];
+						}
+					}
+					bc7enc_compress_block(&compressed_data[mip_offset + (16 * (ix + iy * bc_width))], source_block, &params);
+
+				}
+			}
+
+			mip_offset += current_source_width * current_source_height;
+			current_source_width /= 2;
+			current_source_height /= 2;
+
+			if (current_source_width < 4 || current_source_height < 4)
+				break;
+		}
+		
+		return compressed_data;
+
+	}
+
+	std::vector<byte> AssetCompressor::CompressGDeflate(const std::vector<byte>& data)
+	{
+
+	}
+
 }

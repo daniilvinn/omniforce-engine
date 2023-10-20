@@ -10,7 +10,7 @@ namespace Omni {
 
 	AssetManager::AssetManager()
 	{
-
+		AssetCompressor::Init();
 	}
 
 	AssetManager::~AssetManager()
@@ -78,13 +78,10 @@ namespace Omni {
 
 		// Generate mip map
 		std::vector<RGBA32> full_image_data = AssetCompressor::GenerateMipMaps(image_data, image_width, image_height);
-
-		std::vector<byte> raw(full_image_data.size() * sizeof RGBA32);
-		memcpy(raw.data(), full_image_data.data(), full_image_data.size() * sizeof RGBA32);
-		full_image_data.clear();
+		std::vector<byte> bc7_encoded = AssetCompressor::CompressBC7(full_image_data, image_width, image_height);
 
 		ImageSpecification texture_spec = {};
-		texture_spec.pixels = std::move(raw);
+		texture_spec.pixels = std::move(bc7_encoded);
 		texture_spec.format = ImageFormat::RGBA32_UNORM;
 		texture_spec.type = ImageType::TYPE_2D;
 		texture_spec.usage = ImageUsage::TEXTURE;

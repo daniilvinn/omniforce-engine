@@ -1,4 +1,6 @@
 #pragma once
+
+#include "Core/UUID.h"
 #include <cstdint>
 #include <glm/glm.hpp>
 
@@ -20,6 +22,7 @@ namespace Omni {
 
 	using BitMask = uint64;
 	using Flag = uint64;
+	using AssetHandle = UUID;
 
 	template<typename T = float32>
 	struct vec2 {
@@ -104,5 +107,8 @@ namespace Omni {
 		byte* data;
 		uint32 size;
 	};
+
+	using RGB32 = glm::u8vec3;
+	using RGBA32 = glm::u8vec4;
 
 }

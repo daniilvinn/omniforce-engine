@@ -110,7 +110,7 @@ namespace Omni {
 	{
 		VkImageCreateInfo texture_create_info = {};
 		texture_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-		texture_create_info.format = VK_FORMAT_R8G8B8A8_UNORM;
+		texture_create_info.format = VK_FORMAT_BC7_UNORM_BLOCK;
 		texture_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
 		texture_create_info.imageType = VK_IMAGE_TYPE_2D;
 		texture_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -178,7 +178,7 @@ namespace Omni {
 			buffer_image_copy.bufferRowLength = 0;
 			buffer_image_copy.bufferImageHeight = 0;
 
-			buffer_offset += buffer_image_copy.imageExtent.width * buffer_image_copy.imageExtent.height * 4;
+			buffer_offset += buffer_image_copy.imageExtent.width * buffer_image_copy.imageExtent.height;
 		}
 
 		// Submit copy command
@@ -217,7 +217,7 @@ namespace Omni {
 		image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
 		image_view_create_info.image = m_Image;
-		image_view_create_info.format = VK_FORMAT_R8G8B8A8_UNORM;
+		image_view_create_info.format = VK_FORMAT_BC7_UNORM_BLOCK;
 		image_view_create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		image_view_create_info.subresourceRange.baseArrayLayer = 0;
 		image_view_create_info.subresourceRange.layerCount = 1;

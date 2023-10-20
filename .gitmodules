@@ -10,3 +10,6 @@
 [submodule "Omniforce/vendor/Assimp"]
 	path = Omniforce/vendor/Assimp
 	url = https://github.com/assimp/assimp.git
+[submodule "Omniforce/vendor/nv-libdeflate"]
+	path = Omniforce/vendor/nv-libdeflate
+	url = https://github.com/NVIDIA/libdeflate.git

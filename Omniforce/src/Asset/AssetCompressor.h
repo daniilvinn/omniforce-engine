@@ -15,6 +15,8 @@ namespace Omni {
 		*  @brief compresses asset using GDEFLATE (level 12) algorithm. Images are additionaly encoded to BC7 format.
 		*  @return struct with header, metadata and compressed data.
 		*/
+		static void Init();
+
 		static CompressedAsset Compress(Shared<AssetBase> asset);
 
 		/*
@@ -23,10 +25,17 @@ namespace Omni {
 		*/
 		static Shared<AssetBase> Uncompress(CompressedAsset compressed_asset);
 
-		static uint64 ComputeCompressedSize(byte* data, uint64 data_size);
-
-		// Generate mip levels. Discards last two levels with 1- or 2-pixel wide dimensions (because mips are further used for BC7 encoding)
+		/*
+		*  @brief Generates mip levels.Discards last two levels with 1 - or 2 - pixel wide dimensions(because mips are further used for BC7 encoding)
+		*/ 
 		static std::vector<RGBA32> GenerateMipMaps(const std::vector<RGBA32>& mip0_data, uint32 image_width, uint32 image_height);
+
+		/*
+		*  @brief  Encodes RGBA32 image to BC7 image.
+		*  @return Array of 128-bit values, representing blocks
+		*/
+		static std::vector<byte> CompressBC7(const std::vector<RGBA32>& source, uint32 image_width, uint32 image_height);
+		static std::vector<byte> CompressGDeflate(const std::vector<byte>& data);
 
 	};
 
