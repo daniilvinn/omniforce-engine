@@ -195,7 +195,7 @@ namespace Omni {
 		void RenderImage(Shared<Image> image, Shared<ImageSampler> sampler, ImVec2 size, uint32 image_layer, bool flip) {
 			Shared<VulkanImage> vk_image = ShareAs<VulkanImage>(image);
 			Shared<VulkanImageSampler> vk_sampler = ShareAs<VulkanImageSampler>(sampler);
-			if (imgui_image_descriptor_sets.find(image->GetId()) == imgui_image_descriptor_sets.end()) {
+			if (imgui_image_descriptor_sets.find(image->Handle) == imgui_image_descriptor_sets.end()) {
 
 				ImageLayout old_layout = vk_image->GetCurrentLayout();
 				bool needs_layout_transition = vk_image->GetCurrentLayout() != ImageLayout::SHADER_READ_ONLY;
@@ -219,7 +219,7 @@ namespace Omni {
 					vk_image->RawView(),
 					(VkImageLayout)vk_image->GetCurrentLayout()
 				);
-				imgui_image_descriptor_sets.emplace(image->GetId(), imgui_image_id);
+				imgui_image_descriptor_sets.emplace(image->Handle, imgui_image_id);
 
 				if (needs_layout_transition) {
 					cmd_buffer->Reset();
@@ -236,8 +236,8 @@ namespace Omni {
 				}
 				cmd_buffer->Destroy();
 			}
-			if(flip) ImGui::Image(imgui_image_descriptor_sets[image->GetId()], size, { 0, 0 }, { 1, 1 });
-			else ImGui::Image(imgui_image_descriptor_sets[image->GetId()], size, { 0, 1 }, { 1, 0 });
+			if(flip) ImGui::Image(imgui_image_descriptor_sets[image->Handle], size, { 0, 0 }, { 1, 1 });
+			else ImGui::Image(imgui_image_descriptor_sets[image->Handle], size, { 0, 1 }, { 1, 0 });
 		};
 	}
 

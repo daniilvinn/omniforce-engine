@@ -27,7 +27,7 @@ namespace Omni {
 
 	void ContentBrowser::Render()
 	{
-		auto texture_registry = AssetManager::Get()->GetTextureRegistry();
+		auto texture_registry = AssetManager::Get()->GetAssetRegistry();
 
 		if (m_IsOpen) {
 			ImGui::Begin("Assets", &m_IsOpen);
@@ -55,7 +55,7 @@ namespace Omni {
 				if (filepath != NULL)
 					return;
 
-				AssetManager::Get()->LoadTexture(std::filesystem::path(filepath));
+				AssetManager::Get()->LoadAssetSource(std::filesystem::path(filepath));
 			}
 			ImGui::EndTable();
 			ImGui::Separator();

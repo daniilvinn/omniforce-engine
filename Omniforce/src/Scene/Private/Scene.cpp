@@ -289,9 +289,10 @@ namespace Omni {
 
 		nlohmann::json& texture_node = node["Textures"];
 
-		auto tex_registry = AssetManager::Get()->GetTextureRegistry();
-		for (auto& [id, texture] : *tex_registry) {
-			texture_node.emplace(std::to_string(texture->GetId()), texture->GetSpecification().path.string().erase(0, FileSystem::GetWorkingDirectory().string().size()));
+		auto tex_registry = *AssetManager::Get()->GetAssetRegistry();
+		for (auto& [id, texture] : tex_registry) {
+			auto image = ShareAs<Image>(texture);
+			texture_node.emplace(std::to_string(texture->Handle), image->GetSpecification().path.string().erase(0, FileSystem::GetWorkingDirectory().string().size()));
 		}
 
 		nlohmann::json& entities_node = node["GameObjects"];
@@ -321,9 +322,9 @@ namespace Omni {
 		for (auto i : textures.items()) {
 			std::string texture_path = i.value().get<std::string>();
 
-			UUID id = AssetManager::Get()->LoadTexture(FileSystem::GetWorkingDirectory().append(texture_path), std::stoull(i.key()));
+			AssetHandle id = AssetManager::Get()->LoadAssetSource(FileSystem::GetWorkingDirectory().append(texture_path), std::stoull(i.key()));
 
-			Shared<Image> texture = AssetManager::Get()->GetTexture(id);
+			Shared<Image> texture = AssetManager::Get()->GetAsset<Image>(id);
 			m_Renderer->AcquireTextureIndex(texture, SamplerFilteringMode::NEAREST);
 		}
 

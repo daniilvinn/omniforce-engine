@@ -99,7 +99,8 @@ namespace Omni {
 	public:
 		VulkanImage();
 		VulkanImage(const ImageSpecification& spec, VkImage image, VkImageView view);
-		VulkanImage(const ImageSpecification& spec, UUID id);
+		VulkanImage(const ImageSpecification& spec, AssetHandle id);
+		VulkanImage(const ImageSpecification& spec, const std::vector<RGBA32> data, const AssetHandle& id);
 		VulkanImage(std::filesystem::path path);
 		~VulkanImage();
 
@@ -109,7 +110,6 @@ namespace Omni {
 		VkImage Raw() const { return m_Image; }
 		VkImageView RawView() const { return m_ImageView; };
 		ImageSpecification GetSpecification() const override { return m_Specification; }
-		UUID GetId() const override { return m_Id; }
 
 		ImageLayout GetCurrentLayout() const { return m_CurrentLayout; }
 
@@ -124,7 +124,6 @@ namespace Omni {
 	private:
 
 		ImageSpecification m_Specification;
-		UUID m_Id;
 
 		VkImage m_Image;
 		VmaAllocation m_Allocation;

@@ -41,7 +41,7 @@ namespace Omni {
 		Shared<Image> GetFinalImage();
 		static Shared<ImageSampler> GetSamplerNearest() { return s_SamplerNearest; }
 		static Shared<ImageSampler> GetSamplerLinear() { return s_SamplerLinear; }
-		UUID GetDummyWhiteTexture() const { return m_DummyWhiteTexture->GetId(); }
+		UUID GetDummyWhiteTexture() const { return m_DummyWhiteTexture->Handle; }
 		/*
 		* @brief Adds texture to a global renderer data
 		* @return returns an index the texture can be accessed with

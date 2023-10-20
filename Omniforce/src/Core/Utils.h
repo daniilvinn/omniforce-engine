@@ -5,12 +5,15 @@
 #include <string>
 #include <ctime>
 #include <iostream>
+#include <type_traits>
+#include <vector>
 
 #include <fmt/format.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <omp.h>
 
 namespace Omni {
 
@@ -84,6 +87,41 @@ namespace Omni {
 				glm::scale(glm::mat4(1.0f), scale);
 
 		}
-		
+	
+		template<typename T>
+		inline bool IsPowerOf2(T value) {
+			if (std::is_integral_v<T>)
+				return false;
+
+			return value && (value & (value - 1) == 0);
+		}
+
+		// NOTE: returns amount of mip levels excluding mip #0
+		inline uint8 ComputeNumMipLevelsBC7(uint16 image_width, uint16 image_height) {
+			return log2(std::min(image_width, image_height)) - 2;
+		}
+
+		// including mip0 (source image)
+		template<uint32 PixelSize>
+		inline uint32 ComputeMipLevelsStorage(uint16 image_width, uint16 image_height) {
+			uint32 mip_levels_req = log2(std::min(image_width, image_height)) - 2;
+
+			uint32 current_width = image_width;
+			uint32 current_height = image_height;
+
+			uint32 storage_req = current_width * current_height * PixelSize;
+
+			for (int32 i = 1; i < mip_levels_req + 1; i++) {
+				uint32 req_storage_for_current_mip = (current_width / 2) * (current_height / 2);
+				storage_req += req_storage_for_current_mip * PixelSize;
+				current_width /= 2;
+				current_height /= 2;
+			}
+
+			std::cout << storage_req;
+
+			return storage_req;
+		}
+
 	}
 }

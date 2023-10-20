@@ -1,9 +1,9 @@
 #pragma once
 
+#include "Core/UUID.h"
+#include "Asset/AssetBase.h"
 #include "RendererCommon.h"
 #include "PipelineStage.h"
-
-#include "Core/UUID.h"
 
 #include <filesystem>
 
@@ -53,6 +53,7 @@ namespace Omni {
 
 	struct OMNIFORCE_API ImageSpecification {
 		uvec3 extent;
+		std::vector<byte> pixels;
 		std::filesystem::path path;
 		ImageFormat format;
 		ImageUsage usage;
@@ -63,7 +64,6 @@ namespace Omni {
 		static ImageSpecification Default() {
 			ImageSpecification spec;
 			spec.extent = { 0, 0, 0 };
-			spec.path = "";
 			spec.format = ImageFormat::RGBA32_SRGB;
 			spec.usage = ImageUsage::TEXTURE;
 			spec.type = ImageType::TYPE_2D;
@@ -74,10 +74,11 @@ namespace Omni {
 		};
 	};
 
-	class OMNIFORCE_API Image
+	class OMNIFORCE_API Image : public AssetBase
 	{
 	public:
-		static Shared<Image> Create(const ImageSpecification& spec, const UUID& id = UUID());
+		static Shared<Image> Create(const ImageSpecification& spec, const AssetHandle& id = AssetHandle());
+		static Shared<Image> Create(const ImageSpecification& spec, const std::vector<RGBA32> data, const AssetHandle& id = AssetHandle());
 
 		virtual ~Image() {}
 
@@ -92,7 +93,12 @@ namespace Omni {
 			PipelineAccess src_access = PipelineAccess::NONE,
 			PipelineAccess dst_access = PipelineAccess::NONE
  		) = 0;
-		virtual UUID GetId() const = 0;
+
+	protected:
+		Image(AssetHandle handle) {
+			Handle = handle;
+			Type = AssetType::IMAGE;
+		};
 	};
 
 

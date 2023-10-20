@@ -48,6 +48,14 @@ namespace Omni {
 						}
 						ImGui::EndDisabled();
 
+						ImGui::BeginDisabled(m_Entity.HasComponent<MeshComponent>());
+						if (ImGui::MenuItem("Mesh component")) {
+							MeshComponent& mesh_component = m_Entity.AddComponent<MeshComponent>();
+							mesh_component.mesh_handle = 0;
+							ImGui::CloseCurrentPopup();
+						}
+						ImGui::EndDisabled();
+
 						ImGui::BeginDisabled(m_Entity.HasComponent<CameraComponent>());
 						if (ImGui::MenuItem("Camera component")) {
 							CameraComponent& camera_component = m_Entity.AddComponent<CameraComponent>();
@@ -145,16 +153,13 @@ namespace Omni {
 
 							ImGui::Separator();
 
-							if(ImGui::BeginTable("properties_entity_name", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV));
+							if(ImGui::BeginTable("##sprite_component_properties_table", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV));
 							{
 								ImGui::TableNextRow();
 								ImGui::TableNextColumn();
 								ImGui::Text("Material");
 
 								ImGui::TableNextColumn();
-
-								
-
 								ImGui::SameLine();
 								if (ImGui::Button("Browse", { -FLT_MIN, 0.0f })) {
 									const char* filters[] = { "*.png", "*.jpg", "*.jpeg" };
@@ -177,12 +182,65 @@ namespace Omni {
 											std::filesystem::copy_options::overwrite_existing
 										);
 										
-										sc.texture = AssetManager::Get()->LoadTexture(texture_path);
-										m_Context->GetRenderer()->AcquireTextureIndex(AssetManager::Get()->GetTexture(sc.texture), SamplerFilteringMode::NEAREST);
-										uvec3 texture_resolution = AssetManager::Get()->GetTexture(sc.texture)->GetSpecification().extent;
+										sc.texture = AssetManager::Get()->LoadAssetSource(texture_path);
+										m_Context->GetRenderer()->AcquireTextureIndex(AssetManager::Get()->GetAsset<Image>(sc.texture), SamplerFilteringMode::NEAREST);
+										uvec3 texture_resolution = AssetManager::Get()->GetAsset<Image>(sc.texture)->GetSpecification().extent;
 										sc.aspect_ratio = { (float32)texture_resolution.x / (float32)texture_resolution.y };
 									}
 								};
+
+								ImGui::EndTable();
+							}
+							ImGui::TreePop();
+						}
+					}
+				}
+				if (m_Entity.HasComponent<MeshComponent>()) {
+					if (ImGui::Button(" - ##mesh_component")) {
+						m_Entity.RemoveComponent<MeshComponent>();
+					}
+					else {
+						ImGui::SameLine();
+						if (ImGui::TreeNode("Mesh component")) {
+							MeshComponent& mc = m_Entity.GetComponent<MeshComponent>();
+							if (ImGui::BeginTable("##mesh_component_table", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV));
+							{
+								ImGui::TableNextRow();
+								ImGui::TableNextColumn();
+								ImGui::Text("Mesh path");
+
+								ImGui::TableNextColumn();
+								if (mc.filename.empty()) {
+									if (ImGui::Button("Browse##mesh_component_properties_browse_button", { -FLT_MIN, 0.0f })) {
+
+										const char* filters[] = { "*.fbx", "*.gltf", "*.obj" };
+										char* filepath = tinyfd_openFileDialog(
+											"Open file",
+											std::filesystem::absolute("assets/meshes/").string().c_str(),
+											3,
+											filters,
+											NULL,
+											false
+										);
+
+										if (filepath != NULL) {
+											std::filesystem::path full_mesh_path(filepath);
+											std::filesystem::path mesh_path = FileSystem::GetWorkingDirectory().append("assets/meshes/").append(full_mesh_path.filename().string());
+
+											std::filesystem::copy_file(filepath,
+												mesh_path,
+												std::filesystem::exists(mesh_path) ? 
+													std::filesystem::copy_options::overwrite_existing : std::filesystem::copy_options::none
+											);
+
+											mc.mesh_handle = AssetManager::Get()->LoadAssetSource(mesh_path);
+											mc.filename = mesh_path.filename().string();
+										}
+									}
+								}
+								else {
+									ImGui::Text(mc.filename.c_str());
+								}
 
 								ImGui::EndTable();
 							}
@@ -298,8 +356,6 @@ namespace Omni {
 						}
 					}
 				}
-
-				// Rigid body 2D
 				if (m_Entity.HasComponent<RigidBody2DComponent>()) {
 					if (ImGui::Button(" - ##rb2d_component")) {
 						m_Entity.RemoveComponent<RigidBody2DComponent>();

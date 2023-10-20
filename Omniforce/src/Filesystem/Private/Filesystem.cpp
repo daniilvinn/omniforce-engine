@@ -1,7 +1,9 @@
 #include "../Filesystem.h"
+#include "Log/Logger.h"
+
 #include <fstream>
 
-#include "Log/Logger.h"
+#include <stb_image.h>
 
 namespace Omni {
 
@@ -36,6 +38,8 @@ namespace Omni {
 
 		return file_size;
 	}
+
+	
 
 	void FileSystem::WriteFile(Shared<File> file, std::filesystem::path path, const BitMask& flags)
 	{

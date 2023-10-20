@@ -13,7 +13,11 @@ namespace Omni {
 	template <typename T1, typename T2>
 	Shared<T1> ShareAs(Shared<T2>& ptr)
 	{
+#if 0
+		return (Shared<T1>)ptr;
+#else
 		return std::static_pointer_cast<T1>(ptr);
+#endif
 	};
 
 #if 0

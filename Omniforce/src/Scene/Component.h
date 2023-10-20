@@ -6,6 +6,8 @@
 #include <Core/UUID.h>
 #include <Scripting/RuntimeScriptInstance.h>
 
+#include <filesystem>
+
 namespace Omni {
 
 	using AssetHandle = UUID;
@@ -52,7 +54,7 @@ namespace Omni {
 
 	struct OMNIFORCE_API SpriteComponent {
 		fvec4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
-		UUID texture = 0;
+		AssetHandle texture = 0;
 		int32 layer = 0;
 		float32 aspect_ratio = 1.0f; // of a texture
 
@@ -127,7 +129,8 @@ namespace Omni {
 
 	struct OMNIFORCE_API MeshComponent {
 		AssetHandle mesh_handle;
-
+		std::vector<AssetHandle> material_handle;
+		std::string filename = "";
 	};
 
 

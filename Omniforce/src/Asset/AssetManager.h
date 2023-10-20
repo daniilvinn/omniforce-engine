@@ -12,8 +12,6 @@
 
 namespace Omni {
 
-	using AssetHandle = UUID;
-
 	class OMNIFORCE_API AssetManager {
 	public:
 		AssetManager();
@@ -25,20 +23,22 @@ namespace Omni {
 
 		static AssetManager* Get() { return s_Instance; }
 
-		AssetHandle LoadTexture(std::filesystem::path path, const UUID& id = UUID());
-		AssetHandle LoadMesh(std::filesystem::path path, const UUID& id = UUID());
-		bool HasTexture(std::filesystem::path path) { m_UUIDs.contains(path.string()); }
-		bool HasMesh(std::filesystem::path path) { m_UUIDs.contains(path.string()); };
+		AssetHandle LoadAssetSource(std::filesystem::path path, const AssetHandle& id = AssetHandle());
+		bool HasAsset(AssetHandle id) { m_AssetRegistry.contains(id); }
 
-		Shared<Image> GetTexture(const AssetHandle& id) const { return m_TextureRegistry.at(id); }
+		template<typename ResourceType>
+		Shared<ResourceType> GetAsset(AssetHandle id) { return ShareAs<ResourceType>(m_AssetRegistry.at(id)); }
 		AssetHandle GetHandle(std::filesystem::path path) const { return m_UUIDs.at(path.string()); }
-		auto* GetTextureRegistry() const { return &m_TextureRegistry; }
+		auto* GetAssetRegistry() const { return &m_AssetRegistry; }
+
+	private:
+		AssetHandle ImportMeshSource(std::filesystem::path path, AssetHandle handle);
+		AssetHandle ImportTexture(std::filesystem::path path, AssetHandle handle);
 
 	private:
 		inline static AssetManager* s_Instance;
-		robin_hood::unordered_map<UUID, Shared<Image>> m_TextureRegistry;
-		robin_hood::unordered_map<UUID, Shared<Mesh>> m_MeshRegistry;
-		robin_hood::unordered_map<std::string, UUID> m_UUIDs;
+		robin_hood::unordered_map<AssetHandle, Shared<AssetBase>> m_AssetRegistry;
+		robin_hood::unordered_map<std::filesystem::path, UUID> m_UUIDs;
 	};
 
 }	

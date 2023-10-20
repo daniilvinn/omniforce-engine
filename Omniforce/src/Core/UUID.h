@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Foundation/Macros.h"
-#include "Foundation/Types.h"
 
 #include <atomic>
 #include <unordered_map>
@@ -10,11 +9,13 @@
 
 namespace Omni {
 
+	typedef uint64_t uint64;
+
 	class OMNIFORCE_API UUID
 	{
 	public:
 		UUID();
-		UUID(uint64_t uuid);
+		UUID(uint64 uuid);
 		UUID(const UUID& other);
 
 		uint64 Get() const { return m_UUID; }
@@ -23,7 +24,7 @@ namespace Omni {
 		operator uint64() const { return m_UUID; }
 
 	private:
-		uint64_t m_UUID;
+		uint64 m_UUID;
 	};
 
 }

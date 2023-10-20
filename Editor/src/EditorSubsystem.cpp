@@ -290,10 +290,12 @@ public:
 		// unloading textures from memory and releasing their indices
 		AssetManager* asset_manager = AssetManager::Get();
 		Shared<SceneRenderer> renderer = m_EditorScene->GetRenderer();
-		auto texture_registry = *asset_manager->GetTextureRegistry();
-		for (auto& [id, texture] : texture_registry) {
-			renderer->ReleaseTextureIndex(texture);
-			texture->Destroy();
+		auto texture_registry = *asset_manager->GetAssetRegistry();
+		for (auto& [id, asset] : texture_registry) {
+			if(asset->Type != AssetType::IMAGE)
+				continue;
+			renderer->ReleaseTextureIndex(ShareAs<Image>(asset));
+			asset->Destroy();
 		}
 		asset_manager->FullUnload();
 
@@ -329,16 +331,18 @@ public:
 
 		FileSystem::SetWorkingDirectory(m_ProjectPath);
 
-		auto textures_dir = m_ProjectPath.string() + "/assets/textures";
-		auto scripts_dir = m_ProjectPath.string() + "/assets/scripts";
-		auto audio_dir = m_ProjectPath.string() + "/assets/audio";
+		auto textures_dir = m_ProjectPath.string() + "assets/textures";
+		auto scripts_dir = m_ProjectPath.string() +  "assets/scripts";
+		auto audio_dir = m_ProjectPath.string() + "assets/audio";
+		auto mesh_dir = m_ProjectPath.string() + "assets/meshes";
 
 		std::filesystem::create_directories(textures_dir);
 		std::filesystem::create_directories(scripts_dir);
 		std::filesystem::create_directories(audio_dir);
+		std::filesystem::create_directories(mesh_dir);
 
 		std::filesystem::copy("resources/scripting/ScriptsProject", m_ProjectPath.string() + "/assets/scripts", std::filesystem::copy_options::recursive);
-		std::filesystem::copy("resources/scripting/bin/ScriptEngine.dll", m_ProjectPath.string() + "/assets/scripts/assemblies/ScriptEngine.dll");
+		std::filesystem::copy("resources/scripting/bin/ScriptEngine.dll", m_ProjectPath / "assets/scripts/assemblies/ScriptEngine.dll");
 
 		if(m_ProjectPath.string().length())
 			SaveProject();

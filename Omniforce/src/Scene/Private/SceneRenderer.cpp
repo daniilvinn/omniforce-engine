@@ -116,9 +116,19 @@ namespace Omni {
 		}
 		// Load dummy white texture
 		{
-			ImageSpecification spec = ImageSpecification::Default();
-			spec.path = "resources/textures/opaque_white.png";
-			m_DummyWhiteTexture = Image::Create(spec);
+			std::vector<byte> image_data(64);
+			std::memset(image_data.data(), 255, 64); // just set every byte to 255, so we have white non-transparent pixels
+
+			ImageSpecification image_spec = ImageSpecification::Default();
+			image_spec.usage = ImageUsage::TEXTURE;
+			image_spec.extent = { 4, 4, 1 };
+			image_spec.pixels = std::move(image_data);
+			image_spec.format = ImageFormat::RGBA32_UNORM;
+			image_spec.type = ImageType::TYPE_2D;
+			image_spec.mip_levels = 1;
+			image_spec.array_layers = 1;
+
+			m_DummyWhiteTexture = Image::Create(image_spec);
 			AcquireTextureIndex(m_DummyWhiteTexture, SamplerFilteringMode::LINEAR);
 		}
 		// Initializing pipelines
@@ -230,7 +240,7 @@ namespace Omni {
 
 		for (auto& set : s_GlobalSceneData.scene_descriptor_set)
 			set->Write(0, index, image, sampler);
-		s_GlobalSceneData.textures.emplace(image->GetId(), index);
+		s_GlobalSceneData.textures.emplace(image->Handle, index);
 
 		return index;
 	}
@@ -242,10 +252,10 @@ namespace Omni {
 			return false;
 		}
 
-		uint16 index = s_GlobalSceneData.textures.find(image->GetId())->second;
+		uint16 index = s_GlobalSceneData.textures.find(image->Handle)->second;
 
 		s_GlobalSceneData.available_texture_indices.push_back(index);
-		s_GlobalSceneData.textures.erase(image->GetId());
+		s_GlobalSceneData.textures.erase(image->Handle);
 
 		return true;
 	}
