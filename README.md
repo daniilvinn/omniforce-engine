@@ -28,3 +28,4 @@
 * nlohmann_json
 * Jolt Physics
 * bc7enc
+* NVIDIA libdeflate

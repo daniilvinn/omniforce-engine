@@ -35,6 +35,11 @@ namespace Omni {
 		*  @return Array of 128-bit values, representing blocks
 		*/
 		static std::vector<byte> CompressBC7(const std::vector<RGBA32>& source, uint32 image_width, uint32 image_height);
+
+		/*
+		*  @brief Compresses data using NVIDIA GDeflate algorithm.
+		*  @return stream of compressed pages
+		*/
 		static std::vector<byte> CompressGDeflate(const std::vector<byte>& data);
 
 	};

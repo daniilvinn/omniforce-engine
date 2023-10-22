@@ -10,6 +10,7 @@
 #include <Physics/PhysicsEngine.h>
 #include <Core/Input/Input.h>
 #include <Scripting/ScriptEngine.h>
+#include <Audio/AudioEngine.h>
 
 #include <cassert>
 #include <chrono>
@@ -60,6 +61,7 @@ namespace Omni
 
 		js->Execute(Input::Init);
 		js->Execute(PhysicsEngine::Init);
+		js->Execute(AudioEngine::Init);
 
 		js->Wait();
 

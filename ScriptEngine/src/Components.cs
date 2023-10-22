@@ -104,6 +104,15 @@ namespace Omni
                 EngineAPI.SpriteComponent_SetTint(Owner.GameObjectID, ref value);
             }
         }
+
+    }
+
+    public class AudioSourceComponent : GameObjectComponent
+    {
+        public void PlayInlined(string path)
+        {
+            EngineAPI.AudioComponent_PlayInlined(path);
+        }
     }
 
 }

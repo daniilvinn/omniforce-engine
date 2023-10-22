@@ -220,7 +220,7 @@ namespace Omni {
 		char* buffer = new char[assembly_size];
 		input_stream.read(buffer, assembly_size);
 		input_stream.close();
-
+		 
 		MonoImageOpenStatus image_open_status;
 
 		MonoImage* image = mono_image_open_from_data_full(buffer, assembly_size, 1, &image_open_status, 0);

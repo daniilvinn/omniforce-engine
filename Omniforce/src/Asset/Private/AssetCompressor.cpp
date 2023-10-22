@@ -144,7 +144,7 @@ namespace Omni {
 
 	std::vector<byte> AssetCompressor::CompressGDeflate(const std::vector<byte>& data)
 	{
-
+		return {};
 	}
 
 }

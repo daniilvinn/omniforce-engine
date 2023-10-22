@@ -103,7 +103,11 @@ namespace Omni
         [MethodImpl(MethodImplOptions.InternalCall)]
         public extern static Vector3 QuatToEulerAngles(Quat quat);
 
+        [MethodImpl(MethodImplOptions.InternalCall)]
         public extern static Quat QuatInverse(Quat quat);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public extern static void AudioComponent_PlayInlined(string path);
 
     }
 }

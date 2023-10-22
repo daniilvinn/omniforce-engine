@@ -40,6 +40,7 @@ target_include_directories(${ENGINE_TARGET}
         "vendor/mono/include/mono-2.0"
         "vendor/Assimp/include"
         "vendor/bc7enc_rdo/include"
+        "vendor/nv-libdeflate/lib"
 )
 target_link_directories(${ENGINE_TARGET} INTERFACE "${Vulkan_SDK}\\Lib" PUBLIC "vendor/mono/lib")
 target_compile_definitions(${ENGINE_TARGET} PUBLIC OMNIFORCE_STATIC GLM_FORCE_DEPTH_ZERO_TO_ONE GLM_FORCE_SSE2)
@@ -73,6 +74,7 @@ target_link_libraries(
         assimp
         bc7enc_rdo
         OpenMP::OpenMP_CXX
+        nv_libdeflate
 )
 
 set_property(TARGET ${ENGINE_TARGET} PROPERTY CXX_STANDARD 23)

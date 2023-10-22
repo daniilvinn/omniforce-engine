@@ -7,6 +7,7 @@
 #include <Scene/Component.h>
 #include <Scripting/ScriptEngine.h>
 #include <Physics/PhysicsEngine.h>
+#include <Audio/AudioEngine.h>
 
 #include <mono/jit/jit.h>
 
@@ -223,6 +224,13 @@ namespace Omni {
 		return glm::inverse(quat);
 	}
 
+	void AudioComponent_PlayInlined(MonoString* path) {
+		char* data = mono_string_to_utf8(path);
+		AudioEngine* audio_engine = AudioEngine::Get();
+		audio_engine->StartPlaybackInlined(data);
+		mono_free(data);
+	}
+
 	void ScriptAPI::AddInternalCalls()
 	{
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(Input_KeyPressed);
@@ -259,6 +267,7 @@ namespace Omni {
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(QuatSlerp);
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(QuatNormalize);
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(QuatInverse);
+		OMNI_REGISTER_SCRIPT_API_FUNCTION(AudioComponent_PlayInlined);
 	}
 
 }

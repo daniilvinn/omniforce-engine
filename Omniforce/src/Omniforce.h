@@ -35,6 +35,10 @@
 
 // Asset
 #include <Asset/AssetManager.h>
+#include <Asset/AssetBase.h>
+#include <Asset/AssetType.h>
+#include <Asset/Material.h>
+#include <Asset/Mesh.h>
 
 // File system
 #include <Filesystem/Filesystem.h>
