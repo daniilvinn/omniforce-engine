@@ -1,4 +1,5 @@
 #include "../VulkanDeviceBuffer.h"
+#include "../VulkanDeviceCmdBuffer.h"
 
 #include "VulkanMemoryAllocator.h"
 #include <Platform/Vulkan/VulkanGraphicsContext.h>
@@ -96,7 +97,7 @@ namespace Omni {
 			buffer_copy.srcOffset = 0;
 			buffer_copy.dstOffset = 0;
 
-			VkCommandBuffer cmd_buffer = device->AllocateTransientCmdBuffer();
+			VulkanDeviceCmdBuffer cmd_buffer = device->AllocateTransientCmdBuffer();
 
 			vkCmdCopyBuffer(cmd_buffer, staging_buffer.Raw(), m_Buffer, 1, &buffer_copy);
 

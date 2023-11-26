@@ -44,7 +44,7 @@ namespace Omni {
 		void SetMinimized(bool minimized) { m_Minimized = minimized; }
 
 	protected:
-		AppWindow() : m_Allocator(8192) { m_EventBuffer.reserve(512); };
+		AppWindow() : m_Allocator(32768) { m_EventBuffer.reserve(2048); };
 		AppWindow(const AppWindow&) = delete;
 
 		EventCallback m_EventCallback;

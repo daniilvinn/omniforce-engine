@@ -2,6 +2,7 @@
 #include "../VulkanGraphicsContext.h"
 #include "../VulkanDevice.h"
 #include "../VulkanImage.h"
+#include "../VulkanDeviceCmdBuffer.h"
 
 #include <GLFW/glfw3.h>
 
@@ -112,7 +113,7 @@ namespace Omni {
 
 		VK_CHECK_RESULT(vkGetSwapchainImagesKHR(device->Raw(), m_Swapchain, (uint32*)&m_SwachainImageCount, pure_swapchain_images.data()));
 
-		VkCommandBuffer image_layout_transition_command_buffer = device->AllocateTransientCmdBuffer();
+		VulkanDeviceCmdBuffer image_layout_transition_command_buffer = device->AllocateTransientCmdBuffer();
 
 		for (auto& image : m_Images) {
 			vkDestroyImageView(device->Raw(), image->RawView(), nullptr);
@@ -175,7 +176,7 @@ namespace Omni {
 			);
 		}
 
-		device->ExecuteTransientCmdBuffer(image_layout_transition_command_buffer);
+		device->ExecuteTransientCmdBuffer(image_layout_transition_command_buffer, true);
 
 		for (auto& image : m_Images) {
 			image->SetCurrentLayout(ImageLayout::PRESENT_SRC);

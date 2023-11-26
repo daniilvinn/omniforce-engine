@@ -4,9 +4,12 @@
 #include "../Entity.h"
 #include "../Component.h"
 #include <Asset/AssetManager.h>
+#include <Asset/OFRController.h>
 #include <Physics/PhysicsEngine.h>
 #include <Filesystem/Filesystem.h>
 #include <Scripting/ScriptEngine.h>
+#include <Threading/JobSystem.h>
+#include <Core/Utils.h>
 
 #include <nlohmann/json.hpp>
 
@@ -318,15 +321,50 @@ namespace Omni {
 		m_Registry.clear();
 
 		nlohmann::json textures = node["Textures"];
+		JobSystem* js = JobSystem::Get();
+
+		std::shared_mutex renderer_mtx;
 
 		for (auto i : textures.items()) {
-			std::string texture_path = i.value().get<std::string>();
+			js->Execute([&, i]() {
+				std::string texture_path = i.value().get<std::string>();
 
-			AssetHandle id = AssetManager::Get()->LoadAssetSource(FileSystem::GetWorkingDirectory().append(texture_path), std::stoull(i.key()));
+				OFRController ofr_controller(FileSystem::GetWorkingDirectory().append(texture_path));
+				auto data = ofr_controller.ExtractSubresources();
 
-			Shared<Image> texture = AssetManager::Get()->GetAsset<Image>(id);
-			m_Renderer->AcquireTextureIndex(texture, SamplerFilteringMode::NEAREST);
+				AssetFileHeader header = ofr_controller.ExtractHeader();
+				auto metadata = ofr_controller.ExtractMetadata();
+				uint32 num_mip_levels = 0;
+				for (auto& i : metadata) {
+					if (!i.decompressed_size)
+						break;
+					num_mip_levels++;
+				}
+
+				uint32 image_width = (uint32)(header.additional_data & UINT32_MAX);
+				uint32 image_height = (uint32)(header.additional_data >> 32);
+
+				ImageSpecification image_spec = ImageSpecification::Default();
+				image_spec.extent = { image_width, image_height, 1 };
+				image_spec.format = ImageFormat::BC7;
+				image_spec.mip_levels = num_mip_levels;
+				image_spec.path = texture_path;
+				image_spec.pixels = data;
+				image_spec.format = ImageFormat::BC7;
+				image_spec.mip_levels = Utils::ComputeNumMipLevelsBC7(image_width, image_height) + 1;
+
+				Shared<AssetBase> image = Image::Create(image_spec, 0);
+
+				AssetHandle id = AssetManager::Get()->RegisterAsset(image, std::stoull(i.key()));
+
+				Shared<Image> texture = AssetManager::Get()->GetAsset<Image>(id);
+
+				renderer_mtx.lock();
+				m_Renderer->AcquireTextureIndex(texture, SamplerFilteringMode::NEAREST);
+				renderer_mtx.unlock();
+			});
 		}
+		js->Wait();
 
 		nlohmann::json& entities_node = node["GameObjects"];
 		for (auto i : entities_node.items()) {

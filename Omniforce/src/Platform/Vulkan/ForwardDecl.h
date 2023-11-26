@@ -15,5 +15,6 @@ namespace Omni
 	class VulkanShader;
 	class VulkanPipeline;
 	class VulkanDescriptorSet;
+	class VulkanDeviceCmdBuffer;
 
 }

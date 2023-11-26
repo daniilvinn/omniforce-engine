@@ -1,6 +1,7 @@
 #include "../VulkanDevice.h"
 
 #include "../VulkanGraphicsContext.h"
+#include "../VulkanDeviceCmdBuffer.h"
 
 namespace Omni {
 
@@ -207,48 +208,19 @@ namespace Omni {
 		m_Device = VK_NULL_HANDLE;
 	}
 
-	VkCommandBuffer VulkanDevice::AllocateTransientCmdBuffer() const
+	VulkanDeviceCmdBuffer VulkanDevice::AllocateTransientCmdBuffer()
 	{
-		VkCommandBufferAllocateInfo cmd_buffer_allocate_info = {};
-		cmd_buffer_allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		cmd_buffer_allocate_info.commandPool = m_CmdPool;
-		cmd_buffer_allocate_info.commandBufferCount = 1;
-		cmd_buffer_allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-
-		VkCommandBuffer cmd_buffer;
-		vkAllocateCommandBuffers(m_Device, &cmd_buffer_allocate_info, &cmd_buffer);
-
-		VkCommandBufferBeginInfo begin_info = {};
-		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-		vkBeginCommandBuffer(cmd_buffer, &begin_info);
+		VulkanDeviceCmdBuffer cmd_buffer(DeviceCmdBufferLevel::PRIMARY, DeviceCmdBufferType::TRANSIENT, DeviceCmdType::GENERAL);
+		cmd_buffer.Begin();
 
 		return cmd_buffer;
 	}
 
-	void VulkanDevice::ExecuteTransientCmdBuffer(VkCommandBuffer cmd_buffer, bool wait) const
+	void VulkanDevice::ExecuteTransientCmdBuffer(VulkanDeviceCmdBuffer cmd_buffer, bool wait /*= false*/) const
 	{
-		vkEndCommandBuffer(cmd_buffer);
-
-		VkSubmitInfo submit_info = {};
-		submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submit_info.pCommandBuffers = &cmd_buffer;
-		submit_info.commandBufferCount = 1;
-
-		VkFence fence;
-		VkFenceCreateInfo fence_create_info = {};
-		fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-
-		vkCreateFence(m_Device, &fence_create_info, nullptr, &fence);
-
-		vkQueueSubmit(m_GeneralQueue, 1, &submit_info, fence);
-		vkWaitForFences(m_Device, 1, &fence, VK_TRUE, UINT64_MAX);
-
-		vkResetCommandPool(m_Device, m_CmdPool, 0);
-		vkFreeCommandBuffers(m_Device, m_CmdPool, 1, &cmd_buffer);
-
-		vkDestroyFence(m_Device, fence, nullptr);
+		cmd_buffer.End();
+		cmd_buffer.Execute(true); // TODO: make such feature that cmd buffer can be launched asynchronously and will be self-destroyed on work finished
+		cmd_buffer.Destroy();
 	}
 
 	std::vector<const char*> VulkanDevice::GetRequiredExtensions()

@@ -6,7 +6,6 @@
 
 #include <Renderer/Renderer.h>
 
-#define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
 #include <bc7enc.h>
@@ -110,7 +109,7 @@ namespace Omni {
 	{
 		VkImageCreateInfo texture_create_info = {};
 		texture_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-		texture_create_info.format = VK_FORMAT_BC7_UNORM_BLOCK;
+		texture_create_info.format = convert(m_Specification.format);
 		texture_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
 		texture_create_info.imageType = VK_IMAGE_TYPE_2D;
 		texture_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -132,7 +131,7 @@ namespace Omni {
 		VulkanDeviceBuffer staging_buffer(staging_buffer_spec, m_Specification.pixels.data(), m_Specification.pixels.size());
 
 		auto device = VulkanGraphicsContext::Get()->GetDevice();
-		VkCommandBuffer cmd_buffer = device->AllocateTransientCmdBuffer();
+		VulkanDeviceCmdBuffer cmd_buffer = device->AllocateTransientCmdBuffer();
 
 		// So here we need to load and transition layout of all mip-levels of a texture
 		// Firstly we transition all of them into transfer destination layout
@@ -217,7 +216,7 @@ namespace Omni {
 		image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
 		image_view_create_info.image = m_Image;
-		image_view_create_info.format = VK_FORMAT_BC7_UNORM_BLOCK;
+		image_view_create_info.format = convert(m_Specification.format);
 		image_view_create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		image_view_create_info.subresourceRange.baseArrayLayer = 0;
 		image_view_create_info.subresourceRange.layerCount = 1;
@@ -231,7 +230,7 @@ namespace Omni {
 		VK_CHECK_RESULT(vkCreateImageView(device->Raw(), &image_view_create_info, nullptr, &m_ImageView));
 
 		m_Specification.array_layers = 1;
-		m_Specification.mip_levels;
+		m_Specification.mip_levels = texture_create_info.mipLevels;
 		m_Specification.type = ImageType::TYPE_2D;
 		m_Specification.usage = ImageUsage::TEXTURE;
 		m_Specification.format = ImageFormat::RGBA32_UNORM;

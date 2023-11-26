@@ -118,14 +118,14 @@ namespace Omni {
 		// Load dummy white texture
 		{
 			std::vector<RGBA32> image_data(16);
-			std::memset(image_data.data(), 255, 64); // just set every byte to 255, so we have white non-transparent pixels
+			std::memset(image_data.data(), 256, 64); // just set every byte to 255, so we have white non-transparent pixels
 			std::vector<byte> bc7_compressed = AssetCompressor::CompressBC7(image_data, 4, 4);
 
 			ImageSpecification image_spec = ImageSpecification::Default();
 			image_spec.usage = ImageUsage::TEXTURE;
 			image_spec.extent = { 4, 4, 1 };
 			image_spec.pixels = std::move(bc7_compressed);
-			image_spec.format = ImageFormat::RGBA32_UNORM;
+			image_spec.format = ImageFormat::BC7;
 			image_spec.type = ImageType::TYPE_2D;
 			image_spec.mip_levels = 1;
 			image_spec.array_layers = 1;

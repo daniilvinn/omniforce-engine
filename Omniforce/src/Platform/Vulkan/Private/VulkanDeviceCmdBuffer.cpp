@@ -92,8 +92,10 @@ namespace Omni {
 
 		VK_CHECK_RESULT(vkQueueSubmit(queue, 1, &submit_info, fence));
 
-		if (wait) vkWaitForFences(device->Raw(), 1, &fence, VK_TRUE, UINT64_MAX);
-		vkDestroyFence(device->Raw(), fence, nullptr);
+		if (wait) {
+			vkWaitForFences(device->Raw(), 1, &fence, VK_TRUE, UINT64_MAX);
+			vkDestroyFence(device->Raw(), fence, nullptr);
+		}
 	}
 
 }

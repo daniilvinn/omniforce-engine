@@ -42,7 +42,11 @@ namespace Omni {
 		RGB32_HDR,
 		RGBA64_HDR,
 		RGBA128_HDR,
-		D32
+		D32,
+		BC1,
+		BC5,
+		BC6h,
+		BC7
 	};
 
 	enum class OMNIFORCE_API ImageType : uint8 {
@@ -97,7 +101,7 @@ namespace Omni {
 	protected:
 		Image(AssetHandle handle) {
 			Handle = handle;
-			Type = AssetType::IMAGE;
+			Type = AssetType::OMNI_IMAGE;
 		};
 	};
 

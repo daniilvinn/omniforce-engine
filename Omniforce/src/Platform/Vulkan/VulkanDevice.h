@@ -2,6 +2,8 @@
 
 #include "VulkanCommon.h"
 
+#include <shared_mutex>
+
 namespace Omni {
 
 	struct QueueFamilyIndex 
@@ -42,8 +44,8 @@ namespace Omni {
 		VkQueue GetGeneralQueue() const { return m_GeneralQueue; }
 		VkQueue GetAsyncComputeQueue() const { return m_GeneralQueue; }
 
-		VkCommandBuffer AllocateTransientCmdBuffer() const;
-		void ExecuteTransientCmdBuffer(VkCommandBuffer cmd_buffer, bool wait = false) const;
+		VulkanDeviceCmdBuffer AllocateTransientCmdBuffer();
+		void ExecuteTransientCmdBuffer(VulkanDeviceCmdBuffer cmd_buffer, bool wait = false) const;
 
 	private:
 		std::vector<const char*> GetRequiredExtensions();
@@ -55,6 +57,7 @@ namespace Omni {
 		VkQueue m_AsyncComputeQueue;
 
 		VkCommandPool m_CmdPool;
+		std::shared_mutex m_Mutex;
 	};
 
 }

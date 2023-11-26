@@ -192,6 +192,10 @@ namespace Omni {
 	}
 
 	namespace UI {
+		void UnregisterImage(Shared<Image> image) {
+			imgui_image_descriptor_sets.erase(image->Handle);
+		}
+
 		void RenderImage(Shared<Image> image, Shared<ImageSampler> sampler, ImVec2 size, uint32 image_layer, bool flip) {
 			Shared<VulkanImage> vk_image = ShareAs<VulkanImage>(image);
 			Shared<VulkanImageSampler> vk_sampler = ShareAs<VulkanImageSampler>(sampler);
@@ -236,9 +240,56 @@ namespace Omni {
 				}
 				cmd_buffer->Destroy();
 			}
-			if(flip) ImGui::Image(imgui_image_descriptor_sets[image->Handle], size, { 0, 0 }, { 1, 1 });
-			else ImGui::Image(imgui_image_descriptor_sets[image->Handle], size, { 0, 1 }, { 1, 0 });
+			ImGui::Image(imgui_image_descriptor_sets[image->Handle], size, { 0, (float32)!flip }, { 1, (float32)flip });
 		};
+
+		bool RenderImageButton(Shared<Image> image, Shared<ImageSampler> sampler, ImVec2 size, uint32 image_layer, bool flip) {
+			Shared<VulkanImage> vk_image = ShareAs<VulkanImage>(image);
+			Shared<VulkanImageSampler> vk_sampler = ShareAs<VulkanImageSampler>(sampler);
+			if (imgui_image_descriptor_sets.find(image->Handle) == imgui_image_descriptor_sets.end()) {
+
+				ImageLayout old_layout = vk_image->GetCurrentLayout();
+				bool needs_layout_transition = vk_image->GetCurrentLayout() != ImageLayout::SHADER_READ_ONLY;
+				Shared<DeviceCmdBuffer> cmd_buffer = std::make_shared<VulkanDeviceCmdBuffer>(DeviceCmdBufferLevel::PRIMARY, DeviceCmdBufferType::TRANSIENT, DeviceCmdType::GENERAL);
+
+				if (needs_layout_transition) {
+					cmd_buffer->Begin();
+					vk_image->SetLayout(cmd_buffer,
+						ImageLayout::SHADER_READ_ONLY,
+						PipelineStage::TOP_OF_PIPE,
+						PipelineStage::BOTTOM_OF_PIPE,
+						PipelineAccess::NONE,
+						PipelineAccess::NONE
+					);
+					cmd_buffer->End();
+					cmd_buffer->Execute(true);
+				}
+
+				VkDescriptorSet imgui_image_id = ImGui_ImplVulkan_AddTexture(
+					vk_sampler->Raw(),
+					vk_image->RawView(),
+					(VkImageLayout)vk_image->GetCurrentLayout()
+				);
+				imgui_image_descriptor_sets.emplace(image->Handle, imgui_image_id);
+
+				if (needs_layout_transition) {
+					cmd_buffer->Reset();
+					cmd_buffer->Begin();
+					vk_image->SetLayout(cmd_buffer,
+						old_layout,
+						PipelineStage::TOP_OF_PIPE,
+						PipelineStage::BOTTOM_OF_PIPE,
+						PipelineAccess::NONE,
+						PipelineAccess::NONE
+					);
+					cmd_buffer->End();
+					cmd_buffer->Execute(true);
+				}
+				cmd_buffer->Destroy();
+			}
+			return ImGui::ImageButton(imgui_image_descriptor_sets[image->Handle], size, { 0, (float32)!flip }, { 1, (float32)flip });
+		}
+
 	}
 
 }	

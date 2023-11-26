@@ -22,6 +22,10 @@ namespace Omni {
 		case ImageFormat::RGBA64_HDR:					return VK_FORMAT_R16G16B16A16_SFLOAT;
 		case ImageFormat::RGBA128_HDR:					return VK_FORMAT_R32G32B32A32_SFLOAT;
 		case ImageFormat::D32:							return VK_FORMAT_D32_SFLOAT;
+		case ImageFormat::BC7:							return VK_FORMAT_BC7_UNORM_BLOCK;
+		case ImageFormat::BC1:							return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+		case ImageFormat::BC5:							return VK_FORMAT_BC5_UNORM_BLOCK;
+		case ImageFormat::BC6h:							return VK_FORMAT_BC6H_UFLOAT_BLOCK;
 		default:
 			std::unreachable();
 			break;
