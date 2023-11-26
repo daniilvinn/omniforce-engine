@@ -11,7 +11,7 @@ namespace Omni {
 	RendererAPI* Renderer::s_RendererAPI;
 
 	struct RendererInternalData {
-		std::list<Renderer::RenderFunction> cmd_generation_function_list;
+		std::vector<Renderer::RenderFunction> cmd_generation_function_list;
 		Shared<ImageSampler> m_LinearSampler;
 		Shared<ImageSampler> m_NearestSampler;
 	} s_InternalData;
