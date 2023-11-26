@@ -8,14 +8,16 @@ namespace Omni {
 		MESH_SRC,
 		MATERIAL,
 		AUDIO_SRC,
-		IMAGE, // either texture or even render target
+		IMAGE_SRC,
+		OMNI_IMAGE,
+		OMNI_MESH,
 		UNKNOWN
 	};
 
 	inline static const robin_hood::unordered_map<std::string, AssetType> g_AssetTypesExtensionMap = {
-		{".png", AssetType::IMAGE},
-		{".jpg", AssetType::IMAGE},
-		{".jpeg", AssetType::IMAGE},
+		{".png", AssetType::IMAGE_SRC},
+		{".jpg", AssetType::IMAGE_SRC},
+		{".jpeg", AssetType::IMAGE_SRC},
 
 		{".fbx", AssetType::MESH_SRC},
 		{".gltf", AssetType::MESH_SRC},
@@ -23,7 +25,8 @@ namespace Omni {
 
 		{".mp3", AssetType::AUDIO_SRC},
 		{".wav", AssetType::AUDIO_SRC},
-		
+		{".oft", AssetType::OMNI_IMAGE},
+		{".ofm", AssetType::OMNI_MESH},
 	};
 
 	inline AssetType FileExtensionToAssetType(std::string_view extension) {
