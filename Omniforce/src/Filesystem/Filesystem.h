@@ -26,6 +26,10 @@ namespace Omni {
 		static void SetWorkingDirectory(std::filesystem::path path);
 		static std::filesystem::path GetWorkingDirectory();
 
+		static std::filesystem::path GetTextureDirectory();
+		static std::filesystem::path GetAudioDirectory();
+		static std::filesystem::path GetScriptDirectory();
+
 	};
 
 }

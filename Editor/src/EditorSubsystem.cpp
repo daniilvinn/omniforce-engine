@@ -292,7 +292,7 @@ public:
 		Shared<SceneRenderer> renderer = m_EditorScene->GetRenderer();
 		auto texture_registry = *asset_manager->GetAssetRegistry();
 		for (auto& [id, asset] : texture_registry) {
-			if(asset->Type != AssetType::IMAGE)
+			if(asset->Type != AssetType::OMNI_IMAGE)
 				continue;
 			renderer->ReleaseTextureIndex(ShareAs<Image>(asset));
 			asset->Destroy();

@@ -39,6 +39,10 @@
 #include <Asset/AssetType.h>
 #include <Asset/Material.h>
 #include <Asset/Mesh.h>
+#include <Asset/AssetImporter.h>
+#include <Asset/AssetCompressor.h>
+#include <Asset/AssetFile.h>
+#include <Asset/OFRController.h>
 
 // File system
 #include <Filesystem/Filesystem.h>

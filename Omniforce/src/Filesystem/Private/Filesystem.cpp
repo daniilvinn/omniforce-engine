@@ -71,4 +71,19 @@ namespace Omni {
 		return s_FileSystemData.working_directory;
 	}
 
+	std::filesystem::path FileSystem::GetTextureDirectory()
+	{
+		return GetWorkingDirectory() / "assets" / "textures";
+	}
+
+	std::filesystem::path FileSystem::GetAudioDirectory()
+	{
+		return {};
+	}
+
+	std::filesystem::path FileSystem::GetScriptDirectory()
+	{
+		return {};
+	}
+
 }

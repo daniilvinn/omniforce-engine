@@ -4,8 +4,9 @@
 #include <Scene/SceneRenderer.h>
 #include <Asset/AssetManager.h>
 #include <Core/Utils.h>
-
 #include <Filesystem/Filesystem.h>
+
+#include "../../EditorUtils.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
@@ -176,13 +177,8 @@ namespace Omni {
 									if (filepath != NULL) {
 										std::filesystem::path full_texture_path(filepath);
 										std::filesystem::path texture_path = FileSystem::GetWorkingDirectory().append("assets/textures").append(full_texture_path.filename().string());
-
-										std::filesystem::copy_file(filepath,
-											texture_path,
-											std::filesystem::copy_options::overwrite_existing
-										);
 										
-										sc.texture = AssetManager::Get()->LoadAssetSource(texture_path);
+										sc.texture = EditorUtils::ImportAndConvertImage(full_texture_path, texture_path);
 										m_Context->GetRenderer()->AcquireTextureIndex(AssetManager::Get()->GetAsset<Image>(sc.texture), SamplerFilteringMode::NEAREST);
 										uvec3 texture_resolution = AssetManager::Get()->GetAsset<Image>(sc.texture)->GetSpecification().extent;
 										sc.aspect_ratio = { (float32)texture_resolution.x / (float32)texture_resolution.y };
