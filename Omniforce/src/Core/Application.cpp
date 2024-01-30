@@ -88,7 +88,7 @@ namespace Omni
 		m_ImGuiRenderer->Destroy();
 		AssetManager::Shutdown();
 		Renderer::Shutdown();
-		
+
 		OMNIFORCE_CORE_INFO("Engine shutdown success");
 	}
 

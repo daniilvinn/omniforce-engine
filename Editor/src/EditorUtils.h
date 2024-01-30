@@ -1,6 +1,7 @@
 #pragma once
 
-#include <Asset/AssetImporter.h>
+#include <Asset/Importers/ImageImporter.h>
+#include <Asset/Importers/ModelImporter.h>
 #include <Asset/AssetManager.h>
 #include <Asset/AssetBase.h>
 #include <Asset/AssetCompressor.h>
@@ -13,10 +14,10 @@ namespace EditorUtils {
 
 	using namespace Omni;
 
-	inline AssetHandle ImportAndConvertImage(std::filesystem::path path, std::filesystem::path out) {
-		AssetImporter importer;
-		std::vector<byte> data = importer.ImportAssetSource(path);
-		ImageSourceAdditionalData* additional_data = (ImageSourceAdditionalData*)importer.GetAdditionalData(path);
+	inline AssetHandle ConvertImage(std::filesystem::path path, std::filesystem::path out, bool import = true) {
+		ImageSourceImporter importer;
+		std::vector<byte> data = importer.ImportFromSource(path);
+		ImageSourceMetadata* additional_data = importer.GetMetadata(path);
 		std::vector<RGBA32> mip_maps = AssetCompressor::GenerateMipMaps({ data.begin(), data.end() }, additional_data->width, additional_data->height);
 
 		data = AssetCompressor::CompressBC7(mip_maps, additional_data->width, additional_data->height);
@@ -53,7 +54,10 @@ namespace EditorUtils {
 			delete additional_data;
 		});
 
-		return AssetManager::Get()->RegisterAsset(image);
+		if (!import)
+			image->Destroy();
+
+		return import ? AssetManager::Get()->RegisterAsset(image) : AssetHandle(0);
 	}
 
 	inline AssetHandle ImportAndConvertMesh() {

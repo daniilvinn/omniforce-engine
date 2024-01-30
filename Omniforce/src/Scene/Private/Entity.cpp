@@ -1,6 +1,8 @@
 #include "../Entity.h"
 #include "../Component.h"
 
+#include <stdfloat>
+
 #include <array>
 
 #include <glm/gtc/quaternion.hpp>

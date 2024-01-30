@@ -3,6 +3,8 @@
 #include "Core/UUID.h"
 #include <cstdint>
 #include <glm/glm.hpp>
+#include <filesystem>
+#include <Memory/Pointers.hpp>
 
 namespace Omni {
 
@@ -24,6 +26,9 @@ namespace Omni {
 	using Flag = uint64;
 	using AssetHandle = UUID;
 
+	namespace rh = robin_hood;
+	namespace stdfs = std::filesystem;
+
 	template<typename T = float32>
 	struct vec2 {
 		union {
@@ -44,6 +49,10 @@ namespace Omni {
 		vec2 operator-(const vec2& other) { return { x - other.x, y - other.y }; }
 		vec2& operator+=(const vec2& other) { this = this + other; return *this; }
 		vec2& operator-=(const vec2& other) { this = this - other; return *this; }
+
+		operator glm::vec<2, T, glm::defaultp>() {
+			return glm::vec<2, T, glm::defaultp>(x, y);
+		}
 	};
 
 	template<typename T = float32>
@@ -64,6 +73,10 @@ namespace Omni {
 		vec3 operator-(const vec3& other) { return { x - other.x, y - other.y, z - other.z }; }
 		vec3& operator+=(const vec3& other) { this = this + other; return *this; }
 		vec3& operator-=(const vec3& other) { this = this - other; return *this; }
+
+		operator glm::vec<3, T, glm::defaultp>() {
+			return glm::vec<3, T, glm::defaultp>(x, y, z);
+		}
 	};
 
 	template<typename T = float32>
@@ -89,6 +102,9 @@ namespace Omni {
 		vec4& operator+=(const vec4& other) { this = this + other; return *this; }
 		vec4& operator-=(const vec4& other) { this = this - other; return *this; }
 
+		operator glm::vec<4, T, glm::defaultp>() {
+			return glm::vec<4, T, glm::defaultp>(x, y, z, w);
+		}
 	};
 
 	using ivec2 = vec2<int32>;
@@ -110,5 +126,14 @@ namespace Omni {
 
 	using RGB32 = glm::u8vec3;
 	using RGBA32 = glm::u8vec4;
+
+	struct Sphere {
+		glm::vec3 center;
+		float32 radius;
+	};
+
+	struct AABB {
+		glm::vec3 min, max;
+	};
 
 }

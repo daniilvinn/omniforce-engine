@@ -69,7 +69,7 @@ namespace Omni {
 					RGBA32* current_block = src_mip_pointer + (y * current_image_width + x);
 
 					// Create storage for pixels we're filtering
-					glm::uvec4 pixels[4];
+					glm::uvec4 pixels[4] = {};
 
 					// Fill the data
 					pixels[0] = *(current_block);

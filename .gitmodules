@@ -13,3 +13,9 @@
 [submodule "Omniforce/vendor/nv-libdeflate"]
 	path = Omniforce/vendor/nv-libdeflate
 	url = https://github.com/daniilvinn/libdeflate.git
+[submodule "Omniforce/vendor/meshoptimizer"]
+	path = Omniforce/vendor/meshoptimizer
+	url = https://github.com/zeux/meshoptimizer.git
+[submodule "Omniforce/vendor/fastgltf"]
+	path = Omniforce/vendor/fastgltf
+	url = https://github.com/spnda/fastgltf.git

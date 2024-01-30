@@ -1,12 +1,12 @@
 #include "../Material.h"
 
+#include <Memory/Pointers.hpp>
+
 namespace Omni {
 
-	Material::Material(std::string name, AssetHandle id /*= UUID()*/)
+	Shared<Material> Material::Create(std::string name, AssetHandle id /*= AssetHandle()*/)
 	{
-		m_Name = std::move(name);
-		Type = AssetType::MATERIAL;
-		Handle = id;
+		return std::make_shared<Material>(name, id);
 	}
 
 	void Material::Destroy()

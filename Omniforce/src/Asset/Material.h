@@ -4,27 +4,42 @@
 #include "Foundation/Types.h"
 #include "Asset/AssetBase.h"
 
-#include <robin_hood.h>
+#include <variant>
+#include <map>
 
 namespace Omni {
 
+	using MaterialProperty = std::variant<AssetHandle, float32, uint32, glm::vec4>;
+
 	class OMNIFORCE_API Material : public AssetBase {
 	public:
-		Material(std::string name, AssetHandle id = AssetHandle());
-		~Material();
+		Material(std::string name, AssetHandle id) {
+			m_Name = std::move(name);
+			Type = AssetType::MATERIAL;
+			Handle = id;
+		}
+
+		~Material() {}
+		static Shared<Material> Create(std::string name, AssetHandle id = AssetHandle());
 
 		void Destroy() override;
 
 		const auto& GetName() const { return m_Name; }
-		const auto& GetTable() const { return m_Images; }
+		const auto& GetTable() const { return m_Properties; }
 		
-		void AddResource(std::string_view key, AssetHandle resource) { m_Images.emplace(key, resource); }
-		void RemoveResource(std::string_view key) { m_Images.erase(key.data()); }
+		template<typename T>
+		void AddProperty(std::string_view key, T property) { m_Properties.emplace(key, property); }
+		void RemoveResource(std::string_view key) { m_Properties.erase(key.data()); }
+
+		void AddShaderMacro(const std::string& macro, const std::string& value = "") {
+			m_Macros.push_back({ macro, value });
+		}
 
 	private:
 		std::string m_Name;
-		robin_hood::unordered_map<std::string, AssetHandle> m_Images;
-		UUID m_Id;
+		std::map<std::string, MaterialProperty> m_Properties;
+		std::vector<std::pair<std::string, std::string>> m_Macros;
+
 
 	};
 

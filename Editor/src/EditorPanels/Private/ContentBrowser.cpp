@@ -1,7 +1,7 @@
 ﻿#include "../ContentBrowser.h"
 
 #include <Asset/AssetManager.h>
-#include <Asset/AssetImporter.h>
+#include <Asset/Importers/ImageImporter.h>
 #include <Asset/AssetType.h>
 #include <Filesystem/Filesystem.h>
 
@@ -19,7 +19,7 @@ namespace Omni {
 	const char* AssetTypeToIcon(AssetType type){
 		switch (type)
 		{
-		case AssetType::MESH_SRC:		return "3d_modeling.png";
+		case AssetType::MESH_SRC:		return "3d-modeling.png";
 		case AssetType::MATERIAL:		return "document.png";
 		case AssetType::AUDIO_SRC:		return "document.png";
 		case AssetType::IMAGE_SRC:		return "image-gallery.png";
@@ -39,9 +39,9 @@ namespace Omni {
 		std::filesystem::directory_iterator i("Resources/icons");
 
 		for (auto& entry : i) {
-			AssetImporter importer;
-			std::vector<byte> data = importer.ImportAssetSource(entry.path());
-			ImageSourceAdditionalData* additional_data = (ImageSourceAdditionalData*)importer.GetAdditionalData(entry.path());
+			ImageSourceImporter importer;
+			std::vector<byte> data = importer.ImportFromSource(entry.path());
+			ImageSourceMetadata* additional_data = importer.GetMetadata(entry.path());
 
 			ImageSpecification spec = ImageSpecification::Default();
 			spec.extent = { (uint32)additional_data->width, (uint32)additional_data->height, 1 };
@@ -53,8 +53,15 @@ namespace Omni {
 			Shared<Image> image = Image::Create(spec);
 
 			m_IconMap.emplace(entry.path().filename().string(), image);
-
+			
 			delete additional_data;
+		}
+	}
+
+	ContentBrowser::~ContentBrowser()
+	{
+		for (auto& icon : m_IconMap) {
+			icon.second->Destroy();
 		}
 	}
 
@@ -94,6 +101,7 @@ namespace Omni {
 					text.clear();
 				}
 
+				ImGui::SameLine();
 				if (ImGui::Button("Close")) {
 					m_CreateDirectoryWindowActive = false;
 				}
@@ -157,11 +165,24 @@ namespace Omni {
 				else {
 					UI::RenderImage(m_IconMap[AssetTypeToIcon(FileExtensionToAssetType(entry.extension().string()))], m_Context->GetRenderer()->GetSamplerLinear(), { thumbnail_size, thumbnail_size });
 				}
+
+				ImGuiDragDropFlags drag_and_drop_flags = ImGuiDragDropFlags_None;
+				drag_and_drop_flags |= ImGuiDragDropFlags_SourceAllowNullID;
+
+				if (ImGui::BeginDragDropSource(drag_and_drop_flags))
+				{
+					if (!(drag_and_drop_flags & ImGuiDragDropFlags_SourceNoPreviewTooltip))
+						ImGui::Text(entry.string().c_str());
+					ImGui::SetDragDropPayload("content_browser_item", entry.string().c_str(), entry.string().size());
+					ImGui::EndDragDropSource();
+				}
+
 				ImGui::PopID();
 
 				if (ImGui::IsItemHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
 					ImGui::OpenPopup(fmt::format("##cb_item_actions_{}", entry.string()).c_str());
 				}
+
 				else if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && std::filesystem::is_directory(entry)) {
 					m_CurrentDirectory /= entry.filename();
 					filesystem_refetch_requested = true;
@@ -171,6 +192,11 @@ namespace Omni {
 					if (ImGui::MenuItem("Delete")) {
 						std::filesystem::remove_all(entry);
 						filesystem_refetch_requested = true;
+					}
+					if ((uint8)FileExtensionToAssetType(entry.extension().string()) < 4) {
+						if (ImGui::MenuItem("Import")) {
+							m_ConvertAssetWindowActive = true;
+						}
 					}
 					ImGui::EndPopup();
 				}

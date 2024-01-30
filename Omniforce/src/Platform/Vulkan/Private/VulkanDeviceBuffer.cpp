@@ -79,6 +79,21 @@ namespace Omni {
 		if(m_Data) delete m_Data;
 	}
 
+	uint64 VulkanDeviceBuffer::GetDeviceAddress()
+	{
+		if (m_Specification.buffer_usage != DeviceBufferUsage::BUFFER_DEVICE_ADDRESS) {
+			OMNIFORCE_CORE_ERROR("[Renderer]: failed to capture device buffer address. \
+				Buffer was create without \"BUFFER_DEVICE_ADDRESS\" usage, returning invalid address");
+			return 0;
+		}
+
+		VkBufferDeviceAddressInfo bda_info = {};
+		bda_info.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+		bda_info.buffer = m_Buffer;
+
+		return vkGetBufferDeviceAddress(VulkanGraphicsContext::Get()->GetDevice()->Raw(), &bda_info);
+	}
+
 	void VulkanDeviceBuffer::UploadData(uint64 offset, void* data, uint64 data_size)
 	{
 		if (m_Specification.memory_usage == DeviceBufferMemoryUsage::NO_HOST_ACCESS) 

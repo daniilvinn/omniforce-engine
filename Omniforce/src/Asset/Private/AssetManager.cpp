@@ -67,15 +67,9 @@ namespace Omni {
 
 	AssetHandle AssetManager::ImportMeshSource(std::filesystem::path path, AssetHandle handle)
 	{
-		if (m_UUIDs.contains(path.string())) 
-			return m_UUIDs.at(path.string());
+		OMNIFORCE_ASSERT_TAGGED(false, "Not implemented");
 
-		Shared<Mesh> mesh = Mesh::Create(path, handle);
-
-		m_AssetRegistry.emplace(mesh->Handle, mesh);
-		m_UUIDs.emplace(path.string(), mesh->Handle);
-
-		return mesh->Handle;
+		return 0;
 	}
 
 	AssetHandle AssetManager::ImportImageSource(std::filesystem::path path, AssetHandle handle)

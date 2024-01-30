@@ -147,8 +147,15 @@ namespace Omni {
 		VkDeviceQueueCreateInfo queue_create_infos[2] = { general_queue_create_info, async_compute_queue_create_info };
 		std::vector<const char*> enabled_extensions = GetRequiredExtensions();
 
+		VkPhysicalDeviceMeshShaderFeaturesEXT mesh_shading_enable_struct = {};
+		mesh_shading_enable_struct.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
+		mesh_shading_enable_struct.meshShader = true;
+		mesh_shading_enable_struct.taskShader = true;
+		mesh_shading_enable_struct.meshShaderQueries = true;
+
 		VkPhysicalDeviceIndexTypeUint8FeaturesEXT uint8_index_feature_enable_struct = {};
 		uint8_index_feature_enable_struct.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT;
+		uint8_index_feature_enable_struct.pNext = &mesh_shading_enable_struct;
 		uint8_index_feature_enable_struct.indexTypeUint8 = VK_TRUE;
 
 		VkPhysicalDeviceVulkan11Features vulkan_1_1_features = {};
@@ -163,6 +170,9 @@ namespace Omni {
 		vulkan_1_2_features.descriptorBindingPartiallyBound = true;
 		vulkan_1_2_features.runtimeDescriptorArray = true;
 		vulkan_1_2_features.scalarBlockLayout = true;
+		vulkan_1_2_features.bufferDeviceAddress = true;
+		vulkan_1_2_features.bufferDeviceAddressCaptureReplay = OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG;
+		vulkan_1_2_features.drawIndirectCount = true;
 
 		VkPhysicalDeviceVulkan13Features vulkan_1_3_features = {};
 		vulkan_1_3_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;

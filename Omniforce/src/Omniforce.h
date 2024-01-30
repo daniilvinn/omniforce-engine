@@ -26,6 +26,7 @@
 #include <Renderer/Pipeline.h>
 #include <Renderer/Image.h>
 #include <Renderer/DescriptorSet.h>
+#include <Renderer/Mesh.h>
 
 // Scene
 #include <Scene/Scene.h>
@@ -38,11 +39,12 @@
 #include <Asset/AssetBase.h>
 #include <Asset/AssetType.h>
 #include <Asset/Material.h>
-#include <Asset/Mesh.h>
-#include <Asset/AssetImporter.h>
+#include <Asset/Importers/ImageImporter.h>
+#include <Asset/Importers/ModelImporter.h>
 #include <Asset/AssetCompressor.h>
 #include <Asset/AssetFile.h>
 #include <Asset/OFRController.h>
+#include <Asset/Model.h>
 
 // File system
 #include <Filesystem/Filesystem.h>

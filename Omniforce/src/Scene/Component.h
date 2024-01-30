@@ -129,9 +129,7 @@ namespace Omni {
 
 	struct OMNIFORCE_API MeshComponent {
 		AssetHandle mesh_handle;
-		std::vector<AssetHandle> material_handle;
-		std::string filename = "";
+		AssetHandle material_handle;
 	};
-
 
 }

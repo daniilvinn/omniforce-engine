@@ -31,12 +31,15 @@ namespace Omni {
 
 		void Destroy() override;
 		
+		DeviceBufferSpecification GetSpecification() const override { return m_Specification; }
+		uint64 GetDeviceAddress() override;
+		void UploadData(uint64 offset, void* data, uint64 data_size) override;
+
 		VkBuffer Raw() const { return m_Buffer; }
 		VmaAllocation RawAllocation() const { return m_Allocation; }
 		void* GetAdditionalData() const { return m_Data; }
 
-		void UploadData(uint64 offset, void* data, uint64 data_size) override;
-		DeviceBufferSpecification GetSpecification() const override { return m_Specification; }
+
 
 	private:
 		VkBuffer m_Buffer;

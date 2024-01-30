@@ -15,7 +15,7 @@ int main()
 #else OMNIFORCE_RELEASE
 INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     PSTR lpCmdLine, INT nCmdShow)
-#endif // defined CURSED_DEBUG
+#endif
 {
 	g_EngineRunning = true;
 

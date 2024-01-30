@@ -2,7 +2,6 @@
 
 #include "Foundation/Macros.h"
 #include "Foundation/Types.h"
-#include "Mesh.h"
 #include <Renderer/Image.h>
 #include <Memory/Pointers.hpp>
 

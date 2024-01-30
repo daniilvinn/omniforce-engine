@@ -16,6 +16,11 @@ namespace Omni {
 		bool vsync;
 	};
 
+	struct RendererCapabilities {
+		bool mesh_shading;
+		bool ray_tracing;
+	};
+
 	class OMNIFORCE_API Renderer {
 	public:
 

@@ -11,7 +11,7 @@ namespace Omni {
 	class ContentBrowser : public EditorPanel {
 	public:
 		ContentBrowser(Scene* ctx);
-		~ContentBrowser() {};
+		~ContentBrowser();
 
 		void SetContext(Scene* ctx) override;
 
@@ -29,6 +29,7 @@ namespace Omni {
 		std::vector<std::filesystem::path> m_CurrentDirectoryEntries;
 
 		bool m_CreateDirectoryWindowActive = false;
+		bool m_ConvertAssetWindowActive = false;
 
 	};
 

@@ -65,6 +65,7 @@ namespace Omni {
 				buffer_spec.size = per_frame_size * Renderer::GetConfig().frames_in_flight;
 				buffer_spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
 				buffer_spec.buffer_usage = DeviceBufferUsage::STORAGE_BUFFER;
+				buffer_spec.heap = DeviceBufferMemoryHeap::DEVICE;
 
 				m_SpriteDataBuffer = DeviceBuffer::Create(buffer_spec);
 

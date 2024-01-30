@@ -11,6 +11,7 @@ namespace Omni {
 		IMAGE_SRC,
 		OMNI_IMAGE,
 		OMNI_MESH,
+		OMNI_MODEL,
 		UNKNOWN
 	};
 
@@ -21,12 +22,12 @@ namespace Omni {
 
 		{".fbx", AssetType::MESH_SRC},
 		{".gltf", AssetType::MESH_SRC},
+		{".glb", AssetType::MESH_SRC},
 		{".obj", AssetType::MESH_SRC},
 
 		{".mp3", AssetType::AUDIO_SRC},
 		{".wav", AssetType::AUDIO_SRC},
-		{".oft", AssetType::OMNI_IMAGE},
-		{".ofm", AssetType::OMNI_MESH},
+
 	};
 
 	inline AssetType FileExtensionToAssetType(std::string_view extension) {

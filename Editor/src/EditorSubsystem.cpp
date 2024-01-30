@@ -150,6 +150,30 @@ public:
 			UI::RenderImage(m_EditorScene->GetFinalImage(), SceneRenderer::GetSamplerLinear(), viewport_frame_size, 0, true);
 			m_EditorCamera->SetAspectRatio(viewport_frame_size.x / viewport_frame_size.y);
 			
+			if (ImGui::BeginDragDropTarget()) {
+				ImGuiDragDropFlags target_flags = 0;
+				const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("content_browser_item", target_flags);
+
+				if (payload) {
+					std::filesystem::path filename(std::string((char*)payload->Data, payload->DataSize));
+					if (filename.extension() == ".gltf" || filename.extension() == ".glb") {
+						ModelImporter importer;
+						Shared<Model> model = AssetManager::Get()->GetAsset<Model>(importer.Import(filename));
+
+						Entity root_entity = m_CurrentScene->CreateEntity();
+
+						AssetManager* asset_manager = AssetManager::Get();
+						auto& children_map = model->GetMap();
+						for (auto& entry : children_map) {
+							Entity child = m_CurrentScene->CreateChildEntity(root_entity);
+							child.GetComponent<TagComponent>().tag = asset_manager->GetAsset<Material>(entry.second)->GetName();
+						}
+					}
+				}
+				
+				ImGui::EndDragDropTarget();
+			}
+
 			if (m_InRuntime) {
 				if(m_RuntimeScene->GetCamera() != nullptr)
 					m_RuntimeScene->GetCamera()->SetAspectRatio(viewport_frame_size.x / viewport_frame_size.y);

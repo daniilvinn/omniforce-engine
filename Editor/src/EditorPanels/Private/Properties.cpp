@@ -5,6 +5,7 @@
 #include <Asset/AssetManager.h>
 #include <Core/Utils.h>
 #include <Filesystem/Filesystem.h>
+#include <Renderer/UI/ImGuiRenderer.h>
 
 #include "../../EditorUtils.h"
 
@@ -161,29 +162,15 @@ namespace Omni {
 								ImGui::Text("Material");
 
 								ImGui::TableNextColumn();
-								ImGui::SameLine();
-								if (ImGui::Button("Browse", { -FLT_MIN, 0.0f })) {
-									const char* filters[] = { "*.png", "*.jpg", "*.jpeg" };
+								if (sc.texture) {
+									AssetManager* am = AssetManager::Get();
+									Shared<Image> img = am->GetAsset<Image>(sc.texture);
 
-									char* filepath = tinyfd_openFileDialog(
-										"Open file",
-										std::filesystem::absolute("assets/textures/").string().c_str(),
-										3,
-										filters,
-										NULL,
-										false
-									);
-
-									if (filepath != NULL) {
-										std::filesystem::path full_texture_path(filepath);
-										std::filesystem::path texture_path = FileSystem::GetWorkingDirectory().append("assets/textures").append(full_texture_path.filename().string());
-										
-										sc.texture = EditorUtils::ImportAndConvertImage(full_texture_path, texture_path);
-										m_Context->GetRenderer()->AcquireTextureIndex(AssetManager::Get()->GetAsset<Image>(sc.texture), SamplerFilteringMode::NEAREST);
-										uvec3 texture_resolution = AssetManager::Get()->GetAsset<Image>(sc.texture)->GetSpecification().extent;
-										sc.aspect_ratio = { (float32)texture_resolution.x / (float32)texture_resolution.y };
-									}
-								};
+									UI::RenderImage(img, m_Context->GetRenderer()->GetSamplerLinear(), { 50.0f, 50.0f / sc.aspect_ratio});
+								}
+								else {
+									ImGui::Text("Drag OFR texture here");
+								}
 
 								ImGui::EndTable();
 							}
@@ -191,6 +178,7 @@ namespace Omni {
 						}
 					}
 				}
+#if 0
 				if (m_Entity.HasComponent<MeshComponent>()) {
 					if (ImGui::Button(" - ##mesh_component")) {
 						m_Entity.RemoveComponent<MeshComponent>();
@@ -244,6 +232,7 @@ namespace Omni {
 						}
 					}
 				}
+#endif
 				if (m_Entity.HasComponent<CameraComponent>()) {
 					if (ImGui::Button(" - ##camera_component")) {
 						m_Entity.RemoveComponent<CameraComponent>();

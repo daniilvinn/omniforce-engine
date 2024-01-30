@@ -10,12 +10,12 @@ namespace Omni {
 
 	enum class OMNIFORCE_API DeviceBufferFlags : BitMask
 	{
-		VERTEX_RATE = BIT(0),
-		INSTANCE_RATE = BIT(1),
-		INDEX_TYPE_UINT8 = BIT(2),
-		INDEX_TYPE_UINT16 = BIT(3),
-		INDEX_TYPE_UINT32 = BIT(4),
-		CREATE_STAGING_BUFFER = BIT(5)
+		VERTEX_RATE				= BIT(0),
+		INSTANCE_RATE			= BIT(1),
+		INDEX_TYPE_UINT8		= BIT(2),
+		INDEX_TYPE_UINT16		= BIT(3),
+		INDEX_TYPE_UINT32		= BIT(4),
+		CREATE_STAGING_BUFFER	= BIT(5),
 	};
 
 	enum class OMNIFORCE_API DeviceBufferUsage : uint32 {
@@ -23,7 +23,8 @@ namespace Omni {
 		INDEX_BUFFER,
 		UNIFORM_BUFFER,
 		STORAGE_BUFFER,
-		STAGING_BUFFER
+		STAGING_BUFFER,
+		BUFFER_DEVICE_ADDRESS
 	};
 
 	enum class OMNIFORCE_API DeviceBufferMemoryUsage {
@@ -57,6 +58,7 @@ namespace Omni {
 		virtual void Destroy() = 0;
 
 		virtual DeviceBufferSpecification GetSpecification() const = 0;
+		virtual uint64 GetDeviceAddress() = 0;
 
 		virtual void UploadData(uint64 offset, void* data, uint64 data_size) = 0;
 	};

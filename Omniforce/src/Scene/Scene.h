@@ -42,17 +42,17 @@ namespace Omni {
 		fvec3 TraverseSceneHierarchy(Entity node, TRSComponent origin);
 		
 
-		SceneType										GetType() const { return m_Type; }
-		entt::registry*									GetRegistry() { return &m_Registry; }
-		robin_hood::unordered_map<UUID, entt::entity>&	GetEntities() { return m_Entities; }
-		Entity											GetEntity(UUID id);
-		Entity											GetEntity(std::string_view tag);
-		Shared<Image>									GetFinalImage() const { return m_Renderer->GetFinalImage(); }
-		Shared<Camera>									GetCamera() const { return m_Camera; };
-		Shared<SceneRenderer>							GetRenderer() const { return m_Renderer; }
-		UUID											GetID() const { return m_Id; }
-		PhysicsSettings									GetPhysicsSettings() const { return m_PhysicsSettings; }
-		void											SetPhysicsSettings(const PhysicsSettings& settings);
+		SceneType				GetType() const { return m_Type; }
+		entt::registry*			GetRegistry() { return &m_Registry; }
+		auto&					GetEntities() { return m_Entities; }
+		Entity					GetEntity(UUID id);
+		Entity					GetEntity(std::string_view tag);
+		Shared<Image>			GetFinalImage() const { return m_Renderer->GetFinalImage(); }
+		Shared<Camera>			GetCamera() const { return m_Camera; };
+		Shared<SceneRenderer>	GetRenderer() const { return m_Renderer; }
+		UUID					GetID() const { return m_Id; }
+		PhysicsSettings			GetPhysicsSettings() const { return m_PhysicsSettings; }
+		void					SetPhysicsSettings(const PhysicsSettings& settings);
 
 		void Serialize(nlohmann::json& node) override;
 		void Deserialize(nlohmann::json& node) override;
