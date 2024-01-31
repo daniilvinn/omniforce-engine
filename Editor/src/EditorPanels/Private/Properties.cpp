@@ -164,9 +164,14 @@ namespace Omni {
 								ImGui::TableNextColumn();
 								if (sc.texture) {
 									AssetManager* am = AssetManager::Get();
-									Shared<Image> img = am->GetAsset<Image>(sc.texture);
 
-									UI::RenderImage(img, m_Context->GetRenderer()->GetSamplerLinear(), { 50.0f, 50.0f / sc.aspect_ratio});
+									if (sc.texture) {
+										Shared<Image> img = am->GetAsset<Image>(sc.texture);
+										UI::RenderImage(img, m_Context->GetRenderer()->GetSamplerLinear(), { 50.0f, 50.0f / sc.aspect_ratio});
+									}
+									else {
+										ImGui::Text("Drag texture here");
+									}
 								}
 								else {
 									ImGui::Text("Drag OFR texture here");

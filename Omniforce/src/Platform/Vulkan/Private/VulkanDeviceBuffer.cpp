@@ -16,6 +16,7 @@ namespace Omni {
 		case DeviceBufferUsage::UNIFORM_BUFFER:						return VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 		case DeviceBufferUsage::STORAGE_BUFFER:						return VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 		case DeviceBufferUsage::STAGING_BUFFER:						return VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		case DeviceBufferUsage::BUFFER_DEVICE_ADDRESS:				return VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 		default:													std::unreachable();
 		}
 	}

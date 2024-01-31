@@ -20,6 +20,9 @@ namespace Omni {
 	SceneRenderer::SceneRenderer(const SceneRendererSpecification& spec)
 		: m_Specification(spec)
 	{
+		AssetManager* asset_manager = AssetManager::Get();
+
+		// Descriptor data
 		{
 			std::vector<DescriptorBinding> bindings;
 			// Camera Data
@@ -118,20 +121,18 @@ namespace Omni {
 		}
 		// Load dummy white texture
 		{
-			std::vector<RGBA32> image_data(16);
-			std::memset(image_data.data(), 256, 64); // just set every byte to 255, so we have white non-transparent pixels
-			std::vector<byte> bc7_compressed = AssetCompressor::CompressBC7(image_data, 4, 4);
+			RGBA32 image_data(255, 255, 255, 255);
 
 			ImageSpecification image_spec = ImageSpecification::Default();
 			image_spec.usage = ImageUsage::TEXTURE;
-			image_spec.extent = { 4, 4, 1 };
-			image_spec.pixels = std::move(bc7_compressed);
-			image_spec.format = ImageFormat::BC7;
+			image_spec.extent = { 1, 1, 1 };
+			image_spec.pixels = std::vector<byte>((byte*)&image_data, (byte*) ( & image_data + 1));
+			image_spec.format = ImageFormat::RGBA32_UNORM;
 			image_spec.type = ImageType::TYPE_2D;
 			image_spec.mip_levels = 1;
 			image_spec.array_layers = 1;
 
-			m_DummyWhiteTexture = Image::Create(image_spec);
+			m_DummyWhiteTexture = Image::Create(image_spec, 0);
 			AcquireTextureIndex(m_DummyWhiteTexture, SamplerFilteringMode::LINEAR);
 		}
 		// Initializing pipelines
@@ -156,7 +157,7 @@ namespace Omni {
 	{
 		s_SamplerLinear->Destroy();
 		s_SamplerNearest->Destroy();
-		m_DummyWhiteTexture->Destroy();
+		//m_DummyWhiteTexture->Destroy();
 		m_SpritePass->Destroy();
 		m_SpriteDataBuffer->Destroy();
 		m_MainCameraDataBuffer->Destroy();

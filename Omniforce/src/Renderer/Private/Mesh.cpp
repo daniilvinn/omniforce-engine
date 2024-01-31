@@ -52,6 +52,8 @@ namespace Omni {
 
 	void Mesh::Destroy()
 	{
+		for (auto& buffer : m_Buffers)
+			buffer.second->Destroy();
 	}
 
 }

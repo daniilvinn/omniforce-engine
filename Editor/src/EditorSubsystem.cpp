@@ -319,7 +319,6 @@ public:
 			if(asset->Type != AssetType::OMNI_IMAGE)
 				continue;
 			renderer->ReleaseTextureIndex(ShareAs<Image>(asset));
-			asset->Destroy();
 		}
 		asset_manager->FullUnload();
 

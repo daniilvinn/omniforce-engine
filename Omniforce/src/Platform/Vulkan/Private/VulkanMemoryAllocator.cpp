@@ -30,6 +30,7 @@ namespace Omni {
 		allocator_create_info.physicalDevice = vk_context->GetDevice()->GetPhysicalDevice()->Raw();
 		allocator_create_info.device = vk_context->GetDevice()->Raw();
 		allocator_create_info.pVulkanFunctions = &vulkan_functions;
+		allocator_create_info.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
 
 		vmaCreateAllocator(&allocator_create_info, &m_Allocator);
 
