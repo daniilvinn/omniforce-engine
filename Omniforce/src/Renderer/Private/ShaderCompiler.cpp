@@ -2,6 +2,7 @@
 
 #include <Filesystem/Filesystem.h>
 #include <Log/Logger.h>
+#include "ShaderSourceIncluder.h"
 
 #include <shaderc/shaderc.hpp>
 
@@ -25,6 +26,8 @@ namespace Omni {
 			m_GlobalOptions.SetOptimizationLevel(shaderc_optimization_level_zero);
 		else
 			m_GlobalOptions.SetOptimizationLevel(shaderc_optimization_level_performance);
+
+		m_GlobalOptions.SetIncluder(std::make_unique<ShaderSourceIncluder>());
 	}
 
 	bool ShaderCompiler::ReadShaderFile(std::filesystem::path path, std::stringstream* out)
@@ -113,6 +116,19 @@ namespace Omni {
 
 		// Compilation stage
 		for (auto& stage_source : separated_sources) {
+			shaderc::PreprocessedSourceCompilationResult preprocessing_result = m_Compiler.PreprocessGlsl(
+				stage_source.second,
+				convert(stage_source.first),
+				filename.c_str(),
+				local_options
+			);
+
+			if (preprocessing_result.GetCompilationStatus() != shaderc_compilation_status::shaderc_compilation_status_success) {
+				OMNIFORCE_CORE_ERROR("Failed to preprocess shader {0}.{1}: {2}", filename, Utils::StageToString(stage_source.first), preprocessing_result.GetErrorMessage());
+			}
+
+			stage_source.second = std::string(preprocessing_result.begin());
+
 			shaderc::CompilationResult result = m_Compiler.CompileGlslToSpv(stage_source.second, convert(stage_source.first), filename.c_str(), local_options);
 			if (result.GetCompilationStatus() != shaderc_compilation_status_success) {
 				OMNIFORCE_CORE_ERROR("Failed to compile shader {0}.{1}:\n{2}", filename, Utils::StageToString(stage_source.first), result.GetErrorMessage());
@@ -124,7 +140,8 @@ namespace Omni {
 		}
 
 		compilation_result.bytecode = std::move(binaries);
-			
+		
+
 		return compilation_result;
 	}
 }
