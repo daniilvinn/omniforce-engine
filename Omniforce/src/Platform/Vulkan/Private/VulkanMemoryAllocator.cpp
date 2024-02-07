@@ -56,6 +56,11 @@ namespace Omni {
 		delete s_Instance;
 	}
 
+	void VulkanMemoryAllocator::InvalidateAllocation(VmaAllocation allocation, uint64 size /*= VK_WHOLE_SIZE*/, uint64 offset /*= 0*/)
+	{
+		vmaInvalidateAllocation(m_Allocator, allocation, offset, size);
+	}
+
 	VmaAllocation VulkanMemoryAllocator::AllocateBuffer(VkBufferCreateInfo* create_info, uint32_t flags, VkBuffer* buffer)
 	{
 		VmaAllocationCreateInfo allocation_create_info = {};

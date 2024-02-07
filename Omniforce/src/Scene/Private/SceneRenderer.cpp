@@ -5,6 +5,7 @@
 #include <Renderer/ShaderLibrary.h>
 #include <Renderer/DeviceBuffer.h>
 #include <Core/Utils.h>
+#include "../SceneRendererPrimitives.h"
 
 #include <Asset/AssetManager.h>
 #include <Asset/AssetCompressor.h>
@@ -18,7 +19,7 @@ namespace Omni {
 	}
 
 	SceneRenderer::SceneRenderer(const SceneRendererSpecification& spec)
-		: m_Specification(spec)
+		: m_Specification(spec), m_MaterialDataPool(this, 1024 * 256 /* 256Kb of data*/)
 	{
 		AssetManager* asset_manager = AssetManager::Get();
 
@@ -27,8 +28,7 @@ namespace Omni {
 			std::vector<DescriptorBinding> bindings;
 			// Camera Data
 			bindings.push_back({ 0, DescriptorBindingType::SAMPLED_IMAGE, s_GlobalSceneData.max_textures, (uint64)DescriptorFlags::PARTIALLY_BOUND });
-			bindings.push_back({ 1, DescriptorBindingType::UNIFORM_BUFFER, 1, 0 });
-			bindings.push_back({ 2, DescriptorBindingType::STORAGE_BUFFER, 1, 0 });
+			bindings.push_back({ 1, DescriptorBindingType::STORAGE_BUFFER, 1, 0 });
 
 			DescriptorSetSpecification global_set_spec = {};
 			global_set_spec.bindings = std::move(bindings);
@@ -44,22 +44,6 @@ namespace Omni {
 			for (auto i = s_GlobalSceneData.available_texture_indices.rbegin(); i != s_GlobalSceneData.available_texture_indices.rend(); i++, index++)
 				*i = index;
 
-			// Create camera data buffer
-			{
-				uint32 per_frame_size = Utils::Align(sizeof(glm::mat4) * 3, Renderer::GetDeviceMinimalUniformBufferOffsetAlignment());
-
-				DeviceBufferSpecification buffer_spec = {};
-				buffer_spec.size = per_frame_size * Renderer::GetConfig().frames_in_flight;
-				buffer_spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
-				buffer_spec.buffer_usage = DeviceBufferUsage::UNIFORM_BUFFER;
-
-				m_MainCameraDataBuffer = DeviceBuffer::Create(buffer_spec);
-
-				for (uint32 i = 0; i < Renderer::GetConfig().frames_in_flight; i++) {
-					s_GlobalSceneData.scene_descriptor_set[i]->Write(1, 0, m_MainCameraDataBuffer, per_frame_size, i * per_frame_size);
-				}
-			}
-
 			// Create sprite data buffer. Creating SSBO because I need more than 65kb.
 			{
 				uint32 per_frame_size = Utils::Align(sizeof(Sprite) * 2500, Renderer::GetDeviceMinimalStorageBufferOffsetAlignment());
@@ -73,7 +57,7 @@ namespace Omni {
 				m_SpriteDataBuffer = DeviceBuffer::Create(buffer_spec);
 
 				for (uint32 i = 0; i < Renderer::GetConfig().frames_in_flight; i++) {
-					s_GlobalSceneData.scene_descriptor_set[i]->Write(2, 0, m_SpriteDataBuffer, per_frame_size, i * per_frame_size);
+					s_GlobalSceneData.scene_descriptor_set[i]->Write(1, 0, m_SpriteDataBuffer, per_frame_size, i * per_frame_size);
 				}
 
 				m_SpriteBufferSize = per_frame_size;
@@ -89,6 +73,23 @@ namespace Omni {
 					m_RendererOutputs.push_back(Image::Create(render_target_spec));
 			}
 
+		}
+
+		{
+			// Init buffers accessed by BDA
+			DeviceBufferSpecification buffer_spec = {};
+			buffer_spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
+			buffer_spec.heap = DeviceBufferMemoryHeap::DEVICE;
+			buffer_spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
+
+			buffer_spec.size = sizeof DeviceMeshData * 1024;
+			m_MeshDataBuffer = DeviceBuffer::Create(buffer_spec);
+
+			buffer_spec.size = 32 * 1024 * Renderer::GetConfig().frames_in_flight; // 32 is magic number which represents transform. vec3 (t) + uvec2 (r) + vec3 (s)
+			m_TransformBuffer = DeviceBuffer::Create(buffer_spec);
+
+			buffer_spec.size = sizeof DeviceCameraData * Renderer::GetConfig().frames_in_flight;
+			m_CameraDataBuffer = DeviceBuffer::Create(buffer_spec);
 		}
 
 		// Initializing nearest filtration sampler
@@ -160,7 +161,7 @@ namespace Omni {
 		//m_DummyWhiteTexture->Destroy();
 		m_SpritePass->Destroy();
 		m_SpriteDataBuffer->Destroy();
-		m_MainCameraDataBuffer->Destroy();
+		m_CameraDataBuffer->Destroy();
 		for (auto set : s_GlobalSceneData.scene_descriptor_set)
 			set->Destroy();
 		for (auto& output : m_RendererOutputs)
@@ -171,8 +172,18 @@ namespace Omni {
 	{
 		if (camera) {
 			m_Camera = camera;
-			glm::mat4 matrices[3] = { m_Camera->GetViewMatrix(), m_Camera->GetProjectionMatrix(), m_Camera->GetViewProjectionMatrix() };
-			m_MainCameraDataBuffer->UploadData(Renderer::GetCurrentFrameIndex() * (sizeof glm::mat4 * 3), matrices, sizeof(matrices)); // TODO: bug here
+
+			DeviceCameraData camera_data;
+			camera_data.view = m_Camera->GetViewMatrix();
+			camera_data.proj = m_Camera->GetProjectionMatrix();
+			camera_data.view_proj = m_Camera->GetViewProjectionMatrix();
+			camera_data.position = m_Camera->GetPosition();
+
+			m_CameraDataBuffer->UploadData(
+				Renderer::GetCurrentFrameIndex() * (m_CameraDataBuffer->GetSpecification().size / Renderer::GetConfig().frames_in_flight),
+				&camera_data,
+				sizeof camera_data
+			);
 		}
 
 		m_CurrectMainRenderTarget = m_RendererOutputs[Renderer::GetCurrentFrameIndex()];
@@ -200,7 +211,14 @@ namespace Omni {
 			m_SpriteQueue.size() * sizeof(Sprite)
 		);
 
-		Renderer::RenderQuads(m_SpritePass, m_SpriteQueue.size(), { nullptr, 0 });
+		uint64 camera_data_device_address = m_CameraDataBuffer->GetDeviceAddress() + sizeof DeviceCameraData * Renderer::GetCurrentFrameIndex();
+
+		MiscData pc = {};
+		pc.data = (byte*)new uint64;
+		memcpy(pc.data, &camera_data_device_address, sizeof uint64);
+		pc.size = sizeof uint64;
+
+		Renderer::RenderQuads(m_SpritePass, m_SpriteQueue.size(), pc);
 		Renderer::EndRender(m_CurrectMainRenderTarget);
 		Renderer::Submit([=]() {
 			m_CurrectMainRenderTarget->SetLayout(

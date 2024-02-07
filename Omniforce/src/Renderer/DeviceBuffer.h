@@ -24,7 +24,7 @@ namespace Omni {
 		UNIFORM_BUFFER,
 		STORAGE_BUFFER,
 		STAGING_BUFFER,
-		BUFFER_DEVICE_ADDRESS
+		SHADER_DEVICE_ADDRESS
 	};
 
 	enum class OMNIFORCE_API DeviceBufferMemoryUsage {
@@ -60,6 +60,7 @@ namespace Omni {
 		virtual DeviceBufferSpecification GetSpecification() const = 0;
 		virtual uint64 GetDeviceAddress() = 0;
 
+		virtual void CopyRegionTo(Shared<DeviceCmdBuffer> cmd_buffer, Shared<DeviceBuffer> dst_buffer, uint64 src_offset, uint64 dst_offset, uint64 size) = 0;
 		virtual void UploadData(uint64 offset, void* data, uint64 data_size) = 0;
 	};
 

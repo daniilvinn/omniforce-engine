@@ -5,6 +5,7 @@
 #include "Camera.h"
 #include <Renderer/Renderer.h>
 #include <Renderer/Image.h>
+#include "DeviceMaterialPool.h"
 
 #include <vector>
 
@@ -67,7 +68,6 @@ namespace Omni {
 		inline static Shared<ImageSampler> s_SamplerNearest;
 		inline static Shared<ImageSampler> s_SamplerLinear;
 		Shared<Image> m_DummyWhiteTexture;
-		Shared<DeviceBuffer> m_MainCameraDataBuffer;
 		Shared<DeviceBuffer> m_SpriteDataBuffer;
 		uint32 m_SpriteBufferSize; // size in bytes per frame in flight, not overall size
 		std::vector<Sprite> m_SpriteQueue;
@@ -81,6 +81,13 @@ namespace Omni {
 			std::vector<uint32> available_texture_indices;
 			std::vector<Shared<DescriptorSet>> scene_descriptor_set; // per frame in flight
 		} s_GlobalSceneData;
+
+		DeviceMaterialPool m_MaterialDataPool;
+
+		// Omni 2024
+		Shared<DeviceBuffer> m_MeshDataBuffer;
+		Shared<DeviceBuffer> m_TransformBuffer; // actual size is `size * frames_in_flight`. 
+		Shared<DeviceBuffer> m_CameraDataBuffer;
 
 	};
 

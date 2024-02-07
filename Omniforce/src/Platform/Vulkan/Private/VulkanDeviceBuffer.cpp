@@ -16,7 +16,7 @@ namespace Omni {
 		case DeviceBufferUsage::UNIFORM_BUFFER:						return VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 		case DeviceBufferUsage::STORAGE_BUFFER:						return VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 		case DeviceBufferUsage::STAGING_BUFFER:						return VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-		case DeviceBufferUsage::BUFFER_DEVICE_ADDRESS:				return VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+		case DeviceBufferUsage::SHADER_DEVICE_ADDRESS:				return VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 		default:													std::unreachable();
 		}
 	}
@@ -82,7 +82,7 @@ namespace Omni {
 
 	uint64 VulkanDeviceBuffer::GetDeviceAddress()
 	{
-		if (m_Specification.buffer_usage != DeviceBufferUsage::BUFFER_DEVICE_ADDRESS) {
+		if (m_Specification.buffer_usage != DeviceBufferUsage::SHADER_DEVICE_ADDRESS) {
 			OMNIFORCE_CORE_ERROR("[Renderer]: failed to capture device buffer address. \
 				Buffer was create without \"BUFFER_DEVICE_ADDRESS\" usage, returning invalid address");
 			return 0;
@@ -141,11 +141,11 @@ namespace Omni {
 		}
 		else 
 		{
-			// TODO: flush memory ranges for non-coherent allocations so changes are visible on GPU
 			VulkanMemoryAllocator* allocator = VulkanMemoryAllocator::Get();
 			void* memory = allocator->MapMemory(m_Allocation);
 			memcpy((byte*)memory + offset, data, data_size);
 			allocator->UnmapMemory(m_Allocation);
+			allocator->InvalidateAllocation(m_Allocation);
 		}
 
 		// Further data should only be set for non-staging buffers, since staging buffer will not be used in rendering at all
@@ -177,6 +177,19 @@ namespace Omni {
 			vbo_data->vertex_count = data_size / sizeof(float32);
 		}
 		
+	}
+
+	void VulkanDeviceBuffer::CopyRegionTo(Shared<DeviceCmdBuffer> cmd_buffer, Shared<DeviceBuffer> dst_buffer, uint64 src_offset, uint64 dst_offset, uint64 size)
+	{
+		Shared<VulkanDeviceCmdBuffer> vk_cmd_buffer = ShareAs<VulkanDeviceCmdBuffer>(cmd_buffer);
+		Shared<VulkanDeviceBuffer> vk_buffer = ShareAs<VulkanDeviceBuffer>(dst_buffer);
+
+		VkBufferCopy params = {};
+		params.srcOffset = src_offset;
+		params.dstOffset = dst_offset;
+		params.size = size;
+
+		vkCmdCopyBuffer(*vk_cmd_buffer, m_Buffer, vk_buffer->Raw(), 1, &params);
 	}
 
 }

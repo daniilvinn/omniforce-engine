@@ -265,6 +265,11 @@ namespace Omni {
 		});
 	}
 
+	void VulkanRenderer::PushConstants(Shared<Pipeline> pipeline, MiscData data)
+	{
+		OMNIFORCE_ASSERT_TAGGED(false, "Not implemented yet. Reserved for future use. Please, use MiscData parameter in other render functions to provide push constants.");
+	}
+
 	void VulkanRenderer::RenderImGui()
 	{
 		auto image = m_Swapchain->GetCurrentImage();

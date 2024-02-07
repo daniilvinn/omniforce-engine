@@ -15,7 +15,7 @@ namespace Omni {
 	{
 		DeviceBufferSpecification buffer_spec = {};
 		buffer_spec.memory_usage = DeviceBufferMemoryUsage::NO_HOST_ACCESS;
-		buffer_spec.buffer_usage = DeviceBufferUsage::BUFFER_DEVICE_ADDRESS;
+		buffer_spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
 		buffer_spec.heap = DeviceBufferMemoryHeap::DEVICE;
 
 		buffer_spec.size = geometry.size() * sizeof glm::vec3;

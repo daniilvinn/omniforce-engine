@@ -15,9 +15,9 @@ namespace Omni {
 	class OMNIFORCE_API Camera
 	{
 	public:
-		virtual glm::mat4 GetViewProjectionMatrix() const = 0;
-		virtual glm::mat4 GetProjectionMatrix() const = 0;
-		virtual glm::mat4 GetViewMatrix() const = 0;
+		virtual const glm::mat4& GetViewProjectionMatrix() const = 0;
+		virtual const glm::mat4& GetProjectionMatrix() const = 0;
+		virtual const glm::mat4& GetViewMatrix() const = 0;
 		virtual void CalculateMatrices() = 0;
 
 		CameraProjectionType GetType() const { return m_Type; }
@@ -48,9 +48,9 @@ namespace Omni {
 		Camera2D();
 
 		// Matrix getters
-		glm::mat4 GetViewProjectionMatrix() const override { return m_ViewProjectionMatrix; };
-		glm::mat4 GetProjectionMatrix() const override { return m_ProjectionMatrix; };
-		glm::mat4 GetViewMatrix() const override { return m_ViewMatrix; };
+		const glm::mat4& GetViewProjectionMatrix() const override { return m_ViewProjectionMatrix; };
+		const glm::mat4& GetProjectionMatrix() const override { return m_ProjectionMatrix; };
+		const glm::mat4& GetViewMatrix() const override { return m_ViewMatrix; };
 
 		void SetProjection(float left, float right, float bottom, float top, float zNear = 0.0f, float zFar = 1.0f);
 		void SetPosition(glm::vec3 position);
@@ -82,9 +82,9 @@ namespace Omni {
 		Camera3D();
 
 		// Matrix getters
-		glm::mat4 GetViewProjectionMatrix() const override { return m_ViewProjectionMatrix; };
-		glm::mat4 GetProjectionMatrix() const override { return m_ProjectionMatrix; };
-		glm::mat4 GetViewMatrix() const override { return m_ViewMatrix; };
+		const glm::mat4& GetViewProjectionMatrix() const override { return m_ViewProjectionMatrix; };
+		const glm::mat4& GetProjectionMatrix() const override { return m_ProjectionMatrix; };
+		const glm::mat4& GetViewMatrix() const override { return m_ViewMatrix; };
 
 		// Setters for common camera data
 		void SetProjection(float32 fov, float32 ratio, float32 zNear, float32 zFar);

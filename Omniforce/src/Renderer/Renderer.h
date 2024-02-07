@@ -55,6 +55,7 @@ namespace Omni {
 		static void RenderQuads(Shared<Pipeline> pipeline, MiscData data);
 		static void RenderQuads(Shared<Pipeline> pipeline, uint32 amount, MiscData data);
 		static void RenderLines(Shared<Pipeline> pipeline, uint32 amount, MiscData data);
+		static void PushConstants(Shared<Pipeline> pipeline, MiscData data);
 
 		static void Render();
 		static void RenderImGui();

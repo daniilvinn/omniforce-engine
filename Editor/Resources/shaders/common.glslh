@@ -1,0 +1,31 @@
+#extension GL_KHR_vulkan_glsl : enable
+#extension GL_EXT_scalar_block_layout : require
+#extension GL_EXT_buffer_reference2 : require
+#extension GL_EXT_nonuniform_qualifier : require
+
+layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer CameraData {
+	mat4 view;
+	mat4 proj;
+	mat4 view_proj;
+	vec3 position;
+};
+
+layout(binding = 0) uniform sampler2D texture_bank[65536];
+
+struct Sprite {
+	vec4 color_tint;
+	vec3 position;
+	vec2 size;
+	uvec2 rotation;
+	uint texture_index;
+};
+
+layout(binding = 1, scalar) buffer SpriteData {
+	Sprite sprites[];
+} sprite_data;
+
+vec3 RotateByQuat(vec3 vertex, vec4 quat) {
+	vec3 uv = cross(quat.xyz, vertex);
+	vec3 uuv = cross(quat.xyz, uv);
+	return vertex + ((uv * quat.w) + uuv) * 2.0;
+}

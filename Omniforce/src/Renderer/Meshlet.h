@@ -6,9 +6,7 @@
 namespace Omni {
 
 	struct OMNIFORCE_API RenderableMeshlet {
-		uint32 index_offset;
 		uint32 local_index_offset;
-		uint32 index_count;
 		uint32 local_index_count;
 	};
 

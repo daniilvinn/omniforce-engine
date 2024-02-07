@@ -15,8 +15,10 @@ namespace Omni {
 		meshlets_data->indices.resize(num_meshlets * 64);
 		meshlets_data->local_indices.resize(num_meshlets * 124 * 3);
 
-		uint64 actual_num_meshlets = meshopt_buildMeshlets((meshopt_Meshlet*)meshlets_data->meshlets.data(), meshlets_data->indices.data(), meshlets_data->local_indices.data(),
-			indices.data(), indices.size(), (float*)vertices.data(), vertices.size(), 12, 64, 124, 0.5);
+		meshopt_Meshlet* meshlets = new meshopt_Meshlet[num_meshlets];
+
+		uint64 actual_num_meshlets = meshopt_buildMeshlets(meshlets, meshlets_data->indices.data(), meshlets_data->local_indices.data(),
+			indices.data(), indices.size(), (float32*)vertices.data(), vertices.size(), 12, 64, 124, 0.5);
 
 		meshlets_data->meshlets.resize(actual_num_meshlets);
 		meshlets_data->indices.resize(actual_num_meshlets * 64);
@@ -25,10 +27,23 @@ namespace Omni {
 		meshlets_data->cull_bounds.resize(actual_num_meshlets);
 		uint32 idx = 0;
 		for (auto& meshlet : meshlets_data->meshlets) {
-			meshopt_Bounds bounds = meshopt_computeMeshletBounds(meshlets_data->indices.data() + meshlet.index_offset, meshlets_data->local_indices.data(), meshlet.local_index_count, (float*)vertices.data(), vertices.size(), 12);
+			meshopt_Bounds bounds = meshopt_computeMeshletBounds(
+				meshlets_data->indices.data() + meshlets[idx].vertex_offset, 
+				meshlets_data->local_indices.data(), 
+				meshlet.local_index_count, 
+				(float*)vertices.data(), 
+				vertices.size(), 
+				12
+			);
+
 			meshlets_data->cull_bounds[idx] = *(MeshletCullBounds*)(& bounds);
 			idx++;
+
+			meshlet.local_index_count = meshlets[idx].triangle_count;
+			meshlet.local_index_offset = meshlets[idx].triangle_offset;
 		}
+
+		delete[] meshlets;
 
 		return meshlets_data;
 	}

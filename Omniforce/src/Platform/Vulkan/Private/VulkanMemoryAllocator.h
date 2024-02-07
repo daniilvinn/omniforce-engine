@@ -12,6 +12,8 @@ namespace Omni {
 		static void Destroy();
 		static VulkanMemoryAllocator* Get() { return s_Instance; }
 
+		void InvalidateAllocation(VmaAllocation allocation, uint64 size = VK_WHOLE_SIZE, uint64 offset = 0);
+
 		VmaAllocation AllocateBuffer(VkBufferCreateInfo* create_info, uint32_t flags, VkBuffer* buffer);
 		VmaAllocation AllocateImage(VkImageCreateInfo* create_info, uint32_t flags, VkImage* image);
 

@@ -9,7 +9,7 @@
 
 namespace Omni {
 
-	enum class OMNIFORCE_API FileReadingFlags : uint32 {
+	enum class OMNIFORCE_API FileReadingFlags : BitMask {
 		READ_BINARY = BIT(0)
 	};
 

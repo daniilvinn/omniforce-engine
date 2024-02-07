@@ -13,7 +13,7 @@ namespace Omni {
 
 	class OMNIFORCE_API Material : public AssetBase {
 	public:
-		Material(std::string name, AssetHandle id) {
+		Material(std::string name, AssetHandle id = AssetHandle()) {
 			m_Name = std::move(name);
 			Type = AssetType::MATERIAL;
 			Handle = id;
@@ -21,6 +21,7 @@ namespace Omni {
 
 		~Material() {}
 		static Shared<Material> Create(std::string name, AssetHandle id = AssetHandle());
+		static uint8 GetRuntimeEntrySize(uint8 variant_index);
 
 		void Destroy() override;
 
