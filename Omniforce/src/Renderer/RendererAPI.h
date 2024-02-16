@@ -35,12 +35,9 @@ namespace Omni {
 		virtual void ExecuteCurrentCommands() = 0;
 
 		virtual void ClearImage(Shared<Image> image, const fvec4& value) = 0;
-		virtual void RenderMesh(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo, MiscData misc_data) = 0;
+		virtual void RenderMeshTasks(Shared<Pipeline> pipeline, const glm::vec3& dimensions, MiscData data) = 0;
 		virtual void RenderQuad(Shared<Pipeline> pipeline, MiscData data) = 0;
 		virtual void RenderQuad(Shared<Pipeline> pipeline, uint32 amount, MiscData data) = 0;
-		virtual void RenderLines(Shared<Pipeline> pipeline, uint32 amount, MiscData data) = 0;
-		virtual void PushConstants(Shared<Pipeline> pipeline, MiscData data) = 0;
-
 		virtual void RenderImGui() = 0;
 
 	private:

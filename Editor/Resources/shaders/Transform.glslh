@@ -1,0 +1,10 @@
+#ifndef TRANSFORM_GLSLH
+#define TRANSFORM_GLSLH
+
+struct Transform {
+	vec3 translation;
+	uvec2 packed_rotation;
+	vec3 scale;
+};
+
+#endif

@@ -6,6 +6,8 @@
 #include <filesystem>
 #include <Memory/Pointers.hpp>
 
+#include <map>
+
 namespace Omni {
 
 	typedef uint64_t uint64;
@@ -28,6 +30,9 @@ namespace Omni {
 
 	namespace rh = robin_hood;
 	namespace stdfs = std::filesystem;
+
+	template<typename Key, typename Value>
+	using rhumap = rh::unordered_map<Key, Value>;
 
 	template<typename T = float32>
 	struct vec2 {
@@ -135,5 +140,9 @@ namespace Omni {
 	struct AABB {
 		glm::vec3 min, max;
 	};
+
+	// Macro table is usually being iterated, so I use an array of pairs and not a map, because map
+	// fits better for random access
+	using ShaderMacroTable = std::vector<std::pair<std::string, std::string>>;
 
 }

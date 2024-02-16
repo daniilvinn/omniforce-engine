@@ -2,9 +2,10 @@
 
 #include <Renderer/Shader.h>
 
+#include <volk.h>
+
 #include <map>
 #include <filesystem>
-#include <vulkan/vulkan.h>
 
 namespace Omni {
 
@@ -22,8 +23,6 @@ namespace Omni {
 		*	@brief returns status of "dirty" bit. It indicates if shader is still valid. It may be invalid due to several reasons:
 		*	unsuccessful reflection, reload required etc.
 		*/
-		bool Dirty() const override { return m_Dirty; }
-		void SetDirty(bool dirty) override { m_Dirty = dirty; }
 
 		void RestoreShaderModule(std::filesystem::path path) override;
 

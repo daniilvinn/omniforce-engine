@@ -3,9 +3,14 @@
 #include "SceneCommon.h"
 #include "Sprite.h"
 #include "Camera.h"
+#include "DeviceMaterialPool.h"
+#include "SceneRendererPrimitives.h"
+#include "DeviceIndexedResourceBuffer.h"
 #include <Renderer/Renderer.h>
 #include <Renderer/Image.h>
-#include "DeviceMaterialPool.h"
+#include <Renderer/Mesh.h>
+#include <Core/CallbackRHUMap.h>
+#include <Memory/VirtualMemoryBlock.h>
 
 #include <vector>
 
@@ -44,19 +49,24 @@ namespace Omni {
 		static Shared<ImageSampler> GetSamplerLinear() { return s_SamplerLinear; }
 		AssetHandle GetDummyWhiteTexture() const { return m_DummyWhiteTexture->Handle; }
 		/*
-		* @brief Adds texture to a global renderer data
-		* @return returns an index the texture can be accessed with
+		* @brief Adds resource to a global renderer data
+		* @return returns an index the resource can be accessed with
 		*/
-		uint16 AcquireTextureIndex(Shared<Image> image, SamplerFilteringMode filtering_mode);
+		uint32 AcquireResourceIndex(Shared<Image> image, SamplerFilteringMode filtering_mode);
+		uint32 AcquireResourceIndex(Shared<Mesh> mesh);
+		uint32 AcquireResourceIndex(Shared<Material> material); // WARNING: this returns offset in material pool, not index
+
 		/*
-		* @brief Removes texture to a global renderer data
-		* @return true if successful, false if no texture found
+		* @brief Removes resource to a global renderer data
+		* @return true if successful, false if no resource found
 		*/
-		bool ReleaseTextureIndex(Shared<Image> image);
-		uint32 GetTextureIndex(const UUID& uuid) const { return s_GlobalSceneData.textures.at(uuid); };
+		bool ReleaseResourceIndex(Shared<Image> image);
+		uint32 GetTextureIndex(const AssetHandle& uuid) const { return m_TextureIndices.at(uuid); };
+		uint64 GetMaterialBDA(const AssetHandle& id) const { return m_MaterialDataPool.GetStorageBufferAddress() + m_MaterialDataPool.GetOffset(id); }
+		uint32 GetMeshIndex(const AssetHandle& uuid) const { return m_MeshResourcesBuffer.GetIndex(uuid); }
 
 		void RenderSprite(const Sprite& sprite);
-		void RenderLine(const fvec2& p1, const fvec2& p2, const fvec4& color);
+		void RenderObject(Shared<Pipeline> pipeline, const DeviceRenderableObject& render_data);
 
 	private:
 		Shared<Camera> m_Camera;
@@ -65,29 +75,33 @@ namespace Omni {
 		std::vector<Shared<Image>> m_RendererOutputs;
 		Shared<Image> m_CurrectMainRenderTarget;
 
+		std::vector<Shared<DescriptorSet>> m_SceneDescriptorSet;
 		inline static Shared<ImageSampler> s_SamplerNearest;
 		inline static Shared<ImageSampler> s_SamplerLinear;
 		Shared<Image> m_DummyWhiteTexture;
-		Shared<DeviceBuffer> m_SpriteDataBuffer;
 		uint32 m_SpriteBufferSize; // size in bytes per frame in flight, not overall size
 		std::vector<Sprite> m_SpriteQueue;
 
 		Shared<Pipeline> m_SpritePass;
 		Shared<Pipeline> m_LinePass;
 
-		struct GlobalSceneRenderData {
-			const uint32 max_textures = UINT16_MAX + 1;
-			robin_hood::unordered_map<UUID, uint32> textures;
-			std::vector<uint32> available_texture_indices;
-			std::vector<Shared<DescriptorSet>> scene_descriptor_set; // per frame in flight
-		} s_GlobalSceneData;
+
+		// ~ Omni 2024 ~
+		Shared<DeviceBuffer> m_CameraDataBuffer;
+
+		Scope<VirtualMemoryBlock> m_TextureIndexAllocator;
+		rhumap<UUID, uint32> m_TextureIndices;
+		Shared<DeviceBuffer> m_SpriteDataBuffer;
+
+		DeviceIndexedResourceBuffer<DeviceMeshData> m_MeshResourcesBuffer;
 
 		DeviceMaterialPool m_MaterialDataPool;
 
-		// Omni 2024
-		Shared<DeviceBuffer> m_MeshDataBuffer;
-		Shared<DeviceBuffer> m_TransformBuffer; // actual size is `size * frames_in_flight`. 
-		Shared<DeviceBuffer> m_CameraDataBuffer;
+
+
+		rhumap<Shared<Pipeline>, std::vector<DeviceRenderableObject>> m_HostRenderQueue;
+		CallbackRHUMap<Shared<Pipeline>, Shared<DeviceBuffer>> m_DeviceRenderQueue;
+		Shared<DeviceBuffer> m_CulledDeviceRenderQueue; // here I copy objects which passed mesh-level culling stage
 
 	};
 

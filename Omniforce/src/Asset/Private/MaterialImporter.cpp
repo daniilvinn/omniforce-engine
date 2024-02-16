@@ -5,6 +5,7 @@
 #include <Asset/Importers/ImageImporter.h>
 #include <Asset/AssetCompressor.h>
 #include <Core/Utils.h>
+#include <Threading/JobSystem.h>
 
 namespace Omni {
 
@@ -13,43 +14,50 @@ namespace Omni {
 	}
 
 	template<>
-	void MaterialImporter::HandleProperty<ftf::Optional<ftf::TextureInfo>>(std::string_view key, const ftf::Optional<ftf::TextureInfo>& property, Shared<Material> material, const ftf::Asset& root)
+	void MaterialImporter::HandleProperty<ftf::Optional<ftf::TextureInfo>>(std::string_view key, const ftf::Optional<ftf::TextureInfo>& property, Shared<Material> material, const ftf::Asset& root, std::shared_mutex& mutex)
 	{
 		if (!property.has_value())
 			return;
 
 		AssetHandle image_handle = LoadTextureProperty(property.value().textureIndex, root);
 
+		mutex.lock();
 		material->AddProperty(key, image_handle);
 		material->AddShaderMacro(fmt::format("__OMNI_HAS_{}", key));
+		mutex.unlock();
 	}
 
 	template<>
-	void MaterialImporter::HandleProperty<ftf::Optional<ftf::NormalTextureInfo>>(std::string_view key, const ftf::Optional<ftf::NormalTextureInfo>& property, Shared<Material> material, const ftf::Asset& root)
+	void MaterialImporter::HandleProperty<ftf::Optional<ftf::NormalTextureInfo>>(std::string_view key, const ftf::Optional<ftf::NormalTextureInfo>& property, Shared<Material> material, const ftf::Asset& root, std::shared_mutex& mutex)
 	{
 		if (!property.has_value())
 			return;
 
 		AssetHandle image_handle = LoadTextureProperty(property.value().textureIndex, root);
 
+		mutex.lock();
 		material->AddProperty(key, image_handle);
 		material->AddShaderMacro(fmt::format("__OMNI_HAS_{}", key));
-
-		material->AddProperty("NORMAL_MAP_SCALE", property.value().scale);
+		// TODO: add scale
+		//if (property.value().scale != 1.0f) {
+		//	material->AddShaderMacro()
+		//	material->AddProperty("NORMAL_MAP_SCALE", property.value().scale);
+		//}
+		mutex.unlock();
 	}
 
 	template<>
-	void MaterialImporter::HandleProperty<ftf::Optional<ftf::OcclusionTextureInfo>>(std::string_view key, const ftf::Optional<ftf::OcclusionTextureInfo>& property, Shared<Material> material, const ftf::Asset& root)
+	void MaterialImporter::HandleProperty<ftf::Optional<ftf::OcclusionTextureInfo>>(std::string_view key, const ftf::Optional<ftf::OcclusionTextureInfo>& property, Shared<Material> material, const ftf::Asset& root, std::shared_mutex& mutex)
 	{
 		if (!property.has_value())
 			return;
 
 		AssetHandle image_handle = LoadTextureProperty(property.value().textureIndex, root);
 
+		mutex.lock();
 		material->AddProperty(key, image_handle);
 		material->AddShaderMacro(fmt::format("__OMNI_HAS_{}", key));
-
-		material->AddProperty("OCCLUSION_MAP_STRENGTH", property.value().strength);
+		mutex.unlock();
 	}
 
 	AssetHandle MaterialImporter::LoadTextureProperty(uint64 texture_index, const ftf::Asset& root)
@@ -128,24 +136,28 @@ namespace Omni {
 
 		if (in_material.pbrData.baseColorTexture.has_value())
 			material->AddShaderMacro("__OMNI_SHADING_MODEL_PBR");
-		else
-			material->AddShaderMacro("__OMNI_SHADING_MODEL_NON_PBR");
+		//else
+		//	material->AddShaderMacro("__OMNI_SHADING_MODEL_NON_PBR");
 
+		std::shared_mutex mutex;
 
-		HandleProperty("ALPHA_CUTOFF", in_material.alphaCutoff, material, root);
+		JobSystem* js = JobSystem::Get();
+
+		js->Execute([&]() { HandleProperty("ALPHA_CUTOFF", in_material.alphaCutoff, material, root, mutex); });
 		if (in_material.alphaMode == ftf::AlphaMode::Mask)
-			HandleProperty("ALPHA_MASK", 1, material, root);
+			js->Execute([&]() { HandleProperty("ALPHA_MASK", 1, material, root, mutex); });
 
-		HandleProperty("BASE_COLOR_FACTOR", c(in_material.pbrData.baseColorFactor), material, root);
-		HandleProperty("METALLIC_FACTOR", in_material.pbrData.metallicFactor, material, root);
-		HandleProperty("ROUGHNESS_FACTOR", in_material.pbrData.roughnessFactor, material, root);
+		js->Execute([&]() { HandleProperty("BASE_COLOR_FACTOR", c(in_material.pbrData.baseColorFactor), material, root, mutex); });
+		js->Execute([&]() { HandleProperty("METALLIC_FACTOR", in_material.pbrData.metallicFactor, material, root, mutex); });
+		js->Execute([&]() { HandleProperty("ROUGHNESS_FACTOR", in_material.pbrData.roughnessFactor, material, root, mutex); });
 
-		HandleProperty("BASE_COLOR_MAP", in_material.pbrData.baseColorTexture, material, root);
-		HandleProperty("METALLIC_ROUGHNESS_MAP", in_material.pbrData.metallicRoughnessTexture, material, root);
+		js->Execute([&]() { HandleProperty("BASE_COLOR_MAP", in_material.pbrData.baseColorTexture, material, root, mutex); });
+		js->Execute([&]() { HandleProperty("METALLIC_ROUGHNESS_MAP", in_material.pbrData.metallicRoughnessTexture, material, root, mutex); });
 
-		HandleProperty("NORMAL_MAP", in_material.normalTexture, material, root);
-		HandleProperty("OCCLUSION_MAP", in_material.occlusionTexture, material, root);
+		js->Execute([&]() { HandleProperty("NORMAL_MAP", in_material.normalTexture, material, root, mutex); });
+		js->Execute([&]() { HandleProperty("OCCLUSION_MAP", in_material.occlusionTexture, material, root, mutex); });
 
+		js->Wait();
 
 		return id;
 	}

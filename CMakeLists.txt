@@ -15,6 +15,7 @@ endif()
 
 # Include sub-projects.
 add_subdirectory ("Omniforce/vendor/Jolt/Build")
+add_subdirectory ("Omniforce/vendor/volk")
 add_subdirectory ("Omniforce/vendor/imgui")
 add_subdirectory ("Omniforce/vendor/bc7enc_rdo")
 add_subdirectory ("Omniforce/vendor/nv-libdeflate")

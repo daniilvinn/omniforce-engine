@@ -19,7 +19,8 @@ namespace Omni {
 	}
 
 	SceneRenderer::SceneRenderer(const SceneRendererSpecification& spec)
-		: m_Specification(spec), m_MaterialDataPool(this, 1024 * 256 /* 256Kb of data*/)
+		: m_Specification(spec), m_MaterialDataPool(this, 1024 * 256 /* 256Kb of data*/), m_TextureIndexAllocator(VirtualMemoryBlock::Create(4 * INT16_MAX)),
+		m_MeshResourcesBuffer(1024 * sizeof DeviceMeshData) // allow up to 1024 meshes be allocated at once
 	{
 		AssetManager* asset_manager = AssetManager::Get();
 
@@ -27,7 +28,7 @@ namespace Omni {
 		{
 			std::vector<DescriptorBinding> bindings;
 			// Camera Data
-			bindings.push_back({ 0, DescriptorBindingType::SAMPLED_IMAGE, s_GlobalSceneData.max_textures, (uint64)DescriptorFlags::PARTIALLY_BOUND });
+			bindings.push_back({ 0, DescriptorBindingType::SAMPLED_IMAGE, UINT16_MAX, (uint64)DescriptorFlags::PARTIALLY_BOUND });
 			bindings.push_back({ 1, DescriptorBindingType::STORAGE_BUFFER, 1, 0 });
 
 			DescriptorSetSpecification global_set_spec = {};
@@ -35,14 +36,8 @@ namespace Omni {
 
 			for (int i = 0; i < Renderer::GetConfig().frames_in_flight; i++) {
 				auto set = DescriptorSet::Create(global_set_spec);
-				s_GlobalSceneData.scene_descriptor_set.push_back(set);
+				m_SceneDescriptorSet.push_back(set);
 			}
-
-			s_GlobalSceneData.available_texture_indices.reserve(s_GlobalSceneData.max_textures);
-			s_GlobalSceneData.available_texture_indices.resize(s_GlobalSceneData.max_textures);
-			uint32 index = 0;
-			for (auto i = s_GlobalSceneData.available_texture_indices.rbegin(); i != s_GlobalSceneData.available_texture_indices.rend(); i++, index++)
-				*i = index;
 
 			// Create sprite data buffer. Creating SSBO because I need more than 65kb.
 			{
@@ -57,7 +52,7 @@ namespace Omni {
 				m_SpriteDataBuffer = DeviceBuffer::Create(buffer_spec);
 
 				for (uint32 i = 0; i < Renderer::GetConfig().frames_in_flight; i++) {
-					s_GlobalSceneData.scene_descriptor_set[i]->Write(1, 0, m_SpriteDataBuffer, per_frame_size, i * per_frame_size);
+					m_SceneDescriptorSet[i]->Write(1, 0, m_SpriteDataBuffer, per_frame_size, i * per_frame_size);
 				}
 
 				m_SpriteBufferSize = per_frame_size;
@@ -76,23 +71,16 @@ namespace Omni {
 		}
 
 		{
-			// Init buffers accessed by BDA
+			// Initialize camera buffer
 			DeviceBufferSpecification buffer_spec = {};
 			buffer_spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
 			buffer_spec.heap = DeviceBufferMemoryHeap::DEVICE;
 			buffer_spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
-
-			buffer_spec.size = sizeof DeviceMeshData * 1024;
-			m_MeshDataBuffer = DeviceBuffer::Create(buffer_spec);
-
-			buffer_spec.size = 32 * 1024 * Renderer::GetConfig().frames_in_flight; // 32 is magic number which represents transform. vec3 (t) + uvec2 (r) + vec3 (s)
-			m_TransformBuffer = DeviceBuffer::Create(buffer_spec);
-
 			buffer_spec.size = sizeof DeviceCameraData * Renderer::GetConfig().frames_in_flight;
 			m_CameraDataBuffer = DeviceBuffer::Create(buffer_spec);
 		}
 
-		// Initializing nearest filtration sampler
+		// Initialize nearest filtration sampler
 		{
 			ImageSamplerSpecification sampler_spec = {};
 			sampler_spec.min_filtering_mode = SamplerFilteringMode::LINEAR;
@@ -134,7 +122,7 @@ namespace Omni {
 			image_spec.array_layers = 1;
 
 			m_DummyWhiteTexture = Image::Create(image_spec, 0);
-			AcquireTextureIndex(m_DummyWhiteTexture, SamplerFilteringMode::LINEAR);
+			AcquireResourceIndex(m_DummyWhiteTexture, SamplerFilteringMode::LINEAR);
 		}
 		// Initializing pipelines
 		{
@@ -146,7 +134,20 @@ namespace Omni {
 
 			m_SpritePass = Pipeline::Create(pipeline_spec);
 		}
-
+		// Initialize device render queue
+		{
+			m_DeviceRenderQueue.add_callback([](Shared<DeviceBuffer>& value) {
+				DeviceBufferSpecification spec;
+				// allow for 256 objects per material for beginning.
+				// TODO: allow recreating buffer with bigger size when limit is reached
+				spec.size = sizeof(DeviceRenderableObject) * 256 * Renderer::GetConfig().frames_in_flight; 
+				spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
+				spec.heap = DeviceBufferMemoryHeap::DEVICE;
+				spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
+				
+				value = DeviceBuffer::Create(spec);
+			});
+		}
 	}
 
 	SceneRenderer::~SceneRenderer()
@@ -162,7 +163,7 @@ namespace Omni {
 		m_SpritePass->Destroy();
 		m_SpriteDataBuffer->Destroy();
 		m_CameraDataBuffer->Destroy();
-		for (auto set : s_GlobalSceneData.scene_descriptor_set)
+		for (auto set : m_SceneDescriptorSet)
 			set->Destroy();
 		for (auto& output : m_RendererOutputs)
 			output->Destroy();
@@ -170,6 +171,11 @@ namespace Omni {
 
 	void SceneRenderer::BeginScene(Shared<Camera> camera)
 	{
+		// Clear render queues
+		for (auto& queue : m_HostRenderQueue)
+			queue.second.clear();
+
+		// Write camera data to device buffer
 		if (camera) {
 			m_Camera = camera;
 
@@ -186,8 +192,10 @@ namespace Omni {
 			);
 		}
 
+		// Change current render target
 		m_CurrectMainRenderTarget = m_RendererOutputs[Renderer::GetCurrentFrameIndex()];
 
+		// Change layout of render target
 		Renderer::Submit([=]() {	
 			m_CurrectMainRenderTarget->SetLayout(
 				Renderer::GetCmdBuffer(),
@@ -198,27 +206,53 @@ namespace Omni {
 				PipelineAccess::COLOR_ATTACHMENT_WRITE
 			);
 		});
+
+		// Begin render and bind global descriptor set
 		Renderer::BeginRender(m_CurrectMainRenderTarget, m_CurrectMainRenderTarget->GetSpecification().extent, { 0, 0 }, { 0.0f, 0.0f, 0.0f, 1.0f });
-		Renderer::BindSet(s_GlobalSceneData.scene_descriptor_set[Renderer::GetCurrentFrameIndex()], m_SpritePass, 0);
+		Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], m_SpritePass, 0);
 	}
 
 	void SceneRenderer::EndScene()
 	{
-		// Draw 2D
-		m_SpriteDataBuffer->UploadData(
-			Renderer::GetCurrentFrameIndex() * m_SpriteBufferSize,
-			m_SpriteQueue.data(),
-			m_SpriteQueue.size() * sizeof(Sprite)
-		);
-
 		uint64 camera_data_device_address = m_CameraDataBuffer->GetDeviceAddress() + sizeof DeviceCameraData * Renderer::GetCurrentFrameIndex();
 
-		MiscData pc = {};
-		pc.data = (byte*)new uint64;
-		memcpy(pc.data, &camera_data_device_address, sizeof uint64);
-		pc.size = sizeof uint64;
+		// Draw 2D
+		{
+			m_SpriteDataBuffer->UploadData(
+				Renderer::GetCurrentFrameIndex() * m_SpriteBufferSize,
+				m_SpriteQueue.data(),
+				m_SpriteQueue.size() * sizeof(Sprite)
+			);
 
-		Renderer::RenderQuads(m_SpritePass, m_SpriteQueue.size(), pc);
+			MiscData pc = {};
+			pc.data = (byte*)new uint64;
+			memcpy(pc.data, &camera_data_device_address, sizeof uint64);
+			pc.size = sizeof uint64;
+
+			Renderer::RenderQuads(m_SpritePass, m_SpriteQueue.size(), pc);
+		}
+
+		// Render 3D
+		for (auto& host_render_queue : m_HostRenderQueue) {
+			auto device_render_queue = m_DeviceRenderQueue[host_render_queue.first];
+			uint32 per_frame_size = device_render_queue->GetSpecification().size / Renderer::GetConfig().frames_in_flight;
+			device_render_queue->UploadData(
+				Renderer::GetCurrentFrameIndex() * per_frame_size, 
+				m_HostRenderQueue.at(host_render_queue.first).data(), 
+				m_HostRenderQueue.at(host_render_queue.first).size()
+			);
+			MiscData pc = {}; 
+			uint64* data = new uint64[3];
+			data[0] = camera_data_device_address;
+			data[1] = m_MeshResourcesBuffer.GetStorageBDA();
+			data[2] = device_render_queue->GetDeviceAddress();
+			pc.data = (byte*)data;
+			pc.size = sizeof uint64 * 3;
+
+			Renderer::RenderMeshTasks(host_render_queue.first, { 3000, 1, 1 }, pc);
+
+		}
+
 		Renderer::EndRender(m_CurrectMainRenderTarget);
 		Renderer::Submit([=]() {
 			m_CurrectMainRenderTarget->SetLayout(
@@ -241,15 +275,9 @@ namespace Omni {
 		return m_RendererOutputs[Renderer::GetCurrentFrameIndex()];
 	}
 
-	uint16 SceneRenderer::AcquireTextureIndex(Shared<Image> image, SamplerFilteringMode filtering_mode)
+	uint32 SceneRenderer::AcquireResourceIndex(Shared<Image> image, SamplerFilteringMode filtering_mode)
 	{
-		if (s_GlobalSceneData.available_texture_indices.size() == 0) {
-			OMNIFORCE_CORE_ERROR("Exceeded maximum amount of textures!");
-			return UINT16_MAX;
-		}
-
-		uint16 index = s_GlobalSceneData.available_texture_indices.back();
-		s_GlobalSceneData.available_texture_indices.pop_back();
+		uint32 index = m_TextureIndexAllocator->Allocate(4, 1) / sizeof uint32;
 
 		Shared<ImageSampler> sampler;
 
@@ -260,24 +288,37 @@ namespace Omni {
 		default:								OMNIFORCE_ASSERT_TAGGED(false, "Invalid sampler filtering mode"); break;
 		}
 
-		for (auto& set : s_GlobalSceneData.scene_descriptor_set)
+		for (auto& set : m_SceneDescriptorSet)
 			set->Write(0, index, image, sampler);
-		s_GlobalSceneData.textures.emplace(image->Handle, index);
+		m_TextureIndices.emplace(image->Handle, index);
 
 		return index;
 	}
 
-	bool SceneRenderer::ReleaseTextureIndex(Shared<Image> image)
+	uint32 SceneRenderer::AcquireResourceIndex(Shared<Material> material)
 	{
-		if (s_GlobalSceneData.available_texture_indices.size() == s_GlobalSceneData.max_textures) {
-			OMNIFORCE_CORE_ERROR("Texture index bank is full!");
-			return false;
-		}
+		return m_MaterialDataPool.Allocate(material->Handle);
+	}
 
-		uint16 index = s_GlobalSceneData.textures.find(image->Handle)->second;
+	uint32 SceneRenderer::AcquireResourceIndex(Shared<Mesh> mesh)
+	{
+		DeviceMeshData mesh_data = {};
+		mesh_data.bounding_sphere =				mesh->GetBoundingSphere();
+		mesh_data.meshlet_count =				mesh->GetMeshletCount();
+		mesh_data.geometry_bda =				mesh->GetBuffer(MeshBufferKey::GEOMETRY)->GetDeviceAddress();
+		mesh_data.attributes_bda =				mesh->GetBuffer(MeshBufferKey::ATTRIBUTES)->GetDeviceAddress();
+		mesh_data.meshlets_bda =				mesh->GetBuffer(MeshBufferKey::MESHLETS)->GetDeviceAddress();
+		mesh_data.micro_indices_bda =			mesh->GetBuffer(MeshBufferKey::MICRO_INDICES)->GetDeviceAddress();
+		mesh_data.meshlets_cull_data_bda =		mesh->GetBuffer(MeshBufferKey::MESHLETS_CULL_DATA)->GetDeviceAddress();
+		
+		return m_MeshResourcesBuffer.Allocate(mesh->Handle, mesh_data);;
+	}
 
-		s_GlobalSceneData.available_texture_indices.push_back(index);
-		s_GlobalSceneData.textures.erase(image->Handle);
+	bool SceneRenderer::ReleaseResourceIndex(Shared<Image> image)
+	{
+		uint16 index = m_TextureIndices.at(image->Handle);
+		m_TextureIndexAllocator->Free(sizeof(uint32) * index);
+		m_TextureIndices.erase(image->Handle);
 
 		return true;
 	}
@@ -285,6 +326,11 @@ namespace Omni {
 	void SceneRenderer::RenderSprite(const Sprite& sprite)
 	{
 		m_SpriteQueue.push_back(sprite);
+	}
+
+	void SceneRenderer::RenderObject(Shared<Pipeline> pipeline, const DeviceRenderableObject& render_data)
+	{
+		m_HostRenderQueue[pipeline].push_back(render_data);
 	}
 
 }

@@ -35,8 +35,7 @@ namespace Omni {
 	{
 		VkDebugUtilsMessengerCreateInfoEXT messenger_info = GetMessengerCreateInfo();
 
-		auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(ctx->GetVulkanInstance(), "vkCreateDebugUtilsMessengerEXT");
-		VK_CHECK_RESULT(func(ctx->GetVulkanInstance(), &messenger_info, nullptr, &m_Logger));
+		VK_CHECK_RESULT(vkCreateDebugUtilsMessengerEXT(ctx->GetVulkanInstance(), &messenger_info, nullptr, &m_Logger));
 	}
 
 	VulkanDebugUtils::~VulkanDebugUtils()
@@ -46,8 +45,7 @@ namespace Omni {
 
 	void VulkanDebugUtils::Destroy(VulkanGraphicsContext* ctx)
 	{
-		auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(ctx->GetVulkanInstance(), "vkDestroyDebugUtilsMessengerEXT");
-		func(ctx->GetVulkanInstance(), m_Logger, nullptr);
+		vkDestroyDebugUtilsMessengerEXT(ctx->GetVulkanInstance(), m_Logger, nullptr);
 
 	}
 
@@ -57,9 +55,12 @@ namespace Omni {
 		messenger_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
 		messenger_info.pfnUserCallback = debugCallback;
 		messenger_info.messageType = 
+			VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
 			VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | 
 			VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
 		messenger_info.messageSeverity = 
+			VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
 			VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | 
 			VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
 

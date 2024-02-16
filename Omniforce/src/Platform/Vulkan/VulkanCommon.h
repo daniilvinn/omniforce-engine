@@ -4,7 +4,7 @@
 #include <Renderer/RendererCommon.h>
 #include "ForwardDecl.h"
 
-#include <vulkan/vulkan.h>
+#include <volk.h>
 
 #ifdef CURSED_DEBUG
 	#define VK_CHECK_RESULT(fn)																								\

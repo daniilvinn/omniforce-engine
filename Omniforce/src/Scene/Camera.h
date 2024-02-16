@@ -2,6 +2,7 @@
 
 #include "SceneCommon.h"
 
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 
 namespace Omni {
@@ -94,7 +95,6 @@ namespace Omni {
 		void SetAspectRatio(float32 ratio) override;
 
 		// Getters for common camera data
-		glm::mat4 GetRotationMatrix() const;
 		float32 GetYaw() const { return m_Yaw; };
 		float32 GetPitch() const { return m_Pitch; };
 		float32 GetRoll() const { return m_Roll; };

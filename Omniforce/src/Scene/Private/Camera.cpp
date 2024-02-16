@@ -63,13 +63,18 @@ namespace Omni {
 		m_ViewProjectionMatrix = glm::mat4(1.0f);
 		m_ProjectionMatrix = glm::mat4(1.0f);
 		m_ViewMatrix = glm::mat4(1.0f);
-		m_Position = glm::vec3(0.0f);
-		m_FrontVector = glm::normalize(glm::vec3(0.0f, 0.0f, -1.0f));
-		m_Yaw = 0.0f;
+		m_Position = glm::vec3(0.0f, 0.0f, 5.0f);
+		m_Yaw = -90.0f;
 		m_Pitch = 0.0f;
 		m_Roll = 0.0f;
+		m_ZNear = 0.001f;
+		m_ZFar = 1000.0f;
+		m_AspectRatio = 16.0f / 9.0f;
+		m_FieldOfView = glm::radians(60.0f);
 
 		CalculateVectors();
+		SetProjection(m_FieldOfView, m_AspectRatio, m_ZNear, m_ZFar);
+		CalculateMatrices();
 	}
 
 	void Camera3D::SetProjection(float fov, float ratio, float zNear, float zFar)
@@ -94,6 +99,7 @@ namespace Omni {
 		m_Pitch = pitch;
 
 		CalculateVectors();
+		CalculateMatrices();
 	}
 
 	void Camera3D::SetFOV(float32 fov)
@@ -106,11 +112,6 @@ namespace Omni {
 	{
 		m_AspectRatio = ratio;
 		SetProjection(m_FieldOfView, m_AspectRatio, m_ZNear, m_ZFar);
-	}
-
-	glm::mat4 Camera3D::GetRotationMatrix() const
-	{
-		return glm::lookAt(m_Position, m_Position + m_FrontVector, glm::vec3(0, 1, 0));
 	}
 
 	void Camera3D::LookAt(glm::vec3 at)
@@ -151,8 +152,7 @@ namespace Omni {
 		m_Position += m_UpVector * direction.y;
 		m_Position += m_FrontVector * direction.z;
 
-		m_ViewMatrix = glm::lookAt(m_Position, m_Position + m_FrontVector, m_UpVector);
-		m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
+		CalculateMatrices();
 	}
 
 	void Camera3D::CalculateMatrices()

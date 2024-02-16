@@ -13,6 +13,8 @@ namespace Omni {
 		case ShaderStage::VERTEX:		return VK_SHADER_STAGE_VERTEX_BIT;
 		case ShaderStage::FRAGMENT:		return VK_SHADER_STAGE_FRAGMENT_BIT;
 		case ShaderStage::COMPUTE:		return VK_SHADER_STAGE_COMPUTE_BIT;
+		case ShaderStage::TASK:			return VK_SHADER_STAGE_TASK_BIT_EXT;
+		case ShaderStage::MESH:			return VK_SHADER_STAGE_MESH_BIT_EXT;
 		}
 	}
 
@@ -201,7 +203,7 @@ namespace Omni {
 		for (auto& stage : m_StageCreateInfos)
 			if (stage.module != VK_NULL_HANDLE)
 				vkDestroyShaderModule(device->Raw(), stage.module, nullptr);
-
+		
 		for (auto& layout : m_SetLayouts)
 			vkDestroyDescriptorSetLayout(device->Raw(), layout, nullptr);
 

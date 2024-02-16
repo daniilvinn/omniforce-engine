@@ -1,7 +1,8 @@
 #pragma once
 
-#include <glm/glm.hpp>
 #include <Foundation/Types.h>
+
+#include <glm/glm.hpp>
 
 namespace Omni {
 
@@ -14,12 +15,24 @@ namespace Omni {
 
 	struct DeviceMeshData {
 		Sphere bounding_sphere;
-		uint32 transform_id;
+		uint32 meshlet_count;
 		uint64 geometry_bda;
 		uint64 attributes_bda;
 		uint64 meshlets_bda;
 		uint64 micro_indices_bda;
 		uint64 meshlets_cull_data_bda;
+	};
+
+	struct TRS {
+		glm::vec3 translation;
+		glm::uvec2 rotation;
+		glm::vec3 scale;
+	};
+
+	struct DeviceRenderableObject {
+		TRS trs;
+		uint32 render_data_index;
+		uint64 material_bda;
 	};
 
 }

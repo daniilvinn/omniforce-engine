@@ -62,7 +62,6 @@ namespace Omni {
 						if (ImGui::MenuItem("Camera component")) {
 							CameraComponent& camera_component = m_Entity.AddComponent<CameraComponent>();
 							Shared<Camera3D> camera = std::make_shared<Camera3D>();
-							camera->SetProjection(glm::radians(80.0f), 16.0 / 9.0f, 0.1f, 100.0f);
 							camera_component.camera = camera;
 							camera_component.primary = false;
 						}
@@ -284,7 +283,7 @@ namespace Omni {
 												Shared<Camera>& camera = camera_component.camera;
 												Shared<Camera3D> camera_3D = std::make_shared<Camera3D>();
 												camera_3D->SetProjection(glm::radians(90.0f), 16.0 / 9.0, 0.0f, 100.0f);
-												camera_3D->Move({ 0.0f, 0.0f, -50.0f });
+												camera_3D->Move({ 0.0f, 0.0f, 5.0f });
 
 												camera->SetType(CameraProjectionType::PROJECTION_3D);
 												camera = ShareAs<Camera>(camera_3D);

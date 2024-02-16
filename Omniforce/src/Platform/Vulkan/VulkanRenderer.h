@@ -33,11 +33,9 @@ namespace Omni {
 		void CopyToSwapchain(Shared<Image> image) override;
 
 		void ClearImage(Shared<Image> image, const fvec4& value) override;
-		void RenderMesh(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo, MiscData misc_data) override;
+		void RenderMeshTasks(Shared<Pipeline> pipeline, const glm::vec3& dimensions, MiscData data) override;
 		void RenderQuad(Shared<Pipeline> pipeline, MiscData data) override;
 		void RenderQuad(Shared<Pipeline> pipeline, uint32 amount, MiscData data) override;
-		void RenderLines(Shared<Pipeline> pipeline, uint32 amount, MiscData data) override;
-		void PushConstants(Shared<Pipeline> pipeline, MiscData data) override;
 		void RenderImGui() override;
 
 		void BeginCommandRecord() override;

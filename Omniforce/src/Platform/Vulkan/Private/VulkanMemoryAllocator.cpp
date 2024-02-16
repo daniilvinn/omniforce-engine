@@ -21,8 +21,8 @@ namespace Omni {
 		VulkanGraphicsContext* vk_context = VulkanGraphicsContext::Get();
 
 		VmaVulkanFunctions vulkan_functions = {};
-		vulkan_functions.vkGetInstanceProcAddr = &vkGetInstanceProcAddr;
-		vulkan_functions.vkGetDeviceProcAddr = &vkGetDeviceProcAddr;
+		vulkan_functions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
+		vulkan_functions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
 
 		VmaAllocatorCreateInfo allocator_create_info = {};
 		allocator_create_info.vulkanApiVersion = VK_API_VERSION_1_3;

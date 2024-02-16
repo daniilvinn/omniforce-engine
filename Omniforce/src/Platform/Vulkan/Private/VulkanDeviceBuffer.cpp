@@ -84,7 +84,7 @@ namespace Omni {
 	{
 		if (m_Specification.buffer_usage != DeviceBufferUsage::SHADER_DEVICE_ADDRESS) {
 			OMNIFORCE_CORE_ERROR("[Renderer]: failed to capture device buffer address. \
-				Buffer was create without \"BUFFER_DEVICE_ADDRESS\" usage, returning invalid address");
+				Buffer was create without \"SHADER_DEVICE_ADDRESS\" usage, returning invalid address");
 			return 0;
 		}
 

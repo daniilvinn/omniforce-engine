@@ -28,7 +28,7 @@ namespace Omni {
 
 	uint32 VulkanVirtualMemoryBlock::Allocate(uint32 size, uint32 alignment)
 	{
-		OMNIFORCE_ASSERT_TAGGED(Utils::IsPowerOf2(alignment), "Alignment virtual allocation must be power of two");
+		OMNIFORCE_ASSERT_TAGGED(Utils::IsPowerOf2(alignment) || (alignment == 1), "Alignment virtual allocation must be power of two");
 
 		VmaVirtualAllocationCreateInfo allocation_create_info = {};
 		allocation_create_info.size = size;

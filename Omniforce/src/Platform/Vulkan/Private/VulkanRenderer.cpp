@@ -10,6 +10,8 @@
 #include <Renderer/ShaderLibrary.h>
 #include <Threading/JobSystem.h>
 
+#define VK_NO_PROTOTYPES
+#define IMGUI_IMPL_VULKAN_NO_PROTOTYPES
 #include <imgui.h>
 #include <backends/imgui_impl_vulkan.h>
 
@@ -156,6 +158,19 @@ namespace Omni {
 		});
 	}
 
+	void VulkanRenderer::RenderMeshTasks(Shared<Pipeline> pipeline, const glm::vec3& dimensions, MiscData data)
+	{
+		Renderer::Submit([=]() mutable {
+			Shared<VulkanPipeline> vk_pipeline = ShareAs<VulkanPipeline>(pipeline);
+
+			vkCmdPushConstants(m_CurrentCmdBuffer->Raw(), vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
+			vkCmdBindPipeline(m_CurrentCmdBuffer->Raw(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
+			vkCmdDrawMeshTasksEXT(m_CurrentCmdBuffer->Raw(), dimensions.x, dimensions.y, dimensions.z);
+			if(data.size)
+				delete[] data.data;
+		});
+	}
+
 	std::vector<VkDescriptorSet> VulkanRenderer::AllocateDescriptorSets(VkDescriptorSetLayout layout, uint32 count)
 	{
 		auto device = VulkanGraphicsContext::Get()->GetDevice();
@@ -195,32 +210,6 @@ namespace Omni {
 		return m_Device->GetPhysicalDevice()->GetProps().limits.minStorageBufferOffsetAlignment;
 	}
 
-	void VulkanRenderer::RenderMesh(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo, MiscData misc_data)
-	{
-		Renderer::Submit([=]() mutable {
-			Shared<VulkanPipeline> vk_pipeline = ShareAs<VulkanPipeline>(pipeline);
-			Shared<VulkanDeviceBuffer> vk_vbo = ShareAs<VulkanDeviceBuffer>(vbo);
-			Shared<VulkanDeviceBuffer> vk_ibo = ShareAs<VulkanDeviceBuffer>(ibo);
-
-			IndexBufferData* ibo_data = (IndexBufferData*)vk_ibo->GetAdditionalData();
-
-			VkDeviceSize offset = 0;
-
-			VkBuffer raw_vbo = vk_vbo->Raw();
-
-			vkCmdBindPipeline(m_CurrentCmdBuffer->Raw(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
-			vkCmdBindVertexBuffers(m_CurrentCmdBuffer->Raw(), 0, 1, &raw_vbo, &offset);
-			vkCmdBindIndexBuffer(m_CurrentCmdBuffer->Raw(), vk_ibo->Raw(), 0, ibo_data->index_type);
-
-			if(misc_data.size)
-				vkCmdPushConstants(m_CurrentCmdBuffer->Raw(), vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, misc_data.size, misc_data.data);
-
-			vkCmdDrawIndexed(m_CurrentCmdBuffer->Raw(), ibo_data->index_count, 1, 0, 0, 0);
-
-			delete[] misc_data.data;
-		});
-	}
-
 	void VulkanRenderer::RenderQuad(Shared<Pipeline> pipeline, MiscData data)
 	{
 		Renderer::Submit([=]() mutable {
@@ -248,26 +237,6 @@ namespace Omni {
 			vkCmdBindPipeline(m_CurrentCmdBuffer->Raw(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
 			vkCmdDraw(m_CurrentCmdBuffer->Raw(), 6, amount, 0, 0);
 		});
-	}
-
-	void VulkanRenderer::RenderLines(Shared<Pipeline> pipeline, uint32 amount, MiscData data)
-	{
-		Renderer::Submit([=]()mutable {
-			Shared<VulkanPipeline> vk_pipeline = ShareAs<VulkanPipeline>(pipeline);
-
-			if (data.size)
-			{
-				vkCmdPushConstants(m_CurrentCmdBuffer->Raw(), vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
-				delete[] data.data;
-			}
-			vkCmdBindPipeline(m_CurrentCmdBuffer->Raw(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
-			vkCmdDraw(m_CurrentCmdBuffer->Raw(), 6, amount, 0, 0);
-		});
-	}
-
-	void VulkanRenderer::PushConstants(Shared<Pipeline> pipeline, MiscData data)
-	{
-		OMNIFORCE_ASSERT_TAGGED(false, "Not implemented yet. Reserved for future use. Please, use MiscData parameter in other render functions to provide push constants.");
 	}
 
 	void VulkanRenderer::RenderImGui()

@@ -30,6 +30,7 @@ namespace Omni {
 	DeviceMaterialPool::~DeviceMaterialPool()
 	{
 		m_PoolBuffer->Destroy();
+		m_StagingForCopy->Destroy();
 		m_VirtualAllocator->Destroy();
 	}
 
@@ -48,20 +49,12 @@ namespace Omni {
 		byte* material_data = new byte[material_size];
 		uint32 current_offset = 0;
 
-		for (auto& entry : material_table) {
-			uint32 entry_size = Material::GetRuntimeEntrySize(entry.second.index());
+		for (auto& entry : material_table) {			
+			std::visit([&material_data, current_offset](const auto& value) {
+				memcpy(material_data + current_offset, &value, sizeof value);
+			}, entry.second);
 			
-			if (!entry.second.index()) {
-				uint32 texture_index = m_Context->GetTextureIndex(std::get<AssetHandle>(entry.second));
-				memcpy(material_data + current_offset, &texture_index, 4);
-			}
-			else {
-				std::visit([&material_data, current_offset](const auto& value) {
-					memcpy(material_data + current_offset, &value, sizeof value);
-				}, entry.second);
-			}
-			
-			current_offset += entry_size;
+			current_offset += Material::GetRuntimeEntrySize(entry.second.index());
 		}
 
 		m_StagingForCopy->UploadData(0, material_data, material_size);
@@ -84,7 +77,7 @@ namespace Omni {
 		m_VirtualAllocator->Free(m_OffsetsMap.at(material));
 	}
 
-	uint64 DeviceMaterialPool::GetStorageBufferAddress()
+	uint64 DeviceMaterialPool::GetStorageBufferAddress() const
 	{
 		return m_PoolBuffer->GetDeviceAddress();
 	}

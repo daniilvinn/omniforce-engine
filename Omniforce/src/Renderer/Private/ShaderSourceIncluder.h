@@ -33,7 +33,6 @@ namespace Omni {
 			return includeResult;
 		}
 
-
 		void ReleaseInclude(shaderc_include_result* data) override
 		{
 			delete static_cast<std::array<std::string, 2>*>(data->user_data);

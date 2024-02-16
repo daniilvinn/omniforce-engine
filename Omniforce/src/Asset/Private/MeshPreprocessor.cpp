@@ -39,6 +39,7 @@ namespace Omni {
 			meshlets_data->cull_bounds[idx] = *(MeshletCullBounds*)(& bounds);
 			idx++;
 
+			meshlet.index_offset = meshlets[idx].vertex_offset;
 			meshlet.local_index_count = meshlets[idx].triangle_count;
 			meshlet.local_index_offset = meshlets[idx].triangle_offset;
 		}

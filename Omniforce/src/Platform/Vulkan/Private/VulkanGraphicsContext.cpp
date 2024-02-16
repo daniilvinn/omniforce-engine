@@ -1,11 +1,15 @@
+#define VOLK_IMPLEMENTATION
+#include <volk.h>
+
 #include "../VulkanGraphicsContext.h"
 #include "../VulkanDevice.h"
 #include "../VulkanDebugUtils.h"
 #include "../VulkanSwapchain.h"
 #include "VulkanMemoryAllocator.h"
 
-#include <GLFW/glfw3.h>
 #include <vector>
+
+#include <GLFW/glfw3.h>
 
 namespace Omni {
 
@@ -20,13 +24,15 @@ namespace Omni {
 
 		s_Instance = this;
 
+		volkInitialize();
+
 		VkApplicationInfo application_info = {};
 		application_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 		application_info.apiVersion = VK_API_VERSION_1_3;
 		application_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
 		application_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-		application_info.pEngineName = "Cursed Engine";
-		application_info.pApplicationName = "Cursed Engine Core";
+		application_info.pEngineName = "Omniforce Engine";
+		application_info.pApplicationName = "Omniforce Engine";
 
 		std::vector<const char*> extensions = GetVulkanExtensions();
 		std::vector<const char*> layers = GetVulkanLayers();
@@ -46,6 +52,7 @@ namespace Omni {
 		instance_create_info.enabledLayerCount = layers.size();
 
 		VK_CHECK_RESULT(vkCreateInstance(&instance_create_info, nullptr, &m_VulkanInstance));
+		volkLoadInstance(m_VulkanInstance);
 
 		if(OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG)
 			m_DebugUtils = std::make_shared<VulkanDebugUtils>(this);
@@ -54,9 +61,11 @@ namespace Omni {
 		device_features.samplerAnisotropy = true;
 		device_features.geometryShader = true;
 		device_features.tessellationShader = true;
+		device_features.shaderInt64 = true;
 
 		Shared<VulkanPhysicalDevice> device = VulkanPhysicalDevice::Select(this);
 		m_Device = std::make_shared<VulkanDevice>(device, std::forward<VkPhysicalDeviceFeatures>(device_features));
+		volkLoadDevice(m_Device->Raw());
 
 		GLFWwindow* window_handle = (GLFWwindow*)config.main_window->Raw();
 		ivec2 window_size = {};
@@ -90,6 +99,7 @@ namespace Omni {
 		if (OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG)
 			m_DebugUtils->Destroy(this);
 		vkDestroyInstance(m_VulkanInstance, nullptr);
+		volkFinalize();
 	}
 
 	std::vector<const char*> VulkanGraphicsContext::GetVulkanExtensions()

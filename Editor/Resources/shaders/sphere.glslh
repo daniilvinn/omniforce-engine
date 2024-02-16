@@ -1,0 +1,9 @@
+#ifndef SPHERE_GLSLH
+#define SPHERE_GLSLH
+
+struct Sphere {
+	vec3 center;
+	float radius;
+};
+
+#endif

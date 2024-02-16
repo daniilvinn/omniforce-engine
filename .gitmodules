@@ -19,3 +19,6 @@
 [submodule "Omniforce/vendor/fastgltf"]
 	path = Omniforce/vendor/fastgltf
 	url = https://github.com/spnda/fastgltf.git
+[submodule "Omniforce/vendor/volk"]
+	path = Omniforce/vendor/volk
+	url = https://github.com/zeux/volk.git

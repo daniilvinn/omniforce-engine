@@ -90,10 +90,11 @@ namespace Omni {
 	
 		template<typename T>
 		inline bool IsPowerOf2(T value) {
-			if (std::is_integral_v<T>)
+			if (!std::is_integral_v<T>)
 				return false;
 
-			return value && (value & (value - 1) == 0);
+			bool result = value && ((value & (value - 1)) == 0);
+			return result;
 		}
 
 		// NOTE: returns amount of mip levels excluding mip #0

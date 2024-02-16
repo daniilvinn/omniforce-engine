@@ -75,56 +75,74 @@ namespace Omni {
 			return lhs.layer < rhs.layer;
 		});
 
-		auto sprite_view = m_Registry.view<SpriteComponent>();
 		auto cameras_view = m_Registry.view<CameraComponent>();
 
 		// Update camera components so view matches camera entity's position and rotation
-		for (auto& e : cameras_view) {
-			Entity entity(e, this);
+		if (m_InRuntime) {
+			for (auto& e : cameras_view) {
+				Entity entity(e, this);
 
-			TRSComponent world_transform = entity.GetWorldTransform();
-			CameraComponent& camera_component = entity.GetComponent<CameraComponent>();
+				TRSComponent world_transform = entity.GetWorldTransform();
+				CameraComponent& camera_component = entity.GetComponent<CameraComponent>();
 
-			camera_component.camera->SetPosition(world_transform.translation);
+				camera_component.camera->SetPosition(world_transform.translation);
 
-			if (camera_component.camera->GetType() == CameraProjectionType::PROJECTION_3D) {
-				Shared<Camera3D> camera_3D = ShareAs<Camera3D>(camera_component.camera);
-				camera_3D->SetRotation(world_transform.rotation.y, world_transform.rotation.x);
+				if (camera_component.camera->GetType() == CameraProjectionType::PROJECTION_3D) {
+					Shared<Camera3D> camera_3D = ShareAs<Camera3D>(camera_component.camera);
+					glm::vec3 euler_angles = glm::degrees(glm::eulerAngles(world_transform.rotation));
+					camera_3D->SetRotation(euler_angles.y, euler_angles.x);
+				}
+
+				camera_component.camera->CalculateMatrices();
+
+				m_Camera = camera_component.camera;
 			}
-
-			camera_component.camera->CalculateMatrices();
 		}
 
 		// Begin rendering
 		m_Renderer->BeginScene(m_Camera);
 		// If primary camera was not found, then it is nullptr and we cannot render
 		if (m_Camera != nullptr) {
-			for (auto& e : sprite_view) {
+			m_Registry.view<SpriteComponent>().each([&, scene = this](auto e, auto& sprite_component) {
 				Entity entity(e, this);
+				TRSComponent trs_component = entity.GetWorldTransform();
+				TagComponent& tag_component = entity.GetComponent<TagComponent>();
 
-				TRSComponent trs = entity.GetWorldTransform();
-				SpriteComponent sprite_component = entity.GetComponent<SpriteComponent>();
-
-				// normalize quaternion
-				trs.rotation = glm::normalize(trs.rotation);
-				
-				// pack to 2 uints
-				glm::uvec2 packed_quat = { 
-					glm::packSnorm2x16({trs.rotation.x, trs.rotation.y}), 
-					glm::packSnorm2x16({trs.rotation.z, trs.rotation.w})
+				glm::uvec2 packed_quat = {
+					glm::packSnorm2x16({trs_component.rotation.x, trs_component.rotation.y}),
+					glm::packSnorm2x16({trs_component.rotation.z, trs_component.rotation.w})
 				};
 
 				// Assemble sprite structure
 				Sprite sprite;
 				sprite.texture_id = m_Renderer->GetTextureIndex(sprite_component.texture);
 				sprite.rotation = packed_quat;
-				sprite.position = { trs.translation.x, trs.translation.y, trs.translation.z };
-				sprite.size = { trs.scale.x * sprite_component.aspect_ratio, trs.scale.y };
+				sprite.position = { trs_component.translation.x, trs_component.translation.y, trs_component.translation.z };
+				sprite.size = { trs_component.scale.x * sprite_component.aspect_ratio, trs_component.scale.y };
 				sprite.color_tint = sprite_component.color;
 
 				// Add sprite to a render queue
 				m_Renderer->RenderSprite(sprite);
-			}
+			});
+			
+
+			// 3D
+			m_Registry.view<MeshComponent>().each([&, asset_manager = AssetManager::Get(), scene = this](auto e, auto& mesh_data) {
+				Entity entity(e, this);
+				TRSComponent trs_component = entity.GetWorldTransform();
+
+				DeviceRenderableObject renderable_object = {};
+				renderable_object.trs.translation = trs_component.translation;
+				renderable_object.trs.rotation = {
+					glm::packSnorm2x16({trs_component.rotation.x, trs_component.rotation.y}),
+					glm::packSnorm2x16({trs_component.rotation.z, trs_component.rotation.w})
+				};
+				renderable_object.trs.scale = trs_component.scale;
+				renderable_object.render_data_index = m_Renderer->GetMeshIndex(mesh_data.mesh_handle);
+				renderable_object.material_bda = m_Renderer->GetMaterialBDA(mesh_data.material_handle);
+				m_Renderer->RenderObject(asset_manager->GetAsset<Material>(mesh_data.material_handle)->GetPipeline(), renderable_object);
+			});
+
 		}
 		// End rendering and submit sprites to GPU
 		m_Renderer->EndScene();
@@ -246,6 +264,7 @@ namespace Omni {
 
 	void Scene::LaunchRuntime()
 	{
+		m_InRuntime = true;;
 		m_Camera = nullptr;
 		auto view = m_Registry.view<CameraComponent>();
 		for (auto& entity : view) {
@@ -270,6 +289,7 @@ namespace Omni {
 
 	void Scene::ShutdownRuntime()
 	{
+		m_InRuntime = false;
 		PhysicsEngine::Get()->Reset();
 		ScriptEngine::Get()->ShutdownRuntime();
 	}
@@ -295,7 +315,7 @@ namespace Omni {
 		auto tex_registry = *AssetManager::Get()->GetAssetRegistry();
 		for (auto& [id, texture] : tex_registry) {
 			auto image = ShareAs<Image>(texture);
-			texture_node.emplace(std::to_string(texture->Handle), image->GetSpecification().path.string().erase(0, FileSystem::GetWorkingDirectory().string().size()));
+			texture_node.emplace(std::to_string(texture->Handle), image->GetSpecification().path.string());
 		}
 
 		nlohmann::json& entities_node = node["GameObjects"];
@@ -360,7 +380,7 @@ namespace Omni {
 				Shared<Image> texture = AssetManager::Get()->GetAsset<Image>(id);
 
 				renderer_mtx.lock();
-				m_Renderer->AcquireTextureIndex(texture, SamplerFilteringMode::NEAREST);
+				m_Renderer->AcquireResourceIndex(texture, SamplerFilteringMode::NEAREST);
 				renderer_mtx.unlock();
 			});
 		}

@@ -9,27 +9,26 @@
 
 namespace Omni {
 
-	Omni::ShaderLibrary* ShaderLibrary::s_Instance;
-
-	Omni::ShaderCompiler m_Compiler;
-
 	ShaderLibrary::ShaderLibrary()
 	{
-
+		m_GlobalMacros.push_back(std::make_pair("_OMNI_SCENE_DESCRIPTOR_SET", "0"));
+		m_GlobalMacros.push_back(std::make_pair("_OMNI_PASS_DESCRIPTOR_SET", "1"));
+		m_GlobalMacros.push_back(std::make_pair("_OMNI_DRAW_CALL_DESCRIPTOR_SET", "2"));
+		m_GlobalMacros.shrink_to_fit();
 	}
 
 	ShaderLibrary::~ShaderLibrary()
 	{
-		for (auto& [key, shader] : m_Library)
-			shader->Destroy();
+		for (auto& [key, permutation_map] : m_Library)
+			for(auto& [shader, macro_table] : permutation_map )
+				shader->Destroy();
+
+		m_Library.clear();
 	}
 
 	void ShaderLibrary::Init()
 	{
 		s_Instance = new ShaderLibrary;
-		m_Compiler.AddGlobalMacro("_OMNI_SCENE_DESCRIPTOR_SET", "0");
-		m_Compiler.AddGlobalMacro("_OMNI_PASS_DESCRIPTOR_SET", "1");
-		m_Compiler.AddGlobalMacro("_OMNI_DRAW_CALL_DESCRIPTOR_SET", "2");
 	}
 
 	void ShaderLibrary::Destroy()
@@ -37,8 +36,12 @@ namespace Omni {
 		delete s_Instance;
 	}
 
-	bool ShaderLibrary::Load(std::filesystem::path path)
-	{
+	bool ShaderLibrary::LoadShader(const std::filesystem::path& path, const ShaderMacroTable& macros) {
+		ShaderCompiler shader_compiler;
+
+		for (auto& global_macro : m_GlobalMacros)
+			shader_compiler.AddGlobalMacro(global_macro.first, global_macro.second);
+
 		bool result = m_Library.find(path.filename().string()) != m_Library.end();
 
 		if (result)
@@ -60,42 +63,87 @@ namespace Omni {
 		std::ifstream input_stream(path);
 		while (std::getline(input_stream, line)) shader_source.append(line + '\n');
 
-		ShaderCompilationResult compilation_result = m_Compiler.Compile(shader_source, path.filename().string());
+		ShaderCompilationResult compilation_result = shader_compiler.Compile(shader_source, path.filename().string(), macros);
 
 		if (!compilation_result.valid) return false;
 
 		Shared<Shader> shader = Shader::Create(compilation_result.bytecode, path);
 
 		m_Mutex.lock();
-		m_Library.emplace(path.filename().string(), shader);
+		if (auto shader_filename = path.filename().string(); m_Library.contains(shader_filename)) {
+			m_Library[shader_filename].push_back({ shader, macros });
+		}
+		else {
+			std::vector<std::pair<Shared<Shader>, ShaderMacroTable>> permutations;
+			permutations.push_back({ shader, macros });
+			m_Library.emplace(shader_filename, permutations);
+		}
 		m_Mutex.unlock();
 	}
 
-	bool ShaderLibrary::Unload(std::string name)
+	bool ShaderLibrary::UnloadShader(std::string name, const ShaderMacroTable& macros)
 	{
 		if (m_Library.find(name) == m_Library.end())
 			return false;
 
-		m_Library.find(name)->second->Destroy();
-		m_Library.erase(name);
+		auto& permutation_table = m_Library.at(name);
+
+		// Delete specific permutation
+		uint32 idx = 0;
+		bool permutation_found = false;
+		for (auto& [shader, permutation] : permutation_table) {
+			if (permutation == macros) {
+				shader->Destroy();
+				permutation_table.erase(permutation_table.begin() + idx);
+				return true;
+			}
+			idx++;
+		}
+
+		// Shader found, but didn't find specific permutation
+		if (idx == permutation_table.size())
+			return false;
+
+		// If there's no permutations of a specific shader left, delete entry from library.
+		if(!m_Library.at(name).size())
+			m_Library.erase(name);
 
 		return true;
 	}
 
-	bool ShaderLibrary::Reload(std::filesystem::path name)
+	bool ShaderLibrary::ReloadShader(std::filesystem::path name)
 	{
 		return false;
 	}
 
-	bool ShaderLibrary::Has(std::string key)
+	bool ShaderLibrary::HasShader(std::string key, const ShaderMacroTable& macros /*= {}*/)
 	{
-		std::scoped_lock<std::shared_mutex> lock(m_Mutex);
-		return m_Library.find(key) != m_Library.end();
+		if (!m_Library.contains(key))
+			return false;
+
+		auto permutation_list = m_Library.at(key);
+
+		for (auto& permutation : permutation_list) {
+			if (permutation.second == macros)
+				return true;
+		}
+
+		return false;
 	}
 
-	Shared<Shader> ShaderLibrary::GetShader(std::string key)
+	Shared<Shader> ShaderLibrary::GetShader(std::string key, const ShaderMacroTable& macros)
 	{
-		return m_Library.find(key)->second;
+		if (!m_Library.contains(key))
+			return nullptr;
+
+		auto permutation_list = m_Library.at(key);
+
+		for (auto& permutation : permutation_list) {
+			if (permutation.second == macros)
+				return permutation.first;
+		}
+
+		return nullptr;
 	}
 
 	ShaderStage ShaderLibrary::EvaluateStage(std::filesystem::path file) const

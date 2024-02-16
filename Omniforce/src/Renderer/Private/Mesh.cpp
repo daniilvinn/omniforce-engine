@@ -10,7 +10,8 @@ namespace Omni {
 		const std::vector<byte>& attributes,
 		const std::vector<RenderableMeshlet>& meshlets,
 		const std::vector<byte>& local_indices,
-		const std::vector<MeshletCullBounds>& cull_data
+		const std::vector<MeshletCullBounds>& cull_data,
+		const Sphere& bounding_sphere
 	)
 	{
 		DeviceBufferSpecification buffer_spec = {};
@@ -32,6 +33,9 @@ namespace Omni {
 
 		buffer_spec.size = cull_data.size() * sizeof MeshletCullBounds;
 		m_Buffers.emplace(MeshBufferKey::MESHLETS_CULL_DATA, DeviceBuffer::Create(buffer_spec, (void*)cull_data.data(), buffer_spec.size));
+
+		m_MeshletCount = meshlets.size();
+		m_BoundingSphere = bounding_sphere;
 	}
 
 	Mesh::~Mesh()
@@ -44,10 +48,11 @@ namespace Omni {
 		const std::vector<byte>& attributes,
 		const std::vector<RenderableMeshlet>& meshlets,
 		const std::vector<byte>& local_indices,
-		const std::vector<MeshletCullBounds>& cull_data
+		const std::vector<MeshletCullBounds>& cull_data,
+		const Sphere& bounding_sphere
 	)
 	{
-		return std::make_shared<Mesh>(geometry, attributes, meshlets, local_indices, cull_data);
+		return std::make_shared<Mesh>(geometry, attributes, meshlets, local_indices, cull_data, bounding_sphere);
 	}
 
 	void Mesh::Destroy()

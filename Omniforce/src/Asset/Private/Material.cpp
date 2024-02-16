@@ -3,6 +3,8 @@
 #include <Log/Logger.h>
 #include <Foundation/Macros.h>
 #include <Memory/Pointers.hpp>
+#include <Renderer/ShaderLibrary.h>
+#include <Scene/PipelineLibrary.h>
 
 namespace Omni {
 
@@ -28,6 +30,26 @@ namespace Omni {
 	void Material::Destroy()
 	{
 		
+	}
+
+	void Material::CompilePipeline()
+	{
+		ShaderLibrary* shader_library = ShaderLibrary::Get();
+
+		Shared<Shader> shader = shader_library->GetShader("uber_main.ofs", m_Macros);
+
+		if (!shader) {
+			shader_library->LoadShader("Resources/shaders/uber_main.ofs", m_Macros);
+			shader = shader_library->GetShader("uber_main.ofs", m_Macros);
+		}
+
+		PipelineSpecification pipeline_spec = PipelineSpecification::Default();
+		pipeline_spec.shader = shader;
+
+		PipelineLibrary::HasPipeline(pipeline_spec) ? 
+			m_Pipeline = PipelineLibrary::GetPipeline(pipeline_spec) : m_Pipeline = Pipeline::Create(pipeline_spec);
+
+		m_Macros.clear();
 	}
 
 }

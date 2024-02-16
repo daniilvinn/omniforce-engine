@@ -274,7 +274,8 @@ namespace Omni {
 		graphics_pipeline_create_info.pViewportState = &viewport_state;
 		graphics_pipeline_create_info.renderPass = VK_NULL_HANDLE;
 
-		if (vkCreateGraphicsPipelines(device->Raw(), VK_NULL_HANDLE, 1, &graphics_pipeline_create_info, nullptr, &m_Pipeline) != VK_SUCCESS) 
+		VkResult result = vkCreateGraphicsPipelines(device->Raw(), VK_NULL_HANDLE, 1, &graphics_pipeline_create_info, nullptr, &m_Pipeline);
+		if(result != VK_SUCCESS)
 		{
 			OMNIFORCE_CORE_ERROR("Failed to create pipeline \"{0}\".", m_Specification.debug_name);
 			return;

@@ -84,9 +84,9 @@ namespace Omni {
 		s_RendererAPI->ClearImage(image, value);
 	}
 
-	void Renderer::RenderMesh(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo, MiscData data)
+	void Renderer::RenderMeshTasks(Shared<Pipeline> pipeline, const glm::vec3 dimensions, MiscData data)
 	{
-		s_RendererAPI->RenderMesh(pipeline, vbo, ibo, data);
+		s_RendererAPI->RenderMeshTasks(pipeline, dimensions, data);
 	}
 
 	void Renderer::RenderQuads(Shared<Pipeline> pipeline, MiscData data)
@@ -126,7 +126,7 @@ namespace Omni {
 
 	void Renderer::LoadShaderPack()
 	{
-		ShaderLibrary::Get()->Load("Resources/shaders/sprite.ofs");
+		ShaderLibrary::Get()->LoadShader("Resources/shaders/sprite.ofs");
 	}
 
 	void Renderer::Render()

@@ -26,7 +26,8 @@ namespace Omni {
 			const std::vector<byte>& attributes,
 			const std::vector<RenderableMeshlet>& meshlets,
 			const std::vector<byte>& local_indices,
-			const std::vector<MeshletCullBounds>& cull_data
+			const std::vector<MeshletCullBounds>& cull_data,
+			const Sphere& bounding_sphere
 		);
 		~Mesh();
 		static Shared<Mesh> Create(
@@ -34,16 +35,20 @@ namespace Omni {
 			const std::vector<byte>& attributes,
 			const std::vector<RenderableMeshlet>& meshlets,
 			const std::vector<byte>& local_indices,
-			const std::vector<MeshletCullBounds>& cull_data
+			const std::vector<MeshletCullBounds>& cull_data,
+			const Sphere& bounding_sphere
 		);
 
 		void Destroy() override;
 
-
+		Shared<DeviceBuffer> GetBuffer(MeshBufferKey key) { return m_Buffers.at(key); };
+		const uint32& GetMeshletCount() const { return m_MeshletCount; }
+		const Sphere& GetBoundingSphere() const { return m_BoundingSphere; }
 
 	private:
 		std::map<MeshBufferKey, Shared<DeviceBuffer>> m_Buffers;
-
+		uint32 m_MeshletCount = 0;
+		Sphere m_BoundingSphere;
 	};
 
 }

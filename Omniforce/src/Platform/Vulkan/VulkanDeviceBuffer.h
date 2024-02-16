@@ -17,6 +17,10 @@ namespace Omni {
 		uint32 vertex_count;
 	};
 
+	struct MeshletRenderBufferData {
+		uint32 meshlet_count;
+	};
+
 	constexpr VkIndexType ExtractIndexType(BitMask buffer_flags) {
 		if (buffer_flags & (uint64)DeviceBufferFlags::INDEX_TYPE_UINT8)		return VK_INDEX_TYPE_UINT8_EXT;
 		if (buffer_flags & (uint64)DeviceBufferFlags::INDEX_TYPE_UINT16)	return VK_INDEX_TYPE_UINT16;
@@ -40,10 +44,6 @@ namespace Omni {
 		uint64 GetDeviceAddress() override;
 		VmaAllocation RawAllocation() const { return m_Allocation; }
 		void* GetAdditionalData() const { return m_Data; }
-
-
-
-
 
 	private:
 		VkBuffer m_Buffer;

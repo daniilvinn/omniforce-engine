@@ -6,6 +6,7 @@
 
 #include <GLFW/glfw3.h>
 
+#define IMGUI_IMPL_VULKAN_NO_PROTOTYPES
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_vulkan.h>
 #include <robin_hood.h>
@@ -121,6 +122,13 @@ namespace Omni {
 		style.Colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
 		style.Colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
 		style.GrabRounding = style.FrameRounding = 2.3f;
+
+		VkInstance inst = context->GetVulkanInstance();
+
+		OMNIFORCE_ASSERT_TAGGED(ImGui_ImplVulkan_LoadFunctions([](const char* function_name, void* vk_instance) {
+			return vkGetInstanceProcAddr(volkGetLoadedInstance(), function_name); },
+			&inst
+		), "Failed to load ");
 
 		ImGui_ImplGlfw_InitForVulkan(glfw_window, true);
 		ImGui_ImplVulkan_InitInfo init_info = {};

@@ -8,11 +8,11 @@
 
 namespace Omni {
 
-	class EditorCamera : public Camera2D
+	class EditorCamera : public Camera3D
 	{
 	public:
 		EditorCamera() = default;
-		EditorCamera(float32 aspect_ratio, float32 scale);
+		EditorCamera(float32 aspect_ratio);
 
 		void OnUpdate();
 		void OnEvent(Event* e);

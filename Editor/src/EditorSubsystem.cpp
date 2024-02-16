@@ -123,6 +123,7 @@ public:
 			else { 
 				m_RuntimeScene->ShutdownRuntime();
 				m_CurrentScene = m_EditorScene;
+				m_CurrentScene->EditorSetCamera(m_EditorCamera);
 			};
 
 			if (m_EntitySelected) {
@@ -148,7 +149,7 @@ public:
 			m_ViewportFocused = ImGui::IsWindowFocused();
 			ImVec2 viewport_frame_size = ImGui::GetContentRegionAvail();
 			UI::RenderImage(m_EditorScene->GetFinalImage(), SceneRenderer::GetSamplerLinear(), viewport_frame_size, 0, true);
-			m_EditorCamera->SetAspectRatio(viewport_frame_size.x / viewport_frame_size.y);
+			m_CurrentScene->GetCamera()->SetAspectRatio(viewport_frame_size.x / viewport_frame_size.y);
 			
 			if (ImGui::BeginDragDropTarget()) {
 				ImGuiDragDropFlags target_flags = 0;
@@ -157,16 +158,21 @@ public:
 				if (payload) {
 					std::filesystem::path filename(std::string((char*)payload->Data, payload->DataSize));
 					if (filename.extension() == ".gltf" || filename.extension() == ".glb") {
+						AssetManager* asset_manager = AssetManager::Get();
 						ModelImporter importer;
 						Shared<Model> model = AssetManager::Get()->GetAsset<Model>(importer.Import(filename));
 
 						Entity root_entity = m_CurrentScene->CreateEntity();
 
-						AssetManager* asset_manager = AssetManager::Get();
 						auto& children_map = model->GetMap();
 						for (auto& entry : children_map) {
 							Entity child = m_CurrentScene->CreateChildEntity(root_entity);
 							child.GetComponent<TagComponent>().tag = asset_manager->GetAsset<Material>(entry.second)->GetName();
+							MeshComponent& mesh_component = child.AddComponent<MeshComponent>();
+							mesh_component.mesh_handle = entry.first;
+							mesh_component.material_handle = entry.second;
+							m_EditorScene->GetRenderer()->AcquireResourceIndex(asset_manager->GetAsset<Mesh>(mesh_component.mesh_handle));
+							m_EditorScene->GetRenderer()->AcquireResourceIndex(asset_manager->GetAsset<Material>(mesh_component.material_handle));
 						}
 					}
 				}
@@ -174,9 +180,7 @@ public:
 				ImGui::EndDragDropTarget();
 			}
 
-			if (m_InRuntime) {
-				if(m_RuntimeScene->GetCamera() != nullptr)
-					m_RuntimeScene->GetCamera()->SetAspectRatio(viewport_frame_size.x / viewport_frame_size.y);
+			if (!m_InRuntime) {
 				m_CurrentOperation = (ImGuizmo::OPERATION)0;
 			}
 			else {
@@ -186,6 +190,7 @@ public:
 		ImGui::End();
 		ImGui::PopStyleVar();
 
+		
 		
 
 		// Update editor camera and scene
@@ -206,7 +211,7 @@ public:
 
 		m_ProjectPath = "";
 
-		m_EditorCamera = std::make_shared<EditorCamera>(16.0 / 9.0, 20.0f);
+		m_EditorCamera = std::make_shared<EditorCamera>(16.0 / 9.0);
 		m_EditorScene->EditorSetCamera(ShareAs<Camera>(m_EditorCamera));
 		m_CurrentScene = m_EditorScene;
 
@@ -318,7 +323,7 @@ public:
 		for (auto& [id, asset] : texture_registry) {
 			if(asset->Type != AssetType::OMNI_IMAGE)
 				continue;
-			renderer->ReleaseTextureIndex(ShareAs<Image>(asset));
+			renderer->ReleaseResourceIndex(ShareAs<Image>(asset));
 		}
 		asset_manager->FullUnload();
 

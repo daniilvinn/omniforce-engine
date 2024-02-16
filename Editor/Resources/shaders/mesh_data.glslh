@@ -1,0 +1,54 @@
+#ifndef MESH_DATA_GLSLH
+#define MESH_DATA_GLSLH
+
+#include "sphere.glslh"
+
+#extension GL_EXT_shader_explicit_arithmetic_types_int8     : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int32    : require
+#extension GL_EXT_buffer_reference2                         : require
+#extension GL_EXT_scalar_block_layout                       : require
+
+layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer MeshGeometryData {
+    vec3 vertex_position;
+};
+
+layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer MeshAttributesData {
+    #ifdef __OMNI_HAS_VERTEX_NORMAL
+        vec3 normal;
+    #endif
+    #ifdef __OMNI_HAS_VERTEX_TEXCOORD_0
+        vec2 uv;
+    #endif
+    #ifdef __OMNI_HAS_VERTEX_TANGENT
+        vec4 tangent;
+    #endif
+};
+
+layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer MeshMeshletsData {
+    uint vertex_offset;
+    uint triangle_offset;
+    uint triangle_count;
+};
+
+layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer MeshMicroindices {
+    uint8_t micro_index;
+};
+
+layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer MeshletCullBounds {
+    Sphere bounding_sphere;
+    vec3 cone_apex;
+    vec3 cone_axis;
+    float cone_cutoff;
+};
+
+layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer MeshData {
+    Sphere bounding_sphere;
+    uint32_t meshlet_count;
+    MeshGeometryData vertices;
+    MeshAttributesData attributes;
+    MeshMeshletsData meshlets_data;
+    MeshMicroindices micro_indices;
+    MeshletCullBounds meshlets_cull_bounds;
+};
+
+#endif

@@ -68,10 +68,10 @@ namespace Omni {
 		Shared<SceneRenderer> m_Renderer;
 		SceneType m_Type;
 		Shared<Camera> m_Camera = nullptr;
+		bool m_InRuntime = false;
 
 		entt::registry m_Registry;
 		robin_hood::unordered_map<UUID, entt::entity> m_Entities;
-
 		Entity* m_RootNode; // all nodes' parent, origin of the world
 
 		PhysicsSettings m_PhysicsSettings;

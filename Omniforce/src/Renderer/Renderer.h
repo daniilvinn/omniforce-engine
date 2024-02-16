@@ -50,12 +50,9 @@ namespace Omni {
 		static void CopyToSwapchain(Shared<Image> image);
 
 		static void ClearImage(Shared<Image> image, const fvec4& value);
-		static void InsertBarrier(Shared<Image> image);
-		static void RenderMesh(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo, MiscData data);
+		static void RenderMeshTasks(Shared<Pipeline> pipeline, const glm::vec3 dimensions, MiscData data);
 		static void RenderQuads(Shared<Pipeline> pipeline, MiscData data);
 		static void RenderQuads(Shared<Pipeline> pipeline, uint32 amount, MiscData data);
-		static void RenderLines(Shared<Pipeline> pipeline, uint32 amount, MiscData data);
-		static void PushConstants(Shared<Pipeline> pipeline, MiscData data);
 
 		static void Render();
 		static void RenderImGui();

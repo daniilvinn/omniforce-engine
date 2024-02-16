@@ -80,7 +80,7 @@ namespace Omni {
 				return 0;
 			}
 
-			std::vector<glm::vec3> positions;
+			std::vector<glm::vec3> geometry;
 			std::vector<uint32> indices;
 			std::vector<byte> attributes_data;
 			std::map<std::string, uint8> present_attributes; // attrib name - attrib offset map
@@ -104,10 +104,10 @@ namespace Omni {
 			// Positions
 			{
 				const auto& vertices_accessor = asset.accessors[primitive.findAttribute("POSITION")->second];
-				positions.resize(vertices_accessor.count);
+				geometry.resize(vertices_accessor.count);
 				{
 					ftf::iterateAccessorWithIndex<glm::vec3>(asset, vertices_accessor,
-						[&](const glm::vec3 position, std::size_t idx) { positions[idx] = position; });
+						[&](const glm::vec3 position, std::size_t idx) { geometry[idx] = position; });
 				}
 			}
 
@@ -142,36 +142,43 @@ namespace Omni {
 
 			// Preprocess mesh before sending to the render device
 			MeshPreprocessor mesh_preprocessor;
-			mesh_preprocessor.OptimizeMesh(positions, indices);
+			mesh_preprocessor.OptimizeMesh(geometry, indices);
 
-			GeneratedMeshlets* meshlets = mesh_preprocessor.GenerateMeshlets(positions, indices);
+			GeneratedMeshlets* meshlets = mesh_preprocessor.GenerateMeshlets(geometry, indices);
 			std::vector<glm::vec3> remapped_vertices(meshlets->indices.size());
 			std::vector<byte> remapped_attributes(meshlets->indices.size() * current_offset); // use computed offset as stride
 
 			uint32 idx = 0;
 			for (auto& index : meshlets->indices) {
-				remapped_vertices[idx] = positions[index];
+				remapped_vertices[idx] = geometry[index];
 				memcpy(remapped_attributes.data() + current_offset * idx, attributes_data.data() + index * current_offset, current_offset);
 				idx++;
 			}
+
+			Sphere bounding_sphere = mesh_preprocessor.GenerateBoundingSphere(geometry);
 
 			Shared<Mesh> mesh = Mesh::Create(
 				{ remapped_vertices.begin(), remapped_vertices.end() }, 
 				{ remapped_attributes.begin(), remapped_attributes.end() }, 
 				meshlets->meshlets, 
 				meshlets->local_indices, 
-				meshlets->cull_bounds
+				meshlets->cull_bounds,
+				bounding_sphere
 			);
 
 			delete meshlets;
-
-
 
 			// Process material
 			auto& fastgltf_material = asset.materials[primitive.materialIndex.value()];
 
 			MaterialImporter material_importer;
-			submeshes.push_back({ asset_manager->RegisterAsset(ShareAs<AssetBase>(mesh)), material_importer.Import(asset, fastgltf_material) });
+			Shared<Material> material = asset_manager->GetAsset<Material>(material_importer.Import(asset, fastgltf_material));
+			for (auto& macro : material_shader_macros)
+				material->AddShaderMacro(macro);
+
+			material->CompilePipeline();
+
+			submeshes.push_back({ asset_manager->RegisterAsset(ShareAs<AssetBase>(mesh)), material->Handle });
 		}
 
 		return asset_manager->RegisterAsset(Model::Create(submeshes));

@@ -44,7 +44,7 @@ target_include_directories(${ENGINE_TARGET}
         "vendor/fastgltf/include"
 )
 target_link_directories(${ENGINE_TARGET} INTERFACE "${Vulkan_SDK}\\Lib" PUBLIC "vendor/mono/lib")
-target_compile_definitions(${ENGINE_TARGET} PUBLIC OMNIFORCE_STATIC GLM_FORCE_DEPTH_ZERO_TO_ONE GLM_FORCE_SSE2)
+target_compile_definitions(${ENGINE_TARGET} PUBLIC OMNIFORCE_STATIC GLM_FORCE_DEPTH_ZERO_TO_ONE GLM_FORCE_SSE2 VK_NO_PROTOTYPES IMGUI_IMPL_VULKAN_NO_PROTOTYPES)
 
 target_link_libraries(
     ${ENGINE_TARGET} 
@@ -55,6 +55,7 @@ target_link_libraries(
         EnTT::EnTT
 	    nlohmann_json::nlohmann_json
         ${OMNI_IMGUI_TARGET}
+        volk_headers
        
 )
 
@@ -62,7 +63,7 @@ target_link_libraries(
     ${ENGINE_TARGET}
     PRIVATE 
         glfw
-        vulkan-1.lib
+        #vulkan-1.lib
         debug shaderc_sharedd.lib optimized shaderc_shared.lib
         debug shaderc_utild.lib optimized shaderc_util.lib
         Jolt

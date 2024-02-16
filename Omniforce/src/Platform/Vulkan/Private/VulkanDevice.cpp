@@ -161,6 +161,7 @@ namespace Omni {
 		VkPhysicalDeviceVulkan11Features vulkan_1_1_features = {};
 		vulkan_1_1_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
 		vulkan_1_1_features.pNext = &uint8_index_feature_enable_struct;
+		vulkan_1_1_features.shaderDrawParameters = true;
 
 		VkPhysicalDeviceVulkan12Features vulkan_1_2_features = {};
 		vulkan_1_2_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
@@ -173,11 +174,14 @@ namespace Omni {
 		vulkan_1_2_features.bufferDeviceAddress = true;
 		vulkan_1_2_features.bufferDeviceAddressCaptureReplay = OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG;
 		vulkan_1_2_features.drawIndirectCount = true;
+		vulkan_1_2_features.storageBuffer8BitAccess = true;
+		vulkan_1_2_features.shaderInt8 = true;
 
 		VkPhysicalDeviceVulkan13Features vulkan_1_3_features = {};
 		vulkan_1_3_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
 		vulkan_1_3_features.pNext = &vulkan_1_2_features;
 		vulkan_1_3_features.dynamicRendering = VK_TRUE;
+		vulkan_1_3_features.maintenance4 = true;
 
 		VkPhysicalDeviceFeatures2 device_features2 = {};
 		device_features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
@@ -243,6 +247,8 @@ namespace Omni {
 		if (m_PhysicalDevice->IsExtensionSupported(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME)) {
 			extensions.push_back(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME);
 		}
+		OMNIFORCE_ASSERT_TAGGED(m_PhysicalDevice->IsExtensionSupported(VK_EXT_MESH_SHADER_EXTENSION_NAME), "Mesh shading is not supported, aborting execution");
+		extensions.push_back(VK_EXT_MESH_SHADER_EXTENSION_NAME);
 
 		OMNIFORCE_CORE_TRACE("Enabled Vulkan device extensions:");
 		for (auto& ext : extensions) {
