@@ -22,7 +22,7 @@ namespace Omni {
 			
 			buffer_spec.size = sizeof T;
 			buffer_spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
-			buffer_spec.flags = (BitMask)DeviceBufferFlags::CREATE_STAGING_BUFFER;
+			buffer_spec.buffer_usage = DeviceBufferUsage::STAGING_BUFFER;
 
 			m_StagingForCopy = DeviceBuffer::Create(buffer_spec);
 		}

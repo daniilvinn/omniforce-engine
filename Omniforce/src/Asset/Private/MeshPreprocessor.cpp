@@ -27,10 +27,14 @@ namespace Omni {
 		meshlets_data->cull_bounds.resize(actual_num_meshlets);
 		uint32 idx = 0;
 		for (auto& meshlet : meshlets_data->meshlets) {
+			meshlet.index_offset = meshlets[idx].vertex_offset;
+			meshlet.triangles_count = meshlets[idx].triangle_count;
+			meshlet.local_index_offset = meshlets[idx].triangle_offset;
+
 			meshopt_Bounds bounds = meshopt_computeMeshletBounds(
 				meshlets_data->indices.data() + meshlets[idx].vertex_offset, 
 				meshlets_data->local_indices.data(), 
-				meshlet.local_index_count, 
+				meshlet.triangles_count, 
 				(float*)vertices.data(), 
 				vertices.size(), 
 				12
@@ -38,10 +42,6 @@ namespace Omni {
 
 			meshlets_data->cull_bounds[idx] = *(MeshletCullBounds*)(& bounds);
 			idx++;
-
-			meshlet.index_offset = meshlets[idx].vertex_offset;
-			meshlet.local_index_count = meshlets[idx].triangle_count;
-			meshlet.local_index_offset = meshlets[idx].triangle_offset;
 		}
 
 		delete[] meshlets;

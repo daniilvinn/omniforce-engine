@@ -43,7 +43,7 @@ namespace Omni {
 
 		static void BeginFrame();
 		static void EndFrame();
-		static void BeginRender(Shared<Image> target, uvec3 render_area, ivec2 offset, fvec4 clear_value);
+		static void BeginRender(const std::vector<Shared<Image>> attachments, uvec3 render_area, ivec2 offset, fvec4 clear_value);
 		static void EndRender(Shared<Image> target);
 		static void WaitDevice(); // to be used ONLY while shutting down the engine.
 		static void BindSet(Shared<DescriptorSet> set, Shared<Pipeline> pipeline, uint8 index);

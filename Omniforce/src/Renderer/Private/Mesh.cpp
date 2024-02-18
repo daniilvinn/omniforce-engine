@@ -3,6 +3,8 @@
 #include <memory>
 #include <vector>
 
+#include <iostream>
+
 namespace Omni {
 
 	Mesh::Mesh(

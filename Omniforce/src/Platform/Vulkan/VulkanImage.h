@@ -124,6 +124,7 @@ namespace Omni {
 	private:
 		void CreateTexture();
 		void CreateRenderTarget();
+		void CreateDepthBuffer();
 
 	private:
 

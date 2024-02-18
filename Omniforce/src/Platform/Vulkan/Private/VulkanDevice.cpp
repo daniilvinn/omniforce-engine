@@ -250,6 +250,10 @@ namespace Omni {
 		OMNIFORCE_ASSERT_TAGGED(m_PhysicalDevice->IsExtensionSupported(VK_EXT_MESH_SHADER_EXTENSION_NAME), "Mesh shading is not supported, aborting execution");
 		extensions.push_back(VK_EXT_MESH_SHADER_EXTENSION_NAME);
 
+		if (m_PhysicalDevice->IsExtensionSupported(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME) && OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG) {
+			extensions.push_back(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME);
+		}
+
 		OMNIFORCE_CORE_TRACE("Enabled Vulkan device extensions:");
 		for (auto& ext : extensions) {
 			OMNIFORCE_CORE_TRACE("\t{0}", ext);

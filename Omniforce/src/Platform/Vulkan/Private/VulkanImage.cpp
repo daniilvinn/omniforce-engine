@@ -28,7 +28,7 @@ namespace Omni {
 		{
 		case ImageUsage::TEXTURE:			this->CreateTexture();			break;
 		case ImageUsage::RENDER_TARGET:		this->CreateRenderTarget();		break;
-		case ImageUsage::DEPTH_BUFFER:		OMNIFORCE_ASSERT(false);		break;
+		case ImageUsage::DEPTH_BUFFER:		this->CreateDepthBuffer();		break;
 		default:							std::unreachable();				break;
 		}
 	}
@@ -84,7 +84,7 @@ namespace Omni {
 		image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		image_memory_barrier.srcAccessMask = (VkAccessFlags)src_access;
 		image_memory_barrier.dstAccessMask = (VkAccessFlags)dst_access;
-		image_memory_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		image_memory_barrier.subresourceRange.aspectMask = m_Specification.usage == ImageUsage::DEPTH_BUFFER ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
 		image_memory_barrier.subresourceRange.baseArrayLayer = 0;
 		image_memory_barrier.subresourceRange.layerCount = 1;
 		image_memory_barrier.subresourceRange.baseMipLevel = 0;
@@ -285,6 +285,63 @@ namespace Omni {
 		SetLayout(
 			cmd_buffer,
 			ImageLayout::COLOR_ATTACHMENT,
+			PipelineStage::TOP_OF_PIPE,
+			PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+			PipelineAccess::NONE,
+			PipelineAccess::COLOR_ATTACHMENT_WRITE
+		);
+		cmd_buffer->End();
+		cmd_buffer->Execute(true);
+		cmd_buffer->Destroy();
+	}
+
+	void VulkanImage::CreateDepthBuffer()
+	{
+		auto device = VulkanGraphicsContext::Get()->GetDevice();
+
+		VkImageCreateInfo depth_buffer_create_info = {};
+		depth_buffer_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+		depth_buffer_create_info.extent = { m_Specification.extent.x, m_Specification.extent.y, 1 };
+		depth_buffer_create_info.imageType = VK_IMAGE_TYPE_2D;
+		depth_buffer_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		depth_buffer_create_info.mipLevels = 1;
+		depth_buffer_create_info.arrayLayers = 1;
+		depth_buffer_create_info.format = convert(m_Specification.format);
+		depth_buffer_create_info.samples = VK_SAMPLE_COUNT_1_BIT; // HACK
+		depth_buffer_create_info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+		depth_buffer_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+		depth_buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		auto allocator = VulkanMemoryAllocator::Get();
+		m_Allocation = allocator->AllocateImage(&depth_buffer_create_info, 0, &m_Image);
+
+		VkImageViewCreateInfo image_view_create_info = {};
+		image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		image_view_create_info.image = m_Image;
+		image_view_create_info.format = convert(m_Specification.format);
+		image_view_create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+		image_view_create_info.subresourceRange.baseArrayLayer = 0;
+		image_view_create_info.subresourceRange.layerCount = 1;
+		image_view_create_info.subresourceRange.baseMipLevel = 0;
+		image_view_create_info.subresourceRange.levelCount = 1;
+		image_view_create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+		image_view_create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+		image_view_create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+		image_view_create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+		VK_CHECK_RESULT(vkCreateImageView(device->Raw(), &image_view_create_info, nullptr, &m_ImageView));
+
+		Shared<DeviceCmdBuffer> cmd_buffer = DeviceCmdBuffer::Create(
+			DeviceCmdBufferLevel::PRIMARY,
+			DeviceCmdBufferType::TRANSIENT,
+			DeviceCmdType::GENERAL
+		);
+
+		cmd_buffer->Begin();
+		SetLayout(
+			cmd_buffer,
+			ImageLayout::DEPTH_STENCIL_ATTACHMENT,
 			PipelineStage::TOP_OF_PIPE,
 			PipelineStage::COLOR_ATTACHMENT_OUTPUT,
 			PipelineAccess::NONE,

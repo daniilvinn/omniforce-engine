@@ -112,11 +112,13 @@ namespace Omni {
 			image_width,
 			image_height
 		);
-		image_data = compressor.CompressBC7({ mip_mapped_image.begin(), mip_mapped_image.end() }, image_width, image_height);
+		//image_data = compressor.CompressBC7({ mip_mapped_image.begin(), mip_mapped_image.end() }, image_width, image_height);
+		image_data.resize(mip_mapped_image.size() * sizeof RGBA32);
+		memcpy(image_data.data(), mip_mapped_image.data(), image_data.size());
 
 		ImageSpecification image_spec = ImageSpecification::Default();
 		image_spec.extent = { image_width, image_height };
-		image_spec.format = ImageFormat::BC7;
+		image_spec.format = ImageFormat::RGBA32_UNORM;
 		image_spec.pixels = std::move(image_data);
 		image_spec.mip_levels = Utils::ComputeNumMipLevelsBC7(image_width, image_height) + 1;
 

@@ -5,13 +5,7 @@
 #include "Transform.glslh"
 
 struct TaskPayload {
-	Transform transform;
-	MeshGeometryData vertices;
-	MeshAttributesData attributes;
-	MeshMicroindices micro_indices;
-	uint vertex_offset;
-	uint triangle_offset;
-	uint triangle_count;
+	uint meshlet_ids[32];
 };
 
 taskPayloadSharedEXT TaskPayload task_payload;

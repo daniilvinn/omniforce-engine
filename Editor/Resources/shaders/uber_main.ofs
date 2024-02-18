@@ -9,8 +9,8 @@
 
 #include "common.glslh" // common
 #include "mesh_data.glslh" // mesh data
-#include "task_payload.glslh" // task payload
 #include "render_object.glslh" // common render object data
+#include "task_payload.glslh"
 
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
@@ -20,50 +20,45 @@ layout(push_constant, scalar) uniform pc_ {
     RenderObjectData render_objects_data;
 } pc;
 
-void main() {
-    RenderObjectData render_object_data = pc.render_objects_data[gl_DrawID];
-    MeshData mesh_data = pc.mesh_data[render_object_data.geometry_data_id];
+shared uint s_actual_num_meshlets;
 
-    // Check if we are out of bounds of meshlet count
-    if(gl_GlobalInvocationID.x > mesh_data.meshlet_count)
-        return;
+void main()
+{
+	uint lid = gl_LocalInvocationIndex; // lid = lane id
+	
+	RenderObjectData render_object_data = pc.render_objects_data[gl_DrawID];
+	MeshData mesh_data = pc.mesh_data[render_object_data.geometry_data_id];
 
-    MeshletCullBounds cull_bounds = mesh_data.meshlets_cull_bounds[gl_GlobalInvocationID.x];
+	if(gl_GlobalInvocationID.x >= mesh_data.meshlet_count) { // check if we are out of bounds
+		return;
+	}
 
-    //if(dot(normalize(cull_bounds.cone_apex - pc.camera_data.position), cull_bounds.cone_axis) >= cull_bounds.cone_cutoff) {
-        task_payload.transform = render_object_data.transform;
-        task_payload.vertices = mesh_data.vertices;
-        task_payload.attributes = mesh_data.attributes;
-        task_payload.micro_indices = mesh_data.micro_indices;
-        task_payload.vertex_offset = mesh_data.meshlets_data[gl_GlobalInvocationID.x].vertex_offset;
-        task_payload.triangle_offset = mesh_data.meshlets_data[gl_GlobalInvocationID.x].triangle_offset;
-        task_payload.triangle_offset = mesh_data.meshlets_data[gl_GlobalInvocationID.x].triangle_count;
+	if(lid == 0) { // init shared memory in first lane
+		s_actual_num_meshlets = 0;
+	}
 
-        EmitMeshTasksEXT(1, 1, 1);
-    //}
+	MeshletCullBounds cull_bounds = mesh_data.meshlets_cull_bounds[gl_GlobalInvocationID.x];
+
+	// Cull
+	if(dot(normalize(cull_bounds.cone_apex - pc.camera_data.position), cull_bounds.cone_axis) < cull_bounds.cone_cutoff) {
+		uint id_index = atomicAdd(s_actual_num_meshlets, 1);
+		task_payload.meshlet_ids[id_index] = gl_GlobalInvocationID.x;
+	}
+
+	// Emit mesh work groups
+	if(lid == 0) {
+		EmitMeshTasksEXT(s_actual_num_meshlets, 1, 1);
+	}
 }
 
 #pragma stage : mesh
 #version 460 core
 #extension GL_EXT_mesh_shader : require
+#extension GL_EXT_debug_printf : require
 
 #include "common.glslh"
-#include "task_payload.glslh"
 #include "render_object.glslh"
-
-layout(triangles) out;
-layout(max_vertices = 64, max_primitives = 126) out;
-layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
-
-#ifdef __OMNI_HAS_VERTEX_TEXCOORD_0
-    layout(location = 0) out vec2 out_uvs[];
-#endif
-#ifdef __OMNI_HAS_VERTEX_NORMAL
-    layout(location = 1) out vec3 out_normals[];
-#endif
-#ifdef __OMNI_HAS_VERTEX_TANGENT
-    layout(location = 2) out vec4 out_tangents[];
-#endif
+#include "mesh_data.glslh"
 
 layout(push_constant, scalar) uniform pc_ {
     CameraData camera_data;
@@ -71,65 +66,68 @@ layout(push_constant, scalar) uniform pc_ {
     RenderObjectData render_objects_data;
 } pc;
 
-void main() {
-    SetMeshOutputsEXT(64, task_payload.triangle_count);
+layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+layout(triangles, max_vertices = 64, max_primitives = 124) out;
 
-    Transform transform = task_payload.transform;
-    vec4 rotation_quaternion = vec4(unpackSnorm2x16(transform.packed_rotation[0]), unpackSnorm2x16(transform.packed_rotation[1]));
-
-    // Fill in the vertices
-    for(int i = 0; i < 2; i++) {
-        vec3 vertex = task_payload.vertices[task_payload.vertex_offset + gl_WorkGroupSize.x * i + gl_LocalInvocationIndex].vertex_position;
-        vertex = RotateByQuat(vertex * transform.scale, rotation_quaternion) + transform.translation;
-        gl_MeshVerticesEXT[32 * i + gl_LocalInvocationIndex].gl_Position = pc.camera_data.view_proj * vec4(vertex, 1.0f);
-    };
-
-    // Now do same with indices. Firstly do all indices which 100% fit into all warp, then copy rest of the indices
-    uint iterations = task_payload.triangle_count / gl_WorkGroupSize.x;
-    for(int i = 0; i < iterations; i++) {
-        u8vec3 triangle = u8vec3(
-            task_payload.micro_indices[task_payload.triangle_offset + gl_WorkGroupSize.x * i + gl_LocalInvocationIndex * 3].micro_index,
-            task_payload.micro_indices[task_payload.triangle_offset + gl_WorkGroupSize.x * i + gl_LocalInvocationIndex * 3 + 1].micro_index,
-            task_payload.micro_indices[task_payload.triangle_offset + gl_WorkGroupSize.x * i + gl_LocalInvocationIndex * 3 + 2].micro_index
-        );
-
-        gl_PrimitiveTriangleIndicesEXT[i * 32 + gl_LocalInvocationIndex] = triangle;
-    };
-
-    // Now copy rest of the indices
-    uint rest_indices_count = task_payload.triangle_count % gl_WorkGroupSize.x;
-    if(gl_LocalInvocationIndex < rest_indices_count) {
-        u8vec3 triangle = u8vec3(
-            task_payload.micro_indices[task_payload.triangle_offset + iterations * gl_WorkGroupSize.x + gl_LocalInvocationIndex * 3].micro_index,
-            task_payload.micro_indices[task_payload.triangle_offset + iterations * gl_WorkGroupSize.x + gl_LocalInvocationIndex * 3 + 1].micro_index,
-            task_payload.micro_indices[task_payload.triangle_offset + iterations * gl_WorkGroupSize.x + gl_LocalInvocationIndex * 3 + 2].micro_index
-        );
-
-        gl_PrimitiveTriangleIndicesEXT[iterations * gl_WorkGroupSize.x + gl_LocalInvocationIndex] = triangle;
-    };
-
-    // Now copy attributes
-
-#if defined(__OMNI_HAS_VERTEX_TEXCOORD_0) || defined(__OMNI_HAS_VERTEX_NORMAL) || defined(__OMNI_HAS_VERTEX_TANGENT)
-    #ifdef __OMNI_HAS_VERTEX_TEXCOORD_0    
-        for(int i = 0; i < 2; i++) {
-            vec2 uv = task_payload.attributes[task_payload.vertex_offset + 32 * i + gl_LocalInvocationIndex].uv;
-            out_uvs[i * gl_WorkGroupSize.x + gl_LocalInvocationIndex] = uv;
-        };
-    #endif
-    #ifdef __OMNI_HAS_VERTEX_NORMAL
-        for(int i = 0; i < 2; i++) {
-            vec3 normal = task_payload.attributes[task_payload.vertex_offset + 32 * i + gl_LocalInvocationIndex].normal;
-            out_normals[i * gl_WorkGroupSize.x + gl_LocalInvocationIndex] = normal;
-        };
-    #endif
-    #ifdef __OMNI_HAS_VERTEX_TANGENT
-        for(int i = 0; i < 2; i++) {
-            vec4 tangent = task_payload.attributes[task_payload.vertex_offset + 32 * i + gl_LocalInvocationIndex].tangent;
-            out_tangents[i * gl_WorkGroupSize.x + gl_LocalInvocationIndex] = tangent;
-        };
-    #endif
+layout(location = 0) out VertexOutput {
+#ifdef __OMNI_HAS_VERTEX_NORMAL
+    vec3 normal;
 #endif
+#ifdef __OMNI_HAS_VERTEX_TEXCOORD_0
+    vec2 uv;
+#endif
+#ifdef __OMNI_HAS_VERTEX_TANGENT
+    vec4 tangent;
+#endif
+} vertex_output[];
+
+#include "task_payload.glslh"
+
+void main()
+{
+	Transform transform = pc.render_objects_data[gl_DrawID].transform;
+	vec4 rotation_quaternion = vec4(unpackSnorm2x16(transform.packed_rotation[0]), unpackSnorm2x16(transform.packed_rotation[1]));
+	MeshData mesh_data = pc.mesh_data[gl_DrawID];
+	MeshMeshletsData meshlet_data = mesh_data.meshlets_data[task_payload.meshlet_ids[gl_WorkGroupID.x]];
+
+	// vertices
+	uint vertex_processing_iterations = 64 / gl_WorkGroupSize.x;
+	for(int i = 0; i < vertex_processing_iterations; i++) {
+		vec3 vertex = mesh_data.vertices[meshlet_data.vertex_offset + (gl_WorkGroupSize.x * i + gl_LocalInvocationIndex)].vertex_position;
+        vertex = RotateByQuat(vertex * transform.scale, rotation_quaternion) + transform.translation;
+		gl_MeshVerticesEXT[gl_WorkGroupSize.x * i + gl_LocalInvocationIndex].gl_Position = pc.camera_data.view_proj * vec4(vertex, 1.0f);
+	}
+
+	uint index_processing_iterations = uint(round(float(meshlet_data.triangle_count) / float(gl_WorkGroupSize.x) + 0.49999f));
+	for(int i = 0; i < index_processing_iterations; i++) {
+		if(gl_WorkGroupSize.x * i + gl_LocalInvocationIndex >= meshlet_data.triangle_count) {
+			break;
+		}
+
+		gl_PrimitiveTriangleIndicesEXT[gl_WorkGroupSize.x * i + gl_LocalInvocationIndex] = uvec3(
+			mesh_data.micro_indices[meshlet_data.triangle_offset + ((gl_WorkGroupSize.x * i + gl_LocalInvocationIndex) * 3)].micro_index,
+			mesh_data.micro_indices[meshlet_data.triangle_offset + ((gl_WorkGroupSize.x * i + gl_LocalInvocationIndex) * 3 + 1)].micro_index,
+			mesh_data.micro_indices[meshlet_data.triangle_offset + ((gl_WorkGroupSize.x * i + gl_LocalInvocationIndex) * 3 + 2)].micro_index
+		);
+	}
+
+	// attributes
+	uint attribute_processing_iterations = 64 / gl_WorkGroupSize.x;
+	for(int i = 0; i < attribute_processing_iterations; i++) {
+	#ifdef __OMNI_HAS_VERTEX_NORMAL
+		vertex_output[gl_WorkGroupSize.x * i + gl_LocalInvocationIndex].normal = mesh_data.attributes[meshlet_data.vertex_offset + (gl_WorkGroupSize.x * i + gl_LocalInvocationIndex)].normal;
+	#endif
+	#ifdef __OMNI_HAS_VERTEX_TEXCOORD_0
+		vertex_output[gl_WorkGroupSize.x * i + gl_LocalInvocationIndex].uv = mesh_data.attributes[meshlet_data.vertex_offset + (gl_WorkGroupSize.x * i + gl_LocalInvocationIndex)].uv;
+	#endif
+	#ifdef __OMNI_HAS_VERTEX_TANGENT
+		vertex_output[gl_WorkGroupSize.x * i + gl_LocalInvocationIndex].tangent = mesh_data.attributes[meshlet_data.vertex_offset + (gl_WorkGroupSize.x * i + gl_LocalInvocationIndex)].tangent;
+	#endif
+	}
+
+    if(gl_LocalInvocationIndex == 0) {
+        SetMeshOutputsEXT(64, meshlet_data.triangle_count);
+    }
 }
 
 #pragma stage : fragment
@@ -140,15 +138,25 @@ void main() {
 #include "mesh_data.glslh"
 #include "render_object.glslh"
 
-#ifdef __OMNI_HAS_VERTEX_TEXCOORD_0
-    layout(location = 0) in vec2 v_UV;
-#endif
+layout(location = 0) out vec4 out_color;
+
+layout(push_constant, scalar) uniform pc_ {
+    CameraData camera_data;
+    MeshData mesh_data;
+    RenderObjectData render_objects_data;
+} pc;
+
+layout(location = 0) in Input {
 #ifdef __OMNI_HAS_VERTEX_NORMAL
-    layout(location = 1) in vec3 v_Normal;
+    vec3 normal;
+#endif
+#ifdef __OMNI_HAS_VERTEX_TEXCOORD_0
+    vec2 uv;
 #endif
 #ifdef __OMNI_HAS_VERTEX_TANGENT
-    layout(location = 2) in vec4 v_Tangent;
+    vec4 tangent;
 #endif
+} v_Input;
 
 layout(buffer_reference, scalar, buffer_reference_align = 16) readonly buffer Material {
 	#ifdef __OMNI_HAS_ALPHA_CUTOFF
@@ -177,14 +185,7 @@ layout(buffer_reference, scalar, buffer_reference_align = 16) readonly buffer Ma
     #endif
 };
 
-layout(location = 0) out vec4 out_color;
-
-layout(push_constant, scalar) uniform pc_ {
-    CameraData camera_data;
-    MeshData mesh_data;
-    RenderObjectData render_objects_data;
-} pc;
-
 void main() {
-    out_color = texture(texture_bank[nonuniformEXT(Material(pc.render_objects_data.material_bda).base_color_map_index)], v_UV);
+	Material material = Material(pc.render_objects_data.material_bda);
+    out_color = texture(texture_bank[material.base_color_map_index], v_Input.uv);
 }

@@ -255,6 +255,7 @@ namespace Omni {
 		pipeline_rendering.pColorAttachmentFormats = formats.data();
 		// HACK: I assume that D32_SFLOAT is chosen format. More proper way to do it is to request depth image format from pipeline spec or swapchain
 		pipeline_rendering.depthAttachmentFormat = VK_FORMAT_D32_SFLOAT; 
+		
 
 		std::vector<VkPipelineShaderStageCreateInfo> stage_infos = vk_shader->GetCreateInfos();
 

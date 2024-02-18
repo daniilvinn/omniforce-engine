@@ -73,7 +73,9 @@ namespace Omni {
 		SceneRendererSpecification m_Specification;
 
 		std::vector<Shared<Image>> m_RendererOutputs;
+		std::vector<Shared<Image>> m_DepthAttachments;
 		Shared<Image> m_CurrectMainRenderTarget;
+		Shared<Image> m_CurrentDepthAttachment;
 
 		std::vector<Shared<DescriptorSet>> m_SceneDescriptorSet;
 		inline static Shared<ImageSampler> s_SamplerNearest;

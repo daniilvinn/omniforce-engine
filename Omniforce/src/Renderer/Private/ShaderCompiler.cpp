@@ -25,13 +25,14 @@ namespace Omni {
 	ShaderCompiler::ShaderCompiler()
 	{
 		if(OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG)
-			m_GlobalOptions.SetOptimizationLevel(shaderc_optimization_level_zero);
+			m_GlobalOptions.SetOptimizationLevel(shaderc_optimization_level_performance);
 		else
 			m_GlobalOptions.SetOptimizationLevel(shaderc_optimization_level_performance);
 
 		m_GlobalOptions.SetIncluder(std::make_unique<ShaderSourceIncluder>());
 		m_GlobalOptions.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
 		m_GlobalOptions.SetTargetSpirv(shaderc_spirv_version_1_6);
+		m_GlobalOptions.SetPreserveBindings(true);
 	}
 
 	bool ShaderCompiler::ReadShaderFile(std::filesystem::path path, std::stringstream* out)

@@ -44,6 +44,10 @@ namespace Omni {
 		buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		buffer_create_info.usage = convert(spec.buffer_usage);
 		
+		if (m_Specification.memory_usage == DeviceBufferMemoryUsage::NO_HOST_ACCESS) {
+			buffer_create_info.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+		}
+
 		m_Allocation = alloc->AllocateBuffer(&buffer_create_info, vma_flags, &m_Buffer);
 	}
 

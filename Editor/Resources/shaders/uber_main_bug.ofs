@@ -1,0 +1,171 @@
+#pragma lang : glsl
+#pragma stage : task
+#version 460 core
+
+#extension GL_EXT_scalar_block_layout  : require
+#extension GL_EXT_buffer_reference2    : require
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_mesh_shader          : require
+
+#include "common.glslh" // common
+#include "mesh_data.glslh" // mesh data
+#include "render_object.glslh" // common render object data
+#include "task_payload.glslh"
+
+layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+
+layout(push_constant, scalar) uniform pc_ {
+    CameraData camera_data;
+    MeshData mesh_data;
+    RenderObjectData render_objects_data;
+} pc;
+
+shared uint s_actual_num_meshlets;
+
+void main()
+{
+	uint lid = gl_LocalInvocationIndex; // lid = lane id
+	
+	RenderObjectData render_object_data = pc.render_objects_data[gl_DrawID];
+	MeshData mesh_data = pc.mesh_data[render_object_data.geometry_data_id];
+
+	if(gl_GlobalInvocationID.x >= mesh_data.meshlet_count) { // check if we are out of bounds
+		return;
+	}
+
+	MeshletCullBounds cull_bounds = mesh_data.meshlets_cull_bounds[gl_GlobalInvocationID.x];
+
+	if(lid == 0) { // init shared memory in first lane
+		s_actual_num_meshlets = 0;
+	}
+
+	// Cull
+	//if(dot(normalize(cull_bounds.cone_apex - pc.camera_data.position), cull_bounds.cone_axis) >= cull_bounds.cone_cutoff) {
+		atomicAdd(s_actual_num_meshlets, 1);
+		task_payload.meshlet_ids[s_actual_num_meshlets] = gl_GlobalInvocationID.x;
+	//}
+
+	// Emit mesh work groups
+	if(lid == 0) {
+		EmitMeshTasksEXT(s_actual_num_meshlets, 1, 1);
+	}
+}
+
+#pragma stage : mesh
+#version 460 core
+#extension GL_EXT_mesh_shader : require
+#extension GL_EXT_debug_printf : require 
+
+#include "common.glslh"
+#include "render_object.glslh"
+#include "mesh_data.glslh"
+#include "task_payload.glslh"
+
+layout(push_constant, scalar) uniform pc_ {
+    CameraData camera_data;
+    MeshData mesh_data;
+    RenderObjectData render_objects_data;
+} pc;
+
+layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+layout(triangles, max_vertices = 64, max_primitives = 124) out;
+
+layout(location = 0) out VertexOutput {
+#ifdef __OMNI_HAS_VERTEX_TEXCOORD_0
+    vec2 uv;
+#endif
+#ifdef __OMNI_HAS_VERTEX_NORMAL
+    vec3 normal;
+#endif
+#ifdef __OMNI_HAS_VERTEX_TANGENT
+    vec4 tangent;
+#endif
+} vertex_output[];
+
+
+
+void main()
+{
+	Transform transform = pc.render_objects_data[gl_DrawID].transform;
+    vec4 rotation_quaternion = vec4(unpackSnorm2x16(transform.packed_rotation[0]), unpackSnorm2x16(transform.packed_rotation[1]));
+    MeshData mesh_data = pc.mesh_data[pc.render_objects_data.geometry_data_id];
+    MeshMeshletsData meshlet_data = mesh_data.meshlets_data[gl_WorkGroupID.x];
+
+    // Fill in the vertices
+    for(int i = 0; i < 2; i++) {
+        vec3 vertex = mesh_data.vertices[meshlet_data.vertex_offset + gl_WorkGroupSize.x * i + gl_LocalInvocationIndex].vertex_position;
+        vertex = RotateByQuat(vertex * transform.scale, rotation_quaternion) + transform.translation;
+        gl_MeshVerticesEXT[32 * i + gl_LocalInvocationIndex].gl_Position = pc.camera_data.view_proj * vec4(vertex, 1.0f);
+    };
+
+    // Now do same with indices. Firstly do all indices which 100% fit into all warp, then copy rest of the indices
+    uint iterations = meshlet_data.triangle_count / gl_WorkGroupSize.x;
+    for(int i = 0; i < iterations; i++) {
+        uvec3 triangle = u8vec3(
+            mesh_data.micro_indices[meshlet_data.triangle_offset + gl_WorkGroupSize.x * i + gl_LocalInvocationIndex * 3].micro_index,
+            mesh_data.micro_indices[meshlet_data.triangle_offset + gl_WorkGroupSize.x * i + gl_LocalInvocationIndex * 3 + 1].micro_index,
+            mesh_data.micro_indices[meshlet_data.triangle_offset + gl_WorkGroupSize.x * i + gl_LocalInvocationIndex * 3 + 2].micro_index
+        );
+
+        gl_PrimitiveTriangleIndicesEXT[i * 32 + gl_LocalInvocationIndex] = triangle;
+    };
+
+    // Now copy rest of the indices
+    uint rest_indices_count = meshlet_data.triangle_count % gl_WorkGroupSize.x;
+    if(gl_LocalInvocationIndex < rest_indices_count) {
+        uvec3 triangle = u8vec3(
+            mesh_data.micro_indices[meshlet_data.triangle_offset + iterations * gl_WorkGroupSize.x + gl_LocalInvocationIndex * 3].micro_index,
+            mesh_data.micro_indices[meshlet_data.triangle_offset + iterations * gl_WorkGroupSize.x + gl_LocalInvocationIndex * 3 + 1].micro_index,
+            mesh_data.micro_indices[meshlet_data.triangle_offset + iterations * gl_WorkGroupSize.x + gl_LocalInvocationIndex * 3 + 2].micro_index
+        );
+
+        gl_PrimitiveTriangleIndicesEXT[iterations * gl_WorkGroupSize.x + gl_LocalInvocationIndex] = triangle;
+    };
+
+    // Now copy attributes
+
+#if defined(__OMNI_HAS_VERTEX_TEXCOORD_0) || defined(__OMNI_HAS_VERTEX_NORMAL) || defined(__OMNI_HAS_VERTEX_TANGENT)
+    #ifdef __OMNI_HAS_VERTEX_TEXCOORD_0    
+        for(int i = 0; i < 2; i++) {
+            vec2 uv = mesh_data.attributes[meshlet_data.vertex_offset + 32 * i + gl_LocalInvocationIndex].uv;
+            vertex_output[i * gl_WorkGroupSize.x + gl_LocalInvocationIndex].uv = uv;
+        };
+    #endif
+    #ifdef __OMNI_HAS_VERTEX_NORMAL
+        for(int i = 0; i < 2; i++) {
+            vec3 normal = mesh_data.attributes[meshlet_data.vertex_offset + 32 * i + gl_LocalInvocationIndex].normal;
+            vertex_output[i * gl_WorkGroupSize.x + gl_LocalInvocationIndex].normal = normal;
+        };
+    #endif
+    #ifdef __OMNI_HAS_VERTEX_TANGENT
+        for(int i = 0; i < 2; i++) {
+            vec4 tangent = mesh_data.attributes[meshlet_data.vertex_offset + 32 * i + gl_LocalInvocationIndex].tangent;
+            vertex_output[i * gl_WorkGroupSize.x + gl_LocalInvocationIndex].tangent = tangent;
+        };
+    #endif
+#endif
+
+    if(gl_LocalInvocationIndex == 0) {
+        SetMeshOutputsEXT(64, meshlet_data.triangle_count);
+    }
+}
+
+#pragma stage : fragment
+#version 460 core
+#extension GL_EXT_nonuniform_qualifier : require
+
+#include "common.glslh"
+#include "mesh_data.glslh"
+#include "render_object.glslh"
+
+layout(location = 0) out vec4 out_color;
+
+layout(push_constant, scalar) uniform pc_ {
+    CameraData camera_data;
+    MeshData mesh_data;
+    RenderObjectData render_objects_data;
+} pc;
+
+void main() {
+    out_color = vec4(1.0f, 0.0f, 0.0f, 1.0f);
+}

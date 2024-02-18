@@ -8,6 +8,7 @@ namespace Omni {
 
 	EditorCamera::EditorCamera(float32 aspect_ratio)
 	{
+		Move({ 0.0f, 10.0f, 0.0f });
 	}
 
 	void EditorCamera::OnUpdate()
@@ -28,19 +29,26 @@ namespace Omni {
 				}
 				m_InteractionIsOver = false;
 			}
-			else if (Input::KeyPressed(KeyCode::KEY_W)) {
-				Move({ 0.0f, 0.0f, 0.01f });
-			}
-			else if (Input::KeyPressed(KeyCode::KEY_A)) {
-				Move({ -0.01f, 0.0f, 0.0f });
-			}
-			else if (Input::KeyPressed(KeyCode::KEY_S)) {
-				Move({ 0.0f, 0.0f, -0.01f });
-			}
-			else if (Input::KeyPressed(KeyCode::KEY_D)) {
-				Move({ 0.01f, 0.0f, 0.0f });
-			}
+
 			else {
+				if (Input::KeyPressed(KeyCode::KEY_W)) {
+					Move({ 0.0f, 0.0f, 0.01f });
+				}
+				if (Input::KeyPressed(KeyCode::KEY_A)) {
+					Move({ -0.01f, 0.0f, 0.0f });
+				}
+				if (Input::KeyPressed(KeyCode::KEY_S)) {
+					Move({ 0.0f, 0.0f, -0.01f });
+				}
+				if (Input::KeyPressed(KeyCode::KEY_D)) {
+					Move({ 0.01f, 0.0f, 0.0f });
+				}
+				if (Input::KeyPressed(KeyCode::KEY_Q)) {
+					Rotate(-0.3f, 0.0f, 0.0f, true);
+				}
+				if (Input::KeyPressed(KeyCode::KEY_E)) {
+					Rotate(0.3f, 0.0f, 0.0f, true);
+				}
 				if (!m_InteractionIsOver) {
 					m_FirstInteraction = true;
 					m_InteractionIsOver = true;

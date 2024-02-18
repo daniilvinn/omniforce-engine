@@ -255,7 +255,7 @@ namespace Omni {
 		});
 
 		BeginRender(
-			image,
+			{ image },
 			image->GetSpecification().extent,
 			{ 0,0 },
 			{ 0.0f, 0.0f, 0.0f, 0.0f }
@@ -313,42 +313,62 @@ namespace Omni {
 		});
 	}
 
-	void VulkanRenderer::BeginRender(Shared<Image> target, uvec3 render_area, ivec2 render_offset, fvec4 clear_color)
+	void VulkanRenderer::BeginRender(const std::vector<Shared<Image>> attachments, uvec3 render_area, ivec2 render_offset, fvec4 clear_color)
 	{
 		Renderer::Submit([=]() mutable {
-			Shared<VulkanImage> vk_target = ShareAs<VulkanImage>(target);
-			ImageSpecification target_spec = vk_target->GetSpecification();
 
-			target->SetLayout(m_CurrentCmdBuffer,
-				ImageLayout::COLOR_ATTACHMENT,
-				PipelineStage::BOTTOM_OF_PIPE,
-				PipelineStage::COLOR_ATTACHMENT_OUTPUT,
-				PipelineAccess::NONE,
-				PipelineAccess::COLOR_ATTACHMENT_WRITE
-			);
+			VkRenderingAttachmentInfo depth_attachment = {};
 
-			VkRenderingAttachmentInfo color_attachment = {};
-			color_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-			color_attachment.imageView = vk_target->RawView();
-			color_attachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-			if(clear_color.a != 0.0f)
-				color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-			else
-				color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-			color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-			color_attachment.clearValue = { clear_color.r, clear_color.g, clear_color.b, clear_color.a };
+			std::vector<VkRenderingAttachmentInfo> color_attachments = {};
+
+			for (auto attachment : attachments) {
+				Shared<VulkanImage> vk_target = ShareAs<VulkanImage>(attachment);
+				ImageSpecification target_spec = vk_target->GetSpecification();
+
+				if (target_spec.usage == ImageUsage::RENDER_TARGET) {
+					attachment->SetLayout(m_CurrentCmdBuffer,
+						ImageLayout::COLOR_ATTACHMENT,
+						PipelineStage::BOTTOM_OF_PIPE,
+						PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+						PipelineAccess::NONE,
+						PipelineAccess::COLOR_ATTACHMENT_WRITE
+					);
+
+					VkRenderingAttachmentInfo color_attachment = {};
+					color_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+					color_attachment.imageView = vk_target->RawView();
+					color_attachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+					if (clear_color.a != 0.0f)
+						color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+					else
+						color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+					color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+					color_attachment.clearValue = { clear_color.r, clear_color.g, clear_color.b, clear_color.a };
+
+					color_attachments.push_back(color_attachment);
+				}
+				else {
+					depth_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+					depth_attachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+					depth_attachment.imageView = vk_target->RawView();
+					depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+					depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+					depth_attachment.clearValue = { 0,0,0,0 };
+				}
+			}
+			
 
 			VkRenderingInfo rendering_info = {};
 			rendering_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
 			rendering_info.renderArea = { { render_offset.x, render_offset.y }, { render_area.x, render_area.y } };
 			rendering_info.layerCount = 1;
-			rendering_info.colorAttachmentCount = 1;
-			rendering_info.pColorAttachments = &color_attachment;
-			rendering_info.pDepthAttachment = nullptr;
+			rendering_info.colorAttachmentCount = color_attachments.size();
+			rendering_info.pColorAttachments = color_attachments.data();
+			rendering_info.pDepthAttachment = depth_attachment.imageView ? &depth_attachment : nullptr;
 			rendering_info.pStencilAttachment = nullptr;
 
-			VkRect2D scissor = { {0,0}, {target_spec.extent.x, target_spec.extent.y} };
-			VkViewport viewport = { 0, (float32)target_spec.extent.y, (float32)target_spec.extent.x, -(float32)target_spec.extent.y, 0.0f, 1.0f};
+			VkRect2D scissor = { {0,0}, {render_area.x, render_area.y} };
+			VkViewport viewport = { 0, (float32)render_area.y, (float32)render_area.x, -(float32)render_area.y, 0.0f, 1.0f};
 			vkCmdSetScissor(m_CurrentCmdBuffer->Raw(), 0, 1, &scissor);
 			vkCmdSetViewport(m_CurrentCmdBuffer->Raw(), 0, 1, &viewport);
 			vkCmdBeginRendering(m_CurrentCmdBuffer->Raw(), &rendering_info);

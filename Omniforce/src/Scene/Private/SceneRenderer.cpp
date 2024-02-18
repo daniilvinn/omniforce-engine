@@ -60,12 +60,19 @@ namespace Omni {
 
 			// Initialize render targets
 			{
-				ImageSpecification render_target_spec = ImageSpecification::Default();
-				render_target_spec.usage = ImageUsage::RENDER_TARGET;
-				render_target_spec.extent = Renderer::GetSwapchainImage()->GetSpecification().extent;
-				render_target_spec.format = ImageFormat::RGB32_HDR;
+				ImageSpecification attachment_spec = ImageSpecification::Default();
+				attachment_spec.usage = ImageUsage::RENDER_TARGET;
+				attachment_spec.extent = Renderer::GetSwapchainImage()->GetSpecification().extent;
+				attachment_spec.format = ImageFormat::RGB32_HDR;
 				for (int i = 0; i < Renderer::GetConfig().frames_in_flight; i++)
-					m_RendererOutputs.push_back(Image::Create(render_target_spec));
+					m_RendererOutputs.push_back(Image::Create(attachment_spec));
+
+				attachment_spec.usage = ImageUsage::DEPTH_BUFFER;
+				attachment_spec.format = ImageFormat::D32;
+
+				for (int i = 0; i < Renderer::GetConfig().frames_in_flight; i++)
+					m_DepthAttachments.push_back(Image::Create(attachment_spec));
+
 			}
 
 		}
@@ -194,6 +201,7 @@ namespace Omni {
 
 		// Change current render target
 		m_CurrectMainRenderTarget = m_RendererOutputs[Renderer::GetCurrentFrameIndex()];
+		m_CurrentDepthAttachment  = m_DepthAttachments[Renderer::GetCurrentFrameIndex()];
 
 		// Change layout of render target
 		Renderer::Submit([=]() {	
@@ -208,7 +216,7 @@ namespace Omni {
 		});
 
 		// Begin render and bind global descriptor set
-		Renderer::BeginRender(m_CurrectMainRenderTarget, m_CurrectMainRenderTarget->GetSpecification().extent, { 0, 0 }, { 0.0f, 0.0f, 0.0f, 1.0f });
+		Renderer::BeginRender({ m_CurrectMainRenderTarget, m_CurrentDepthAttachment }, m_CurrectMainRenderTarget->GetSpecification().extent, { 0, 0 }, { 0.0f, 0.0f, 0.0f, 1.0f });
 		Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], m_SpritePass, 0);
 	}
 
@@ -239,17 +247,17 @@ namespace Omni {
 			device_render_queue->UploadData(
 				Renderer::GetCurrentFrameIndex() * per_frame_size, 
 				m_HostRenderQueue.at(host_render_queue.first).data(), 
-				m_HostRenderQueue.at(host_render_queue.first).size()
+				m_HostRenderQueue.at(host_render_queue.first).size() * sizeof DeviceRenderableObject
 			);
 			MiscData pc = {}; 
 			uint64* data = new uint64[3];
 			data[0] = camera_data_device_address;
 			data[1] = m_MeshResourcesBuffer.GetStorageBDA();
-			data[2] = device_render_queue->GetDeviceAddress();
+			data[2] = device_render_queue->GetDeviceAddress() + Renderer::GetCurrentFrameIndex() * per_frame_size;
 			pc.data = (byte*)data;
 			pc.size = sizeof uint64 * 3;
 
-			Renderer::RenderMeshTasks(host_render_queue.first, { 3000, 1, 1 }, pc);
+			Renderer::RenderMeshTasks(host_render_queue.first, { 450, 1, 1 }, pc);
 
 		}
 
