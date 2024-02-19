@@ -88,7 +88,7 @@ namespace Omni {
 
 		// Generate mip map
 		std::vector<RGBA32> image_data_with_mips = AssetCompressor::GenerateMipMaps(image_data, image_width, image_height);
-		std::vector<byte> bc7_encoded_data = AssetCompressor::CompressBC7(image_data_with_mips, image_width, image_height);
+		std::vector<byte> bc7_encoded_data = AssetCompressor::CompressBC7(image_data_with_mips, image_width, image_height, num_mip_levels);
 
 		// Compress by GDeflate and write to a file
 		JobSystem* js = JobSystem::Get();

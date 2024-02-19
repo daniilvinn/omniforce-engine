@@ -134,7 +134,7 @@ namespace Omni {
 		// Initializing pipelines
 		{
 			PipelineSpecification pipeline_spec = PipelineSpecification::Default();
-			pipeline_spec.shader = ShaderLibrary::Get()->GetShader("sprite.ofs");
+			pipeline_spec.shader = ShaderLibrary::Get()->GetShader("sprite.ofs", {{"__OMNI_HAS_VERTEX_NORMAL", ""}});
 			pipeline_spec.debug_name = "sprite pass";
 			pipeline_spec.output_attachments_formats = { ImageFormat::RGB32_HDR };
 			pipeline_spec.culling_mode = PipelineCullingMode::NONE;
@@ -217,7 +217,6 @@ namespace Omni {
 
 		// Begin render and bind global descriptor set
 		Renderer::BeginRender({ m_CurrectMainRenderTarget, m_CurrentDepthAttachment }, m_CurrectMainRenderTarget->GetSpecification().extent, { 0, 0 }, { 0.0f, 0.0f, 0.0f, 1.0f });
-		Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], m_SpritePass, 0);
 	}
 
 	void SceneRenderer::EndScene()
@@ -237,6 +236,7 @@ namespace Omni {
 			memcpy(pc.data, &camera_data_device_address, sizeof uint64);
 			pc.size = sizeof uint64;
 
+			Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], m_SpritePass, 0);
 			Renderer::RenderQuads(m_SpritePass, m_SpriteQueue.size(), pc);
 		}
 
@@ -257,6 +257,7 @@ namespace Omni {
 			pc.data = (byte*)data;
 			pc.size = sizeof uint64 * 3;
 
+			Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], host_render_queue.first, 0);
 			Renderer::RenderMeshTasks(host_render_queue.first, { 450, 1, 1 }, pc);
 
 		}

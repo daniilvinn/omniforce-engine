@@ -352,8 +352,9 @@ namespace Omni {
 					depth_attachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
 					depth_attachment.imageView = vk_target->RawView();
 					depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-					depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-					depth_attachment.clearValue = { 0,0,0,0 };
+					depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+					depth_attachment.clearValue.color = { 0,0,0,1 };
+					depth_attachment.clearValue.depthStencil = { 1.0f, 0 };
 				}
 			}
 			

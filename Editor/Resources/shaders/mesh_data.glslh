@@ -16,11 +16,11 @@ layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer Mes
     #ifdef __OMNI_HAS_VERTEX_NORMAL
         vec3 normal;
     #endif
-    #ifdef __OMNI_HAS_VERTEX_TEXCOORD_0
-        vec2 uv;
-    #endif
     #ifdef __OMNI_HAS_VERTEX_TANGENT
         vec4 tangent;
+    #endif
+    #ifdef __OMNI_HAS_VERTEX_TEXCOORD_0
+        vec2 uv;
     #endif
 };
 

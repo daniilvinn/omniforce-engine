@@ -14,11 +14,6 @@
 
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
-layout(push_constant, scalar) uniform pc_ {
-    CameraData camera_data;
-    MeshData mesh_data;
-    RenderObjectData render_objects_data;
-} pc;
 
 shared uint s_actual_num_meshlets;
 
@@ -60,12 +55,6 @@ void main()
 #include "render_object.glslh"
 #include "mesh_data.glslh"
 
-layout(push_constant, scalar) uniform pc_ {
-    CameraData camera_data;
-    MeshData mesh_data;
-    RenderObjectData render_objects_data;
-} pc;
-
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 layout(triangles, max_vertices = 64, max_primitives = 124) out;
 
@@ -73,11 +62,11 @@ layout(location = 0) out VertexOutput {
 #ifdef __OMNI_HAS_VERTEX_NORMAL
     vec3 normal;
 #endif
-#ifdef __OMNI_HAS_VERTEX_TEXCOORD_0
-    vec2 uv;
-#endif
 #ifdef __OMNI_HAS_VERTEX_TANGENT
     vec4 tangent;
+#endif
+#ifdef __OMNI_HAS_VERTEX_TEXCOORD_0
+    vec2 uv;
 #endif
 } vertex_output[];
 
@@ -93,35 +82,35 @@ void main()
 	// vertices
 	uint vertex_processing_iterations = 64 / gl_WorkGroupSize.x;
 	for(int i = 0; i < vertex_processing_iterations; i++) {
-		vec3 vertex = mesh_data.vertices[meshlet_data.vertex_offset + (gl_WorkGroupSize.x * i + gl_LocalInvocationIndex)].vertex_position;
+		vec3 vertex = mesh_data.vertices[meshlet_data.vertex_offset + (gl_LocalInvocationIndex * vertex_processing_iterations + i)].vertex_position;
         vertex = RotateByQuat(vertex * transform.scale, rotation_quaternion) + transform.translation;
-		gl_MeshVerticesEXT[gl_WorkGroupSize.x * i + gl_LocalInvocationIndex].gl_Position = pc.camera_data.view_proj * vec4(vertex, 1.0f);
+		gl_MeshVerticesEXT[gl_LocalInvocationIndex * vertex_processing_iterations + i].gl_Position = pc.camera_data.view_proj * vec4(vertex, 1.0f);
 	}
 
 	uint index_processing_iterations = uint(round(float(meshlet_data.triangle_count) / float(gl_WorkGroupSize.x) + 0.49999f));
 	for(int i = 0; i < index_processing_iterations; i++) {
-		if(gl_WorkGroupSize.x * i + gl_LocalInvocationIndex >= meshlet_data.triangle_count) {
+		if(gl_LocalInvocationIndex * index_processing_iterations + i >= meshlet_data.triangle_count) {
 			break;
 		}
 
-		gl_PrimitiveTriangleIndicesEXT[gl_WorkGroupSize.x * i + gl_LocalInvocationIndex] = uvec3(
-			mesh_data.micro_indices[meshlet_data.triangle_offset + ((gl_WorkGroupSize.x * i + gl_LocalInvocationIndex) * 3)].micro_index,
-			mesh_data.micro_indices[meshlet_data.triangle_offset + ((gl_WorkGroupSize.x * i + gl_LocalInvocationIndex) * 3 + 1)].micro_index,
-			mesh_data.micro_indices[meshlet_data.triangle_offset + ((gl_WorkGroupSize.x * i + gl_LocalInvocationIndex) * 3 + 2)].micro_index
+		gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationIndex * index_processing_iterations + i] = uvec3(
+			mesh_data.micro_indices[meshlet_data.triangle_offset + ((gl_LocalInvocationIndex * index_processing_iterations + i) * 3)].micro_index,
+			mesh_data.micro_indices[meshlet_data.triangle_offset + ((gl_LocalInvocationIndex * index_processing_iterations + i) * 3 + 1)].micro_index,
+			mesh_data.micro_indices[meshlet_data.triangle_offset + ((gl_LocalInvocationIndex * index_processing_iterations + i) * 3 + 2)].micro_index
 		);
 	}
 
 	// attributes
-	uint attribute_processing_iterations = 64 / gl_WorkGroupSize.x;
-	for(int i = 0; i < attribute_processing_iterations; i++) {
+	uint num_processing_attributes = 64 / gl_WorkGroupSize.x;
+	for(int i = 0; i < num_processing_attributes; i++) {
 	#ifdef __OMNI_HAS_VERTEX_NORMAL
-		vertex_output[gl_WorkGroupSize.x * i + gl_LocalInvocationIndex].normal = mesh_data.attributes[meshlet_data.vertex_offset + (gl_WorkGroupSize.x * i + gl_LocalInvocationIndex)].normal;
-	#endif
-	#ifdef __OMNI_HAS_VERTEX_TEXCOORD_0
-		vertex_output[gl_WorkGroupSize.x * i + gl_LocalInvocationIndex].uv = mesh_data.attributes[meshlet_data.vertex_offset + (gl_WorkGroupSize.x * i + gl_LocalInvocationIndex)].uv;
+		vertex_output[gl_LocalInvocationIndex * num_processing_attributes + i].normal = mesh_data.attributes[meshlet_data.vertex_offset + (gl_LocalInvocationIndex * num_processing_attributes + i)].normal;
 	#endif
 	#ifdef __OMNI_HAS_VERTEX_TANGENT
-		vertex_output[gl_WorkGroupSize.x * i + gl_LocalInvocationIndex].tangent = mesh_data.attributes[meshlet_data.vertex_offset + (gl_WorkGroupSize.x * i + gl_LocalInvocationIndex)].tangent;
+		vertex_output[gl_LocalInvocationIndex * num_processing_attributes + i].tangent = mesh_data.attributes[meshlet_data.vertex_offset + (gl_LocalInvocationIndex * num_processing_attributes + i)].tangent;
+	#endif
+	#ifdef __OMNI_HAS_VERTEX_TEXCOORD_0
+		vertex_output[gl_LocalInvocationIndex * num_processing_attributes + i].uv = mesh_data.attributes[meshlet_data.vertex_offset + (gl_LocalInvocationIndex * num_processing_attributes + i)].uv;
 	#endif
 	}
 
@@ -140,25 +129,19 @@ void main()
 
 layout(location = 0) out vec4 out_color;
 
-layout(push_constant, scalar) uniform pc_ {
-    CameraData camera_data;
-    MeshData mesh_data;
-    RenderObjectData render_objects_data;
-} pc;
-
 layout(location = 0) in Input {
 #ifdef __OMNI_HAS_VERTEX_NORMAL
     vec3 normal;
 #endif
-#ifdef __OMNI_HAS_VERTEX_TEXCOORD_0
-    vec2 uv;
-#endif
 #ifdef __OMNI_HAS_VERTEX_TANGENT
     vec4 tangent;
 #endif
+#ifdef __OMNI_HAS_VERTEX_TEXCOORD_0
+    vec2 uv;
+#endif
 } v_Input;
 
-layout(buffer_reference, scalar, buffer_reference_align = 16) readonly buffer Material {
+layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer Material {
 	#ifdef __OMNI_HAS_ALPHA_CUTOFF
         float alpha_cutoff;
     #endif
@@ -186,6 +169,8 @@ layout(buffer_reference, scalar, buffer_reference_align = 16) readonly buffer Ma
 };
 
 void main() {
-	Material material = Material(pc.render_objects_data.material_bda);
-    out_color = texture(texture_bank[material.base_color_map_index], v_Input.uv);
+	Material material = Material(pc.render_objects_data[0].material_bda);
+	//vec4 color = texture(texture_bank[material.base_color_map_index], v_Input.uv);
+	vec4 color = vec4(v_Input.uv, 0.0f, 1.0f);
+    out_color = color;
 }

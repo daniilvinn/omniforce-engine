@@ -6,6 +6,9 @@
 #extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_debug_printf : require
 
+#include "mesh_data.glslh"
+#include "render_object.glslh"
+
 layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer CameraData {
 	mat4 view;
 	mat4 proj;
@@ -32,5 +35,11 @@ vec3 RotateByQuat(vec3 vertex, vec4 quat) {
 	vec3 uuv = cross(quat.xyz, uv);
 	return vertex + ((uv * quat.w) + uuv) * 2.0;
 };
+
+layout(push_constant, scalar) uniform pc_ {
+    CameraData camera_data;
+    MeshData mesh_data;
+    RenderObjectData render_objects_data;
+} pc;
 
 #endif

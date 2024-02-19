@@ -47,6 +47,7 @@ namespace Omni {
 		pipeline_spec.shader = shader;
 		pipeline_spec.output_attachments_formats = { ImageFormat::RGB32_HDR };
 		pipeline_spec.culling_mode = PipelineCullingMode::NONE;
+		pipeline_spec.depth_test_enable = true;
 
 		PipelineLibrary::HasPipeline(pipeline_spec) ? 
 			m_Pipeline = PipelineLibrary::GetPipeline(pipeline_spec) : m_Pipeline = Pipeline::Create(pipeline_spec);

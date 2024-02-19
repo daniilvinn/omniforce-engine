@@ -126,7 +126,7 @@ namespace Omni {
 
 	void Renderer::LoadShaderPack()
 	{
-		ShaderLibrary::Get()->LoadShader("Resources/shaders/sprite.ofs");
+		ShaderLibrary::Get()->LoadShader("Resources/shaders/sprite.ofs", {{"__OMNI_HAS_VERTEX_NORMAL", ""}});
 	}
 
 	void Renderer::Render()

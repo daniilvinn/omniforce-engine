@@ -92,7 +92,7 @@ namespace Omni {
 						ImageSourceImporter image_importer;
 						ImageSourceMetadata* image_metadata = image_importer.GetMetadataFromMemory(vector.bytes);
 
-						image_data.resize(image_metadata->width * image_metadata->height * image_metadata->source_channels);
+						image_data.resize(image_metadata->width * image_metadata->height * 4);
 
 						image_importer.ImportFromMemory(&image_data, vector.bytes);
 
@@ -107,20 +107,23 @@ namespace Omni {
 
 		AssetCompressor compressor;
 
+		std::vector<RGBA32> intermediate_storage (image_data.size() / sizeof RGBA32);
+		memcpy(intermediate_storage.data(), image_data.data(), image_data.size());
+
 		std::vector<RGBA32> mip_mapped_image = compressor.GenerateMipMaps(
-			{ image_data.begin(), image_data.end() },
+			intermediate_storage,
 			image_width,
 			image_height
 		);
-		//image_data = compressor.CompressBC7({ mip_mapped_image.begin(), mip_mapped_image.end() }, image_width, image_height);
-		image_data.resize(mip_mapped_image.size() * sizeof RGBA32);
-		memcpy(image_data.data(), mip_mapped_image.data(), image_data.size());
+
+		uint8 mip_levels_count = Utils::ComputeNumMipLevelsBC7(image_width, image_height) + 1;
+		image_data = compressor.CompressBC7({ mip_mapped_image.begin(), mip_mapped_image.end() }, image_width, image_height, mip_levels_count);
 
 		ImageSpecification image_spec = ImageSpecification::Default();
 		image_spec.extent = { image_width, image_height };
-		image_spec.format = ImageFormat::RGBA32_UNORM;
+		image_spec.format = ImageFormat::BC7;
 		image_spec.pixels = std::move(image_data);
-		image_spec.mip_levels = Utils::ComputeNumMipLevelsBC7(image_width, image_height) + 1;
+		image_spec.mip_levels = mip_levels_count;
 
 		AssetHandle asset_handle = AssetManager::Get()->RegisterAsset(Image::Create(image_spec));
 

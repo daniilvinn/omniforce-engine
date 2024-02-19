@@ -233,7 +233,6 @@ namespace Omni {
 		m_Specification.mip_levels = texture_create_info.mipLevels;
 		m_Specification.type = ImageType::TYPE_2D;
 		m_Specification.usage = ImageUsage::TEXTURE;
-		m_Specification.format = ImageFormat::RGBA32_UNORM;
 
 		staging_buffer.Destroy();
 	}

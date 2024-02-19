@@ -26,7 +26,7 @@ namespace Omni {
 		*  @brief Encodes RGBA32 image to BC7 image.
 		*  @return Array of 128-bit values, representing blocks
 		*/
-		static std::vector<byte> CompressBC7(const std::vector<RGBA32>& source, uint32 image_width, uint32 image_height);
+		static std::vector<byte> CompressBC7(const std::vector<RGBA32>& source, uint32 image_width, uint32 image_height, uint8 mip_levels_count);
 
 		/*
 		*  @brief Compresses data using NVIDIA GDeflate algorithm.

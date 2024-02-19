@@ -20,7 +20,7 @@ namespace EditorUtils {
 		ImageSourceMetadata* additional_data = importer.GetMetadata(path);
 		std::vector<RGBA32> mip_maps = AssetCompressor::GenerateMipMaps({ data.begin(), data.end() }, additional_data->width, additional_data->height);
 
-		data = AssetCompressor::CompressBC7(mip_maps, additional_data->width, additional_data->height);
+		data = AssetCompressor::CompressBC7(mip_maps, additional_data->width, additional_data->height, Utils::ComputeNumMipLevelsBC7(additional_data->width, additional_data->height) + 1);
 
 		ImageSpecification image_spec = ImageSpecification::Default();
 		image_spec.extent = { (uint32)additional_data->width, (uint32)additional_data->height, 1 };

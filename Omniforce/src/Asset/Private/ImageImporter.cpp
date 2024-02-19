@@ -33,9 +33,10 @@ namespace Omni {
 
 	void ImageSourceImporter::ImportFromMemory(std::vector<byte>* out, const std::vector<byte>& in)
 	{
+		stbi_set_flip_vertically_on_load(true);
 		auto* metadata = GetMetadataFromMemory(in);
 
-		out->resize(metadata->width * metadata->height * metadata->source_channels);
+		out->resize(metadata->width * metadata->height * 4);
 		int x, y, c;
 		stbi_uc* data = stbi_load_from_memory(in.data(), in.size(), &x, &y, &c, STBI_rgb_alpha);
 		memcpy(out->data(), data, out->size());

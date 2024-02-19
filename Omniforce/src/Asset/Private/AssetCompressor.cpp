@@ -100,11 +100,11 @@ namespace Omni {
 		return storage;
 	}
 
-	std::vector<byte> AssetCompressor::CompressBC7(const std::vector<RGBA32>& source, uint32 image_width, uint32 image_height)
+	std::vector<Omni::byte> AssetCompressor::CompressBC7(const std::vector<RGBA32>& source, uint32 image_width, uint32 image_height, uint8 mip_levels_count)
 	{
-		std::vector<byte> output_data(source.size());
+		std::vector<byte> output_data(image_width * image_height * mip_levels_count);
 		uint32 current_mip_offset = 0;
-		while (image_width >= 4 && image_height >= 4) {
+		for(int i = 0; i < mip_levels_count; i++) {
 			uint32 current_mip_size = image_width * image_height;
 
 			utils::image_u8 image_data(image_width, image_height);

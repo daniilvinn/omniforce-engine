@@ -39,7 +39,7 @@ namespace Omni {
 		AssetManager* asset_manager = AssetManager::Get();
 		Shared<Material> m = asset_manager->GetAsset<Material>(material);
 
-		auto& material_table = m->GetTable();
+		auto material_table = m->GetTable();
 
 		uint16 material_size = 0;
 
@@ -49,12 +49,20 @@ namespace Omni {
 		byte* material_data = new byte[material_size];
 		uint32 current_offset = 0;
 
+		for (auto& material_entry : material_table) {
+			if (material_entry.second.index() == 0) {
+				AssetHandle texture_handle = std::get<AssetHandle>(material_entry.second);
+				material_entry.second = m_Context->AcquireResourceIndex(asset_manager->GetAsset<Image>(texture_handle), SamplerFilteringMode::LINEAR);
+			}
+		}
+
 		for (auto& entry : material_table) {			
-			std::visit([&material_data, current_offset](const auto& value) {
-				memcpy(material_data + current_offset, &value, sizeof value);
+			uint8 entry_size = Material::GetRuntimeEntrySize(entry.second.index());
+			std::visit([&](const auto& value) {
+				memcpy(material_data + current_offset, &value, entry_size);
 			}, entry.second);
 			
-			current_offset += Material::GetRuntimeEntrySize(entry.second.index());
+			current_offset += entry_size;
 		}
 
 		m_StagingForCopy->UploadData(0, material_data, material_size);

@@ -70,9 +70,10 @@ namespace Omni {
 		}
 
 		std::vector<std::pair<AssetHandle, AssetHandle>> submeshes;
-		submeshes.reserve(asset.meshes[0].primitives.size());
+		submeshes.reserve(asset.meshes.size());
 
-		for (auto& primitive : asset.meshes[0].primitives) {
+		for (auto& ftf_mesh : asset.meshes) {
+			auto& primitive = ftf_mesh.primitives[0];
 			if (!primitive.indicesAccessor.has_value()) {
 				OMNIFORCE_CORE_ERROR("Submesh of mesh \"{}\" has no indices. Unindexed meshes are not supported. Aborting import.", 
 					asset.meshes[0].name);
@@ -137,7 +138,6 @@ namespace Omni {
 					ftf::iterateAccessorWithIndex<glm::vec4>(asset, accessor,
 						[&](const glm::vec4 value, std::size_t idx) { memcpy(attributes_data.data() + current_offset * idx + attrib.second, &value, sizeof(value)); });
 				}
-
 			}
 
 			// Preprocess mesh before sending to the render device
@@ -145,22 +145,25 @@ namespace Omni {
 			mesh_preprocessor.OptimizeMesh(geometry, indices);
 
 			GeneratedMeshlets* meshlets = mesh_preprocessor.GenerateMeshlets(geometry, indices);
+
 			std::vector<glm::vec3> remapped_vertices(meshlets->indices.size());
-			std::vector<byte> remapped_attributes(meshlets->indices.size() * current_offset); // use computed offset as stride
+
+			uint8 stride = current_offset;
+			std::vector<byte> remapped_attributes(meshlets->indices.size() * stride);
 
 			uint32 idx = 0;
 			for (auto& index : meshlets->indices) {
 				remapped_vertices[idx] = geometry[index];
-				memcpy(remapped_attributes.data() + current_offset * idx, attributes_data.data() + index * current_offset, current_offset);
+				memcpy(remapped_attributes.data() + stride * idx, attributes_data.data() + index * stride, stride);
 				idx++;
 			}
 
 			Sphere bounding_sphere = mesh_preprocessor.GenerateBoundingSphere(geometry);
 
 			Shared<Mesh> mesh = Mesh::Create(
-				{ remapped_vertices.begin(), remapped_vertices.end() }, 
-				{ remapped_attributes.begin(), remapped_attributes.end() }, 
-				meshlets->meshlets, 
+				remapped_vertices,
+				remapped_attributes,
+				meshlets->meshlets,
 				meshlets->local_indices, 
 				meshlets->cull_bounds,
 				bounding_sphere
