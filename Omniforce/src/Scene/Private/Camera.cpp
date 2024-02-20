@@ -161,16 +161,33 @@ namespace Omni {
 		m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
 	}
 
+	Frustum Camera3D::GenerateFrustum()
+	{
+		Frustum     frustum;
+		const float half_v_side = m_ZFar * tanf(m_FieldOfView * 0.5f);
+		const float half_h_side = half_v_side * m_AspectRatio;
+		const glm::vec3 front_mult_far = m_ZFar * m_FrontVector;
+
+		frustum.planes[0] = { m_Position + m_ZNear * m_FrontVector, m_FrontVector };
+		frustum.planes[1] = { m_Position + front_mult_far, -m_FrontVector };
+		frustum.planes[2] = { m_Position, glm::cross(front_mult_far - m_RightVector * half_h_side, m_UpVector) };
+		frustum.planes[3] = { m_Position, glm::cross(m_UpVector, front_mult_far + m_RightVector * half_h_side) };
+		frustum.planes[4] = { m_Position, glm::cross(m_RightVector, front_mult_far - m_UpVector * half_v_side) };
+		frustum.planes[5] = { m_Position, glm::cross(front_mult_far + m_UpVector * half_v_side, m_RightVector) };
+
+		return frustum;
+	}
+
 	void Camera3D::CalculateVectors()
 	{
 		// TODO: apply Roll rotation
-		glm::vec3 frontDirection;
+		glm::vec3 front_direction;
 
-		frontDirection.x = cos(2 * 3.14 * (m_Yaw / 360)) * cos(2 * 3.14 * (m_Pitch / 360));
-		frontDirection.y = sin(2 * 3.14 * (m_Pitch / 360));
-		frontDirection.z = sin(2 * 3.14 * (m_Yaw / 360)) * cos(2 * 3.14 * (m_Pitch / 360));
+		front_direction.x = cos(2 * 3.14 * (m_Yaw / 360)) * cos(2 * 3.14 * (m_Pitch / 360));
+		front_direction.y = sin(2 * 3.14 * (m_Pitch / 360));
+		front_direction.z = sin(2 * 3.14 * (m_Yaw / 360)) * cos(2 * 3.14 * (m_Pitch / 360));
 
-		m_FrontVector = glm::normalize(frontDirection);
+		m_FrontVector = glm::normalize(front_direction);
 		m_RightVector = glm::normalize(glm::cross(m_FrontVector, glm::vec3(0.0f, 1.0f, 0.0f)));
 		m_UpVector = glm::normalize(glm::cross(m_RightVector, m_FrontVector));
 	}

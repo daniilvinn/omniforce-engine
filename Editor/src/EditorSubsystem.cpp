@@ -180,7 +180,7 @@ public:
 				ImGui::EndDragDropTarget();
 			}
 
-			if (!m_InRuntime) {
+			if (m_InRuntime) {
 				m_CurrentOperation = (ImGuizmo::OPERATION)0;
 			}
 			else {
@@ -254,9 +254,9 @@ public:
 				if (Input::KeyPressed(KeyCode::KEY_Q))
 					m_CurrentOperation = (ImGuizmo::OPERATION)0;
 				if (Input::KeyPressed(KeyCode::KEY_W))
-					m_CurrentOperation = ImGuizmo::OPERATION::TRANSLATE_X | ImGuizmo::OPERATION::TRANSLATE_Y;
+					m_CurrentOperation = ImGuizmo::OPERATION::TRANSLATE;
 				if (Input::KeyPressed(KeyCode::KEY_E))
-					m_CurrentOperation = ImGuizmo::OPERATION::ROTATE_Z;
+					m_CurrentOperation = ImGuizmo::OPERATION::ROTATE;
 				if (Input::KeyPressed(KeyCode::KEY_R))
 					m_CurrentOperation = ImGuizmo::OPERATION::SCALE;
 			}
@@ -384,7 +384,7 @@ public:
 			glm::mat4 view = m_EditorCamera->GetViewMatrix();
 			glm::mat4 proj = m_EditorCamera->GetProjectionMatrix();
 
-			ImGuizmo::SetOrthographic(true);
+			ImGuizmo::SetOrthographic(false);
 			ImGuizmo::SetDrawlist();
 			ImGuizmo::SetRect(
 				m_ViewportBounds[0].x,

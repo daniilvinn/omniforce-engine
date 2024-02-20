@@ -59,6 +59,6 @@ layout(location = 2) in vec4 v_ColorTint;
 layout(location = 0) out vec4 final_color;
 
 void main() {
-	vec4 texel_color = texture(texture_bank[nonuniformEXT(5)], v_TexCoord);
+	vec4 texel_color = texture(texture_bank[nonuniformEXT(v_TextureIndex)], v_TexCoord);
 	final_color = texel_color * v_ColorTint;
 }

@@ -11,6 +11,7 @@ namespace Omni {
 		glm::mat4 proj;
 		glm::mat4 view_proj;
 		glm::vec3 position;
+		Frustum frustum;
 	};
 
 	struct DeviceMeshData {

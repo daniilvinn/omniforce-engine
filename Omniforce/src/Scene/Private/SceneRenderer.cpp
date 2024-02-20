@@ -191,6 +191,7 @@ namespace Omni {
 			camera_data.proj = m_Camera->GetProjectionMatrix();
 			camera_data.view_proj = m_Camera->GetViewProjectionMatrix();
 			camera_data.position = m_Camera->GetPosition();
+			camera_data.frustum = m_Camera->GenerateFrustum();
 
 			m_CameraDataBuffer->UploadData(
 				Renderer::GetCurrentFrameIndex() * (m_CameraDataBuffer->GetSpecification().size / Renderer::GetConfig().frames_in_flight),

@@ -32,6 +32,8 @@ namespace Omni {
 		void SetPosition(glm::vec3 position) { m_Position = position; }
 		virtual void SetAspectRatio(float32 ratio) = 0;
 
+		virtual Frustum GenerateFrustum() = 0;
+
 	protected:
 		Camera(CameraProjectionType type) : m_Type(type) {}
 		CameraProjectionType m_Type;
@@ -62,6 +64,7 @@ namespace Omni {
 		float32 GetRotation() const { return m_Rotation; }
 		float32 GetScale() const { return m_Scale; }
 
+		Frustum GenerateFrustum() override { return {}; };
 		void CalculateMatrices() override;
 
 	protected:
@@ -105,8 +108,8 @@ namespace Omni {
 		void Rotate(float32 yaw_offset, float pitch_offset, float roll_offset, bool lock_pitch);
 		void Move(glm::vec3 direction);
 
-
 		void CalculateMatrices() override;
+		Frustum GenerateFrustum() override;
 
 	private:
 		void CalculateVectors();

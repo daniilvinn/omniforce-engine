@@ -88,9 +88,11 @@ namespace Omni {
 			std::vector<std::string> material_shader_macros;
 			uint32 current_offset = 0;
 
+			std::vector<byte> vertex_data;
+
 			// Find offsets and present attributes
 			for (auto& attribute : primitive.attributes) {
-				if (attribute.first == "POSITION") continue;
+				if (attribute.first == "POSITION") continue;;
 
 				auto& attrib_accessor = asset.accessors[attribute.second];
 
@@ -100,16 +102,6 @@ namespace Omni {
 				attributes_data.resize(attributes_data.size() + attrib_size * attrib_accessor.count);
 				present_attributes.emplace(attribute.first, current_offset);
 				current_offset += attrib_size;
-			}
-
-			// Positions
-			{
-				const auto& vertices_accessor = asset.accessors[primitive.findAttribute("POSITION")->second];
-				geometry.resize(vertices_accessor.count);
-				{
-					ftf::iterateAccessorWithIndex<glm::vec3>(asset, vertices_accessor,
-						[&](const glm::vec3 position, std::size_t idx) { geometry[idx] = position; });
-				}
 			}
 
 			// Indices
@@ -122,39 +114,59 @@ namespace Omni {
 				}
 			}
 
+			// Positions
+			{
+				const auto& vertices_accessor = asset.accessors[primitive.findAttribute("POSITION")->second];
+				vertex_data.resize(vertices_accessor.count * (sizeof glm::vec3 + current_offset));
+				geometry.resize(vertices_accessor.count);
+				{
+					ftf::iterateAccessorWithIndex<glm::vec3>(asset, vertices_accessor,
+						[&](const glm::vec3 position, std::size_t idx) { memcpy(vertex_data.data() + (idx * (current_offset + 12)), &position, sizeof position); });
+				}
+			}
+
 			// Fill attributes data. In lambdas, I use "current_offset" as vertex stride
 			for (auto& attrib : present_attributes) {
 				const auto& accessor = asset.accessors[primitive.findAttribute(attrib.first)->second];
 
 				if (accessor.type == ftf::AccessorType::Vec2) {
 					ftf::iterateAccessorWithIndex<glm::vec2>(asset, accessor,
-						[&](const glm::vec2 value, std::size_t idx) { memcpy(attributes_data.data() + current_offset * idx + attrib.second, &value, sizeof(value)); });
+						[&](const glm::vec2 value, std::size_t idx) { memcpy(vertex_data.data() + (idx * (current_offset + 12)) + attrib.second + 12, &value, sizeof(value)); });
 				}
 				else if (accessor.type == ftf::AccessorType::Vec3) {
 					ftf::iterateAccessorWithIndex<glm::vec3>(asset, accessor,
-						[&](const glm::vec3 value, std::size_t idx) { memcpy(attributes_data.data() + current_offset * idx + attrib.second, &value, sizeof(value)); });
+						[&](const glm::vec3 value, std::size_t idx) { memcpy(vertex_data.data() + (idx * (current_offset + 12)) + attrib.second + 12, &value, sizeof(value)); });
 				}
 				else if (accessor.type == ftf::AccessorType::Vec4) {
 					ftf::iterateAccessorWithIndex<glm::vec4>(asset, accessor,
-						[&](const glm::vec4 value, std::size_t idx) { memcpy(attributes_data.data() + current_offset * idx + attrib.second, &value, sizeof(value)); });
+						[&](const glm::vec4 value, std::size_t idx) { memcpy(vertex_data.data() + (idx * (current_offset + 12)) + attrib.second + 12, &value, sizeof(value)); });
 				}
 			}
 
 			// Preprocess mesh before sending to the render device
+			uint8 stride = current_offset;
+			uint8 interleaved_stride = stride + 12;
 			MeshPreprocessor mesh_preprocessor;
-			mesh_preprocessor.OptimizeMesh(geometry, indices);
+			mesh_preprocessor.OptimizeMesh(vertex_data, indices, interleaved_stride); // count vertex position data as well, so +12
+
+			geometry.resize(vertex_data.size() / interleaved_stride);
+			attributes_data.resize(vertex_data.size() / (interleaved_stride) * stride);
+			// split data back
+			for (int i = 0; i < vertex_data.size() / interleaved_stride; i++) {
+				memcpy(geometry.data() + i, vertex_data.data() + i * interleaved_stride, 12);
+				memcpy(attributes_data.data() + i * stride, vertex_data.data() + i * interleaved_stride + 12, stride);
+			}
 
 			GeneratedMeshlets* meshlets = mesh_preprocessor.GenerateMeshlets(geometry, indices);
 
 			std::vector<glm::vec3> remapped_vertices(meshlets->indices.size());
-
-			uint8 stride = current_offset;
 			std::vector<byte> remapped_attributes(meshlets->indices.size() * stride);
 
 			uint32 idx = 0;
 			for (auto& index : meshlets->indices) {
 				remapped_vertices[idx] = geometry[index];
 				memcpy(remapped_attributes.data() + stride * idx, attributes_data.data() + index * stride, stride);
+
 				idx++;
 			}
 

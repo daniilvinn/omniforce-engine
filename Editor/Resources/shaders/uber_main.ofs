@@ -11,6 +11,7 @@
 #include "mesh_data.glslh" // mesh data
 #include "render_object.glslh" // common render object data
 #include "task_payload.glslh"
+#include "frustum.glslh"
 
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
@@ -35,13 +36,13 @@ void main()
 	MeshletCullBounds cull_bounds = mesh_data.meshlets_cull_bounds[gl_GlobalInvocationID.x];
 
 	// Cull
-	if(dot(normalize(cull_bounds.cone_apex - pc.camera_data.position), cull_bounds.cone_axis) < cull_bounds.cone_cutoff) {
+	if((dot(normalize(cull_bounds.cone_apex - pc.camera_data.position), cull_bounds.cone_axis) < cull_bounds.cone_cutoff) && FrustumTestBoundingSphere(pc.camera_data.frustum, cull_bounds.bounding_sphere)) {
 		uint id_index = atomicAdd(s_actual_num_meshlets, 1);
 		task_payload.meshlet_ids[id_index] = gl_GlobalInvocationID.x;
 	}
 
 	// Emit mesh work groups
-	if(lid == 0) {
+	if(lid == 0 && (s_actual_num_meshlets != 0)) {
 		EmitMeshTasksEXT(s_actual_num_meshlets, 1, 1);
 	}
 }
@@ -49,7 +50,6 @@ void main()
 #pragma stage : mesh
 #version 460 core
 #extension GL_EXT_mesh_shader : require
-#extension GL_EXT_debug_printf : require
 
 #include "common.glslh"
 #include "render_object.glslh"
@@ -170,7 +170,6 @@ layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer Mat
 
 void main() {
 	Material material = Material(pc.render_objects_data[0].material_bda);
-	//vec4 color = texture(texture_bank[material.base_color_map_index], v_Input.uv);
-	vec4 color = vec4(v_Input.uv, 0.0f, 1.0f);
+	vec4 color = texture(texture_bank[material.base_color_map_index], vec2(v_Input.uv.x, 1.0f - v_Input.uv.y));
     out_color = color;
 }

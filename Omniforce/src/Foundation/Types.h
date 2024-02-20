@@ -141,6 +141,26 @@ namespace Omni {
 		glm::vec3 min, max;
 	};
 
+	struct Plane {
+		glm::vec3 normal;
+		float32 distance;
+
+		Plane() {
+			normal = { 0.0f, 1.0f, 0.0f };
+			distance = 0.0f;
+		}
+
+		Plane(const glm::vec3& p1, const glm::vec3& norm)
+			: normal(glm::normalize(norm)),
+			distance(glm::dot(normal, p1))
+		{}
+
+	};
+
+	struct Frustum {
+		Plane planes[6] = {}; // top, bottom, right, left, far, near planes
+	};
+
 	// Macro table is usually being iterated, so I use an array of pairs and not a map, because map
 	// fits better for random access
 	using ShaderMacroTable = std::vector<std::pair<std::string, std::string>>;
