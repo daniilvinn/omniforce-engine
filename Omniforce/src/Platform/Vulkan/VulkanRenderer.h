@@ -31,11 +31,15 @@ namespace Omni {
 		void WaitDevice() override;
 		void BindSet(Shared<DescriptorSet> set, Shared<Pipeline> pipeline, uint8 index) override;
 		void CopyToSwapchain(Shared<Image> image) override;
+		void InsertBarrier(const PipelineBarrierInfo& barrier) override;
 
 		void ClearImage(Shared<Image> image, const fvec4& value) override;
-		void RenderMeshTasks(Shared<Pipeline> pipeline, const glm::vec3& dimensions, MiscData data) override;
+		void RenderMeshTasks(Shared<Pipeline> pipeline, const glm::uvec3& dimensions, MiscData data) override;
+		void RenderMeshTasksIndirect(Shared<Pipeline> pipeline, Shared<DeviceBuffer> params, MiscData data) override;
 		void RenderQuad(Shared<Pipeline> pipeline, MiscData data) override;
 		void RenderQuad(Shared<Pipeline> pipeline, uint32 amount, MiscData data) override;
+		void DispatchCompute(Shared<Pipeline> pipeline, const glm::uvec3& dimensions, MiscData data) override;
+
 		void RenderImGui() override;
 
 		void BeginCommandRecord() override;

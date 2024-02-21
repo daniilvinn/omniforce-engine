@@ -7,6 +7,7 @@
 #include "../VulkanImage.h"
 #include "../VulkanDescriptorSet.h"
 
+#include <Renderer/PipelineBarrier.h>
 #include <Renderer/ShaderLibrary.h>
 #include <Threading/JobSystem.h>
 
@@ -158,16 +159,33 @@ namespace Omni {
 		});
 	}
 
-	void VulkanRenderer::RenderMeshTasks(Shared<Pipeline> pipeline, const glm::vec3& dimensions, MiscData data)
+	void VulkanRenderer::RenderMeshTasks(Shared<Pipeline> pipeline, const glm::uvec3& dimensions, MiscData data)
 	{
 		Renderer::Submit([=]() mutable {
 			Shared<VulkanPipeline> vk_pipeline = ShareAs<VulkanPipeline>(pipeline);
 
-			vkCmdPushConstants(m_CurrentCmdBuffer->Raw(), vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
+			if (data.size) {
+				vkCmdPushConstants(m_CurrentCmdBuffer->Raw(), vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
+				delete[] data.data;
+			}
 			vkCmdBindPipeline(m_CurrentCmdBuffer->Raw(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
 			vkCmdDrawMeshTasksEXT(m_CurrentCmdBuffer->Raw(), dimensions.x, dimensions.y, dimensions.z);
-			if(data.size)
+		});
+	}
+
+	void VulkanRenderer::RenderMeshTasksIndirect(Shared<Pipeline> pipeline, Shared<DeviceBuffer> params, MiscData data)
+	{
+		Renderer::Submit([=]() mutable {
+			Shared<VulkanPipeline> vk_pipeline = ShareAs<VulkanPipeline>(pipeline);
+			Shared<VulkanDeviceBuffer> vk_buffer = ShareAs<VulkanDeviceBuffer>(params);
+
+			if (data.size) {
+				vkCmdPushConstants(m_CurrentCmdBuffer->Raw(), vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
 				delete[] data.data;
+			}
+			vkCmdBindPipeline(m_CurrentCmdBuffer->Raw(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
+			uint32 max_draws = (vk_buffer->GetSpecification().size - 4) / sizeof glm::uvec3;
+			vkCmdDrawMeshTasksIndirectCountEXT(m_CurrentCmdBuffer->Raw(), vk_buffer->Raw(), 4, vk_buffer->Raw(), 0, max_draws, sizeof VkDrawMeshTasksIndirectCommandEXT);
 		});
 	}
 
@@ -236,6 +254,20 @@ namespace Omni {
 			}
 			vkCmdBindPipeline(m_CurrentCmdBuffer->Raw(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
 			vkCmdDraw(m_CurrentCmdBuffer->Raw(), 6, amount, 0, 0);
+		});
+	}
+
+	void VulkanRenderer::DispatchCompute(Shared<Pipeline> pipeline, const glm::uvec3& dimensions, MiscData data)
+	{
+		Renderer::Submit([=]() mutable {
+			Shared<VulkanPipeline> vk_pipeline = ShareAs<VulkanPipeline>(pipeline);
+			
+			if (data.size) {
+				vkCmdPushConstants(m_CurrentCmdBuffer->Raw(), vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
+				delete[] data.data;
+			}
+			vkCmdBindPipeline(m_CurrentCmdBuffer->Raw(), VK_PIPELINE_BIND_POINT_COMPUTE, vk_pipeline->Raw());
+			vkCmdDispatch(m_CurrentCmdBuffer->Raw(), dimensions.x, dimensions.y, dimensions.z);
 		});
 	}
 
@@ -310,6 +342,13 @@ namespace Omni {
 				&image_blit,
 				VK_FILTER_LINEAR
 			);
+		});
+	}
+
+	void VulkanRenderer::InsertBarrier(const PipelineBarrierInfo& barrier)
+	{
+		Renderer::Submit([=]()mutable {
+			vkCmdPipelineBarrier(m_CurrentCmdBuffer->Raw(), (VkPipelineStageFlags)barrier.src_stage, (VkPipelineStageFlags)barrier.dst_stage, 0, 0, nullptr, 0, nullptr, 0, nullptr);
 		});
 	}
 

@@ -79,14 +79,24 @@ namespace Omni {
 		return s_RendererAPI->GetCmdBuffer();
 	}
 
+	void Renderer::InsertBarrier(const PipelineBarrierInfo& barrier_info)
+	{
+		s_RendererAPI->InsertBarrier(barrier_info);
+	}
+
 	void Renderer::ClearImage(Shared<Image> image, const fvec4& value)
 	{
 		s_RendererAPI->ClearImage(image, value);
 	}
 
-	void Renderer::RenderMeshTasks(Shared<Pipeline> pipeline, const glm::vec3 dimensions, MiscData data)
+	void Renderer::RenderMeshTasks(Shared<Pipeline> pipeline, const glm::uvec3 dimensions, MiscData data)
 	{
 		s_RendererAPI->RenderMeshTasks(pipeline, dimensions, data);
+	}
+
+	void Renderer::RenderMeshTasksIndirect(Shared<Pipeline> pipeline, Shared<DeviceBuffer> params, MiscData data)
+	{
+		s_RendererAPI->RenderMeshTasksIndirect(pipeline, params, data);
 	}
 
 	void Renderer::RenderQuads(Shared<Pipeline> pipeline, MiscData data)
@@ -97,6 +107,11 @@ namespace Omni {
 	void Renderer::RenderQuads(Shared<Pipeline> pipeline, uint32 amount, MiscData data)
 	{
 		s_RendererAPI->RenderQuad(pipeline, amount, data);
+	}
+
+	void Renderer::DispatchCompute(Shared<Pipeline> pipeline, const glm::uvec3& dimensions, MiscData data)
+	{
+		s_RendererAPI->DispatchCompute(pipeline, dimensions, data);
 	}
 
 	uint32 Renderer::GetCurrentFrameIndex()
@@ -126,7 +141,7 @@ namespace Omni {
 
 	void Renderer::LoadShaderPack()
 	{
-		ShaderLibrary::Get()->LoadShader("Resources/shaders/sprite.ofs", {{"__OMNI_HAS_VERTEX_NORMAL", ""}});
+		
 	}
 
 	void Renderer::Render()

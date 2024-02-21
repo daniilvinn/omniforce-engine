@@ -20,7 +20,7 @@ namespace Omni {
 
 	VulkanImGuiRenderer::VulkanImGuiRenderer()
 	{
-
+		OMNIFORCE_CORE_TRACE("Create ImGui renderer");
 	}
 
 	VulkanImGuiRenderer::~VulkanImGuiRenderer()
@@ -30,6 +30,7 @@ namespace Omni {
 
 	void VulkanImGuiRenderer::Launch(void* window_handle)
 	{
+		OMNIFORCE_CORE_TRACE("Launching ImGui renderer...");
 		auto device = VulkanGraphicsContext::Get()->GetDevice();
 		auto context = VulkanGraphicsContext::Get();
 		auto glfw_window = (GLFWwindow*)window_handle;
@@ -55,12 +56,16 @@ namespace Omni {
 
 		VK_CHECK_RESULT(vkCreateDescriptorPool(device->Raw(), &pool_info, nullptr, &pool));
 
+		OMNIFORCE_CORE_TRACE("Created ImGui renderer descriptor pool");
+
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
 		ImGuiIO& io = ImGui::GetIO(); (void)io;
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+
+		OMNIFORCE_CORE_TRACE("Created ImGui context");
 
 		ImGui::StyleColorsDark();
 
@@ -123,14 +128,21 @@ namespace Omni {
 		style.Colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
 		style.GrabRounding = style.FrameRounding = 2.3f;
 
+		OMNIFORCE_CORE_TRACE("Setted ImGui styles");
+
 		VkInstance inst = context->GetVulkanInstance();
 
-		OMNIFORCE_ASSERT_TAGGED(ImGui_ImplVulkan_LoadFunctions([](const char* function_name, void* vk_instance) {
+		ImGui_ImplVulkan_LoadFunctions([](const char* function_name, void* vk_instance) {
 			return vkGetInstanceProcAddr(volkGetLoadedInstance(), function_name); },
 			&inst
-		), "Failed to load ");
+		);
+
+		OMNIFORCE_CORE_TRACE("Loaded vulkan functions for imgui renderer");
 
 		ImGui_ImplGlfw_InitForVulkan(glfw_window, true);
+
+		OMNIFORCE_CORE_TRACE("Initialized ImGui GLFW implementation for Vulkan");
+
 		ImGui_ImplVulkan_InitInfo init_info = {};
 		init_info.Instance = context->GetVulkanInstance();
 		init_info.PhysicalDevice = device->GetPhysicalDevice()->Raw();
@@ -141,9 +153,10 @@ namespace Omni {
 		init_info.MinImageCount = Renderer::GetConfig().frames_in_flight;
 		init_info.ImageCount = Renderer::GetConfig().frames_in_flight;
 		init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+
 		ImGui_ImplVulkan_Init(&init_info, VK_FORMAT_B8G8R8A8_UNORM);
 
-		OMNIFORCE_CORE_TRACE("[ImGUiRenderer]: Min image count: {} | image count: {}", init_info.MinImageCount, init_info.ImageCount);
+		OMNIFORCE_CORE_TRACE("[ImGuiRenderer]: Min image count: {} | image count: {}", init_info.MinImageCount, init_info.ImageCount);
 
 		ImFont* m_MainFont = io.Fonts->AddFontFromFileTTF("resources/fonts/roboto.ttf", 16);
 
@@ -157,6 +170,7 @@ namespace Omni {
 
 		ImGui_ImplVulkan_DestroyFontUploadObjects();
 
+		OMNIFORCE_CORE_TRACE("Launched ImGui renderer");
 	}
 
 	void VulkanImGuiRenderer::Destroy()

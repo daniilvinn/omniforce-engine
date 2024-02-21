@@ -9,14 +9,8 @@
 #include "mesh_data.glslh"
 #include "render_object.glslh"
 #include "frustum.glslh"
+#include "camera_data.glslh"
 
-layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer CameraData {
-	mat4 view;
-	mat4 proj;
-	mat4 view_proj;
-	vec3 position;
-	Frustum frustum;
-};
 
 layout(binding = 0) uniform sampler2D texture_bank[65535];
 

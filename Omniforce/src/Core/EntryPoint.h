@@ -1,5 +1,8 @@
 #pragma once
 
+#include <exception>
+#include <fstream>
+
 #if (OMNIFORCE_PLATFORM == OMNIFORCE_PLATFORM_WIN64)
 	#include <Windows.h>
 #endif
@@ -22,7 +25,7 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	while (g_EngineRunning) 
 	{
 		Scope<Application> app = std::make_unique<Application>();
-		
+	
 		Application::Options options;
 		options.root_system = ConstructRootSystem();
 		options.flags = 0;

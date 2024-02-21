@@ -7,6 +7,7 @@ namespace Omni {
 	void AudioEngine::Init()
 	{
 		s_Instance = new AudioEngine;
+		OMNIFORCE_CORE_TRACE("Initialized audio engine");
 	}
 
 	void AudioEngine::Shutdown()

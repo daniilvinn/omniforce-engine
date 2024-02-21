@@ -110,7 +110,7 @@ namespace Omni {
 					layout_binding.binding = reflect_binding->binding;
 					layout_binding.descriptorType = convert(reflect_binding->descriptor_type);
 					layout_binding.descriptorCount = reflect_binding->count;
-					layout_binding.stageFlags = VK_SHADER_STAGE_ALL;
+					layout_binding.stageFlags = stage_data.first == ShaderStage::COMPUTE ? VK_SHADER_STAGE_COMPUTE_BIT : VK_SHADER_STAGE_ALL;
 
 					bool skip_binding = false;
 
@@ -131,6 +131,15 @@ namespace Omni {
 
 			std::vector<SpvReflectBlockVariable*> reflect_push_constant_ranges(push_constant_range_count);
 			spvReflectEnumeratePushConstantBlocks(&reflect_module, &push_constant_range_count, reflect_push_constant_ranges.data());
+
+			if (push_constant_range_count) {
+
+				for (int i = 0; i < reflect_push_constant_ranges[0]->member_count; i++) {
+					auto& member = reflect_push_constant_ranges[0]->members[i];
+
+					int x = 5;
+				}
+			}
 
 			for (auto& reflect_range : reflect_push_constant_ranges) {
 				push_constant_range.size += reflect_range->size;

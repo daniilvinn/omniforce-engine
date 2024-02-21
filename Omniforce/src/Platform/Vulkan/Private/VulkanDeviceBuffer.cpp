@@ -17,6 +17,7 @@ namespace Omni {
 		case DeviceBufferUsage::STORAGE_BUFFER:						return VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 		case DeviceBufferUsage::STAGING_BUFFER:						return VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 		case DeviceBufferUsage::SHADER_DEVICE_ADDRESS:				return VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+		case DeviceBufferUsage::INDIRECT_PARAMS:					return VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 		default:													std::unreachable();
 		}
 	}
@@ -47,6 +48,8 @@ namespace Omni {
 		if (m_Specification.memory_usage == DeviceBufferMemoryUsage::NO_HOST_ACCESS) {
 			buffer_create_info.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 		}
+		if (m_Specification.buffer_usage == DeviceBufferUsage::INDIRECT_PARAMS)
+			m_Specification.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
 
 		m_Allocation = alloc->AllocateBuffer(&buffer_create_info, vma_flags, &m_Buffer);
 	}
@@ -66,6 +69,9 @@ namespace Omni {
 		if (m_Specification.memory_usage == DeviceBufferMemoryUsage::NO_HOST_ACCESS) {
 			buffer_create_info.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 		}
+
+		if (m_Specification.buffer_usage == DeviceBufferUsage::INDIRECT_PARAMS)
+			m_Specification.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
 
 		m_Allocation = alloc->AllocateBuffer(&buffer_create_info, vma_flags, &m_Buffer);
 		this->UploadData(0, data, data_size);

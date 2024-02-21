@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RendererCommon"
+#include "RendererCommon.h"
 
 #include "PipelineStage.h"
 #include "Image.h"

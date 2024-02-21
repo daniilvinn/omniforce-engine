@@ -65,9 +65,7 @@ namespace Omni
 
 		js->Wait();
 
-		js->Execute(Renderer::LoadShaderPack);
 		js->Execute(AssetManager::Init);
-
 		m_ImGuiRenderer = ImGuiRenderer::Create();
 		m_ImGuiRenderer->Launch(m_WindowSystem->GetWindow("main")->Raw());
 	}

@@ -4,6 +4,7 @@
 #include <Renderer/Pipeline.h>
 #include <Renderer/ShaderLibrary.h>
 #include <Renderer/DeviceBuffer.h>
+#include <Renderer/PipelineBarrier.h>
 #include <Core/Utils.h>
 #include "../SceneRendererPrimitives.h"
 
@@ -133,13 +134,24 @@ namespace Omni {
 		}
 		// Initializing pipelines
 		{
+			ShaderLibrary* shader_library = ShaderLibrary::Get();
+			shader_library->LoadShader("Resources/shaders/sprite.ofs");
+			shader_library->LoadShader("Resources/shaders/cull_indirect.ofs");
+
+			// 2D pass
 			PipelineSpecification pipeline_spec = PipelineSpecification::Default();
-			pipeline_spec.shader = ShaderLibrary::Get()->GetShader("sprite.ofs", {{"__OMNI_HAS_VERTEX_NORMAL", ""}});
+			pipeline_spec.shader = shader_library->GetShader("sprite.ofs");
 			pipeline_spec.debug_name = "sprite pass";
 			pipeline_spec.output_attachments_formats = { ImageFormat::RGB32_HDR };
 			pipeline_spec.culling_mode = PipelineCullingMode::NONE;
 
 			m_SpritePass = Pipeline::Create(pipeline_spec);
+
+			// compute frustum culling
+			pipeline_spec.type = PipelineType::COMPUTE;
+			pipeline_spec.shader = shader_library->GetShader("cull_indirect.ofs");
+
+			m_IndirectFrustumCullPipeline = Pipeline::Create(pipeline_spec);
 		}
 		// Initialize device render queue
 		{
@@ -147,13 +159,37 @@ namespace Omni {
 				DeviceBufferSpecification spec;
 				// allow for 256 objects per material for beginning.
 				// TODO: allow recreating buffer with bigger size when limit is reached
-				spec.size = sizeof(DeviceRenderableObject) * 256 * Renderer::GetConfig().frames_in_flight; 
+				spec.size = sizeof(DeviceRenderableObject) * 1024 * Renderer::GetConfig().frames_in_flight; 
 				spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
-				spec.heap = DeviceBufferMemoryHeap::DEVICE;
+				spec.heap =			DeviceBufferMemoryHeap::DEVICE;
 				spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
 				
 				value = DeviceBuffer::Create(spec);
 			});
+		}
+		// Initialize device 3D draw param buffer
+		{
+			DeviceBufferSpecification spec;
+			// allow for 256 objects per material for beginning.
+			// TODO: allow recreating buffer with bigger size when limit is reached
+			spec.size = sizeof(glm::uvec3) * 1024 + 4; // reserve 4 bytes for draw counter
+			spec.buffer_usage = DeviceBufferUsage::INDIRECT_PARAMS;
+			spec.heap =			DeviceBufferMemoryHeap::DEVICE;
+			spec.memory_usage = DeviceBufferMemoryUsage::NO_HOST_ACCESS;
+
+			m_DeviceIndirectDrawParams = DeviceBuffer::Create(spec);
+		}
+		// Initialize culled render queue
+		{
+			DeviceBufferSpecification spec;
+			// allow for 256 objects per material for beginning.
+			// TODO: allow recreating buffer with bigger size when limit is reached
+			spec.size = sizeof(DeviceRenderableObject) * 1024;
+			spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
+			spec.heap = DeviceBufferMemoryHeap::DEVICE;
+			spec.memory_usage = DeviceBufferMemoryUsage::NO_HOST_ACCESS;
+
+			m_CulledDeviceRenderQueue = DeviceBuffer::Create(spec);
 		}
 	}
 
@@ -216,16 +252,15 @@ namespace Omni {
 			);
 		});
 
-		// Begin render and bind global descriptor set
-		Renderer::BeginRender({ m_CurrectMainRenderTarget, m_CurrentDepthAttachment }, m_CurrectMainRenderTarget->GetSpecification().extent, { 0, 0 }, { 0.0f, 0.0f, 0.0f, 1.0f });
 	}
 
 	void SceneRenderer::EndScene()
 	{
 		uint64 camera_data_device_address = m_CameraDataBuffer->GetDeviceAddress() + sizeof DeviceCameraData * Renderer::GetCurrentFrameIndex();
 
-		// Draw 2D
+		// Render 2D
 		{
+			Renderer::BeginRender({ m_CurrectMainRenderTarget, m_CurrentDepthAttachment }, m_CurrectMainRenderTarget->GetSpecification().extent, { 0, 0 }, { 0.0f, 0.0f, 0.0f, 1.0f });
 			m_SpriteDataBuffer->UploadData(
 				Renderer::GetCurrentFrameIndex() * m_SpriteBufferSize,
 				m_SpriteQueue.data(),
@@ -239,10 +274,12 @@ namespace Omni {
 
 			Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], m_SpritePass, 0);
 			Renderer::RenderQuads(m_SpritePass, m_SpriteQueue.size(), pc);
+			Renderer::EndRender({ m_CurrectMainRenderTarget });
 		}
 
 		// Render 3D
 		for (auto& host_render_queue : m_HostRenderQueue) {
+			// Submit render data to cull
 			auto device_render_queue = m_DeviceRenderQueue[host_render_queue.first];
 			uint32 per_frame_size = device_render_queue->GetSpecification().size / Renderer::GetConfig().frames_in_flight;
 			device_render_queue->UploadData(
@@ -250,20 +287,45 @@ namespace Omni {
 				m_HostRenderQueue.at(host_render_queue.first).data(), 
 				m_HostRenderQueue.at(host_render_queue.first).size() * sizeof DeviceRenderableObject
 			);
-			MiscData pc = {}; 
+
+			// Prepare data for frustum culling and dispatch culling
+			IndirectFrustumCullPassPushContants* compute_push_constants_data = new IndirectFrustumCullPassPushContants;
+			compute_push_constants_data->camera_data_bda = camera_data_device_address;
+			compute_push_constants_data->mesh_data_bda = m_MeshResourcesBuffer.GetStorageBDA();
+			compute_push_constants_data->render_objects_data_bda = device_render_queue->GetDeviceAddress() + Renderer::GetCurrentFrameIndex() * per_frame_size;
+			compute_push_constants_data->original_object_count = host_render_queue.second.size();
+			compute_push_constants_data->culled_objects_bda = m_CulledDeviceRenderQueue->GetDeviceAddress();
+			compute_push_constants_data->object_counter_bda = m_DeviceIndirectDrawParams->GetDeviceAddress();
+			compute_push_constants_data->indirect_draw_params_bda = m_DeviceIndirectDrawParams->GetDeviceAddress() + 4;
+
+			MiscData compute_pc = {};
+			compute_pc.data = (byte*)compute_push_constants_data;
+			compute_pc.size = sizeof IndirectFrustumCullPassPushContants;
+
+			uint32 num_work_groups = (uint32)glm::round(((float32)host_render_queue.second.size() / 32.0f) + 0.4999999f);
+			Renderer::DispatchCompute(m_IndirectFrustumCullPipeline, {num_work_groups, 1, 1}, compute_pc);
+
+			// Insert barrier
+			PipelineBarrierInfo barrier_info = {};
+			barrier_info.src_stage = PipelineStage::COMPUTE_SHADER;
+			barrier_info.dst_stage = PipelineStage::DRAW_INDIRECT;
+			Renderer::InsertBarrier(barrier_info);
+			// Render survived objects
+			MiscData graphics_pc = {}; 
 			uint64* data = new uint64[3];
 			data[0] = camera_data_device_address;
 			data[1] = m_MeshResourcesBuffer.GetStorageBDA();
-			data[2] = device_render_queue->GetDeviceAddress() + Renderer::GetCurrentFrameIndex() * per_frame_size;
-			pc.data = (byte*)data;
-			pc.size = sizeof uint64 * 3;
+			data[2] = m_CulledDeviceRenderQueue->GetDeviceAddress();
+			graphics_pc.data = (byte*)data;
+			graphics_pc.size = sizeof uint64 * 3;
 
+
+			Renderer::BeginRender({ m_CurrectMainRenderTarget, m_CurrentDepthAttachment }, m_CurrectMainRenderTarget->GetSpecification().extent, { 0, 0 }, { 0.0f, 0.0f, 0.0f, 0.0f });
 			Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], host_render_queue.first, 0);
-			Renderer::RenderMeshTasks(host_render_queue.first, { 450, 1, 1 }, pc);
-
+			Renderer::RenderMeshTasksIndirect(host_render_queue.first, m_DeviceIndirectDrawParams, graphics_pc);
+			Renderer::EndRender(m_CurrectMainRenderTarget);
 		}
 
-		Renderer::EndRender(m_CurrectMainRenderTarget);
 		Renderer::Submit([=]() {
 			m_CurrectMainRenderTarget->SetLayout(
 				Renderer::GetCmdBuffer(),

@@ -187,11 +187,19 @@ namespace Omni {
 			auto& fastgltf_material = asset.materials[primitive.materialIndex.value()];
 
 			MaterialImporter material_importer;
-			Shared<Material> material = asset_manager->GetAsset<Material>(material_importer.Import(asset, fastgltf_material));
-			for (auto& macro : material_shader_macros)
-				material->AddShaderMacro(macro);
 
-			material->CompilePipeline();
+			AssetHandle expected_id = rh::hash<std::string>()(fastgltf_material.name.c_str());
+			Shared<Material> material = nullptr;
+			if (asset_manager->HasAsset(expected_id)) {
+				material = asset_manager->GetAsset<Material>(expected_id);
+			}
+			else {
+				material = asset_manager->GetAsset<Material>(material_importer.Import(asset, fastgltf_material));
+				for (auto& macro : material_shader_macros)
+					material->AddShaderMacro(macro);
+
+				material->CompilePipeline();
+			} 
 
 			submeshes.push_back({ asset_manager->RegisterAsset(ShareAs<AssetBase>(mesh)), material->Handle });
 		}

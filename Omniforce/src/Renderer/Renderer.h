@@ -48,11 +48,14 @@ namespace Omni {
 		static void WaitDevice(); // to be used ONLY while shutting down the engine.
 		static void BindSet(Shared<DescriptorSet> set, Shared<Pipeline> pipeline, uint8 index);
 		static void CopyToSwapchain(Shared<Image> image);
+		static void InsertBarrier(const PipelineBarrierInfo& barrier_info);
 
 		static void ClearImage(Shared<Image> image, const fvec4& value);
-		static void RenderMeshTasks(Shared<Pipeline> pipeline, const glm::vec3 dimensions, MiscData data);
+		static void RenderMeshTasks(Shared<Pipeline> pipeline, const glm::uvec3 dimensions, MiscData data);
+		static void RenderMeshTasksIndirect(Shared<Pipeline> pipeline, Shared<DeviceBuffer> params, MiscData data);
 		static void RenderQuads(Shared<Pipeline> pipeline, MiscData data);
 		static void RenderQuads(Shared<Pipeline> pipeline, uint32 amount, MiscData data);
+		static void DispatchCompute(Shared<Pipeline> pipeline, const glm::uvec3& dimensions, MiscData data);
 
 		static void Render();
 		static void RenderImGui();

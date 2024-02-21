@@ -36,4 +36,18 @@ namespace Omni {
 		uint64 material_bda;
 	};
 
+	// TODO: here some extreme hackery with alignment
+	struct IndirectFrustumCullPassPushContants {
+		uint64 camera_data_bda;
+		uint64 mesh_data_bda;
+		uint64 render_objects_data_bda;
+		uint32 original_object_count;
+		const uint32 _unused = 0;
+		uint64 culled_objects_bda;
+		uint64 object_counter_bda;
+		uint64 indirect_draw_params_bda;
+		const uint64 _unused1 = 0;
+
+	};
+
 }

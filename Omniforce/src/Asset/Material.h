@@ -39,9 +39,6 @@ namespace Omni {
 
 		void CompilePipeline();
 		
-
-
-
 	private:
 		std::string m_Name;
 		std::map<std::string, MaterialProperty> m_Properties;

@@ -28,7 +28,7 @@ namespace Omni {
 		}
 
 		uint32 Allocate(const UUID& id, const T& data) {
-			uint32 offset = m_IndexAllocator->Allocate(sizeof T, 1);
+			uint32 offset = m_IndexAllocator->Allocate(sizeof T, alignof(T));
 			uint32 index = offset / sizeof T;
 
 			m_StagingForCopy->UploadData(0, (void*)&data, sizeof T);

@@ -13,14 +13,18 @@ layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer Mes
 };
 
 layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer MeshAttributesData {
-    #ifdef __OMNI_HAS_VERTEX_NORMAL
-        vec3 normal;
-    #endif
-    #ifdef __OMNI_HAS_VERTEX_TANGENT
-        vec4 tangent;
-    #endif
-    #ifdef __OMNI_HAS_VERTEX_TEXCOORD_0
-        vec2 uv;
+    #if !defined(__OMNI_HAS_VERTEX_NORMAL) && !defined(__OMNI_HAS_VERTEX_TANGENT) && !defined(__OMNI_HAS_VERTEX_TEXCOORD_0) // using a trick so it compiles for other non-3D passes
+        float unused;
+    #else
+        #ifdef __OMNI_HAS_VERTEX_NORMAL
+            vec3 normal;
+        #endif
+        #ifdef __OMNI_HAS_VERTEX_TANGENT
+            vec4 tangent;
+        #endif
+        #ifdef __OMNI_HAS_VERTEX_TEXCOORD_0
+            vec2 uv;
+        #endif
     #endif
 };
 
@@ -41,7 +45,7 @@ layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer Mes
     float cone_cutoff;
 };
 
-layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer MeshData {
+layout(buffer_reference, scalar, buffer_reference_align = 8) readonly buffer MeshData {
     Sphere bounding_sphere;
     uint32_t meshlet_count;
     MeshGeometryData vertices;

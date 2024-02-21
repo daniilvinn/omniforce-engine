@@ -301,13 +301,15 @@ namespace Omni {
 		pipeline_layout_create_info.pushConstantRangeCount = push_constant_ranges.size();
 		pipeline_layout_create_info.pPushConstantRanges = push_constant_ranges.data();
 
+		VK_CHECK_RESULT(vkCreatePipelineLayout(device->Raw(), &pipeline_layout_create_info, nullptr, &m_PipelineLayout));
+
 		std::vector<VkPipelineShaderStageCreateInfo> stage_create_info = vk_shader->GetCreateInfos();
 
 		VkComputePipelineCreateInfo compute_pipeline_create_info = {};
 		compute_pipeline_create_info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
 		compute_pipeline_create_info.layout = m_PipelineLayout;
 		compute_pipeline_create_info.stage = stage_create_info[0];
-		
+
 		VK_CHECK_RESULT(vkCreateComputePipelines(device->Raw(), VK_NULL_HANDLE, 1, &compute_pipeline_create_info, nullptr, &m_Pipeline));
 
 	}

@@ -48,6 +48,24 @@ namespace Omni {
 			};
 		};
 
+		vec2() = default;
+
+		vec2(T value) {
+			x = value;
+			y = value;
+		}
+
+		vec2(const T& x, const T& y) {
+			this->x = x;
+			this->y = y;
+		}
+
+		vec2(const glm::vec<2, T, glm::qualifier::defaultp>& other)
+		{
+			x = other.x;
+			y = other.y;
+		}
+
 		template<typename T>
 		explicit constexpr operator vec2<T>()   const	{ return { (T)x, (T)y }; }
 		vec2 operator+(const vec2& other) { return { x + other.x, y + other.y }; }
@@ -71,6 +89,26 @@ namespace Omni {
 		union {
 			T z, b;
 		};
+
+		vec3() = default;
+
+		vec3(T value) {
+			x = value;
+			y = value;
+			z = value;
+		}
+
+		vec3(const T& x, const T& y, const T& z) {
+			this->x = x;
+			this->y = y;
+			this->z = z;
+		}
+
+		vec3(const glm::vec<3, T, glm::qualifier::defaultp>& other)
+		{
+			x = other.x;
+			y = other.y;
+		}
 
 		template<typename T>
 		explicit constexpr operator vec3<T>() const	{ return { T(x), T(y), T(z)}; }
@@ -98,6 +136,30 @@ namespace Omni {
 		union {
 			T w, a;
 		};
+
+		vec4() = default;
+
+		vec4(T value) {
+			x = value;
+			y = value;
+			z = value;
+			w = value;
+		}
+
+		vec4(const T& x, const T& y, const T& z, const T& w) {
+			this->x = x;
+			this->y = y;
+			this->z = z;
+			this->w = w;
+		}
+
+		vec4(const glm::vec<4, T, glm::qualifier::defaultp>& other)
+		{
+			x = other.x;
+			y = other.y;
+			z = other.z;
+			w = other.w;
+		}
 
 		template<typename T>
 		explicit constexpr operator vec4<T>()   const { return { (T)x, (T)y, T(z), (T)w }; }

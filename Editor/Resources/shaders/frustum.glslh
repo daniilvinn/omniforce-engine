@@ -15,7 +15,6 @@ bool FrustumTestBoundingSphere(Frustum frustum, Sphere sphere) {
 		Plane plane = frustum.planes[i];
 		result = result && ((dot(plane.normal, sphere.center) - plane.distance) > -sphere.radius);
 	}
-
 	return result;
 }
 

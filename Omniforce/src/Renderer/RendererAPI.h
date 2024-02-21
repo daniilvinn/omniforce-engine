@@ -29,15 +29,19 @@ namespace Omni {
 		virtual void WaitDevice() = 0;
 		virtual void BindSet(Shared<DescriptorSet> set, Shared<Pipeline> pipeline, uint8 index) = 0;
 		virtual void CopyToSwapchain(Shared<Image> image) = 0;
+		virtual void InsertBarrier(const PipelineBarrierInfo& barrier) = 0;
 
 		virtual void BeginCommandRecord() = 0;
 		virtual void EndCommandRecord() = 0;
 		virtual void ExecuteCurrentCommands() = 0;
 
 		virtual void ClearImage(Shared<Image> image, const fvec4& value) = 0;
-		virtual void RenderMeshTasks(Shared<Pipeline> pipeline, const glm::vec3& dimensions, MiscData data) = 0;
+		virtual void RenderMeshTasks(Shared<Pipeline> pipeline, const glm::uvec3& dimensions, MiscData data) = 0;
+		virtual void RenderMeshTasksIndirect(Shared<Pipeline> pipeline, Shared<DeviceBuffer> params, MiscData data) = 0;
 		virtual void RenderQuad(Shared<Pipeline> pipeline, MiscData data) = 0;
 		virtual void RenderQuad(Shared<Pipeline> pipeline, uint32 amount, MiscData data) = 0;
+		virtual void DispatchCompute(Shared<Pipeline> pipeline, const glm::uvec3& dimensions, MiscData data) = 0;
+
 		virtual void RenderImGui() = 0;
 
 	private:

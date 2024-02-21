@@ -29,7 +29,7 @@ namespace Omni {
 		*/
 		AssetHandle LoadAssetSource(std::filesystem::path path, const AssetHandle& id = AssetHandle());
 		AssetHandle RegisterAsset(Shared<AssetBase> asset, const AssetHandle& id = AssetHandle());
-		bool HasAsset(AssetHandle id) { m_AssetRegistry.contains(id); }
+		bool HasAsset(AssetHandle id) { return m_AssetRegistry.contains(id); }
 
 		template<typename ResourceType> // where ResourceType is child of AssetType: Image, Mesh, Material etc.
 		Shared<ResourceType> GetAsset(AssetHandle id) { return ShareAs<ResourceType>(m_AssetRegistry.at(id)); }

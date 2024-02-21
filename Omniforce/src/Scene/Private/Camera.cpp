@@ -175,6 +175,9 @@ namespace Omni {
 		frustum.planes[4] = { m_Position, glm::cross(m_RightVector, front_mult_far - m_UpVector * half_v_side) };
 		frustum.planes[5] = { m_Position, glm::cross(front_mult_far + m_UpVector * half_v_side, m_RightVector) };
 
+		for (auto& plane : frustum.planes)
+			plane.normal = glm::normalize(plane.normal);
+
 		return frustum;
 	}
 

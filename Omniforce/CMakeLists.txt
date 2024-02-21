@@ -1,4 +1,4 @@
-﻿# CMakeList.txt : CMake project for Cursed Engine, include source and define
+﻿# CMakeList.txt : CMake project for Omniforce Engine, include source and define
 # project specific logic here.
 #
 
@@ -42,8 +42,9 @@ target_include_directories(${ENGINE_TARGET}
         "vendor/nv-libdeflate"
         "vendor/meshoptimizer/src"
         "vendor/fastgltf/include"
+        "vendor/NVAftermath/include"
 )
-target_link_directories(${ENGINE_TARGET} INTERFACE "${Vulkan_SDK}\\Lib" PUBLIC "vendor/mono/lib")
+target_link_directories(${ENGINE_TARGET} INTERFACE "${Vulkan_SDK}\\Lib" PUBLIC "vendor/mono/lib" "vendor/NVAftermath/lib/x64")
 target_compile_definitions(${ENGINE_TARGET} PUBLIC OMNIFORCE_STATIC GLM_FORCE_DEPTH_ZERO_TO_ONE GLM_FORCE_SSE2 VK_NO_PROTOTYPES IMGUI_IMPL_VULKAN_NO_PROTOTYPES)
 
 target_link_libraries(
@@ -56,7 +57,6 @@ target_link_libraries(
 	    nlohmann_json::nlohmann_json
         ${OMNI_IMGUI_TARGET}
         volk_headers
-       
 )
 
 target_link_libraries(

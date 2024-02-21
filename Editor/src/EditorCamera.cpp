@@ -8,7 +8,7 @@ namespace Omni {
 
 	EditorCamera::EditorCamera(float32 aspect_ratio)
 	{
-		Move({ 0.0f, 10.0f, 0.0f });
+		Move({ 0.0f, 0.0f, -10.0f });
 	}
 
 	void EditorCamera::OnUpdate()

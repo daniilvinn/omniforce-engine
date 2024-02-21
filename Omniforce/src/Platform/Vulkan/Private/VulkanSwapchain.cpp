@@ -278,8 +278,8 @@ namespace Omni {
 	{
 		auto device = VulkanGraphicsContext::Get()->GetDevice();
 
-		vkWaitForFences(device->Raw(), 1, &m_Fences[m_CurrentFrameIndex], VK_TRUE, UINT64_MAX);
-		vkResetFences(device->Raw(), 1, &m_Fences[m_CurrentFrameIndex]);
+		VK_CHECK_RESULT(vkWaitForFences(device->Raw(), 1, &m_Fences[m_CurrentFrameIndex], VK_TRUE, UINT64_MAX));
+		VK_CHECK_RESULT(vkResetFences(device->Raw(), 1, &m_Fences[m_CurrentFrameIndex]));
 
 		VkResult acquisition_result = vkAcquireNextImageKHR(
 			device->Raw(),

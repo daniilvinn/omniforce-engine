@@ -49,7 +49,7 @@ namespace Omni {
 		});
 
 		glfwSetCursorPosCallback(m_WindowHandle, [](GLFWwindow* window, double xpos, double ypos) {
-			fvec2 pos = { xpos, ypos };
+			fvec2 pos = { (float32)xpos, (float32)ypos };
 			
 			auto impl_window = (Win64AppWindow*)glfwGetWindowUserPointer(window);
 			impl_window->AllocateEvent<MouseMovedEvent>(pos);
@@ -73,7 +73,7 @@ namespace Omni {
 		});
 
 		glfwSetScrollCallback(m_WindowHandle, [](GLFWwindow* window, double xoffset, double yoffset) {
-			fvec2 offset = { xoffset, yoffset };
+			fvec2 offset = { (float32)xoffset, (float32)yoffset };
 			
 			auto impl_window = (Win64AppWindow*)glfwGetWindowUserPointer(window);
 			impl_window->AllocateEvent<MouseScrolledEvent>(offset);

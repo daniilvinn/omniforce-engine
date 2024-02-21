@@ -41,7 +41,7 @@
 	#endif
 #endif
 
-#ifdef OMNIFORCE_DEBUG
+#ifdef OMNIFORCE_RELEASE
 	#define OMNIFORCE_ASSERT(expression)														\
 		do {																					\
 			if(!(expression)) {																	\

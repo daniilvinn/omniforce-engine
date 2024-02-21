@@ -6,11 +6,11 @@
 
 #include <volk.h>
 
-#ifdef CURSED_DEBUG
+#ifdef OMNIFORCE_DEBUG
 	#define VK_CHECK_RESULT(fn)																								\
 			{ VkResult res = fn;																							\
 			if(res != VK_SUCCESS) {																							\
-				CURSED_CORE_ERROR("Vulkan call failed ({0}): {1} ({2})", VkResultToString(res), __FILE__, __LINE__); 		\
+				OMNIFORCE_CORE_CRITICAL("Vulkan call failed ({0}): {1} ({2})", VkResultToString(res), __FILE__, __LINE__); 	\
 				std::unreachable();																							\
 			}}
 #else
