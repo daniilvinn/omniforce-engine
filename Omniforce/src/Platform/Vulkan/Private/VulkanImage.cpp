@@ -177,7 +177,7 @@ namespace Omni {
 			buffer_image_copy.bufferRowLength = 0;
 			buffer_image_copy.bufferImageHeight = 0;
 
-			buffer_offset += buffer_image_copy.imageExtent.width * buffer_image_copy.imageExtent.height;
+			buffer_offset += buffer_image_copy.imageExtent.width * buffer_image_copy.imageExtent.height * (m_Specification.format == ImageFormat::BC7 ? 1 : 4);
 		}
 
 		// Submit copy command

@@ -171,6 +171,8 @@ public:
 							MeshComponent& mesh_component = child.AddComponent<MeshComponent>();
 							mesh_component.mesh_handle = entry.first;
 							mesh_component.material_handle = entry.second;
+
+							// TODO: definitely need to move it from here to somewhere else into engine core
 							m_EditorScene->GetRenderer()->AcquireResourceIndex(asset_manager->GetAsset<Mesh>(mesh_component.mesh_handle));
 							m_EditorScene->GetRenderer()->AcquireResourceIndex(asset_manager->GetAsset<Material>(mesh_component.material_handle));
 						}
@@ -196,7 +198,7 @@ public:
 		// Update editor camera and scene
 		m_CurrentScene->OnUpdate(step);
 		if(m_ViewportFocused && !m_InRuntime)
-			m_EditorCamera->OnUpdate();
+			m_EditorCamera->OnUpdate(step);
 	}
 
 	void Launch() override

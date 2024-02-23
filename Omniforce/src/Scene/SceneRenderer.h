@@ -100,9 +100,9 @@ namespace Omni {
 
 		rhumap<Shared<Pipeline>, std::vector<DeviceRenderableObject>> m_HostRenderQueue;
 		CallbackRHUMap<Shared<Pipeline>, Shared<DeviceBuffer>> m_DeviceRenderQueue;
-		Shared<DeviceBuffer> m_CulledDeviceRenderQueue; // here I copy objects which passed mesh-level culling stage
-		Shared<DeviceBuffer> m_DeviceIndirectDrawParams;
-
+		rhumap<Shared<Pipeline>, Shared<DeviceBuffer>> m_CulledDeviceRenderQueue;
+		rhumap<Shared<Pipeline>, Shared<DeviceBuffer>> m_DeviceIndirectDrawParams;
+		 
 		Shared<Pipeline> m_IndirectFrustumCullPipeline;
 
 	};

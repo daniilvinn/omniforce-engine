@@ -3,6 +3,8 @@
 #include <Renderer/DeviceCmdBuffer.h>
 #include "VulkanCommon.h"
 
+#include <shared_mutex>
+
 namespace Omni {
 
 	class VulkanDeviceCmdBuffer : public DeviceCmdBuffer {
@@ -33,6 +35,8 @@ namespace Omni {
 		DeviceCmdBufferLevel m_Level;
 		DeviceCmdBufferType m_BufferType;
 		DeviceCmdType m_CmdType;
+
+		inline static std::shared_mutex m_SubmissionMutex;
 	};
 
 }

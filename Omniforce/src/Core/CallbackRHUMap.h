@@ -10,13 +10,13 @@ namespace Omni {
 	template<typename Key, typename Value>
 	class OMNIFORCE_API CallbackRHUMap : public rhumap<Key, Value> {
 	public:
-		void add_callback(std::function<void(Value&)> callback) { m_Callback = callback; }
+		void add_callback(std::function<void(const Key&, Value&)> callback) { m_Callback = callback; }
 
 		Value& operator[](const Key& key) {
 			auto it = this->find(key);
 			if (it == this->end()) {
 				Value value = Value();
-				m_Callback(value);
+				m_Callback(key, value);
 				it = rhumap<Key, Value>::emplace(key, value).first;
 			}
 
@@ -24,7 +24,7 @@ namespace Omni {
 		}
 
 	private:
-		std::function<void(Value&)> m_Callback;
+		std::function<void(const Key&, Value&)> m_Callback;
 	};
 
 }

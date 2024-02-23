@@ -182,6 +182,7 @@ namespace Omni {
 		vulkan_1_3_features.pNext = &vulkan_1_2_features;
 		vulkan_1_3_features.dynamicRendering = VK_TRUE;
 		vulkan_1_3_features.maintenance4 = true;
+		vulkan_1_3_features.synchronization2 = true;
 
 		VkPhysicalDeviceFeatures2 device_features2 = {};
 		device_features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;

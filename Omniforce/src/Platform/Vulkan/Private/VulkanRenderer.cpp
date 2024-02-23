@@ -348,7 +348,52 @@ namespace Omni {
 	void VulkanRenderer::InsertBarrier(const PipelineBarrierInfo& barrier)
 	{
 		Renderer::Submit([=]()mutable {
-			vkCmdPipelineBarrier(m_CurrentCmdBuffer->Raw(), (VkPipelineStageFlags)barrier.src_stage, (VkPipelineStageFlags)barrier.dst_stage, 0, 0, nullptr, 0, nullptr, 0, nullptr);
+			std::vector<VkBufferMemoryBarrier2> buffer_barriers;
+			std::vector<VkImageMemoryBarrier2> image_barriers;
+
+			VkDependencyInfo dependency = {};
+			dependency.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+
+			for (auto& buffer_barrier : barrier.buffer_barriers) {
+				Shared<DeviceBuffer> buffer = buffer_barrier.first;
+				Shared<VulkanDeviceBuffer> vk_buffer = ShareAs<VulkanDeviceBuffer>(buffer);
+
+				VkBufferMemoryBarrier2 vk_barrier = {};
+				vk_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+				vk_barrier.srcStageMask = (BitMask)buffer_barrier.second.src_stages;
+				vk_barrier.dstStageMask = (BitMask)buffer_barrier.second.dst_stages;
+				vk_barrier.srcAccessMask = buffer_barrier.second.src_access_mask;
+				vk_barrier.dstAccessMask = buffer_barrier.second.src_access_mask;
+				vk_barrier.buffer = vk_buffer->Raw();
+				vk_barrier.size = buffer_barrier.second.buffer_barrier_size;
+				vk_barrier.offset = buffer_barrier.second.buffer_barrier_offset;
+
+				buffer_barriers.push_back(vk_barrier);
+			}
+
+			for (auto& image_barrier : barrier.image_barriers) {
+				Shared<Image> image = image_barrier.first;
+				Shared<VulkanImage> vk_image = ShareAs<VulkanImage>(image);
+
+				VkImageMemoryBarrier2 vk_barrier = {};
+				vk_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+				vk_barrier.srcStageMask = (BitMask)image_barrier.second.src_stages;
+				vk_barrier.dstStageMask = (BitMask)image_barrier.second.dst_stages;
+				vk_barrier.srcAccessMask = image_barrier.second.src_access_mask;
+				vk_barrier.dstAccessMask = image_barrier.second.src_access_mask;
+				vk_barrier.image = vk_image->Raw();
+				vk_barrier.oldLayout = (VkImageLayout)vk_image->GetCurrentLayout();
+				vk_barrier.newLayout = (VkImageLayout)image_barrier.second.new_image_layout;
+
+				vk_image->SetCurrentLayout(image_barrier.second.new_image_layout);
+
+				image_barriers.push_back(vk_barrier);
+			}
+
+			vkCmdPipelineBarrier2(
+				m_CurrentCmdBuffer->Raw(),
+				&dependency
+			);
 		});
 	}
 
@@ -391,8 +436,12 @@ namespace Omni {
 					depth_attachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
 					depth_attachment.imageView = vk_target->RawView();
 					depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-					depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+					depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 					depth_attachment.clearValue.color = { 0,0,0,1 };
+					if (clear_color.a != 0.0f)
+						depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+					else
+						depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
 					depth_attachment.clearValue.depthStencil = { 1.0f, 0 };
 				}
 			}

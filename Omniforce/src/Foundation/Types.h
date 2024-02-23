@@ -225,6 +225,6 @@ namespace Omni {
 
 	// Macro table is usually being iterated, so I use an array of pairs and not a map, because map
 	// fits better for random access
-	using ShaderMacroTable = std::vector<std::pair<std::string, std::string>>;
+	using ShaderMacroTable = std::map<std::string, std::string>;
 
 }

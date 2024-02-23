@@ -17,6 +17,8 @@ namespace Omni {
 		COMPUTE_SHADER = 0x00000800,
 		TRANSFER = 0x00001000,
 		BOTTOM_OF_PIPE = 0x00002000,
+		TASK_SHADER = 0x00080000,
+		MESH_SHADER = 0x00100000,
 	};
 
 	enum class PipelineAccess {

@@ -14,7 +14,7 @@ namespace Omni {
 		EditorCamera() = default;
 		EditorCamera(float32 aspect_ratio);
 
-		void OnUpdate();
+		void OnUpdate(float32 step);
 		void OnEvent(Event* e);
 
 	private:

@@ -42,7 +42,7 @@ namespace Omni {
 		for (auto& global_macro : m_GlobalMacros)
 			shader_compiler.AddGlobalMacro(global_macro.first, global_macro.second);
 
-		bool result = m_Library.find(path.filename().string()) != m_Library.end();
+		bool result = HasShader(path.filename().string(), macros);
 
 		if (result)
 		{

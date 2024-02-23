@@ -11,7 +11,7 @@ namespace Omni {
 		Move({ 0.0f, 0.0f, -10.0f });
 	}
 
-	void EditorCamera::OnUpdate()
+	void EditorCamera::OnUpdate(float32 step)
 	{
 		if (Input::KeyPressed(KeyCode::KEY_LEFT_ALT)) {
 			if (Input::ButtonPressed(ButtonCode::MOUSE_BUTTON_LEFT)) {
@@ -32,22 +32,22 @@ namespace Omni {
 
 			else {
 				if (Input::KeyPressed(KeyCode::KEY_W)) {
-					Move({ 0.0f, 0.0f, 0.01f });
+					Move({ 0.0f, 0.0f, 50.0f * step });
 				}
 				if (Input::KeyPressed(KeyCode::KEY_A)) {
-					Move({ -0.01f, 0.0f, 0.0f });
+					Move({ -50.0f * step, 0.0f, 0.0f });
 				}
 				if (Input::KeyPressed(KeyCode::KEY_S)) {
-					Move({ 0.0f, 0.0f, -0.01f });
+					Move({ 0.0f, 0.0f, -50.0f * step });
 				}
 				if (Input::KeyPressed(KeyCode::KEY_D)) {
-					Move({ 0.01f, 0.0f, 0.0f });
+					Move({ 50.0f * step, 0.0f, 0.0f });
 				}
 				if (Input::KeyPressed(KeyCode::KEY_Q)) {
-					Rotate(-0.3f, 0.0f, 0.0f, true);
+					Rotate(-150.0f * step, 0.0f, 0.0f, true);
 				}
 				if (Input::KeyPressed(KeyCode::KEY_E)) {
-					Rotate(0.3f, 0.0f, 0.0f, true);
+					Rotate(150.0f * step, 0.0f, 0.0f, true);
 				}
 				if (!m_InteractionIsOver) {
 					m_FirstInteraction = true;

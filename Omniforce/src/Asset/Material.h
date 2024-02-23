@@ -29,7 +29,7 @@ namespace Omni {
 		void RemoveResource(std::string_view key) { m_Properties.erase(key.data()); }
 
 		void AddShaderMacro(const std::string& macro, const std::string& value = "") {
-			m_Macros.push_back(std::make_pair(macro, value));
+			m_Macros.emplace(macro, value);
 		}
 
 		static uint8 GetRuntimeEntrySize(uint8 variant_index);

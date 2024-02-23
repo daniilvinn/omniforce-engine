@@ -2,10 +2,11 @@
 #pragma stage : task
 #version 460 core
 
-#extension GL_EXT_scalar_block_layout  : require
-#extension GL_EXT_buffer_reference2    : require
-#extension GL_EXT_nonuniform_qualifier : require
-#extension GL_EXT_mesh_shader          : require
+#extension GL_EXT_scalar_block_layout	: require
+#extension GL_EXT_buffer_reference2		: require
+#extension GL_EXT_nonuniform_qualifier	: require
+#extension GL_EXT_mesh_shader			: require
+#extension GL_EXT_debug_printf			: require
 
 #include "common.glslh" // common
 #include "mesh_data.glslh" // mesh data
@@ -46,6 +47,7 @@ void main()
 
 	// Cull
 	if((dot(normalize(cone_apex - pc.camera_data.position), cone_axis) < cull_bounds.cone_cutoff) && FrustumTestBoundingSphere(pc.camera_data.frustum, bounding_sphere)) {
+		debugPrintfEXT("Passed");
 		uint id_index = atomicAdd(s_actual_num_meshlets, 1);
 		task_payload.meshlet_ids[id_index] = gl_GlobalInvocationID.x;
 	}
@@ -59,6 +61,7 @@ void main()
 #pragma stage : mesh
 #version 460 core
 #extension GL_EXT_mesh_shader : require
+#extension GL_EXT_debug_printf : require
 
 #include "common.glslh"
 #include "render_object.glslh"
@@ -67,7 +70,10 @@ void main()
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 layout(triangles, max_vertices = 64, max_primitives = 124) out;
 
-layout(location = 0) out VertexOutput {
+layout(location = 0) out uint64_t out_material_bda[];
+
+layout(location = 1) out VertexOutput {
+	uint64_t material_bda;
 #ifdef __OMNI_HAS_VERTEX_NORMAL
     vec3 normal;
 #endif
@@ -78,6 +84,7 @@ layout(location = 0) out VertexOutput {
     vec2 uv;
 #endif
 } vertex_output[];
+
 
 #include "task_payload.glslh"
 
@@ -112,9 +119,10 @@ void main()
 		);
 	}
 
-	// attributes
+	// attributes and material bda
 	uint num_processing_attributes = 64 / gl_WorkGroupSize.x;
 	for(int i = 0; i < num_processing_attributes; i++) {
+		out_material_bda[gl_LocalInvocationIndex * num_processing_attributes + i] = render_object_data.material_bda;
 	#ifdef __OMNI_HAS_VERTEX_NORMAL
 		vertex_output[gl_LocalInvocationIndex * num_processing_attributes + i].normal = mesh_data.attributes[meshlet_data.vertex_offset + (gl_LocalInvocationIndex * num_processing_attributes + i)].normal;
 	#endif
@@ -134,6 +142,7 @@ void main()
 #pragma stage : fragment
 #version 460 core
 #extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_debug_printf : require
 
 #include "common.glslh"
 #include "mesh_data.glslh"
@@ -141,7 +150,10 @@ void main()
 
 layout(location = 0) out vec4 out_color;
 
-layout(location = 0) in Input {
+layout(location = 0) flat in uint64_t v_MaterialBDA;
+
+layout(location = 1) in Input {
+	uint64_t material_bda;
 #ifdef __OMNI_HAS_VERTEX_NORMAL
     vec3 normal;
 #endif
@@ -151,9 +163,10 @@ layout(location = 0) in Input {
 #ifdef __OMNI_HAS_VERTEX_TEXCOORD_0
     vec2 uv;
 #endif
-} v_Input;
+} v_InputAttributes;
 
-layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer Material {
+
+layout(buffer_reference, scalar, buffer_reference_align = 16) readonly buffer Material {
 	#ifdef __OMNI_HAS_ALPHA_CUTOFF
         float alpha_cutoff;
     #endif
@@ -181,7 +194,12 @@ layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer Mat
 };
 
 void main() {
-	Material material = Material(pc.render_objects_data[0].material_bda);
-	vec4 color = texture(texture_bank[material.base_color_map_index], vec2(v_Input.uv.x, 1.0f - v_Input.uv.y));
+	Material material = Material(v_MaterialBDA);
+	vec4 color = vec4(0.0f, 0.0f, 0.0f, 0.0f);
+
+	#ifdef __OMNI_HAS_BASE_COLOR_MAP
+		color = texture(texture_bank[material.base_color_map_index], vec2(v_InputAttributes.uv.x, 1.0f - v_InputAttributes.uv.y));
+	#endif
+
     out_color = color;
 }

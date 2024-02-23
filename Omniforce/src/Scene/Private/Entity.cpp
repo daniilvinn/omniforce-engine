@@ -266,6 +266,7 @@ namespace Omni {
 		trs.rotation *= parent_trs.rotation;
 		trs.translation += parent_trs.translation;
 		trs.rotation = glm::normalize(trs.rotation);
+		trs.scale *= parent_trs.scale;
 
 		trs.translation = parent_trs.translation + parent_trs.rotation * (trs.translation - parent_trs.translation);
 

@@ -117,11 +117,13 @@ namespace Omni {
 		);
 
 		uint8 mip_levels_count = Utils::ComputeNumMipLevelsBC7(image_width, image_height) + 1;
-		image_data = compressor.CompressBC7({ mip_mapped_image.begin(), mip_mapped_image.end() }, image_width, image_height, mip_levels_count);
+		//image_data = compressor.CompressBC7({ mip_mapped_image.begin(), mip_mapped_image.end() }, image_width, image_height, mip_levels_count);
+		image_data.resize(mip_mapped_image.size() * sizeof RGBA32);
+		memcpy(image_data.data(), mip_mapped_image.data(), image_data.size());
 
 		ImageSpecification image_spec = ImageSpecification::Default();
 		image_spec.extent = { image_width, image_height, 1 };
-		image_spec.format = ImageFormat::BC7;
+		image_spec.format = ImageFormat::RGBA32_UNORM;
 		image_spec.pixels = std::move(image_data);
 		image_spec.mip_levels = mip_levels_count;
 
@@ -141,16 +143,16 @@ namespace Omni {
 
 		if (in_material.pbrData.baseColorTexture.has_value())
 			material->AddShaderMacro("__OMNI_SHADING_MODEL_PBR");
-		//else
-		//	material->AddShaderMacro("__OMNI_SHADING_MODEL_NON_PBR");
+		else
+			material->AddShaderMacro("__OMNI_SHADING_MODEL_NON_PBR");
 
 		std::shared_mutex mutex;
 
 		JobSystem* js = JobSystem::Get();
 
 		js->Execute([&]() { HandleProperty("ALPHA_CUTOFF", in_material.alphaCutoff, material, root, mutex); });
-		if (in_material.alphaMode == ftf::AlphaMode::Mask)
-			js->Execute([&]() { HandleProperty("ALPHA_MASK", 1, material, root, mutex); });
+		//if (in_material.alphaMode == ftf::AlphaMode::Mask)
+		//	js->Execute([&]() { HandleProperty("ALPHA_MASK", 1, material, root, mutex); });
 
 		js->Execute([&]() { HandleProperty("BASE_COLOR_FACTOR", c(in_material.pbrData.baseColorFactor), material, root, mutex); });
 		js->Execute([&]() { HandleProperty("METALLIC_FACTOR", in_material.pbrData.metallicFactor, material, root, mutex); });
