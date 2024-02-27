@@ -12,11 +12,11 @@
 
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
-layout(buffer_reference, scalar, buffer_reference_align = 1) buffer CulledObjectsCounter {
+layout(buffer_reference, scalar, buffer_reference_align = 4) coherent buffer CulledObjectsCounter {
     uint count;
 };
 
-layout(buffer_reference, scalar, buffer_reference_align = 1) buffer IndirectDrawParameters {
+layout(buffer_reference, scalar, buffer_reference_align = 4) coherent buffer IndirectDrawParameters {
     uvec3 draw_param;
 };
 
@@ -37,35 +37,34 @@ vec3 RotateByQuat(vec3 vertex, vec4 quat) {
 };
 
 void main() {
-    // Reset counter
-    if(gl_GlobalInvocationID.x == 0) {
-        pc.object_counter.count = 0;
+    uint num_iterations = uint(round(float(pc.original_object_count) / float(gl_WorkGroupSize.x) + 0.49999999f));
+
+    for(int i = 0; i < num_iterations; i++) {
+        if((i * gl_WorkGroupSize.x + gl_LocalInvocationIndex) >= pc.original_object_count) {
+            break;
+        }
+
+        // Cull
+        RenderObjectData object = pc.render_objects_queue[i * gl_WorkGroupSize.x + gl_LocalInvocationIndex];
+        Transform transform = object.transform;
+        MeshData mesh_data = pc.mesh_data[object.geometry_data_id];
+
+        vec4 rotation_quaternion = vec4(unpackSnorm2x16(transform.packed_rotation[0]), unpackSnorm2x16(transform.packed_rotation[1]));
+
+        Sphere bounding_sphere = mesh_data.bounding_sphere;
+	    bounding_sphere.center = RotateByQuat(bounding_sphere.center * transform.scale, rotation_quaternion) + transform.translation;
+
+        if(FrustumTestBoundingSphere(pc.camera_data.frustum, bounding_sphere)) {
+            uint index = atomicAdd(pc.object_counter.count, 1);
+
+            pc.culled_objects[index].transform = object.transform;
+            pc.culled_objects[index].geometry_data_id = object.geometry_data_id;
+            pc.culled_objects[index].material_bda = object.material_bda;
+
+            uint meshlet_count = uint(round((float(mesh_data.meshlet_count) / 32.0f) + 0.4999999f));
+
+            pc.indirect_draw_params[index].draw_param = uvec3(meshlet_count, 1, 1);
+        }
     }
-
-    // Check if we are out of queue bounds
-    if(gl_GlobalInvocationID.x >= pc.original_object_count) {
-        return;
-    }
-
-    // Cull
-    RenderObjectData object = pc.render_objects_queue[gl_GlobalInvocationID.x];
-    Transform transform = object.transform;
-    MeshData mesh_data = pc.mesh_data[object.geometry_data_id];
-
-    vec4 rotation_quaternion = vec4(unpackSnorm2x16(transform.packed_rotation[0]), unpackSnorm2x16(transform.packed_rotation[1]));
-
-    Sphere bounding_sphere = mesh_data.bounding_sphere;
-	bounding_sphere.center = RotateByQuat(bounding_sphere.center * transform.scale, rotation_quaternion) + transform.translation;
-
-    if(FrustumTestBoundingSphere(pc.camera_data.frustum, bounding_sphere)) {
-
-        uint index = atomicAdd(pc.object_counter.count, 1);
-
-        pc.culled_objects[index].transform = object.transform;
-        pc.culled_objects[index].geometry_data_id = object.geometry_data_id;
-        pc.culled_objects[index].material_bda = object.material_bda;
-
-        uint meshlet_count = uint(round((float(mesh_data.meshlet_count) / 32.0f) + 0.4999999f));
-        pc.indirect_draw_params[index].draw_param = uvec3(meshlet_count, 1, 1);
-    }
+    
 }

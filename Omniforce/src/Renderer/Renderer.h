@@ -33,6 +33,7 @@ namespace Omni {
 		static uint32 GetCurrentFrameIndex();
 		static uint32 GetDeviceMinimalUniformBufferOffsetAlignment();
 		static uint32 GetDeviceMinimalStorageBufferOffsetAlignment();
+		static uint32 GetDeviceOptimalComputeWorkGroupSize();
 		static Shared<ImageSampler> GetNearestSampler();
 		static Shared<ImageSampler> GetLinearSampler();
 		static Shared<Image> GetSwapchainImage();

@@ -202,4 +202,10 @@ namespace Omni {
 		vkCmdCopyBuffer(*vk_cmd_buffer, m_Buffer, vk_buffer->Raw(), 1, &params);
 	}
 
+	void VulkanDeviceBuffer::Clear(Shared<DeviceCmdBuffer> cmd_buffer, uint64 offset, uint64 size, uint32 value)
+	{
+		Shared<VulkanDeviceCmdBuffer> device_cmd_buffer = ShareAs<VulkanDeviceCmdBuffer>(cmd_buffer);
+		vkCmdFillBuffer(device_cmd_buffer->Raw(), m_Buffer, offset, size, value);
+	}
+
 }

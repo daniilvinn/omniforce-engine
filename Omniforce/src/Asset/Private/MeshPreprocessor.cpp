@@ -27,21 +27,13 @@ namespace Omni {
 		meshlets_data->cull_bounds.resize(actual_num_meshlets);
 		uint32 idx = 0;
 		for (auto& meshlet : meshlets_data->meshlets) {
-			meshlet.index_offset = meshlets[idx].vertex_offset;
-			meshlet.triangles_count = meshlets[idx].triangle_count;
-			meshlet.local_index_offset = meshlets[idx].triangle_offset;
+			memcpy(&meshlet, &meshlets[idx], sizeof(RenderableMeshlet));
 
-			std::vector<uint32> indices(64);
-			for (auto& index : indices) {
-				index = *(meshlets_data->indices.data() + meshlets[idx].vertex_offset) - meshlets[idx].vertex_offset;
-			}
-
-			// TODO bug here, passing invalid data
 			meshopt_Bounds bounds = meshopt_computeMeshletBounds(
-				&meshlets_data->indices[meshlet.index_offset],
-				&meshlets_data->local_indices[meshlet.local_index_offset],
+				&meshlets_data->indices[meshlet.vertex_offset],
+				&meshlets_data->local_indices[meshlet.triangle_offset],
 				meshlet.triangles_count, 
-				(float*)vertices.data(), 
+				(float32*)vertices.data(), 
 				vertices.size(),
 				12
 			);
@@ -63,7 +55,7 @@ namespace Omni {
 
 		glm::vec3 farthest_vertex[2] = { points[0], points[0] };
 		glm::vec3 averaged_vertex_position(0.0f);
-		float radius[2] = { 0.0f, 0.0f };
+		float32 radius[2] = { 0.0f, 0.0f };
 
 		for (auto& point : points) {
 			averaged_vertex_position += point;
@@ -84,8 +76,8 @@ namespace Omni {
 				farthest_vertex[1] = point;
 		}
 
-		float averaged_vertex_to_farthest_distance = glm::distance(farthest_vertex[0], averaged_vertex_position);
-		float aabb_centroid_to_farthest_distance = glm::distance(farthest_vertex[1], aabb_centroid);
+		float32 averaged_vertex_to_farthest_distance = glm::distance(farthest_vertex[0], averaged_vertex_position);
+		float32 aabb_centroid_to_farthest_distance = glm::distance(farthest_vertex[1], aabb_centroid);
 
 		sphere.center = averaged_vertex_to_farthest_distance < aabb_centroid_to_farthest_distance ? averaged_vertex_position : aabb_centroid;
 		sphere.radius = glm::min(averaged_vertex_to_farthest_distance, aabb_centroid_to_farthest_distance);
@@ -105,7 +97,7 @@ namespace Omni {
 		meshopt_remapVertexBuffer(remapped_vb.data(), vertices.data(), vertices.size() / vertex_stride, vertex_stride, remap_table.data());
 
 		meshopt_optimizeVertexCache(remapped_ib.data(), remapped_ib.data(), remapped_ib.size(), remapped_vb.size() / vertex_stride);
-		meshopt_optimizeOverdraw(remapped_ib.data(), remapped_ib.data(), remapped_ib.size(), (float*)remapped_vb.data(), remapped_vb.size() / vertex_stride, vertex_stride, 1.05f);
+		meshopt_optimizeOverdraw(remapped_ib.data(), remapped_ib.data(), remapped_ib.size(), (float32*)remapped_vb.data(), remapped_vb.size() / vertex_stride, vertex_stride, 1.05f);
 		meshopt_optimizeVertexFetch(remapped_vb.data(), remapped_ib.data(), remapped_ib.size(), remapped_vb.data(), remapped_vb.size() / vertex_stride, vertex_stride);
 
 		vertices.resize(remapped_vb.size());

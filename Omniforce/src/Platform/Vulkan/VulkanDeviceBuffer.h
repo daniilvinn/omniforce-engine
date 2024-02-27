@@ -3,7 +3,7 @@
 #include "VulkanCommon.h"
 
 #include <Renderer/DeviceBuffer.h>
-
+#include <Renderer/Renderer.h>
 #include <vulkan-memory-allocator-hpp/vk_mem_alloc.h>
 
 namespace Omni {
@@ -35,15 +35,18 @@ namespace Omni {
 
 		void Destroy() override;
 
-		void UploadData(uint64 offset, void* data, uint64 data_size) override;
-		void CopyRegionTo(Shared<DeviceCmdBuffer> cmd_buffer, Shared<DeviceBuffer> dst_buffer, uint64 src_offset, uint64 dst_offset, uint64 size) override;
-
 		VkBuffer Raw() const { return m_Buffer; }
 		
 		DeviceBufferSpecification GetSpecification() const override { return m_Specification; }
 		uint64 GetDeviceAddress() override;
+		uint64 GetPerFrameSize() override { return m_Specification.size / Renderer::GetConfig().frames_in_flight; }
+		uint64 GetFrameOffset() override { return Renderer::GetCurrentFrameIndex() * GetPerFrameSize(); }
 		VmaAllocation RawAllocation() const { return m_Allocation; }
 		void* GetAdditionalData() const { return m_Data; }
+
+		void UploadData(uint64 offset, void* data, uint64 data_size) override;
+		void CopyRegionTo(Shared<DeviceCmdBuffer> cmd_buffer, Shared<DeviceBuffer> dst_buffer, uint64 src_offset, uint64 dst_offset, uint64 size) override;
+		void Clear(Shared<DeviceCmdBuffer> cmd_buffer, uint64 offset, uint64 size, uint32 value) override;
 
 	private:
 		VkBuffer m_Buffer;

@@ -90,6 +90,13 @@ namespace Omni {
 				continue;
 			}
 
+			if (primitive.type != ftf::PrimitiveType::Triangles) {
+				OMNIFORCE_CORE_ERROR("One of the submeshes primitive type other than triangle list - currently only triangle list is supported. Skipping submesh.",
+					ftf_mesh.name);
+
+				continue;
+			}
+
 			// If submesh is ok then load it
 
 			std::vector<glm::vec3> geometry;
@@ -158,7 +165,7 @@ namespace Omni {
 			uint8 stride = current_offset;
 			uint8 interleaved_stride = stride + 12; // count vertex position data as well, so +12
 			MeshPreprocessor mesh_preprocessor;
-			//mesh_preprocessor.OptimizeMesh(vertex_data, indices, interleaved_stride);
+			mesh_preprocessor.OptimizeMesh(vertex_data, indices, interleaved_stride);
 
 			geometry.resize(vertex_data.size() / interleaved_stride);
 			attributes_data.resize(vertex_data.size() / (interleaved_stride) * stride);

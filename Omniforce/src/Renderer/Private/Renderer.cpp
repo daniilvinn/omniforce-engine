@@ -129,6 +129,11 @@ namespace Omni {
 		return s_RendererAPI->GetDeviceMinimalStorageBufferAlignment();
 	}
 
+	uint32 Renderer::GetDeviceOptimalComputeWorkGroupSize()
+	{
+		return s_RendererAPI->GetDeviceOptimalComputeWorkGroupSize();
+	}
+
 	Shared<ImageSampler> Renderer::GetNearestSampler()
 	{
 		return s_InternalData.m_NearestSampler;

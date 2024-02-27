@@ -60,9 +60,12 @@ namespace Omni {
 
 		virtual DeviceBufferSpecification GetSpecification() const = 0;
 		virtual uint64 GetDeviceAddress() = 0;
+		virtual uint64 GetPerFrameSize() = 0;
+		virtual uint64 GetFrameOffset() = 0;
 
 		virtual void CopyRegionTo(Shared<DeviceCmdBuffer> cmd_buffer, Shared<DeviceBuffer> dst_buffer, uint64 src_offset, uint64 dst_offset, uint64 size) = 0;
 		virtual void UploadData(uint64 offset, void* data, uint64 data_size) = 0;
+		virtual void Clear(Shared<DeviceCmdBuffer> cmd_buffer, uint64 offset, uint64 size, uint32 value) = 0;
 	};
 
 }

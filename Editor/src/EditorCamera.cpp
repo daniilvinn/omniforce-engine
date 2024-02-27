@@ -22,8 +22,8 @@ namespace Omni {
 				else {
 					float32 x_offset = (float32)m_LastMousePosition.x - Input::MousePosition().x;
 					float32 y_offset = (float32)m_LastMousePosition.y - Input::MousePosition().y;
-					m_Position.x += (x_offset / 90.0) * (20.0f / 5.0f);
-					m_Position.y -= (y_offset / 90.0) * (20.0f / 5.0f);
+					Move({ (x_offset / 90.0) * (20.0f / 5.0f), 0.0f, 0.0f });
+					Move({ 0.0f, -(y_offset / 90.0) * (20.0f / 5.0f), 0.0f });
 					CalculateMatrices();
 					m_LastMousePosition = Input::MousePosition();
 				}

@@ -94,7 +94,7 @@ namespace Omni {
 			sampler_spec.min_filtering_mode = SamplerFilteringMode::LINEAR;
 			sampler_spec.mag_filtering_mode = SamplerFilteringMode::NEAREST;
 			sampler_spec.mipmap_filtering_mode = SamplerFilteringMode::LINEAR;
-			sampler_spec.address_mode = SamplerAddressMode::CLAMP;
+			sampler_spec.address_mode = SamplerAddressMode::REPEAT;
 			sampler_spec.min_lod = 0.0f;
 			sampler_spec.max_lod = 1000.0f;
 			sampler_spec.lod_bias = 0.0f;
@@ -108,7 +108,7 @@ namespace Omni {
 			sampler_spec.min_filtering_mode = SamplerFilteringMode::LINEAR;
 			sampler_spec.mag_filtering_mode = SamplerFilteringMode::LINEAR;
 			sampler_spec.mipmap_filtering_mode = SamplerFilteringMode::LINEAR;
-			sampler_spec.address_mode = SamplerAddressMode::CLAMP;
+			sampler_spec.address_mode = SamplerAddressMode::REPEAT;
 			sampler_spec.min_lod = 0.0f;
 			sampler_spec.max_lod = 1000.0f;
 			sampler_spec.lod_bias = 0.0f;
@@ -157,22 +157,23 @@ namespace Omni {
 		// Initialize device render queue and all buffers for indirect drawing
 		{
 			m_DeviceRenderQueue.add_callback([&](const Shared<Pipeline>& pipeline, Shared<DeviceBuffer>& value) {
+				uint8 frames_in_flight = Renderer::GetConfig().frames_in_flight;
 				DeviceBufferSpecification spec;
 				// allow for 256 objects per material for beginning.
 				// TODO: allow recreating buffer with bigger size when limit is reached
-				spec.size = sizeof(DeviceRenderableObject) * 256 * Renderer::GetConfig().frames_in_flight; 
+				spec.size = (sizeof(DeviceRenderableObject) * 256) * frames_in_flight;
 				spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
 				spec.heap =			DeviceBufferMemoryHeap::DEVICE;
 				spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
 				
 				value = DeviceBuffer::Create(spec);
 
-				spec.size = sizeof(DeviceRenderableObject) * 256;
+				spec.size = (sizeof(DeviceRenderableObject) * 256) * frames_in_flight;
 				spec.memory_usage = DeviceBufferMemoryUsage::NO_HOST_ACCESS;
 				
 				m_CulledDeviceRenderQueue.emplace(pipeline, DeviceBuffer::Create(spec));
 
-				spec.size = 4 + sizeof(glm::uvec3) * 256;
+				spec.size = (4 + sizeof(glm::uvec3) * 256) * frames_in_flight;
 				spec.buffer_usage = DeviceBufferUsage::INDIRECT_PARAMS;
 				m_DeviceIndirectDrawParams.emplace(pipeline, DeviceBuffer::Create(spec));
 			});
@@ -244,7 +245,7 @@ namespace Omni {
 
 	void SceneRenderer::EndScene()
 	{
-		uint64 camera_data_device_address = m_CameraDataBuffer->GetDeviceAddress() + sizeof DeviceCameraData * Renderer::GetCurrentFrameIndex();
+		uint64 camera_data_device_address = m_CameraDataBuffer->GetDeviceAddress() + m_CameraDataBuffer->GetFrameOffset();
 
 		// Render 2D
 		{
@@ -265,16 +266,48 @@ namespace Omni {
 			Renderer::EndRender({ m_CurrectMainRenderTarget });
 		}
 
-		// Copy data to render queues
+		// Copy data to render queues and clear culling pipeline output buffers
+		std::vector<std::pair<Shared<DeviceBuffer>, PipelineResourceBarrierInfo>> buffers_clear_barriers;
 		for (auto& host_render_queue : m_HostRenderQueue) {
 			auto device_render_queue = m_DeviceRenderQueue[host_render_queue.first];
-			uint32 per_frame_size = device_render_queue->GetSpecification().size / Renderer::GetConfig().frames_in_flight;
 			device_render_queue->UploadData(
-				Renderer::GetCurrentFrameIndex() * per_frame_size,
+				device_render_queue->GetFrameOffset(),
 				host_render_queue.second.data(),
 				host_render_queue.second.size() * sizeof DeviceRenderableObject
 			);
+
+			Shared<DeviceBuffer> culled_objects_buffer = m_CulledDeviceRenderQueue[host_render_queue.first];
+			Shared<DeviceBuffer> indirect_params_buffer = m_DeviceIndirectDrawParams[host_render_queue.first];
+
+			Renderer::Submit([=]() mutable {
+				culled_objects_buffer->Clear(Renderer::GetCmdBuffer(), culled_objects_buffer->GetFrameOffset(), culled_objects_buffer->GetPerFrameSize(), 0u);
+				indirect_params_buffer->Clear(Renderer::GetCmdBuffer(), indirect_params_buffer->GetFrameOffset(), indirect_params_buffer->GetPerFrameSize(), 0u);
+			});
+
+			PipelineResourceBarrierInfo indirect_params_barrier = {};
+			indirect_params_barrier.src_stages = (BitMask)PipelineStage::TRANSFER;
+			indirect_params_barrier.dst_stages = (BitMask)PipelineStage::COMPUTE_SHADER;
+			indirect_params_barrier.src_access_mask = (BitMask)PipelineAccess::TRANSFER_WRITE;
+			indirect_params_barrier.dst_access_mask = (BitMask)PipelineAccess::SHADER_READ | (BitMask)PipelineAccess::SHADER_WRITE;
+			indirect_params_barrier.buffer_barrier_offset = indirect_params_buffer->GetFrameOffset();
+			indirect_params_barrier.buffer_barrier_size = indirect_params_buffer->GetPerFrameSize();
+
+			PipelineResourceBarrierInfo culled_objects_barrier = {};
+			culled_objects_barrier.src_stages = (BitMask)PipelineStage::TRANSFER;
+			culled_objects_barrier.dst_stages = (BitMask)PipelineStage::COMPUTE_SHADER;
+			culled_objects_barrier.src_access_mask = (BitMask)PipelineAccess::TRANSFER_WRITE;
+			culled_objects_barrier.dst_access_mask = (BitMask)PipelineAccess::SHADER_READ | (BitMask)PipelineAccess::SHADER_WRITE;
+			culled_objects_barrier.buffer_barrier_offset = culled_objects_buffer->GetFrameOffset();
+			culled_objects_barrier.buffer_barrier_size = culled_objects_buffer->GetPerFrameSize();
+
+			buffers_clear_barriers.push_back(std::make_pair(indirect_params_buffer, indirect_params_barrier));
+			buffers_clear_barriers.push_back(std::make_pair(culled_objects_buffer, culled_objects_barrier));
+
 		}
+
+		PipelineBarrierInfo clear_buffers_barrier_info = {};
+		clear_buffers_barrier_info.buffer_barriers = buffers_clear_barriers;
+		Renderer::InsertBarrier(clear_buffers_barrier_info);
 
 		// Cull 3D
 		std::vector<std::pair<Shared<DeviceBuffer>, PipelineResourceBarrierInfo>> culling_buffers_barriers;
@@ -287,34 +320,34 @@ namespace Omni {
 			IndirectFrustumCullPassPushContants* compute_push_constants_data = new IndirectFrustumCullPassPushContants;
 			compute_push_constants_data->camera_data_bda = camera_data_device_address;
 			compute_push_constants_data->mesh_data_bda = m_MeshResourcesBuffer.GetStorageBDA();
-			compute_push_constants_data->render_objects_data_bda = device_render_queue.second->GetDeviceAddress() + Renderer::GetCurrentFrameIndex() * device_queue_per_frame_size;
+			compute_push_constants_data->render_objects_data_bda = device_render_queue.second->GetDeviceAddress() + device_render_queue.second->GetFrameOffset();
 			compute_push_constants_data->original_object_count = m_HostRenderQueue[device_render_queue.first].size();
-			compute_push_constants_data->culled_objects_bda = culled_objects_buffer->GetDeviceAddress();
-			compute_push_constants_data->object_counter_bda = indirect_params_buffer->GetDeviceAddress();
-			compute_push_constants_data->indirect_draw_params_bda = indirect_params_buffer->GetDeviceAddress() + 4;
+			compute_push_constants_data->culled_objects_bda = culled_objects_buffer->GetDeviceAddress() + culled_objects_buffer->GetFrameOffset();
+			compute_push_constants_data->object_counter_bda = indirect_params_buffer->GetDeviceAddress() + indirect_params_buffer->GetFrameOffset();
+			compute_push_constants_data->indirect_draw_params_bda = indirect_params_buffer->GetDeviceAddress() + indirect_params_buffer->GetFrameOffset() + 4;
 
 			MiscData compute_pc = {};
 			compute_pc.data = (byte*)compute_push_constants_data;
 			compute_pc.size = sizeof IndirectFrustumCullPassPushContants;
 
 			uint32 num_work_groups = (uint32)glm::round(((float32)m_HostRenderQueue[device_render_queue.first].size() / 32.0f) + 0.4999999f);
-			Renderer::DispatchCompute(m_IndirectFrustumCullPipeline, { num_work_groups, 1, 1 }, compute_pc);
+			Renderer::DispatchCompute(m_IndirectFrustumCullPipeline, { 1, 1, 1 }, compute_pc);
 
 			PipelineResourceBarrierInfo indirect_params_barrier = {};
 			indirect_params_barrier.src_stages = (BitMask)PipelineStage::COMPUTE_SHADER;
 			indirect_params_barrier.dst_stages = (BitMask)PipelineStage::DRAW_INDIRECT;
 			indirect_params_barrier.src_access_mask = (BitMask)PipelineAccess::SHADER_WRITE;
 			indirect_params_barrier.dst_access_mask = (BitMask)PipelineAccess::INDIRECT_COMMAND_READ;
-			indirect_params_barrier.buffer_barrier_offset = 0;
-			indirect_params_barrier.buffer_barrier_size = UINT64_MAX;
+			indirect_params_barrier.buffer_barrier_offset = indirect_params_buffer->GetFrameOffset();
+			indirect_params_barrier.buffer_barrier_size = indirect_params_buffer->GetPerFrameSize();
 
 			PipelineResourceBarrierInfo culled_objects_barrier = {};
 			culled_objects_barrier.src_stages = (BitMask)PipelineStage::COMPUTE_SHADER;
 			culled_objects_barrier.dst_stages = (BitMask)PipelineStage::TASK_SHADER | (BitMask)PipelineStage::MESH_SHADER;
 			culled_objects_barrier.src_access_mask = (BitMask)PipelineAccess::SHADER_WRITE;
 			culled_objects_barrier.dst_access_mask = (BitMask)PipelineAccess::SHADER_READ;
-			culled_objects_barrier.buffer_barrier_offset = 0;
-			culled_objects_barrier.buffer_barrier_size = UINT64_MAX;
+			culled_objects_barrier.buffer_barrier_offset = culled_objects_buffer->GetFrameOffset();
+			culled_objects_barrier.buffer_barrier_size = culled_objects_buffer->GetPerFrameSize();
 
 			culling_buffers_barriers.push_back(std::make_pair(indirect_params_buffer, indirect_params_barrier));
 			culling_buffers_barriers.push_back(std::make_pair(culled_objects_buffer, culled_objects_barrier));
@@ -323,44 +356,53 @@ namespace Omni {
 		PipelineBarrierInfo culling_barrier_info = {};
 		culling_barrier_info.buffer_barriers = culling_buffers_barriers;
 		Renderer::InsertBarrier(culling_barrier_info);
-		
 
 		// Render 3D
 		std::vector<std::pair<Shared<DeviceBuffer>, PipelineResourceBarrierInfo>> render_barriers;
+		Renderer::BeginRender({ m_CurrectMainRenderTarget, m_CurrentDepthAttachment }, m_CurrectMainRenderTarget->GetSpecification().extent, { 0, 0 }, { 0.0f, 0.0f, 0.0f, 0.0f });
+		uint32 idx = 0;
 		for (auto& device_render_queue : m_DeviceRenderQueue) {
+			if (!idx)
+			{
+				idx++;
+				continue;
+			}
+
+			Shared<DeviceBuffer> indirect_params_buffer = m_DeviceIndirectDrawParams[device_render_queue.first];
+			Shared<DeviceBuffer> culled_objects_buffer = m_CulledDeviceRenderQueue[device_render_queue.first];
+
 			// Render survived objects
 			MiscData graphics_pc = {};
 			uint64* data = new uint64[3];
 			data[0] = camera_data_device_address;
 			data[1] = m_MeshResourcesBuffer.GetStorageBDA();
-			data[2] = m_CulledDeviceRenderQueue[device_render_queue.first]->GetDeviceAddress();
+			data[2] = culled_objects_buffer->GetDeviceAddress() + culled_objects_buffer->GetFrameOffset();
 			graphics_pc.data = (byte*)data;
 			graphics_pc.size = sizeof uint64 * 3;
 
-			Renderer::BeginRender({ m_CurrectMainRenderTarget, m_CurrentDepthAttachment }, m_CurrectMainRenderTarget->GetSpecification().extent, { 0, 0 }, { 0.0f, 0.0f, 0.0f, 0.0f });
 			Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], device_render_queue.first, 0);
 			Renderer::RenderMeshTasksIndirect(device_render_queue.first, m_DeviceIndirectDrawParams[device_render_queue.first], graphics_pc);
-			Renderer::EndRender(m_CurrectMainRenderTarget);
-
-			PipelineResourceBarrierInfo culled_objects_barrier = {};
-			culled_objects_barrier.src_stages = (BitMask)PipelineStage::TASK_SHADER | (BitMask)PipelineStage::MESH_SHADER;
-			culled_objects_barrier.dst_stages = (BitMask)PipelineStage::COMPUTE_SHADER;
-			culled_objects_barrier.src_access_mask = (BitMask)PipelineAccess::SHADER_READ;
-			culled_objects_barrier.dst_access_mask = (BitMask)PipelineAccess::SHADER_WRITE;
-			culled_objects_barrier.buffer_barrier_offset = 0;
-			culled_objects_barrier.buffer_barrier_size = UINT64_MAX;
 
 			PipelineResourceBarrierInfo indirect_params_barrier = {};
 			indirect_params_barrier.src_stages = (BitMask)PipelineStage::DRAW_INDIRECT;
 			indirect_params_barrier.dst_stages = (BitMask)PipelineStage::COMPUTE_SHADER;
 			indirect_params_barrier.src_access_mask = (BitMask)PipelineAccess::INDIRECT_COMMAND_READ;
 			indirect_params_barrier.dst_access_mask = (BitMask)PipelineAccess::SHADER_WRITE;
-			indirect_params_barrier.buffer_barrier_offset = 0;
-			indirect_params_barrier.buffer_barrier_size = UINT64_MAX;
+			indirect_params_barrier.buffer_barrier_offset = indirect_params_buffer->GetFrameOffset();
+			indirect_params_barrier.buffer_barrier_size = indirect_params_buffer->GetPerFrameSize();
+
+			PipelineResourceBarrierInfo culled_objects_barrier = {};
+			culled_objects_barrier.src_stages = (BitMask)PipelineStage::TASK_SHADER | (BitMask)PipelineStage::MESH_SHADER;
+			culled_objects_barrier.dst_stages = (BitMask)PipelineStage::COMPUTE_SHADER;
+			culled_objects_barrier.src_access_mask = (BitMask)PipelineAccess::SHADER_READ;
+			culled_objects_barrier.dst_access_mask = (BitMask)PipelineAccess::SHADER_WRITE;
+			culled_objects_barrier.buffer_barrier_offset = culled_objects_buffer->GetFrameOffset();
+			culled_objects_barrier.buffer_barrier_size = culled_objects_buffer->GetPerFrameSize();
 
 			render_barriers.push_back(std::make_pair(m_DeviceIndirectDrawParams[device_render_queue.first], indirect_params_barrier));
 			render_barriers.push_back(std::make_pair(m_CulledDeviceRenderQueue[device_render_queue.first], culled_objects_barrier));
 		}
+		Renderer::EndRender(m_CurrectMainRenderTarget);
 
 		PipelineBarrierInfo render_barrier_info = {};
 		render_barrier_info.buffer_barriers = render_barriers;

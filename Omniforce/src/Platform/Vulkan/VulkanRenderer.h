@@ -21,6 +21,7 @@ namespace Omni {
 		uint32 GetCurrentFrameIndex() const override { return m_Swapchain->GetCurrentFrameIndex(); }
 		uint32 GetDeviceMinimalUniformBufferAlignment() const override;
 		uint32 GetDeviceMinimalStorageBufferAlignment() const override;
+		uint32 GetDeviceOptimalComputeWorkGroupSize() const override;
 		Shared<DeviceCmdBuffer> GetCmdBuffer() override { return m_CurrentCmdBuffer; };
 		Shared<Swapchain> GetSwapchain() override { return m_Swapchain; };
 

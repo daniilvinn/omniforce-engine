@@ -179,13 +179,13 @@ namespace Omni {
 			Shared<VulkanPipeline> vk_pipeline = ShareAs<VulkanPipeline>(pipeline);
 			Shared<VulkanDeviceBuffer> vk_buffer = ShareAs<VulkanDeviceBuffer>(params);
 
+			vkCmdBindPipeline(m_CurrentCmdBuffer->Raw(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
 			if (data.size) {
 				vkCmdPushConstants(m_CurrentCmdBuffer->Raw(), vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
 				delete[] data.data;
 			}
-			vkCmdBindPipeline(m_CurrentCmdBuffer->Raw(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
-			uint32 max_draws = (vk_buffer->GetSpecification().size - 4) / sizeof glm::uvec3;
-			vkCmdDrawMeshTasksIndirectCountEXT(m_CurrentCmdBuffer->Raw(), vk_buffer->Raw(), 4, vk_buffer->Raw(), 0, max_draws, sizeof VkDrawMeshTasksIndirectCommandEXT);
+			uint32 max_draws = (vk_buffer->GetPerFrameSize() - 4) / sizeof glm::uvec3;
+			vkCmdDrawMeshTasksIndirectCountEXT(m_CurrentCmdBuffer->Raw(), vk_buffer->Raw(), vk_buffer->GetFrameOffset() + 4, vk_buffer->Raw(), vk_buffer->GetFrameOffset(), max_draws, sizeof VkDrawMeshTasksIndirectCommandEXT);
 		});
 	}
 
@@ -226,6 +226,11 @@ namespace Omni {
 	uint32 VulkanRenderer::GetDeviceMinimalStorageBufferAlignment() const
 	{
 		return m_Device->GetPhysicalDevice()->GetProps().limits.minStorageBufferOffsetAlignment;
+	}
+
+	uint32 VulkanRenderer::GetDeviceOptimalComputeWorkGroupSize() const
+	{
+		return 0;
 	}
 
 	void VulkanRenderer::RenderQuad(Shared<Pipeline> pipeline, MiscData data)
