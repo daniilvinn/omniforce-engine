@@ -105,6 +105,13 @@ namespace Omni {
 		 
 		Shared<Pipeline> m_IndirectFrustumCullPipeline;
 
+		struct GBuffer {
+			Shared<Image> positions;
+			Shared<Image> normals;
+			Shared<Image> base_color;
+			Shared<Image> metallic_roughness_occlusion;
+		} m_GBuffer;
+
 	};
 
 }

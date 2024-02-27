@@ -178,6 +178,20 @@ namespace Omni {
 				m_DeviceIndirectDrawParams.emplace(pipeline, DeviceBuffer::Create(spec));
 			});
 		}
+		// Init G-Buffer
+		{
+			ImageSpecification image_spec = ImageSpecification::Default();
+			image_spec.usage = ImageUsage::RENDER_TARGET;
+			image_spec.format = ImageFormat::RGBA64_SFLOAT;
+			image_spec.extent = Renderer::GetSwapchainImage()->GetSpecification().extent;
+
+			m_GBuffer.positions = Image::Create(image_spec);
+			m_GBuffer.normals = Image::Create(image_spec);
+
+			image_spec.format = ImageFormat::RGBA32_UNORM;
+			m_GBuffer.base_color = Image::Create(image_spec);
+			m_GBuffer.metallic_roughness_occlusion = Image::Create(image_spec);
+		}
 	}
 
 	SceneRenderer::~SceneRenderer()
@@ -330,8 +344,8 @@ namespace Omni {
 			compute_pc.data = (byte*)compute_push_constants_data;
 			compute_pc.size = sizeof IndirectFrustumCullPassPushContants;
 
-			uint32 num_work_groups = (uint32)glm::round(((float32)m_HostRenderQueue[device_render_queue.first].size() / 32.0f) + 0.4999999f);
-			Renderer::DispatchCompute(m_IndirectFrustumCullPipeline, { 1, 1, 1 }, compute_pc);
+			uint32 num_work_groups = (m_HostRenderQueue.size() + 31) / 32;
+			Renderer::DispatchCompute(m_IndirectFrustumCullPipeline, { num_work_groups, 1, 1 }, compute_pc);
 
 			PipelineResourceBarrierInfo indirect_params_barrier = {};
 			indirect_params_barrier.src_stages = (BitMask)PipelineStage::COMPUTE_SHADER;
@@ -359,15 +373,15 @@ namespace Omni {
 
 		// Render 3D
 		std::vector<std::pair<Shared<DeviceBuffer>, PipelineResourceBarrierInfo>> render_barriers;
-		Renderer::BeginRender({ m_CurrectMainRenderTarget, m_CurrentDepthAttachment }, m_CurrectMainRenderTarget->GetSpecification().extent, { 0, 0 }, { 0.0f, 0.0f, 0.0f, 0.0f });
-		uint32 idx = 0;
-		for (auto& device_render_queue : m_DeviceRenderQueue) {
-			if (!idx)
-			{
-				idx++;
-				continue;
-			}
+		uint32 first_render = true;
+		Renderer::BeginRender(
+			{ m_GBuffer.positions, m_GBuffer.base_color, m_GBuffer.normals, m_GBuffer.metallic_roughness_occlusion, m_CurrentDepthAttachment }, 
+			m_CurrectMainRenderTarget->GetSpecification().extent, 
+			{ 0, 0 }, 
+			{ 0.2f, 0.2f, 0.3f, 1.0 }
+		);
 
+		for (auto& device_render_queue : m_DeviceRenderQueue) {
 			Shared<DeviceBuffer> indirect_params_buffer = m_DeviceIndirectDrawParams[device_render_queue.first];
 			Shared<DeviceBuffer> culled_objects_buffer = m_CulledDeviceRenderQueue[device_render_queue.first];
 

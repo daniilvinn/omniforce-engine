@@ -187,20 +187,22 @@ namespace Omni {
 		viewport_state.scissorCount = 1;
 		viewport_state.pScissors = &scissor;
 
-		VkPipelineColorBlendAttachmentState color_blend_attachment = {};
-		color_blend_attachment.blendEnable = m_Specification.color_blending_enable;
-		color_blend_attachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-		color_blend_attachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-		color_blend_attachment.colorBlendOp = VK_BLEND_OP_ADD;
-		color_blend_attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-		color_blend_attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-		color_blend_attachment.alphaBlendOp = VK_BLEND_OP_ADD;
-		color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_FLAG_BITS_MAX_ENUM;
+		std::vector<VkPipelineColorBlendAttachmentState> blend_states(m_Specification.output_attachments_formats.size());
+		for (auto& state : blend_states) {
+			state.blendEnable = m_Specification.color_blending_enable;
+			state.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+			state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+			state.colorBlendOp = VK_BLEND_OP_ADD;
+			state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+			state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+			state.alphaBlendOp = VK_BLEND_OP_ADD;
+			state.colorWriteMask = VK_COLOR_COMPONENT_FLAG_BITS_MAX_ENUM;
+		}
 
 		VkPipelineColorBlendStateCreateInfo color_blend_state = {};
 		color_blend_state.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-		color_blend_state.attachmentCount = 1;
-		color_blend_state.pAttachments = &color_blend_attachment;
+		color_blend_state.attachmentCount = blend_states.size();
+		color_blend_state.pAttachments = blend_states.data();
 		color_blend_state.logicOpEnable = VK_FALSE;
 		color_blend_state.logicOp = VK_LOGIC_OP_COPY;
 

@@ -26,6 +26,8 @@ namespace Omni {
 		case ImageFormat::BC1:							return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
 		case ImageFormat::BC5:							return VK_FORMAT_BC5_UNORM_BLOCK;
 		case ImageFormat::BC6h:							return VK_FORMAT_BC6H_UFLOAT_BLOCK;
+		case ImageFormat::RGBA64_SFLOAT:				return VK_FORMAT_R16G16B16A16_SFLOAT;
+		case ImageFormat::RGB24_UNORM:					return VK_FORMAT_R8G8B8_UNORM;
 		default:
 			std::unreachable();
 			break;
@@ -44,6 +46,8 @@ namespace Omni {
 		case VK_FORMAT_R16G16B16A16_SFLOAT:				return ImageFormat::RGBA64_HDR;
 		case VK_FORMAT_R32G32B32A32_SFLOAT:				return ImageFormat::RGBA128_HDR;
 		case VK_FORMAT_D32_SFLOAT:						return ImageFormat::D32;
+		case VK_FORMAT_R16G16B16_SFLOAT: 				return ImageFormat::RGBA64_SFLOAT;
+		case VK_FORMAT_R8G8B8_UNORM: 					return ImageFormat::RGB24_UNORM;
 		default:										std::unreachable(); break;;
 		}
 	}

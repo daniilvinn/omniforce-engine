@@ -71,6 +71,7 @@ layout(triangles, max_vertices = 64, max_primitives = 124) out;
 layout(location = 0) out uint64_t out_material_bda[];
 
 layout(location = 1) out VertexOutput {
+	vec3 position;
 #ifdef __OMNI_HAS_VERTEX_NORMAL
     vec3 normal;
 #endif
@@ -104,6 +105,8 @@ void main()
 
 		vec3 vertex = mesh_data.vertices[meshlet_data.vertex_offset + (gl_LocalInvocationIndex * vertex_processing_iterations + i)].vertex_position;
         vertex = RotateByQuat(vertex * transform.scale, rotation_quaternion) + transform.translation;
+		vertex_output[gl_LocalInvocationIndex * vertex_processing_iterations + i].position = vertex;
+
 		gl_MeshVerticesEXT[gl_LocalInvocationIndex * vertex_processing_iterations + i].gl_Position = pc.camera_data.view_proj * vec4(vertex, 1.0f);
 	}
 
@@ -153,13 +156,18 @@ void main()
 #include "mesh_data.glslh"
 #include "render_object.glslh"
 
-layout(location = 0) out vec4 out_color;
+layout(location = 0) out vec4 out_position;
+layout(location = 1) out vec4 out_color;
+layout(location = 2) out vec4 out_normal;
+layout(location = 3) out vec4 out_metallic_roughness_occlusion;
 
 layout(location = 0) flat in uint64_t v_MaterialBDA;
 
 layout(location = 1) in Input {
+	vec3 position;
 #ifdef __OMNI_HAS_VERTEX_NORMAL
     vec3 normal;
+	mat3 TBN;
 #endif
 #ifdef __OMNI_HAS_VERTEX_TANGENT
     vec4 tangent;
@@ -199,11 +207,30 @@ layout(buffer_reference, scalar, buffer_reference_align = 16) readonly buffer Ma
 
 void main() {
 	Material material = Material(v_MaterialBDA);
-	vec4 color = vec4(0.0f, 0.0f, 0.0f, 0.0f);
+	
+	// Positions
+	out_position = vec4(v_InputAttributes.position, 1.0f);
 
+	// Base color
+	vec4 color = vec4(1.0f, 0.0f, 1.0f, 1.0f);
 	#ifdef __OMNI_HAS_BASE_COLOR_MAP
 		color = texture(texture_bank[material.base_color_map_index], vec2(v_InputAttributes.uv.x, 1.0f - v_InputAttributes.uv.y));
 	#endif
-
     out_color = color;
+
+	// Normal
+	vec4 normal = vec4(0.0f, 1.0f, 0.0f, 1.0f);
+	#ifdef __OMNI_HAS_NORMAL_MAP
+		normal = texture(texture_bank[material.normal_map_index], vec2(v_InputAttributes.uv.x, 1.0f - v_InputAttributes.uv.y));
+	#endif
+	out_normal = normal;
+
+	// Metallic roughness occlusion
+	vec4 metallic_roughness_occlusion = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	#ifdef __OMNI_HAS_METALLIC_ROUGHNESS_MAP
+		metallic_roughness_occlusion = texture(texture_bank[material.metallic_roughness_map_index], vec2(v_InputAttributes.uv.x, 1.0f - v_InputAttributes.uv.y));
+	#endif
+	out_metallic_roughness_occlusion = metallic_roughness_occlusion;
+
+
 }
