@@ -123,7 +123,7 @@ namespace Omni {
 			ImageSpecification image_spec = ImageSpecification::Default();
 			image_spec.usage = ImageUsage::TEXTURE;
 			image_spec.extent = { 1, 1, 1 };
-			image_spec.pixels = std::vector<byte>((byte*)&image_data, (byte*) ( & image_data + 1));
+			image_spec.pixels = std::vector<byte>((byte*)&image_data, (byte*)(&image_data + 1));
 			image_spec.format = ImageFormat::RGBA32_UNORM;
 			image_spec.type = ImageType::TYPE_2D;
 			image_spec.mip_levels = 1;
@@ -137,6 +137,7 @@ namespace Omni {
 			ShaderLibrary* shader_library = ShaderLibrary::Get();
 			shader_library->LoadShader("Resources/shaders/sprite.ofs");
 			shader_library->LoadShader("Resources/shaders/cull_indirect.ofs");
+			shader_library->LoadShader("Resources/shaders/PBR.ofs");
 
 			// 2D pass
 			PipelineSpecification pipeline_spec = PipelineSpecification::Default();
@@ -146,6 +147,12 @@ namespace Omni {
 			pipeline_spec.culling_mode = PipelineCullingMode::NONE;
 
 			m_SpritePass = Pipeline::Create(pipeline_spec);
+
+			// PBR full screen
+			pipeline_spec.shader = shader_library->GetShader("PBR.ofs");
+			pipeline_spec.debug_name = "PBR full screen";
+
+			m_PBRFullscreenPipeline = Pipeline::Create(pipeline_spec);
 
 			// compute frustum culling
 			pipeline_spec.type = PipelineType::COMPUTE;
@@ -163,14 +170,14 @@ namespace Omni {
 				// TODO: allow recreating buffer with bigger size when limit is reached
 				spec.size = (sizeof(DeviceRenderableObject) * 256) * frames_in_flight;
 				spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
-				spec.heap =			DeviceBufferMemoryHeap::DEVICE;
+				spec.heap = DeviceBufferMemoryHeap::DEVICE;
 				spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
-				
+
 				value = DeviceBuffer::Create(spec);
 
 				spec.size = (sizeof(DeviceRenderableObject) * 256) * frames_in_flight;
 				spec.memory_usage = DeviceBufferMemoryUsage::NO_HOST_ACCESS;
-				
+
 				m_CulledDeviceRenderQueue.emplace(pipeline, DeviceBuffer::Create(spec));
 
 				spec.size = (4 + sizeof(glm::uvec3) * 256) * frames_in_flight;
@@ -191,6 +198,24 @@ namespace Omni {
 			image_spec.format = ImageFormat::RGBA32_UNORM;
 			m_GBuffer.base_color = Image::Create(image_spec);
 			m_GBuffer.metallic_roughness_occlusion = Image::Create(image_spec);
+
+			// Acquire indices
+			AcquireResourceIndex(m_GBuffer.positions, SamplerFilteringMode::NEAREST);
+			AcquireResourceIndex(m_GBuffer.base_color, SamplerFilteringMode::NEAREST);
+			AcquireResourceIndex(m_GBuffer.normals, SamplerFilteringMode::NEAREST);
+			AcquireResourceIndex(m_GBuffer.metallic_roughness_occlusion, SamplerFilteringMode::NEAREST);
+		}
+
+		{
+			m_HostPointLights.reserve(256);
+			
+			DeviceBufferSpecification buffer_spec = {};
+			buffer_spec.heap = DeviceBufferMemoryHeap::HOST;
+			buffer_spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
+			buffer_spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
+			buffer_spec.size = sizeof(PointLight) * 256 * Renderer::GetConfig().frames_in_flight;
+
+			m_DevicePointLights = DeviceBuffer::Create(buffer_spec);
 		}
 	}
 
@@ -218,8 +243,11 @@ namespace Omni {
 		// Clear render queues
 		for (auto& queue : m_HostRenderQueue)
 			queue.second.clear();
-		
+
 		m_SpriteQueue.clear();
+
+		// Clear light data
+		m_HostPointLights.clear();
 
 		// Write camera data to device buffer
 		if (camera) {
@@ -231,6 +259,7 @@ namespace Omni {
 			camera_data.view_proj = m_Camera->GetViewProjectionMatrix();
 			camera_data.position = m_Camera->GetPosition();
 			camera_data.frustum = m_Camera->GenerateFrustum();
+			camera_data.forward_vector = m_Camera->GetForwardVector();
 
 			m_CameraDataBuffer->UploadData(
 				Renderer::GetCurrentFrameIndex() * (m_CameraDataBuffer->GetSpecification().size / Renderer::GetConfig().frames_in_flight),
@@ -241,10 +270,10 @@ namespace Omni {
 
 		// Change current render target
 		m_CurrectMainRenderTarget = m_RendererOutputs[Renderer::GetCurrentFrameIndex()];
-		m_CurrentDepthAttachment  = m_DepthAttachments[Renderer::GetCurrentFrameIndex()];
+		m_CurrentDepthAttachment = m_DepthAttachments[Renderer::GetCurrentFrameIndex()];
 
 		// Change layout of render target
-		Renderer::Submit([=]() {	
+		Renderer::Submit([=]() {
 			m_CurrectMainRenderTarget->SetLayout(
 				Renderer::GetCmdBuffer(),
 				ImageLayout::COLOR_ATTACHMENT,
@@ -262,6 +291,7 @@ namespace Omni {
 		uint64 camera_data_device_address = m_CameraDataBuffer->GetDeviceAddress() + m_CameraDataBuffer->GetFrameOffset();
 
 		// Render 2D
+		// TODO: render 2D after 3D
 		{
 			Renderer::BeginRender({ m_CurrectMainRenderTarget, m_CurrentDepthAttachment }, m_CurrectMainRenderTarget->GetSpecification().extent, { 0, 0 }, { 0.2f, 0.2f, 0.3f, 1.0f });
 			m_SpriteDataBuffer->UploadData(
@@ -319,9 +349,24 @@ namespace Omni {
 
 		}
 
+		PipelineResourceBarrierInfo pbr_attachment_barrier = {};
+		pbr_attachment_barrier.src_stages = (BitMask)PipelineStage::COLOR_ATTACHMENT_OUTPUT;
+		pbr_attachment_barrier.dst_stages = (BitMask)PipelineStage::FRAGMENT_SHADER;
+		pbr_attachment_barrier.src_access_mask = (BitMask)PipelineAccess::COLOR_ATTACHMENT_WRITE;
+		pbr_attachment_barrier.dst_access_mask = (BitMask)PipelineAccess::UNIFORM_READ;
+		pbr_attachment_barrier.new_image_layout = ImageLayout::COLOR_ATTACHMENT;
+
 		PipelineBarrierInfo clear_buffers_barrier_info = {};
 		clear_buffers_barrier_info.buffer_barriers = buffers_clear_barriers;
+		clear_buffers_barrier_info.image_barriers.push_back(std::make_pair(m_GBuffer.positions, pbr_attachment_barrier));
+		clear_buffers_barrier_info.image_barriers.push_back(std::make_pair(m_GBuffer.base_color, pbr_attachment_barrier));
+		clear_buffers_barrier_info.image_barriers.push_back(std::make_pair(m_GBuffer.normals, pbr_attachment_barrier));
+		clear_buffers_barrier_info.image_barriers.push_back(std::make_pair(m_GBuffer.metallic_roughness_occlusion, pbr_attachment_barrier));
+
 		Renderer::InsertBarrier(clear_buffers_barrier_info);
+
+		// Copy light data
+		m_DevicePointLights->UploadData(m_DevicePointLights->GetFrameOffset(), m_HostPointLights.data(), m_HostPointLights.size() * sizeof PointLight);
 
 		// Cull 3D
 		std::vector<std::pair<Shared<DeviceBuffer>, PipelineResourceBarrierInfo>> culling_buffers_barriers;
@@ -375,13 +420,19 @@ namespace Omni {
 		std::vector<std::pair<Shared<DeviceBuffer>, PipelineResourceBarrierInfo>> render_barriers;
 		uint32 first_render = true;
 		Renderer::BeginRender(
-			{ m_GBuffer.positions, m_GBuffer.base_color, m_GBuffer.normals, m_GBuffer.metallic_roughness_occlusion, m_CurrentDepthAttachment }, 
-			m_CurrectMainRenderTarget->GetSpecification().extent, 
-			{ 0, 0 }, 
+			{ m_GBuffer.positions, m_GBuffer.base_color, m_GBuffer.normals, m_GBuffer.metallic_roughness_occlusion, m_CurrentDepthAttachment },
+			m_CurrectMainRenderTarget->GetSpecification().extent,
+			{ 0, 0 },
 			{ 0.2f, 0.2f, 0.3f, 1.0 }
 		);
 
+		int x = 0;
 		for (auto& device_render_queue : m_DeviceRenderQueue) {
+			if (!x) {
+				x = 1;
+				continue;
+			}
+
 			Shared<DeviceBuffer> indirect_params_buffer = m_DeviceIndirectDrawParams[device_render_queue.first];
 			Shared<DeviceBuffer> culled_objects_buffer = m_CulledDeviceRenderQueue[device_render_queue.first];
 
@@ -418,9 +469,33 @@ namespace Omni {
 		}
 		Renderer::EndRender(m_CurrectMainRenderTarget);
 
+		pbr_attachment_barrier.new_image_layout = ImageLayout::SHADER_READ_ONLY;
+
 		PipelineBarrierInfo render_barrier_info = {};
 		render_barrier_info.buffer_barriers = render_barriers;
+		render_barrier_info.image_barriers.push_back(std::make_pair(m_GBuffer.positions, pbr_attachment_barrier));
+		render_barrier_info.image_barriers.push_back(std::make_pair(m_GBuffer.base_color, pbr_attachment_barrier));
+		render_barrier_info.image_barriers.push_back(std::make_pair(m_GBuffer.normals, pbr_attachment_barrier));
+		render_barrier_info.image_barriers.push_back(std::make_pair(m_GBuffer.metallic_roughness_occlusion, pbr_attachment_barrier));
 		Renderer::InsertBarrier(render_barrier_info);
+
+		PBRFullScreenPassPushConstants* pbr_push_constants = new PBRFullScreenPassPushConstants;
+		pbr_push_constants->camera_data_bda = camera_data_device_address;
+		pbr_push_constants->point_lights_bda = m_DevicePointLights->GetDeviceAddress() + m_DevicePointLights->GetFrameOffset();
+		pbr_push_constants->positions_texture_index = GetTextureIndex(m_GBuffer.positions->Handle);
+		pbr_push_constants->base_color_texture_index = GetTextureIndex(m_GBuffer.base_color->Handle);
+		pbr_push_constants->normal_texture_index = GetTextureIndex(m_GBuffer.normals->Handle);
+		pbr_push_constants->metallic_roughness_occlusion_texture_index = GetTextureIndex(m_GBuffer.metallic_roughness_occlusion->Handle);
+		pbr_push_constants->point_light_count = m_HostPointLights.size();
+
+		MiscData pbr_pc = {};
+		pbr_pc.data = (byte*)pbr_push_constants;
+		pbr_pc.size = sizeof PBRFullScreenPassPushConstants;
+
+		Renderer::BeginRender({ m_CurrectMainRenderTarget }, m_CurrectMainRenderTarget->GetSpecification().extent, { 0, 0 }, { 0.0f, 0.0f, 0.0f, 0.0f });
+		Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], m_PBRFullscreenPipeline, 0);
+		Renderer::RenderQuads(m_PBRFullscreenPipeline, pbr_pc);
+		Renderer::EndRender(m_CurrectMainRenderTarget);
 
 		Renderer::Submit([=]() {
 			m_CurrectMainRenderTarget->SetLayout(
@@ -467,14 +542,14 @@ namespace Omni {
 	uint32 SceneRenderer::AcquireResourceIndex(Shared<Mesh> mesh)
 	{
 		DeviceMeshData mesh_data = {};
-		mesh_data.bounding_sphere =				mesh->GetBoundingSphere();
-		mesh_data.meshlet_count =				mesh->GetMeshletCount();
-		mesh_data.geometry_bda =				mesh->GetBuffer(MeshBufferKey::GEOMETRY)->GetDeviceAddress();
-		mesh_data.attributes_bda =				mesh->GetBuffer(MeshBufferKey::ATTRIBUTES)->GetDeviceAddress();
-		mesh_data.meshlets_bda =				mesh->GetBuffer(MeshBufferKey::MESHLETS)->GetDeviceAddress();
-		mesh_data.micro_indices_bda =			mesh->GetBuffer(MeshBufferKey::MICRO_INDICES)->GetDeviceAddress();
-		mesh_data.meshlets_cull_data_bda =		mesh->GetBuffer(MeshBufferKey::MESHLETS_CULL_DATA)->GetDeviceAddress();
-		
+		mesh_data.bounding_sphere = mesh->GetBoundingSphere();
+		mesh_data.meshlet_count = mesh->GetMeshletCount();
+		mesh_data.geometry_bda = mesh->GetBuffer(MeshBufferKey::GEOMETRY)->GetDeviceAddress();
+		mesh_data.attributes_bda = mesh->GetBuffer(MeshBufferKey::ATTRIBUTES)->GetDeviceAddress();
+		mesh_data.meshlets_bda = mesh->GetBuffer(MeshBufferKey::MESHLETS)->GetDeviceAddress();
+		mesh_data.micro_indices_bda = mesh->GetBuffer(MeshBufferKey::MICRO_INDICES)->GetDeviceAddress();
+		mesh_data.meshlets_cull_data_bda = mesh->GetBuffer(MeshBufferKey::MESHLETS_CULL_DATA)->GetDeviceAddress();
+
 		return m_MeshResourcesBuffer.Allocate(mesh->Handle, mesh_data);;
 	}
 

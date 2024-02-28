@@ -12,6 +12,7 @@ namespace Omni {
 		glm::mat4 view_proj;
 		glm::vec3 position;
 		Frustum frustum;
+		glm::vec3 forward_vector;
 	};
 
 	struct DeviceMeshData {
@@ -49,5 +50,18 @@ namespace Omni {
 		const uint64 _unused1 = 0;
 
 	};
+
+	struct PBRFullScreenPassPushConstants {
+		uint64 camera_data_bda;
+		uint64 point_lights_bda;
+		uint32 positions_texture_index;
+		uint32 base_color_texture_index;
+		uint32 normal_texture_index;
+		uint32 metallic_roughness_occlusion_texture_index;
+		uint32 point_light_count;
+		const uint32 _unused = 0;
+	};
+
+	
 
 }

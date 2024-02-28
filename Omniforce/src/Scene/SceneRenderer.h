@@ -6,6 +6,7 @@
 #include "DeviceMaterialPool.h"
 #include "SceneRendererPrimitives.h"
 #include "DeviceIndexedResourceBuffer.h"
+#include "Lights.h"
 #include <Renderer/Renderer.h>
 #include <Renderer/Image.h>
 #include <Renderer/Mesh.h>
@@ -29,7 +30,7 @@ namespace Omni {
 	struct OMNIFORCE_API SceneRendererSpecification {
 		uint8 anisotropic_filtering = 16;
 		// How much sprites will be stored in a device buffer. Actual size will be sprite_buffer_size * sizeof(Sprite) * fif
-		uint32 sprite_buffer_size = 2500; 
+		uint32 sprite_buffer_size = 2500;
 	};
 
 	class OMNIFORCE_API SceneRenderer {
@@ -43,7 +44,7 @@ namespace Omni {
 
 		void BeginScene(Shared<Camera> camera);
 		void EndScene();
-		
+
 		Shared<Image> GetFinalImage();
 		static Shared<ImageSampler> GetSamplerNearest() { return s_SamplerNearest; }
 		static Shared<ImageSampler> GetSamplerLinear() { return s_SamplerLinear; }
@@ -61,12 +62,15 @@ namespace Omni {
 		* @return true if successful, false if no resource found
 		*/
 		bool ReleaseResourceIndex(Shared<Image> image);
-		uint32 GetTextureIndex(const AssetHandle& uuid) const { return m_TextureIndices.at(uuid); };
+		uint32 GetTextureIndex(const AssetHandle& uuid) const { return m_TextureIndices.at(uuid); }
 		uint64 GetMaterialBDA(const AssetHandle& id) const { return m_MaterialDataPool.GetStorageBufferAddress() + m_MaterialDataPool.GetOffset(id); }
 		uint32 GetMeshIndex(const AssetHandle& uuid) const { return m_MeshResourcesBuffer.GetIndex(uuid); }
 
 		void RenderSprite(const Sprite& sprite);
 		void RenderObject(Shared<Pipeline> pipeline, const DeviceRenderableObject& render_data);
+
+		// Lighting
+		void AddPointLight(const PointLight& point_light) { m_HostPointLights.push_back(point_light); }
 
 	private:
 		Shared<Camera> m_Camera;
@@ -87,7 +91,6 @@ namespace Omni {
 		Shared<Pipeline> m_SpritePass;
 		Shared<Pipeline> m_LinePass;
 
-
 		// ~ Omni 2024 ~
 		Shared<DeviceBuffer> m_CameraDataBuffer;
 
@@ -102,7 +105,7 @@ namespace Omni {
 		CallbackRHUMap<Shared<Pipeline>, Shared<DeviceBuffer>> m_DeviceRenderQueue;
 		rhumap<Shared<Pipeline>, Shared<DeviceBuffer>> m_CulledDeviceRenderQueue;
 		rhumap<Shared<Pipeline>, Shared<DeviceBuffer>> m_DeviceIndirectDrawParams;
-		 
+
 		Shared<Pipeline> m_IndirectFrustumCullPipeline;
 
 		struct GBuffer {
@@ -111,6 +114,10 @@ namespace Omni {
 			Shared<Image> base_color;
 			Shared<Image> metallic_roughness_occlusion;
 		} m_GBuffer;
+		Shared<Pipeline> m_PBRFullscreenPipeline;
+
+		std::vector<PointLight> m_HostPointLights;
+		Shared<DeviceBuffer> m_DevicePointLights;
 
 	};
 

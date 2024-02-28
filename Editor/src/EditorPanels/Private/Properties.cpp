@@ -87,6 +87,11 @@ namespace Omni {
 							m_Entity.AddComponent<ScriptComponent>();
 						ImGui::EndDisabled();
 
+						ImGui::BeginDisabled(m_Entity.HasComponent<PointLightComponent>());
+						if (ImGui::MenuItem("Point light component"))
+							m_Entity.AddComponent<PointLightComponent>();
+						ImGui::EndDisabled();
+
 						ImGui::EndPopup();
 					}
 
@@ -96,7 +101,7 @@ namespace Omni {
 				auto& trs_component = m_Entity.GetComponent<TRSComponent>();
 
 				ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, { 5.0f, 5.0f });
-				if(ImGui::BeginTable("Properties", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH))
+				if(ImGui::BeginTable("TRS properties", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH))
 				{
 					ImGui::TableNextRow();
 					ImGui::TableNextColumn();
@@ -541,6 +546,43 @@ namespace Omni {
 								ImGui::EndTable();
 							}
 
+							ImGui::PopStyleVar();
+							ImGui::TreePop();
+						}
+					}
+				}
+				if (m_Entity.HasComponent<PointLightComponent>()) {
+					if (ImGui::Button(" - ##point_light_component")) {
+						m_Entity.RemoveComponent<PointLightComponent>();
+					}
+					else {
+						ImGui::SameLine();
+						if (ImGui::TreeNode("Point light component")) {
+							PointLightComponent& point_light_component = m_Entity.GetComponent<PointLightComponent>();
+							ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, { 20.0f, 10.0f });
+							if (ImGui::BeginTable("##point_light_component_properties", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH))
+							{
+								ImGui::TableNextRow();
+								ImGui::TableNextColumn();
+								ImGui::Text("Intensity");
+								ImGui::TableNextColumn();
+								ImGui::DragFloat("##plc_props_intensity_drag", &point_light_component.intensity, 0.01f);
+
+								ImGui::TableNextRow();
+								ImGui::TableNextColumn();
+								ImGui::Text("Color");
+								ImGui::SameLine();
+								ImGui::TableNextColumn();
+								ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+
+								ImGui::ColorPicker4("", (float*)&point_light_component.color,
+									ImGuiColorEditFlags_PickerHueWheel |
+									ImGuiColorEditFlags_DisplayRGB | 
+									ImGuiColorEditFlags_NoAlpha
+								);
+
+								ImGui::EndTable();
+							}
 							ImGui::PopStyleVar();
 							ImGui::TreePop();
 						}

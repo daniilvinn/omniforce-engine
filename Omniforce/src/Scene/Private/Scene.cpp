@@ -3,6 +3,7 @@
 #include "../SceneRenderer.h"
 #include "../Entity.h"
 #include "../Component.h"
+#include "../Lights.h"
 #include <Asset/AssetManager.h>
 #include <Asset/OFRController.h>
 #include <Physics/PhysicsEngine.h>
@@ -141,6 +142,20 @@ namespace Omni {
 				renderable_object.render_data_index = m_Renderer->GetMeshIndex(mesh_data.mesh_handle);
 				renderable_object.material_bda = m_Renderer->GetMaterialBDA(mesh_data.material_handle);
 				m_Renderer->RenderObject(asset_manager->GetAsset<Material>(mesh_data.material_handle)->GetPipeline(), renderable_object);
+			});
+
+			// Lighiting
+			m_Registry.view<PointLightComponent>().each([&, scene = this](auto e, auto& point_light) {
+				Entity entity(e, this);
+				TRSComponent trs_component = entity.GetWorldTransform();
+
+				PointLight light_data = {};
+				light_data.position = trs_component.translation;
+				light_data.color = point_light.color;
+				light_data.intensity = point_light.intensity;
+
+				m_Renderer->AddPointLight(light_data);
+
 			});
 
 		}

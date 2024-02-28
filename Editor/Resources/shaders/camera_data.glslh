@@ -9,6 +9,7 @@ layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Cam
 	mat4 view_proj;
 	vec3 position;
 	Frustum frustum;
+	vec3 forward_vector;
 };
 
 #endif

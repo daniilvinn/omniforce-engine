@@ -18,6 +18,12 @@ layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
 shared uint s_actual_num_meshlets;
 
+layout(push_constant, scalar) uniform pc_ {
+    CameraData camera_data;
+    MeshData mesh_data;
+    RenderObjectData render_objects_data;
+} pc;
+
 void main()
 {
 	uint lid = gl_LocalInvocationIndex; // lid = lane id
@@ -70,16 +76,22 @@ layout(triangles, max_vertices = 64, max_primitives = 124) out;
 
 layout(location = 0) out uint64_t out_material_bda[];
 
+layout(push_constant, scalar) uniform pc_ {
+    CameraData camera_data;
+    MeshData mesh_data;
+    RenderObjectData render_objects_data;
+} pc;
+
 layout(location = 1) out VertexOutput {
 	vec3 position;
-#ifdef __OMNI_HAS_VERTEX_NORMAL
-    vec3 normal;
-#endif
-#ifdef __OMNI_HAS_VERTEX_TANGENT
-    vec4 tangent;
-#endif
 #ifdef __OMNI_HAS_VERTEX_TEXCOORD_0
     vec2 uv;
+#endif
+#ifdef __OMNI_HAS_VERTEX_NORMAL
+	vec3 normal;
+#endif
+#ifdef __OMNI_HAS_NORMAL_MAP
+	mat3 TBN;
 #endif
 } vertex_output[];
 
@@ -131,14 +143,30 @@ void main()
 		}
 
 		out_material_bda[gl_LocalInvocationIndex * num_processing_attributes + i] = render_object_data.material_bda;
-	#ifdef __OMNI_HAS_VERTEX_NORMAL
-		vertex_output[gl_LocalInvocationIndex * num_processing_attributes + i].normal = mesh_data.attributes[meshlet_data.vertex_offset + (gl_LocalInvocationIndex * num_processing_attributes + i)].normal;
-	#endif
-	#ifdef __OMNI_HAS_VERTEX_TANGENT
-		vertex_output[gl_LocalInvocationIndex * num_processing_attributes + i].tangent = mesh_data.attributes[meshlet_data.vertex_offset + (gl_LocalInvocationIndex * num_processing_attributes + i)].tangent;
-	#endif
+
 	#ifdef __OMNI_HAS_VERTEX_TEXCOORD_0
 		vertex_output[gl_LocalInvocationIndex * num_processing_attributes + i].uv = mesh_data.attributes[meshlet_data.vertex_offset + (gl_LocalInvocationIndex * num_processing_attributes + i)].uv;
+	#endif
+
+		// Process normals, tangents and bitangents
+		vec3 normal = vec3(0.0f, 0.0f, 1.0f);
+		vec3 T = vec3(1.0f, 0.0f, 0.0f);
+		vec3 B = vec3(0.0f, 1.0f, 0.0f);
+		vec3 N = vec3(0.0f, 0.0f, 1.0f);
+
+	#ifdef __OMNI_HAS_VERTEX_NORMAL
+		normal = mesh_data.attributes[meshlet_data.vertex_offset + (gl_LocalInvocationIndex * num_processing_attributes + i)].normal;
+		N = normalize(RotateByQuat(normal, rotation_quaternion));
+		vertex_output[gl_LocalInvocationIndex * num_processing_attributes + i].normal = normal;
+	#endif
+	#ifdef __OMNI_HAS_VERTEX_TANGENT
+		vec4 tangent = mesh_data.attributes[meshlet_data.vertex_offset + (gl_LocalInvocationIndex * num_processing_attributes + i)].tangent;
+		T = normalize(RotateByQuat(tangent.xyz, rotation_quaternion));
+		T = normalize(T - dot(T, N) * N); // reorthogonalize
+		B = cross(N, T) * tangent.w;
+	#endif
+	#ifdef __OMNI_HAS_NORMAL_MAP
+		vertex_output[gl_LocalInvocationIndex * num_processing_attributes + i].TBN = mat3(T, B, N);
 	#endif
 	}
 
@@ -156,24 +184,24 @@ void main()
 #include "mesh_data.glslh"
 #include "render_object.glslh"
 
-layout(location = 0) out vec4 out_position;
-layout(location = 1) out vec4 out_color;
-layout(location = 2) out vec4 out_normal;
-layout(location = 3) out vec4 out_metallic_roughness_occlusion;
+layout(push_constant, scalar) uniform pc_ {
+    CameraData camera_data;
+    MeshData mesh_data;
+    RenderObjectData render_objects_data;
+} pc;
 
 layout(location = 0) flat in uint64_t v_MaterialBDA;
 
 layout(location = 1) in Input {
 	vec3 position;
-#ifdef __OMNI_HAS_VERTEX_NORMAL
-    vec3 normal;
-	mat3 TBN;
-#endif
-#ifdef __OMNI_HAS_VERTEX_TANGENT
-    vec4 tangent;
-#endif
 #ifdef __OMNI_HAS_VERTEX_TEXCOORD_0
     vec2 uv;
+#endif
+#ifdef __OMNI_HAS_VERTEX_NORMAL
+	vec3 normal;
+#endif
+#ifdef __OMNI_HAS_NORMAL_MAP
+	mat3 TBN;
 #endif
 } v_InputAttributes;
 
@@ -205,6 +233,22 @@ layout(buffer_reference, scalar, buffer_reference_align = 16) readonly buffer Ma
     #endif
 };
 
+layout(location = 0) out vec4 out_position;
+layout(location = 1) out vec4 out_color;
+layout(location = 2) out vec4 out_normal;
+layout(location = 3) out vec4 out_metallic_roughness_occlusion;
+
+#ifdef __OMNI_HAS_NORMAL_MAP
+	vec3 FetchNormal(uint normal_map_index) {
+	#ifndef __OMNI_HAS_VERTEX_TEXCOORD_0
+		return vec3(0.0f, 0.0f, 1.0f);
+	#else
+		vec3 normal = texture(texture_bank[normal_map_index], vec2(v_InputAttributes.uv.x, 1.0f - v_InputAttributes.uv.y)).rgb;
+		return normal * 2.0 - 1.0;
+	#endif
+	}
+#endif
+
 void main() {
 	Material material = Material(v_MaterialBDA);
 	
@@ -219,18 +263,21 @@ void main() {
     out_color = color;
 
 	// Normal
-	vec4 normal = vec4(0.0f, 1.0f, 0.0f, 1.0f);
-	#ifdef __OMNI_HAS_NORMAL_MAP
-		normal = texture(texture_bank[material.normal_map_index], vec2(v_InputAttributes.uv.x, 1.0f - v_InputAttributes.uv.y));
+	vec3 normal = vec3(0.0f, 0.0f, 1.0f);
+	#ifdef __OMNI_HAS_VERTEX_NORMAL
+		normal = v_InputAttributes.normal;
 	#endif
-	out_normal = normal;
+	#ifdef __OMNI_HAS_NORMAL_MAP
+		normal = normalize(v_InputAttributes.TBN * FetchNormal(material.normal_map_index));
+	#endif
+	out_normal = vec4(normal, 1.0f);
 
 	// Metallic roughness occlusion
-	vec4 metallic_roughness_occlusion = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	vec3 metallic_roughness_occlusion = vec3(0.0f, 0.0f, 1.0f);
 	#ifdef __OMNI_HAS_METALLIC_ROUGHNESS_MAP
-		metallic_roughness_occlusion = texture(texture_bank[material.metallic_roughness_map_index], vec2(v_InputAttributes.uv.x, 1.0f - v_InputAttributes.uv.y));
+		metallic_roughness_occlusion = texture(texture_bank[material.metallic_roughness_map_index], vec2(v_InputAttributes.uv.x, 1.0f - v_InputAttributes.uv.y)).xyz;
 	#endif
-	out_metallic_roughness_occlusion = metallic_roughness_occlusion;
+	out_metallic_roughness_occlusion = vec4(metallic_roughness_occlusion, 1.0f);
 
 
 }

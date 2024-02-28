@@ -1,0 +1,13 @@
+#ifndef LIGHTS_GLSLH
+#define LIGHTS_GLSLH
+
+#extension GL_EXT_buffer_reference2   : require
+#extension GL_EXT_scalar_block_layout : require
+
+layout(buffer_reference, scalar, buffer_reference_align = 4) buffer PointLight {
+	vec3 position;
+	vec3 color;
+	float intensity;
+};
+
+#endif

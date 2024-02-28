@@ -132,4 +132,12 @@ namespace Omni {
 		AssetHandle material_handle;
 	};
 
+	struct OMNIFORCE_API PointLightComponent {
+		glm::vec3 color = glm::vec3(1.0f);
+		float32 intensity = 1.0f;
+
+		PointLightComponent() = default;
+		static const char* GetSerializableKey() { return "PointLightComponent"; }
+	};
+
 }

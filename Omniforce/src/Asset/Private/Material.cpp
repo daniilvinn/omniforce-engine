@@ -29,7 +29,7 @@ namespace Omni {
 
 	void Material::Destroy()
 	{
-		
+
 	}
 
 	void Material::CompilePipeline()
@@ -46,10 +46,9 @@ namespace Omni {
 		PipelineSpecification pipeline_spec = PipelineSpecification::Default();
 		pipeline_spec.shader = shader;
 		pipeline_spec.output_attachments_formats = { ImageFormat::RGBA64_SFLOAT, ImageFormat::RGBA32_UNORM, ImageFormat::RGBA64_SFLOAT, ImageFormat::RGBA32_UNORM };
-		pipeline_spec.culling_mode = PipelineCullingMode::NONE;
 		pipeline_spec.depth_test_enable = true;
 
-		PipelineLibrary::HasPipeline(pipeline_spec) ? 
+		PipelineLibrary::HasPipeline(pipeline_spec) ?
 			m_Pipeline = PipelineLibrary::GetPipeline(pipeline_spec) : m_Pipeline = Pipeline::Create(pipeline_spec);
 
 		m_Macros.clear();

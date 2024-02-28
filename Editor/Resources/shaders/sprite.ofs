@@ -24,11 +24,13 @@ vec2 tex_coords[6] = {
 	vec2( 0.0f, 0.0f )
 };
 
+layout(push_constant, scalar) uniform pc_ {
+    CameraData camera_data;
+} pc;
+
 layout(location = 0) out vec2 tex_coord;
 layout(location = 1) out uint texture_index;
 layout(location = 2) out vec4 color_tint;
-
-
 
 void main() {
 	Sprite sprite = sprite_data.sprites[gl_InstanceIndex];

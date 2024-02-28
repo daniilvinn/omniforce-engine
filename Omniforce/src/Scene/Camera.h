@@ -19,6 +19,7 @@ namespace Omni {
 		virtual const glm::mat4& GetViewProjectionMatrix() const = 0;
 		virtual const glm::mat4& GetProjectionMatrix() const = 0;
 		virtual const glm::mat4& GetViewMatrix() const = 0;
+		virtual const glm::vec3& GetForwardVector() const = 0;
 		virtual void CalculateMatrices() = 0;
 
 		CameraProjectionType GetType() const { return m_Type; }
@@ -54,6 +55,7 @@ namespace Omni {
 		const glm::mat4& GetViewProjectionMatrix() const override { return m_ViewProjectionMatrix; };
 		const glm::mat4& GetProjectionMatrix() const override { return m_ProjectionMatrix; };
 		const glm::mat4& GetViewMatrix() const override { return m_ViewMatrix; };
+		const glm::vec3& GetForwardVector() const override { return glm::vec3{0.0f, 0.0f, -1.0f}; }
 
 		void SetProjection(float left, float right, float bottom, float top, float zNear = 0.0f, float zFar = 1.0f);
 		void SetPosition(glm::vec3 position);
@@ -89,6 +91,7 @@ namespace Omni {
 		const glm::mat4& GetViewProjectionMatrix() const override { return m_ViewProjectionMatrix; };
 		const glm::mat4& GetProjectionMatrix() const override { return m_ProjectionMatrix; };
 		const glm::mat4& GetViewMatrix() const override { return m_ViewMatrix; };
+		const glm::vec3& GetForwardVector() const override { return m_FrontVector; }
 
 		// Setters for common camera data
 		void SetProjection(float32 fov, float32 ratio, float32 zNear, float32 zFar);
