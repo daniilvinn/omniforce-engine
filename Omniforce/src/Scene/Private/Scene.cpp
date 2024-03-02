@@ -125,7 +125,6 @@ namespace Omni {
 				// Add sprite to a render queue
 				m_Renderer->RenderSprite(sprite);
 			});
-			
 
 			// 3D
 			m_Registry.view<MeshComponent>().each([&, asset_manager = AssetManager::Get(), scene = this](auto e, auto& mesh_data) {
@@ -153,6 +152,8 @@ namespace Omni {
 				light_data.position = trs_component.translation;
 				light_data.color = point_light.color;
 				light_data.intensity = point_light.intensity;
+				light_data.min_radius = point_light.min_radius;
+				light_data.radius = point_light.radius;
 
 				m_Renderer->AddPointLight(light_data);
 

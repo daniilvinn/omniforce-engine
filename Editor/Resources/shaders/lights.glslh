@@ -8,6 +8,18 @@ layout(buffer_reference, scalar, buffer_reference_align = 4) buffer PointLight {
 	vec3 position;
 	vec3 color;
 	float intensity;
+	float min_radius;
+	float radius;
 };
+
+float ComputePointLightAttenuation(vec3 world_position, PointLight point_light) {
+	// If fragment is within min_radius sphere, no attenuation is applied. 
+	// If fragment is within [min_radius, radius) range, attenuation is applied. 
+	// If fragment is outside of `radius` sphere, no lighting is applied.
+
+	float distance = length(point_light.position - world_position);
+    float attenuation = clamp(1.0 - (distance - point_light.min_radius) / (point_light.radius - point_light.min_radius), 0.0, 1.0);
+    return attenuation * attenuation;
+}
 
 #endif
