@@ -290,26 +290,6 @@ namespace Omni {
 	{
 		uint64 camera_data_device_address = m_CameraDataBuffer->GetDeviceAddress() + m_CameraDataBuffer->GetFrameOffset();
 
-		// Render 2D
-		// TODO: render 2D after 3D
-		{
-			Renderer::BeginRender({ m_CurrectMainRenderTarget, m_CurrentDepthAttachment }, m_CurrectMainRenderTarget->GetSpecification().extent, { 0, 0 }, { 0.2f, 0.2f, 0.3f, 1.0f });
-			m_SpriteDataBuffer->UploadData(
-				Renderer::GetCurrentFrameIndex() * m_SpriteBufferSize,
-				m_SpriteQueue.data(),
-				m_SpriteQueue.size() * sizeof(Sprite)
-			);
-
-			MiscData pc = {};
-			pc.data = (byte*)new uint64;
-			memcpy(pc.data, &camera_data_device_address, sizeof uint64);
-			pc.size = sizeof uint64;
-
-			Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], m_SpritePass, 0);
-			Renderer::RenderQuads(m_SpritePass, m_SpriteQueue.size(), pc);
-			Renderer::EndRender({ m_CurrectMainRenderTarget });
-		}
-
 		// Copy data to render queues and clear culling pipeline output buffers
 		std::vector<std::pair<Shared<DeviceBuffer>, PipelineResourceBarrierInfo>> buffers_clear_barriers;
 		for (auto& host_render_queue : m_HostRenderQueue) {
@@ -426,13 +406,7 @@ namespace Omni {
 			{ 0.2f, 0.2f, 0.3f, 1.0 }
 		);
 
-		int x = 0;
 		for (auto& device_render_queue : m_DeviceRenderQueue) {
-			if (!x) {
-				x = 1;
-				continue;
-			}
-
 			Shared<DeviceBuffer> indirect_params_buffer = m_DeviceIndirectDrawParams[device_render_queue.first];
 			Shared<DeviceBuffer> culled_objects_buffer = m_CulledDeviceRenderQueue[device_render_queue.first];
 
@@ -492,10 +466,31 @@ namespace Omni {
 		pbr_pc.data = (byte*)pbr_push_constants;
 		pbr_pc.size = sizeof PBRFullScreenPassPushConstants;
 
-		Renderer::BeginRender({ m_CurrectMainRenderTarget }, m_CurrectMainRenderTarget->GetSpecification().extent, { 0, 0 }, { 0.0f, 0.0f, 0.0f, 0.0f });
+		// PBR full screen pass
+		Renderer::BeginRender({ m_CurrectMainRenderTarget }, m_CurrectMainRenderTarget->GetSpecification().extent, { 0, 0 }, { 0.0f, 0.0f, 0.0f, 1.0f });
 		Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], m_PBRFullscreenPipeline, 0);
 		Renderer::RenderQuads(m_PBRFullscreenPipeline, pbr_pc);
 		Renderer::EndRender(m_CurrectMainRenderTarget);
+
+		// Render 2D
+		// TODO: render 2D after 3D
+		{
+			Renderer::BeginRender({ m_CurrectMainRenderTarget, m_CurrentDepthAttachment }, m_CurrectMainRenderTarget->GetSpecification().extent, { 0, 0 }, { 0.2f, 0.2f, 0.3f, 0.0f });
+			m_SpriteDataBuffer->UploadData(
+				Renderer::GetCurrentFrameIndex() * m_SpriteBufferSize,
+				m_SpriteQueue.data(),
+				m_SpriteQueue.size() * sizeof(Sprite)
+			);
+
+			MiscData pc = {};
+			pc.data = (byte*)new uint64;
+			memcpy(pc.data, &camera_data_device_address, sizeof uint64);
+			pc.size = sizeof uint64;
+
+			Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], m_SpritePass, 0);
+			Renderer::RenderQuads(m_SpritePass, m_SpriteQueue.size(), pc);
+			Renderer::EndRender({ m_CurrectMainRenderTarget });
+		}
 
 		Renderer::Submit([=]() {
 			m_CurrectMainRenderTarget->SetLayout(
