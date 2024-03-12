@@ -73,7 +73,7 @@ namespace Omni {
 			spec.output_attachments_formats = {};
 			spec.primitive_restart_enable = false;
 			spec.color_blending_enable = true;
-			spec.depth_test_enable = false;
+			spec.depth_test_enable = true;
 			spec.multisampling_enable = false;
 			spec.sample_count = 1;
 

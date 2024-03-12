@@ -1,6 +1,3 @@
-[submodule "Omniforce/vendor/imgui"]
-	path = Omniforce/vendor/imgui
-	url = https://github.com/Darianopolis/imgui-dynamic.git
 [submodule "Omniforce/vendor/Jolt"]
 	path = Omniforce/vendor/Jolt
 	url = https://github.com/jrouwe/JoltPhysics.git
@@ -22,3 +19,6 @@
 [submodule "Omniforce/vendor/volk"]
 	path = Omniforce/vendor/volk
 	url = https://github.com/zeux/volk.git
+[submodule "Omniforce/vendor/imgui"]
+	path = Omniforce/vendor/imgui
+	url = https://github.com/ocornut/imgui.git

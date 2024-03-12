@@ -40,6 +40,7 @@ namespace Omni {
 		void RenderQuad(Shared<Pipeline> pipeline, MiscData data) override;
 		void RenderQuad(Shared<Pipeline> pipeline, uint32 amount, MiscData data) override;
 		void DispatchCompute(Shared<Pipeline> pipeline, const glm::uvec3& dimensions, MiscData data) override;
+		void RenderUnindexed(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vertex_buffer, MiscData data) override;
 
 		void RenderImGui() override;
 

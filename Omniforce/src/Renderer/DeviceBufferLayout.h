@@ -17,10 +17,10 @@ namespace Omni {
 
 		bool operator==(const DeviceBufferLayoutElement& other) const {
 			bool result = true;
-			result = name == other.name;
-			result = format == other.format;
-			result = size == other.size;
-			result = offset == other.offset;
+			result &= name == other.name;
+			result &= format == other.format;
+			result &= size == other.size;
+			result &= offset == other.offset;
 
 			return result;
 		}

@@ -62,6 +62,10 @@ namespace Omni {
 		const uint32 _unused = 0;
 	};
 
-	
+	struct ComputeClearPassPushConstants {
+		uint64 out_bda;
+		uint32 data_size;
+		uint32 value;
+	};
 
 }

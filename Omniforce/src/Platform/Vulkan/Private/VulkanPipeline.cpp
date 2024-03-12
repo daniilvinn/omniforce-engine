@@ -154,14 +154,13 @@ namespace Omni {
 
 		VkDynamicState dynamic_states[] = {
 			VK_DYNAMIC_STATE_VIEWPORT,
-			VK_DYNAMIC_STATE_SCISSOR,
-			VK_DYNAMIC_STATE_LINE_WIDTH
+			VK_DYNAMIC_STATE_SCISSOR
 		};
 
 		VkPipelineDynamicStateCreateInfo dynamic_state = {};
 		dynamic_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
 		dynamic_state.pDynamicStates = dynamic_states;
-		dynamic_state.dynamicStateCount = 3;
+		dynamic_state.dynamicStateCount = 2;
 
 		VkPipelineRasterizationStateCreateInfo rasterization_state = {};
 		rasterization_state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -211,7 +210,7 @@ namespace Omni {
 		depth_stencil_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 		depth_stencil_state.depthTestEnable = m_Specification.depth_test_enable;
 		depth_stencil_state.depthWriteEnable = m_Specification.depth_test_enable;
-		depth_stencil_state.depthCompareOp = VK_COMPARE_OP_LESS;
+		depth_stencil_state.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;
 		depth_stencil_state.depthBoundsTestEnable = VK_FALSE;
 		depth_stencil_state.stencilTestEnable = VK_FALSE;
 
@@ -312,7 +311,14 @@ namespace Omni {
 		compute_pipeline_create_info.layout = m_PipelineLayout;
 		compute_pipeline_create_info.stage = stage_create_info[0];
 
-		VK_CHECK_RESULT(vkCreateComputePipelines(device->Raw(), VK_NULL_HANDLE, 1, &compute_pipeline_create_info, nullptr, &m_Pipeline));
+		VkResult result = vkCreateComputePipelines(device->Raw(), VK_NULL_HANDLE, 1, &compute_pipeline_create_info, nullptr, &m_Pipeline);
+		if (result != VK_SUCCESS)
+		{
+			OMNIFORCE_CORE_ERROR("Failed to create pipeline \"{0}\".", m_Specification.debug_name);
+			return;
+		}
+
+		OMNIFORCE_CORE_TRACE("Pipeline \"{0}\" created successfully", m_Specification.debug_name);
 
 	}
 

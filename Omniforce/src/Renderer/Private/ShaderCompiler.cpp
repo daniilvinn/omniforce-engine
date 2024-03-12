@@ -153,7 +153,7 @@ namespace Omni {
 		}
 
 		compilation_result.bytecode = std::move(binaries);
-		
+		OMNIFORCE_ASSERT_TAGGED(compilation_result.valid, "Shader compilation failed");
 
 		return compilation_result;
 	}

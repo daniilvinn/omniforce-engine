@@ -11,4 +11,8 @@ layout(buffer_reference, scalar, buffer_reference_align = 8) buffer RenderObject
 	uint64_t material_bda;
 };
 
+layout(buffer_reference, scalar, buffer_reference_align = 4) buffer CulledRenderObjectIndices {
+	uint index;
+};
+
 #endif

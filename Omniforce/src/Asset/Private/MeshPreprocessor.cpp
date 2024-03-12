@@ -105,4 +105,40 @@ namespace Omni {
 		memcpy(indices.data(), remapped_ib.data(), remapped_ib.size() * sizeof(uint32));
 	}
 
+	std::vector<glm::vec3> MeshPreprocessor::RemapVertices(const std::vector<glm::vec3>& src_vertices, const std::vector<uint32> remap_table)
+	{
+		std::vector<glm::vec3> result;
+		result.reserve(remap_table.size());
+
+		for (auto& index : remap_table)
+			result.push_back(src_vertices[index]);
+
+		return result;
+	}
+
+	std::vector<glm::vec3> MeshPreprocessor::ConvertToLineTopology(const std::vector<glm::vec3>& vertices)
+	{
+		std::vector<glm::vec3> linesVertices;
+		linesVertices.reserve(vertices.size() * 1.4);
+
+		for (size_t i = 0; i < vertices.size(); i += 3) {
+			glm::vec3 v0 = vertices[i];
+			glm::vec3 v1 = vertices[i + 1];
+			glm::vec3 v2 = vertices[i + 2];
+
+			linesVertices.push_back(v0);
+			linesVertices.push_back(v1);
+
+			linesVertices.push_back(v1);
+			linesVertices.push_back(v2);
+
+			linesVertices.push_back(v2);
+			linesVertices.push_back(v0);
+		}
+
+		linesVertices.shrink_to_fit();
+
+		return linesVertices;
+	}
+
 }

@@ -31,6 +31,24 @@ namespace Omni {
 		case ImageUsage::DEPTH_BUFFER:		this->CreateDepthBuffer();		break;
 		default:							std::unreachable();				break;
 		}
+
+		OMNI_DEBUG_ONLY_CODE(
+			VkDebugUtilsObjectNameInfoEXT name_info = {};
+			name_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+			name_info.objectType = VK_OBJECT_TYPE_IMAGE;
+			name_info.objectHandle = (uint64)m_Image;
+			name_info.pObjectName = spec.debug_name.c_str();
+
+			vkSetDebugUtilsObjectNameEXT(VulkanGraphicsContext::Get()->GetDevice()->Raw(), &name_info);
+
+			VkDebugUtilsObjectNameInfoEXT view_name_info = {};
+			view_name_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+			view_name_info.objectType = VK_OBJECT_TYPE_IMAGE_VIEW;
+			view_name_info.objectHandle = (uint64)m_ImageView;
+			view_name_info.pObjectName = fmt::format("{} view", spec.debug_name.c_str()).c_str();
+
+			vkSetDebugUtilsObjectNameEXT(VulkanGraphicsContext::Get()->GetDevice()->Raw(), &view_name_info);
+		);
 	}
 
 	VulkanImage::VulkanImage(const ImageSpecification& spec, VkImage image, VkImageView view)
@@ -71,7 +89,7 @@ namespace Omni {
 		m_ImageView = VK_NULL_HANDLE;
 	}
 
-	void VulkanImage::SetLayout(Shared<DeviceCmdBuffer> cmd_buffer, ImageLayout new_layout, PipelineStage src_stage, PipelineStage dst_stage, PipelineAccess src_access, PipelineAccess dst_access)
+	void VulkanImage::SetLayout(Shared<DeviceCmdBuffer> cmd_buffer, ImageLayout new_layout, PipelineStage src_stage, PipelineStage dst_stage, BitMask src_access, BitMask dst_access)
 	{
 		Shared<VulkanDeviceCmdBuffer> vk_cmd_buffer = ShareAs<VulkanDeviceCmdBuffer>(cmd_buffer);
 
@@ -140,7 +158,8 @@ namespace Omni {
 		barrier.image = m_Image;
 		barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		barrier.dstAccessMask = 0;
+		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		barrier.subresourceRange.baseArrayLayer = 0;
 		barrier.subresourceRange.layerCount = 1;
@@ -148,7 +167,7 @@ namespace Omni {
 		barrier.subresourceRange.levelCount = texture_create_info.mipLevels;
 
 		vkCmdPipelineBarrier(cmd_buffer,
-			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+			VK_PIPELINE_STAGE_TRANSFER_BIT,
 			VK_PIPELINE_STAGE_TRANSFER_BIT,
 			0,
 			0,
@@ -286,8 +305,8 @@ namespace Omni {
 			ImageLayout::COLOR_ATTACHMENT,
 			PipelineStage::TOP_OF_PIPE,
 			PipelineStage::COLOR_ATTACHMENT_OUTPUT,
-			PipelineAccess::NONE,
-			PipelineAccess::COLOR_ATTACHMENT_WRITE
+			(BitMask)PipelineAccess::NONE,
+			(BitMask)PipelineAccess::COLOR_ATTACHMENT_WRITE
 		);
 		cmd_buffer->End();
 		cmd_buffer->Execute(true);
@@ -343,8 +362,8 @@ namespace Omni {
 			ImageLayout::DEPTH_STENCIL_ATTACHMENT,
 			PipelineStage::TOP_OF_PIPE,
 			PipelineStage::COLOR_ATTACHMENT_OUTPUT,
-			PipelineAccess::NONE,
-			PipelineAccess::COLOR_ATTACHMENT_WRITE
+			(BitMask)PipelineAccess::NONE,
+			(BitMask)PipelineAccess::COLOR_ATTACHMENT_WRITE
 		);
 		cmd_buffer->End();
 		cmd_buffer->Execute(true);

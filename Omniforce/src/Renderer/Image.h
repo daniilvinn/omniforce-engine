@@ -66,6 +66,7 @@ namespace Omni {
 		ImageType type;
 		uint8 array_layers;
 		uint8 mip_levels;
+		OMNI_DEBUG_ONLY_FIELD(std::string debug_name);
 
 		static ImageSpecification Default() {
 			ImageSpecification spec;
@@ -75,6 +76,7 @@ namespace Omni {
 			spec.type = ImageType::TYPE_2D;
 			spec.mip_levels = 1;
 			spec.array_layers = 1;
+			OMNI_DEBUG_ONLY_CODE(spec.debug_name = "");
 
 			return spec;
 		};
@@ -96,8 +98,8 @@ namespace Omni {
 			ImageLayout new_layout,
 			PipelineStage src_stage,
 			PipelineStage dst_stage,
-			PipelineAccess src_access = PipelineAccess::NONE,
-			PipelineAccess dst_access = PipelineAccess::NONE
+			BitMask src_access = 0,
+			BitMask dst_access = 0
  		) = 0;
 
 	protected:

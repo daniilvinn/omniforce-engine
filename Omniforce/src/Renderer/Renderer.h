@@ -57,6 +57,7 @@ namespace Omni {
 		static void RenderQuads(Shared<Pipeline> pipeline, MiscData data);
 		static void RenderQuads(Shared<Pipeline> pipeline, uint32 amount, MiscData data);
 		static void DispatchCompute(Shared<Pipeline> pipeline, const glm::uvec3& dimensions, MiscData data);
+		static void RenderUnindexed(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vertex_buffer, MiscData data);
 
 		static void Render();
 		static void RenderImGui();

@@ -67,8 +67,8 @@ namespace Omni {
 		m_Yaw = -90.0f;
 		m_Pitch = 0.0f;
 		m_Roll = 0.0f;
-		m_ZNear = 0.001f;
-		m_ZFar = 1000.0f;
+		m_ZNear = cMinNearPlaneDistance;
+		m_ZFar = cMaxFarPlaneDistance;
 		m_AspectRatio = 16.0f / 9.0f;
 		m_FieldOfView = glm::radians(60.0f);
 
@@ -84,7 +84,7 @@ namespace Omni {
 		m_ZNear = zNear;
 		m_ZFar = zFar;
 
-		m_ProjectionMatrix = glm::perspective(fov, ratio, zNear, zFar);
+		m_ProjectionMatrix = glm::perspective(fov, ratio, zFar, zNear);
 		m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
 	}
 

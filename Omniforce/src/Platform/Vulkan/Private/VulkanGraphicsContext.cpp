@@ -62,6 +62,7 @@ namespace Omni {
 		device_features.geometryShader = true;
 		device_features.tessellationShader = true;
 		device_features.shaderInt64 = true;
+		device_features.wideLines = true;
 
 		Shared<VulkanPhysicalDevice> device = VulkanPhysicalDevice::Select(this);
 		m_Device = std::make_shared<VulkanDevice>(device, std::forward<VkPhysicalDeviceFeatures>(device_features));
@@ -120,6 +121,12 @@ namespace Omni {
 
 	std::vector<const char*> VulkanGraphicsContext::GetVulkanLayers()
 	{
+		uint32 property_count = 0;
+		vkEnumerateInstanceLayerProperties(&property_count, nullptr);
+
+		std::vector<VkLayerProperties> layer_properties(property_count);
+		vkEnumerateInstanceLayerProperties(&property_count, layer_properties.data());
+
 		std::vector<const char*> layers;
 		if (OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG)
 		{

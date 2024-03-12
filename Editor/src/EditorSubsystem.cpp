@@ -217,7 +217,7 @@ public:
 		m_EditorScene->EditorSetCamera(ShareAs<Camera>(m_EditorCamera));
 		m_CurrentScene = m_EditorScene;
 
-		ImGuizmo::SetOrthographic(true);
+		ImGuizmo::SetOrthographic(false);
 		
 		m_ProjectPath = "resources/SandboxProject";
 		m_ProjectFilename = "Sandbox.omni";
@@ -258,7 +258,7 @@ public:
 				if (Input::KeyPressed(KeyCode::KEY_W))
 					m_CurrentOperation = ImGuizmo::OPERATION::TRANSLATE;
 				if (Input::KeyPressed(KeyCode::KEY_E))
-					m_CurrentOperation = ImGuizmo::OPERATION::ROTATE;
+					m_CurrentOperation = ImGuizmo::OPERATION(ImGuizmo::OPERATION::ROTATE & ~(ImGuizmo::OPERATION::ROTATE_SCREEN));
 				if (Input::KeyPressed(KeyCode::KEY_R))
 					m_CurrentOperation = ImGuizmo::OPERATION::SCALE;
 			}

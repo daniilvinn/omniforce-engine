@@ -143,6 +143,13 @@ namespace Omni {
 
 		OMNIFORCE_CORE_TRACE("Initialized ImGui GLFW implementation for Vulkan");
 
+		VkFormat format[1] = { VK_FORMAT_B8G8R8A8_UNORM };
+
+		VkPipelineRenderingCreateInfo pipeline_rendering_create_info = {};
+		pipeline_rendering_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+		pipeline_rendering_create_info.colorAttachmentCount = 1;
+		pipeline_rendering_create_info.pColorAttachmentFormats = format;
+
 		ImGui_ImplVulkan_InitInfo init_info = {};
 		init_info.Instance = context->GetVulkanInstance();
 		init_info.PhysicalDevice = device->GetPhysicalDevice()->Raw();
@@ -153,22 +160,16 @@ namespace Omni {
 		init_info.MinImageCount = Renderer::GetConfig().frames_in_flight;
 		init_info.ImageCount = Renderer::GetConfig().frames_in_flight;
 		init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+		init_info.UseDynamicRendering = true;
+		init_info.PipelineRenderingCreateInfo = pipeline_rendering_create_info;
 
-		ImGui_ImplVulkan_Init(&init_info, VK_FORMAT_B8G8R8A8_UNORM);
+		ImGui_ImplVulkan_Init(&init_info);
 
 		OMNIFORCE_CORE_TRACE("[ImGuiRenderer]: Min image count: {} | image count: {}", init_info.MinImageCount, init_info.ImageCount);
 
 		ImFont* m_MainFont = io.Fonts->AddFontFromFileTTF("resources/fonts/roboto.ttf", 16);
 
-		VkCommandBufferBeginInfo begin_info = {};
-		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-		auto cmd_buffer = device->AllocateTransientCmdBuffer();
-		ImGui_ImplVulkan_CreateFontsTexture(cmd_buffer);
-		device->ExecuteTransientCmdBuffer(cmd_buffer);
-
-		ImGui_ImplVulkan_DestroyFontUploadObjects();
+		ImGui_ImplVulkan_CreateFontsTexture();
 
 		OMNIFORCE_CORE_TRACE("Launched ImGui renderer");
 	}
@@ -223,44 +224,14 @@ namespace Omni {
 			Shared<VulkanImageSampler> vk_sampler = ShareAs<VulkanImageSampler>(sampler);
 			if (imgui_image_descriptor_sets.find(image->Handle) == imgui_image_descriptor_sets.end()) {
 
-				ImageLayout old_layout = vk_image->GetCurrentLayout();
-				bool needs_layout_transition = vk_image->GetCurrentLayout() != ImageLayout::SHADER_READ_ONLY;
-				Shared<DeviceCmdBuffer> cmd_buffer = std::make_shared<VulkanDeviceCmdBuffer>(DeviceCmdBufferLevel::PRIMARY, DeviceCmdBufferType::TRANSIENT, DeviceCmdType::GENERAL);
-
-				if (needs_layout_transition) {
-					cmd_buffer->Begin();
-					vk_image->SetLayout(cmd_buffer,
-						ImageLayout::SHADER_READ_ONLY,
-						PipelineStage::TOP_OF_PIPE,
-						PipelineStage::BOTTOM_OF_PIPE,
-						PipelineAccess::NONE,
-						PipelineAccess::NONE
-					);
-					cmd_buffer->End();
-					cmd_buffer->Execute(true);
-				}
+				
 
 				VkDescriptorSet imgui_image_id = ImGui_ImplVulkan_AddTexture(
 					vk_sampler->Raw(),
 					vk_image->RawView(),
-					(VkImageLayout)vk_image->GetCurrentLayout()
+					VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 				);
 				imgui_image_descriptor_sets.emplace(image->Handle, imgui_image_id);
-
-				if (needs_layout_transition) {
-					cmd_buffer->Reset();
-					cmd_buffer->Begin();
-					vk_image->SetLayout(cmd_buffer,
-						old_layout,
-						PipelineStage::TOP_OF_PIPE,
-						PipelineStage::BOTTOM_OF_PIPE,
-						PipelineAccess::NONE,
-						PipelineAccess::NONE
-					);
-					cmd_buffer->End();
-					cmd_buffer->Execute(true);
-				}
-				cmd_buffer->Destroy();
 			}
 			ImGui::Image(imgui_image_descriptor_sets[image->Handle], size, { 0, (float32)!flip }, { 1, (float32)flip });
 		};
@@ -270,44 +241,12 @@ namespace Omni {
 			Shared<VulkanImageSampler> vk_sampler = ShareAs<VulkanImageSampler>(sampler);
 			if (imgui_image_descriptor_sets.find(image->Handle) == imgui_image_descriptor_sets.end()) {
 
-				ImageLayout old_layout = vk_image->GetCurrentLayout();
-				bool needs_layout_transition = vk_image->GetCurrentLayout() != ImageLayout::SHADER_READ_ONLY;
-				Shared<DeviceCmdBuffer> cmd_buffer = std::make_shared<VulkanDeviceCmdBuffer>(DeviceCmdBufferLevel::PRIMARY, DeviceCmdBufferType::TRANSIENT, DeviceCmdType::GENERAL);
-
-				if (needs_layout_transition) {
-					cmd_buffer->Begin();
-					vk_image->SetLayout(cmd_buffer,
-						ImageLayout::SHADER_READ_ONLY,
-						PipelineStage::TOP_OF_PIPE,
-						PipelineStage::BOTTOM_OF_PIPE,
-						PipelineAccess::NONE,
-						PipelineAccess::NONE
-					);
-					cmd_buffer->End();
-					cmd_buffer->Execute(true);
-				}
-
 				VkDescriptorSet imgui_image_id = ImGui_ImplVulkan_AddTexture(
 					vk_sampler->Raw(),
 					vk_image->RawView(),
-					(VkImageLayout)vk_image->GetCurrentLayout()
+					VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 				);
 				imgui_image_descriptor_sets.emplace(image->Handle, imgui_image_id);
-
-				if (needs_layout_transition) {
-					cmd_buffer->Reset();
-					cmd_buffer->Begin();
-					vk_image->SetLayout(cmd_buffer,
-						old_layout,
-						PipelineStage::TOP_OF_PIPE,
-						PipelineStage::BOTTOM_OF_PIPE,
-						PipelineAccess::NONE,
-						PipelineAccess::NONE
-					);
-					cmd_buffer->End();
-					cmd_buffer->Execute(true);
-				}
-				cmd_buffer->Destroy();
 			}
 			return ImGui::ImageButton(imgui_image_descriptor_sets[image->Handle], size, { 0, (float32)!flip }, { 1, (float32)flip });
 		}

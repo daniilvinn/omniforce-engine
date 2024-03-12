@@ -114,6 +114,11 @@ namespace Omni {
 		s_RendererAPI->DispatchCompute(pipeline, dimensions, data);
 	}
 
+	void Renderer::RenderUnindexed(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vertex_buffer, MiscData data)
+	{
+		s_RendererAPI->RenderUnindexed(pipeline, vertex_buffer, data);
+	}
+
 	uint32 Renderer::GetCurrentFrameIndex()
 	{
 		return s_RendererAPI->GetCurrentFrameIndex();
@@ -157,9 +162,10 @@ namespace Omni {
 			swapchain_image->SetLayout(
 				GetCmdBuffer(),
 				ImageLayout::PRESENT_SRC,
-				PipelineStage::TRANSFER,
-				PipelineStage::BOTTOM_OF_PIPE,
-				PipelineAccess::TRANSFER_WRITE
+				PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+				PipelineStage::ALL_COMMANDS,
+				(BitMask)PipelineAccess::COLOR_ATTACHMENT_WRITE,
+				(BitMask)PipelineAccess::MEMORY_READ
 			);
 		});
 		s_RendererAPI->EndCommandRecord();

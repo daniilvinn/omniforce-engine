@@ -41,7 +41,7 @@
 	#endif
 #endif
 
-#ifdef OMNIFORCE_RELEASE
+#ifdef OMNIFORCE_DEBUG
 	#define OMNIFORCE_ASSERT(expression)														\
 		do {																					\
 			if(!(expression)) {																	\
@@ -65,3 +65,11 @@
 	#define OMNIFORCE_ASSERT(expression)
 	#define OMNIFORCE_ASSERT_TAGGED(expression, ...)
 #endif
+
+#ifdef OMNIFORCE_DEBUG
+	#define	OMNI_DEBUG_ONLY_CODE(code) code 
+#else
+	#define OMNI_DEBUG_ONLY_CODE(code)
+#endif
+
+#define OMNI_DEBUG_ONLY_FIELD(field) OMNI_DEBUG_ONLY_CODE(field)

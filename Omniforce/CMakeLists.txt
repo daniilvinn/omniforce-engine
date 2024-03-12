@@ -63,7 +63,6 @@ target_link_libraries(
     ${ENGINE_TARGET}
     PRIVATE 
         glfw
-        #vulkan-1.lib
         debug shaderc_sharedd.lib optimized shaderc_shared.lib
         debug shaderc_utild.lib optimized shaderc_util.lib
         Jolt

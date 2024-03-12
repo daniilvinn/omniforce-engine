@@ -185,7 +185,7 @@ namespace Omni {
 				delete[] data.data;
 			}
 			uint32 max_draws = (vk_buffer->GetPerFrameSize() - 4) / sizeof glm::uvec3;
-			vkCmdDrawMeshTasksIndirectCountEXT(m_CurrentCmdBuffer->Raw(), vk_buffer->Raw(), vk_buffer->GetFrameOffset() + 4, vk_buffer->Raw(), vk_buffer->GetFrameOffset(), max_draws, sizeof VkDrawMeshTasksIndirectCommandEXT);
+			vkCmdDrawMeshTasksIndirectCountEXT(m_CurrentCmdBuffer->Raw(), vk_buffer->Raw(), 4, vk_buffer->Raw(), 0, max_draws, sizeof VkDrawMeshTasksIndirectCommandEXT);
 		});
 	}
 
@@ -276,26 +276,38 @@ namespace Omni {
 		});
 	}
 
+	void VulkanRenderer::RenderUnindexed(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vertex_buffer, MiscData data)
+	{
+		Renderer::Submit([=]() mutable {
+			Shared<VulkanPipeline> vk_pipeline = ShareAs<VulkanPipeline>(pipeline);
+
+			if (data.size) {
+				vkCmdPushConstants(m_CurrentCmdBuffer->Raw(), vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
+				delete[] data.data;
+			}
+
+			Shared<VulkanDeviceBuffer> vk_buffer = ShareAs<VulkanDeviceBuffer>(vertex_buffer);
+			VkBuffer vb = vk_buffer->Raw();
+			VkDeviceSize offset = 0;
+
+			uint32 vertex_count = ((VertexBufferData*)vk_buffer->GetAdditionalData())->vertex_count;
+
+			vkCmdBindVertexBuffers(m_CurrentCmdBuffer->Raw(), 0, 1, &vb, &offset);
+
+			vkCmdBindPipeline(m_CurrentCmdBuffer->Raw(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
+			vkCmdDraw(m_CurrentCmdBuffer->Raw(), vertex_count, 1, 0, 0);
+		});
+	}
+
 	void VulkanRenderer::RenderImGui()
 	{
 		auto image = m_Swapchain->GetCurrentImage();
-		
-		Renderer::Submit([=]() mutable {
-			image->SetLayout(
-				m_CurrentCmdBuffer,
-				ImageLayout::COLOR_ATTACHMENT,
-				PipelineStage::COLOR_ATTACHMENT_OUTPUT,
-				PipelineStage::BOTTOM_OF_PIPE,
-				PipelineAccess::COLOR_ATTACHMENT_WRITE,
-				PipelineAccess::NONE
-			);
-		});
 
 		BeginRender(
 			{ image },
 			image->GetSpecification().extent,
 			{ 0,0 },
-			{ 0.0f, 0.0f, 0.0f, 0.0f }
+			{ 0.0f, 0.0f, 0.0f, 1.0f }
 		);
 
 		Renderer::Submit([=]() mutable {
@@ -333,8 +345,8 @@ namespace Omni {
 				ImageLayout::TRANSFER_DST,
 				PipelineStage::COLOR_ATTACHMENT_OUTPUT,
 				PipelineStage::TRANSFER,
-				PipelineAccess::COLOR_ATTACHMENT_WRITE,
-				PipelineAccess::TRANSFER_READ
+				(BitMask)PipelineAccess::COLOR_ATTACHMENT_WRITE,
+				(BitMask)PipelineAccess::TRANSFER_READ
 			);
 
 			vkCmdBlitImage(
@@ -415,13 +427,33 @@ namespace Omni {
 				ImageSpecification target_spec = vk_target->GetSpecification();
 
 				if (target_spec.usage == ImageUsage::RENDER_TARGET) {
-					attachment->SetLayout(m_CurrentCmdBuffer,
-						ImageLayout::COLOR_ATTACHMENT,
-						PipelineStage::BOTTOM_OF_PIPE,
-						PipelineStage::COLOR_ATTACHMENT_OUTPUT,
-						PipelineAccess::NONE,
-						PipelineAccess::COLOR_ATTACHMENT_WRITE
+
+					VkImageMemoryBarrier target_barrier = {};
+					target_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+					target_barrier.image = vk_target->Raw();
+					target_barrier.oldLayout = (VkImageLayout)vk_target->GetCurrentLayout();
+					target_barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+					target_barrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+					target_barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+					target_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+					target_barrier.subresourceRange.baseArrayLayer = 0;
+					target_barrier.subresourceRange.baseMipLevel = 0;
+					target_barrier.subresourceRange.layerCount = 1;
+					target_barrier.subresourceRange.levelCount = 1;
+
+					vkCmdPipelineBarrier(m_CurrentCmdBuffer->Raw(),
+						VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+						VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+						0,
+						0,
+						nullptr,
+						0,
+						nullptr,
+						1, 
+						&target_barrier
 					);
+
+					vk_target->SetCurrentLayout(ImageLayout::COLOR_ATTACHMENT);
 
 					VkRenderingAttachmentInfo color_attachment = {};
 					color_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
@@ -447,7 +479,7 @@ namespace Omni {
 						depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 					else
 						depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-					depth_attachment.clearValue.depthStencil = { 1.0f, 0 };
+					depth_attachment.clearValue.depthStencil = { 0.0f, 0 };
 				}
 			}
 			
@@ -460,6 +492,8 @@ namespace Omni {
 			rendering_info.pColorAttachments = color_attachments.data();
 			rendering_info.pDepthAttachment = depth_attachment.imageView ? &depth_attachment : nullptr;
 			rendering_info.pStencilAttachment = nullptr;
+
+
 
 			VkRect2D scissor = { {0,0}, {render_area.x, render_area.y} };
 			VkViewport viewport = { 0, (float32)render_area.y, (float32)render_area.x, -(float32)render_area.y, 0.0f, 1.0f};

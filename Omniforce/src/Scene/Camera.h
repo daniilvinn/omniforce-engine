@@ -42,6 +42,9 @@ namespace Omni {
 		float32 m_ZNear = 0.0f;
 		float32 m_ZFar = 1.0f;
 		glm::vec3 m_Position = glm::vec3(0.0f);
+
+		const float32 cMinNearPlaneDistance = 10e-3f;
+		const float32 cMaxFarPlaneDistance = 10e2f;
 	};
 
 	// 2D camera, which uses orthographic matrix as projection matrix.

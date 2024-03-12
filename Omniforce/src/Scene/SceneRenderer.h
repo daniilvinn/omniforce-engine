@@ -90,6 +90,7 @@ namespace Omni {
 
 		Shared<Pipeline> m_SpritePass;
 		Shared<Pipeline> m_LinePass;
+		Shared<Pipeline> m_ClearPass;
 
 		// ~ Omni 2024 ~
 		Shared<DeviceBuffer> m_CameraDataBuffer;

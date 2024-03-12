@@ -1,18 +1,18 @@
 #include "Application.h"
 
-#include <Log/Logger.h>
 #include <Core/Events/ApplicationEvents.h>
-#include <Threading/JobSystem.h>
 #include <Core/Input/Input.h>
+#include <Core/Input/Input.h>
+#include <Log/Logger.h>
 #include <Renderer/Renderer.h>
 #include <Renderer/ShaderLibrary.h>
 #include <Asset/AssetManager.h>
 #include <Physics/PhysicsEngine.h>
-#include <Core/Input/Input.h>
 #include <Scripting/ScriptEngine.h>
 #include <Audio/AudioEngine.h>
+#include <Threading/JobSystem.h>
+#include <DebugUtils/DebugRenderer.h>
 
-#include <cassert>
 #include <chrono>
 
 namespace Omni 
@@ -27,7 +27,6 @@ namespace Omni
 
 	void Application::Launch(Options& options)
 	{
-		assert(s_Instance == nullptr);
 		s_Instance = this;
 		m_RootSystem = options.root_system;
 
@@ -68,6 +67,7 @@ namespace Omni
 		js->Execute(AssetManager::Init);
 		m_ImGuiRenderer = ImGuiRenderer::Create();
 		m_ImGuiRenderer->Launch(m_WindowSystem->GetWindow("main")->Raw());
+		DebugRenderer::Init();
 	}
 
 	void Application::Run()
@@ -85,6 +85,7 @@ namespace Omni
 	{
 		m_ImGuiRenderer->Destroy();
 		AssetManager::Shutdown();
+		DebugRenderer::Shutdown();
 		Renderer::Shutdown();
 
 		OMNIFORCE_CORE_INFO("Engine shutdown success");

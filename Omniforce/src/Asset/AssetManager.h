@@ -23,10 +23,6 @@ namespace Omni {
 
 		static AssetManager* Get() { return s_Instance; }
 
-		/*
-		*  @brief loads asset source (.jpg, .gltf etc.) and creates Omniforce resource file in current project's directory.
-		*  @return handle to an asset in asset registry.
-		*/
 		AssetHandle LoadAssetSource(std::filesystem::path path, const AssetHandle& id = AssetHandle());
 		AssetHandle RegisterAsset(Shared<AssetBase> asset, const AssetHandle& id = AssetHandle());
 		bool HasAsset(AssetHandle id) { return m_AssetRegistry.contains(id); }

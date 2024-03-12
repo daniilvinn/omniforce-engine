@@ -52,6 +52,16 @@ namespace Omni {
 			m_Specification.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
 
 		m_Allocation = alloc->AllocateBuffer(&buffer_create_info, vma_flags, &m_Buffer);
+
+		OMNI_DEBUG_ONLY_CODE(
+			VkDebugUtilsObjectNameInfoEXT name_info = {};
+			name_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+			name_info.objectType = VK_OBJECT_TYPE_BUFFER;
+			name_info.objectHandle = (uint64)m_Buffer;
+			name_info.pObjectName = spec.debug_name.c_str();
+
+			vkSetDebugUtilsObjectNameEXT(VulkanGraphicsContext::Get()->GetDevice()->Raw(), &name_info);
+		);
 	}
 
 	VulkanDeviceBuffer::VulkanDeviceBuffer(const DeviceBufferSpecification& spec, void* data, uint64 data_size)
@@ -133,11 +143,12 @@ namespace Omni {
 			buffer_memory_barrier.offset = 0;
 			buffer_memory_barrier.size = data_size;
 			buffer_memory_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			buffer_memory_barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
 
 			vkCmdPipelineBarrier(
 				cmd_buffer,
 				VK_PIPELINE_STAGE_TRANSFER_BIT,
-				VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+				VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
 				0,
 				0,
 				nullptr,
@@ -184,7 +195,7 @@ namespace Omni {
 
 			VertexBufferData* vbo_data = (VertexBufferData*)m_Data;
 			
-			vbo_data->vertex_count = data_size / sizeof(float32);
+			vbo_data->vertex_count = data_size / sizeof(glm::vec3);
 		}
 		
 	}

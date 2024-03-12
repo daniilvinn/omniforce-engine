@@ -40,7 +40,7 @@ namespace Omni {
 		HOST_WRITE = 0x00004000,
 		MEMORY_READ = 0x00008000,
 		MEMORY_WRITE = 0x00010000,
-		NONE = 0,
+		NONE = 0
 	};
 
 }
