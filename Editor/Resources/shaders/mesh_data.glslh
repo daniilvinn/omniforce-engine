@@ -28,7 +28,7 @@ layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer Mes
     #endif
 };
 
-layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer MeshMeshletsData {
+layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer MeshMeshletsData {
     uint vertex_offset;
     uint triangle_offset;
     uint vertex_count;

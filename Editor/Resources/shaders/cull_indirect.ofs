@@ -49,7 +49,7 @@ void main() {
         Sphere bounding_sphere = mesh_data.bounding_sphere;
 	    bounding_sphere.center = RotateByQuat(bounding_sphere.center * transform.scale, rotation_quaternion) + transform.translation;
 
-        if(FrustumTestBoundingSphere(pc.camera_data.frustum, bounding_sphere)) {
+       if(FrustumTestBoundingSphere(pc.camera_data.frustum, bounding_sphere)) {
             uint index = atomicAdd(pc.object_counter.count, 1);
 
             pc.culled_objects[index].transform = object.transform;
@@ -59,7 +59,7 @@ void main() {
             uint meshlet_count = uint(round((float(mesh_data.meshlet_count) / 32.0f) + 0.4999999f));
 
             pc.indirect_draw_params[index].draw_param = uvec3(meshlet_count, 1, 1);
-        }
+       }
     }
     
 }

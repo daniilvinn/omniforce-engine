@@ -260,8 +260,8 @@ void main() {
 	#ifdef __OMNI_HAS_BASE_COLOR_MAP
 		color = texture(texture_bank[material.base_color_map_index], vec2(v_InputAttributes.uv.x, 1.0f - v_InputAttributes.uv.y));
 		#ifdef __OMNI_HAS_ALPHA_CUTOFF // alpha masking
-			if(color.a == 0.0f || color.a < material.alpha_cutoff) discard;
-		#endif 
+			if(color.a <= material.alpha_cutoff) discard;
+		#endif
 	#endif
     out_color = color;
 
