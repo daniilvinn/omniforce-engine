@@ -75,7 +75,8 @@ namespace Omni
 		m_RootSystem->Launch();
 		while (m_Running) {
 			PreFrame();
-			m_RootSystem->OnUpdate(m_DeltaTimeData.delta_time);
+			if (!m_WindowSystem->GetWindow("main")->Minimized())
+				m_RootSystem->OnUpdate(m_DeltaTimeData.delta_time);
 			PostFrame();
 		}
 		m_RootSystem->Destroy();
@@ -102,19 +103,25 @@ namespace Omni
 
 	void Application::PreFrame()
 	{
-		m_DeltaTimeData.delta_time = (m_DeltaTimeData.current_frame_time - m_DeltaTimeData.last_frame_time);
-		m_DeltaTimeData.last_frame_time = m_DeltaTimeData.current_frame_time;
+		if (!m_WindowSystem->GetWindow("main")->Minimized()) {
+			m_DeltaTimeData.delta_time = (m_DeltaTimeData.current_frame_time - m_DeltaTimeData.last_frame_time);
+			m_DeltaTimeData.last_frame_time = m_DeltaTimeData.current_frame_time;
 
-		m_WindowSystem->PollEvents();
-		Renderer::BeginFrame();
-		m_ImGuiRenderer->BeginFrame();
+			Renderer::BeginFrame();
+
+			m_ImGuiRenderer->BeginFrame();
+		}
 	}
 
 	void Application::PostFrame()
 	{
-		m_ImGuiRenderer->EndFrame();
-		Renderer::Render();
-		Renderer::EndFrame();
+		if (!m_WindowSystem->GetWindow("main")->Minimized()) {
+			m_ImGuiRenderer->EndFrame();
+			Renderer::Render();
+			Renderer::EndFrame();
+		}
+
+		m_WindowSystem->PollEvents();
 		m_WindowSystem->ProcessEvents();
 
 		m_DeltaTimeData.current_frame_time = Input::Time();

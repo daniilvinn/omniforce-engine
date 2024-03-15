@@ -30,7 +30,7 @@ namespace Omni {
 			auto impl_window = (Win64AppWindow*)glfwGetWindowUserPointer(window);
 			impl_window->AllocateEvent<WindowResizeEvent>(resolution);
 
-			bool minimized = resolution.x && resolution.y;
+			bool minimized = !(resolution.x && resolution.y);
 			impl_window->SetMinimized(minimized);
 		});
 
