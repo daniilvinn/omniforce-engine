@@ -133,7 +133,7 @@ namespace Omni {
 			
 			JPH::BodyCreationSettings body_creation_settings;
 			body_creation_settings.mGravityFactor = (float32)!rb2d_component.disable_gravity;
-			body_creation_settings.mAllowedDOFs = JPH::EAllowedDOFs::Plane2D & (rb2d_component.lock_z_axis ? ~JPH::EAllowedDOFs::RotationZ : (JPH::EAllowedDOFs)0xFF);
+			body_creation_settings.mAllowedDOFs = JPH::EAllowedDOFs::All;
 			body_creation_settings.mMotionType = convert(rb2d_component.type);
 			body_creation_settings.mObjectLayer = rb2d_component.type == RigidBody2DComponent::Type::STATIC ? BodyLayers::NON_MOVING : BodyLayers::MOVING;
 			body_creation_settings.mLinearDamping = rb2d_component.linear_drag;
@@ -161,10 +161,10 @@ namespace Omni {
 						box_collider_component.restitution
 					)
 				);
-				// ngl I hope really much that I will not get an error while creating shapes
-				auto& trs = entity.GetComponent<TRSComponent>();
-				body_creation_settings.mPosition = { trs.translation.x, trs.translation.y, trs.translation.z };
 
+				auto& trs = entity.GetComponent<TRSComponent>();
+
+				body_creation_settings.mPosition = { trs.translation.x, trs.translation.y, trs.translation.z };
 				body_creation_settings.mRotation = JPH::Quat(trs.rotation.x, trs.rotation.y, trs.rotation.z, trs.rotation.w);
 
 				body_creation_settings.mUserData = entity.GetComponent<UUIDComponent>().id.Get();
@@ -187,9 +187,7 @@ namespace Omni {
 
 				auto& trs = entity.GetComponent<TRSComponent>();
 				body_creation_settings.mPosition = { trs.translation.x, trs.translation.y, trs.translation.z };
-
-				glm::quat q({ glm::radians(trs.rotation.x), glm::radians(trs.rotation.y), glm::radians(trs.rotation.z) });
-				body_creation_settings.mRotation = JPH::Quat(q.x, q.y, q.z, q.w);
+				body_creation_settings.mRotation = JPH::Quat(trs.rotation.x, trs.rotation.y, trs.rotation.z, trs.rotation.w);
 				body_creation_settings.mUserData = entity.GetComponent<UUIDComponent>().id.Get();
 				body_creation_settings.SetShape(sphere_shape_settings.Create().Get());
 				*body_id = body_interface.CreateAndAddBody(body_creation_settings, JPH::EActivation::Activate);
@@ -268,7 +266,7 @@ namespace Omni {
 			JPH::Quat rotation = body_interface.GetRotation(id);
 
 			trs_component.translation = { position.GetX(),position.GetY(),position.GetZ() };
-			trs_component.rotation = glm::quat(rotation.GetW(), rotation.GetX(), rotation.GetY(), rotation.GetZ());
+			trs_component.rotation = glm::normalize(glm::quat(rotation.GetW(), rotation.GetX(), rotation.GetY(), rotation.GetZ()));
 		}
 	}
 
