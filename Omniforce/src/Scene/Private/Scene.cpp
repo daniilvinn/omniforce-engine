@@ -60,6 +60,8 @@ namespace Omni {
 		ExplicitComponentCopy<SphereColliderComponent>(other->m_Registry, m_Registry, other->m_Entities);
 		ExplicitComponentCopy<ScriptComponent>(other->m_Registry, m_Registry, other->m_Entities);
 		ExplicitComponentCopy<HierarchyNodeComponent>(other->m_Registry, m_Registry, other->m_Entities);
+		ExplicitComponentCopy<MeshComponent>(other->m_Registry, m_Registry, other->m_Entities);
+		ExplicitComponentCopy<PointLightComponent>(other->m_Registry, m_Registry, other->m_Entities);
 
 		m_PhysicsSettings = other->GetPhysicsSettings();
 	}
@@ -96,7 +98,8 @@ namespace Omni {
 
 				camera_component.camera->CalculateMatrices();
 
-				m_Camera = camera_component.camera;
+				if(camera_component.primary)
+					m_Camera = camera_component.camera;
 			}
 		}
 

@@ -32,16 +32,16 @@ namespace Omni {
 
 			else {
 				if (Input::KeyPressed(KeyCode::KEY_W)) {
-					Move({ 0.0f, 0.0f, 50.0f * step });
+					Move({ 0.0f, 0.0f, 5.0f * step });
 				}
 				if (Input::KeyPressed(KeyCode::KEY_A)) {
-					Move({ -50.0f * step, 0.0f, 0.0f });
+					Move({ -5.0f * step, 0.0f, 0.0f });
 				}
 				if (Input::KeyPressed(KeyCode::KEY_S)) {
-					Move({ 0.0f, 0.0f, -50.0f * step });
+					Move({ 0.0f, 0.0f, -5.0f * step });
 				}
 				if (Input::KeyPressed(KeyCode::KEY_D)) {
-					Move({ 50.0f * step, 0.0f, 0.0f });
+					Move({ 5.0f * step, 0.0f, 0.0f });
 				}
 				if (Input::KeyPressed(KeyCode::KEY_Q)) {
 					Rotate(-150.0f * step, 0.0f, 0.0f, true);

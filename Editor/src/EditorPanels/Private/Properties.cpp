@@ -288,8 +288,6 @@ namespace Omni {
 											case (int32)CameraProjectionType::PROJECTION_3D: {
 												Shared<Camera>& camera = camera_component.camera;
 												Shared<Camera3D> camera_3D = std::make_shared<Camera3D>();
-												camera_3D->SetProjection(glm::radians(90.0f), 16.0 / 9.0, 0.0f, 100.0f);
-												camera_3D->Move({ 0.0f, 0.0f, 5.0f });
 
 												camera->SetType(CameraProjectionType::PROJECTION_3D);
 												camera = ShareAs<Camera>(camera_3D);
@@ -509,6 +507,11 @@ namespace Omni {
 								ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
 								if (ImGui::DragFloat("##sphere_collider_size_property", (float32*)&sphere_collider_component.radius, 0.01f, 0.01f, FLT_MAX))
 									if (sphere_collider_component.radius < 0.0f) sphere_collider_component.radius = 0.01f;
+
+								if (ImGui::IsItemActive()) {
+									TRSComponent trs_component = m_Entity.GetWorldTransform();
+									DebugRenderer::RenderWireframeSphere(trs_component.translation, sphere_collider_component.radius, { 0.28f, 0.27f, 1.0f });
+								}
 
 								// Friction
 								ImGui::TableNextRow();

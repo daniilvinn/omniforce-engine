@@ -114,14 +114,14 @@ public:
 				selected_node = m_SelectedEntity.GetComponent<UUIDComponent>();
 
 			if (m_InRuntime) {
-				if (m_RuntimeScene)
-					delete m_RuntimeScene;
 				m_RuntimeScene = new Scene(m_EditorScene); 
 				m_RuntimeScene->LaunchRuntime();
 				m_CurrentScene = m_RuntimeScene;
 			}
-			else { 
+			else {
 				m_RuntimeScene->ShutdownRuntime();
+				if (m_RuntimeScene)
+					delete m_RuntimeScene;
 				m_CurrentScene = m_EditorScene;
 				m_CurrentScene->EditorSetCamera(m_EditorCamera);
 			};
@@ -149,7 +149,9 @@ public:
 			m_ViewportFocused = ImGui::IsWindowFocused();
 			ImVec2 viewport_frame_size = ImGui::GetContentRegionAvail();
 			UI::RenderImage(m_EditorScene->GetFinalImage(), SceneRenderer::GetSamplerLinear(), viewport_frame_size, 0, true);
-			m_CurrentScene->GetCamera()->SetAspectRatio(viewport_frame_size.x / viewport_frame_size.y);
+
+			if(auto camera = m_CurrentScene->GetCamera(); camera != nullptr)
+				camera->SetAspectRatio(viewport_frame_size.x / viewport_frame_size.y);
 			
 			if (ImGui::BeginDragDropTarget()) {
 				ImGuiDragDropFlags target_flags = 0;
@@ -191,9 +193,6 @@ public:
 		}
 		ImGui::End();
 		ImGui::PopStyleVar();
-
-		
-		
 
 		// Update editor camera and scene
 		m_CurrentScene->OnUpdate(step);
