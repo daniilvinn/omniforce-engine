@@ -537,7 +537,6 @@ namespace Omni {
 			Renderer::EndRender({ m_CurrectMainRenderTarget });
 		}
 
-		DebugRenderer::RenderWireframeSphere({ 0.0f, 0.0f, 0.0f }, 10.0f, { 0.3f, 0.3f, 1.0f });
 		DebugRenderer::Render(m_CurrectMainRenderTarget);
 
 		Renderer::Submit([=]() {

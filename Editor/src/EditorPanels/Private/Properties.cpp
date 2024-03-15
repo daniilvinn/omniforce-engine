@@ -6,6 +6,7 @@
 #include <Core/Utils.h>
 #include <Filesystem/Filesystem.h>
 #include <Renderer/UI/ImGuiRenderer.h>
+#include <DebugUtils/DebugRenderer.h>
 
 #include "../../EditorUtils.h"
 
@@ -451,6 +452,12 @@ namespace Omni {
 									if (box_collider_component.size.y < 0.0f) box_collider_component.size.y = 0.01f;
 									if (box_collider_component.size.z < 0.0f) box_collider_component.size.z = 0.01f;
 								};
+								
+								if (ImGui::IsItemActive()) {
+									TRSComponent trs_component = m_Entity.GetWorldTransform();
+									// Multiply box collider size by 2 for rendering because Jolt takes half-size, and so in order to render it correctly we need to get full size (2x)
+									DebugRenderer::RenderWireframeBox(trs_component.translation, trs_component.rotation, box_collider_component.size * 2.0f, { 0.28f, 0.27f, 1.0f });
+								}
 
 								// convex radius
 								ImGui::TableNextRow();
@@ -567,6 +574,26 @@ namespace Omni {
 								ImGui::Text("Intensity");
 								ImGui::TableNextColumn();
 								ImGui::DragFloat("##plc_props_intensity_drag", &point_light_component.intensity, 0.01f);
+
+								ImGui::TableNextRow();
+								ImGui::TableNextColumn();
+								ImGui::Text("Min. radius");
+								ImGui::TableNextColumn();
+								ImGui::DragFloat("##plc_props_minrad_drag", &point_light_component.min_radius, 0.05f);
+								if (ImGui::IsItemActive()) {
+									DebugRenderer::RenderWireframeSphere(m_Entity.GetWorldTransform().translation, point_light_component.radius, { 0.28f, 0.27f, 1.0f });
+									DebugRenderer::RenderWireframeSphere(m_Entity.GetWorldTransform().translation, point_light_component.min_radius, { 1.0f, 0.6f, 1.0f });
+								}
+								
+								ImGui::TableNextRow();
+								ImGui::TableNextColumn();
+								ImGui::Text("Max. radius");
+								ImGui::TableNextColumn();
+								ImGui::DragFloat("##plc_props_maxrad_drag", &point_light_component.radius, 0.05f);
+								if (ImGui::IsItemActive()) {
+									DebugRenderer::RenderWireframeSphere(m_Entity.GetWorldTransform().translation, point_light_component.radius, { 0.28f, 0.27f, 1.0f });
+									DebugRenderer::RenderWireframeSphere(m_Entity.GetWorldTransform().translation, point_light_component.min_radius, { 1.0f, 0.6f, 1.0f });
+								}
 
 								ImGui::TableNextRow();
 								ImGui::TableNextColumn();

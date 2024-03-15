@@ -19,8 +19,8 @@ namespace Omni {
 
 		static void SetCameraBuffer(Shared<DeviceBuffer> buffer);
 
-		static void RenderWireframeSphere(const glm::vec3 position, float radius, const glm::vec3& color);
-		static void RenderWireframeBox(const TRS& trs);
+		static void RenderWireframeSphere(const glm::vec3& position, float radius, const glm::vec3& color);
+		static void RenderWireframeBox(const glm::vec3& translation, const glm::quat rotation, const glm::vec3 scale, const glm::vec3& color);
 
 		static void Render(Shared<Image> target);
 
@@ -40,7 +40,7 @@ namespace Omni {
 		Shared<Pipeline> m_WireframePipeline;
 		Shared<DeviceBuffer> m_CameraBuffer;
 		Shared<DeviceBuffer> m_IcosphereMesh;
-
+		Shared<DeviceBuffer> m_CubeMesh;
 
 		std::vector<std::function<void()>> m_DebugRequests;
 

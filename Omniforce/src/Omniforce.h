@@ -27,6 +27,7 @@
 #include <Renderer/Image.h>
 #include <Renderer/DescriptorSet.h>
 #include <Renderer/Mesh.h>
+#include <DebugUtils/DebugRenderer.h>
 
 // Scene
 #include <Scene/Scene.h>
