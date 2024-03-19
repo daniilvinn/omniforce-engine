@@ -25,6 +25,8 @@ namespace Omni {
 		if (buffer_flags & (uint64)DeviceBufferFlags::INDEX_TYPE_UINT8)		return VK_INDEX_TYPE_UINT8_EXT;
 		if (buffer_flags & (uint64)DeviceBufferFlags::INDEX_TYPE_UINT16)	return VK_INDEX_TYPE_UINT16;
 		if (buffer_flags & (uint64)DeviceBufferFlags::INDEX_TYPE_UINT32)	return VK_INDEX_TYPE_UINT32;
+
+		return VK_INDEX_TYPE_MAX_ENUM;
 	}
 
 	class VulkanDeviceBuffer : public DeviceBuffer {

@@ -54,6 +54,7 @@ namespace Omni {
 		default:							return AssetHandle(0);
 		}
 
+		return 0;
 	}
 
 	AssetHandle AssetManager::RegisterAsset(Shared<AssetBase> asset, const AssetHandle& id /*= AssetHandle()*/)

@@ -39,8 +39,8 @@ namespace Omni {
 	protected:
 		Event() {};
 		Event(Event::Type type) : m_Type(type) {};
-		Type m_Type;
-		Kind m_Kind;
+		Type m_Type = Type::WindowClose;
+		Kind m_Kind = Kind::Application;
 	};
 
 	class EventDispatcher

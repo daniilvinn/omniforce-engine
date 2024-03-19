@@ -15,7 +15,7 @@ namespace Omni {
 
 		void SetContext(Scene* ctx) override;
 
-		void Render() override;
+		void Update() override;
 
 	private:
 		void FetchCurrentDirectory();

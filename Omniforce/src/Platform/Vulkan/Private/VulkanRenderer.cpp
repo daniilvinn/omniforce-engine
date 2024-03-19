@@ -11,10 +11,9 @@
 #include <Renderer/ShaderLibrary.h>
 #include <Threading/JobSystem.h>
 
-#define VK_NO_PROTOTYPES
-#define IMGUI_IMPL_VULKAN_NO_PROTOTYPES
 #include <imgui.h>
-#include <backends/imgui_impl_vulkan.h>
+
+#include "backends/imgui_impl_vulkan.h"
 
 namespace Omni {
 

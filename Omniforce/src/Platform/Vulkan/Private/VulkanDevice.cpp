@@ -256,6 +256,10 @@ namespace Omni {
 			extensions.push_back(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME);
 		}
 
+		if (m_PhysicalDevice->IsExtensionSupported(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME)) {
+			extensions.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
+		}
+
 		OMNIFORCE_CORE_TRACE("Enabled Vulkan device extensions:");
 		for (auto& ext : extensions) {
 			OMNIFORCE_CORE_TRACE("\t{0}", ext);

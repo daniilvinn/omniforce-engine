@@ -19,7 +19,7 @@
 
 namespace Omni {
 
-	void PropertiesPanel::Render()
+	void PropertiesPanel::Update()
 	{
 		if (m_IsOpen)
 		{

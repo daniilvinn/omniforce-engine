@@ -7,17 +7,16 @@ namespace Omni {
 
 	struct DeviceBufferLayoutElement
 	{
-		std::string_view name;
-		DeviceDataType format;
-		uint32 size;
-		uint32 offset;
+		std::string name;
+		DeviceDataType format = DeviceDataType::FLOAT4;
+		uint32 size = 0;
+		uint32 offset = 0;
 
-		DeviceBufferLayoutElement(std::string_view name, DeviceDataType format)
-			: name(name), format(format) {}
+		DeviceBufferLayoutElement(const std::string& in_name, DeviceDataType format)
+			: name(in_name), format(format) {}
 
 		bool operator==(const DeviceBufferLayoutElement& other) const {
 			bool result = true;
-			result &= name == other.name;
 			result &= format == other.format;
 			result &= size == other.size;
 			result &= offset == other.offset;
@@ -30,7 +29,7 @@ namespace Omni {
 	{
 	public:
 		DeviceBufferLayout() {}
-		DeviceBufferLayout(const std::initializer_list<DeviceBufferLayoutElement> list) : m_Elements(list)
+		DeviceBufferLayout(const std::vector<DeviceBufferLayoutElement>& list) : m_Elements(list)
 		{
 			for (auto& element : m_Elements)
 			{
@@ -38,9 +37,18 @@ namespace Omni {
 				element.offset = m_Stride;
 				element.size = datasize;
 				m_Stride += datasize;
-
 			}
 		};
+
+		DeviceBufferLayout(DeviceBufferLayout& other) {
+			m_Stride = other.m_Stride;
+			m_Elements = other.m_Elements;
+		}
+
+		DeviceBufferLayout(const DeviceBufferLayout& other) {
+			m_Stride = other.m_Stride;
+			m_Elements = other.m_Elements;
+		}
 
 		uint32 GetStride() const { return m_Stride; }
 		const std::vector<DeviceBufferLayoutElement>& GetElements() const { return m_Elements; }

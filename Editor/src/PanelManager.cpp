@@ -25,8 +25,8 @@ namespace Omni {
 
 	void PanelManager::Update()
 	{
-		for (auto panel : m_Panels)
-			panel.second->Render();
+		for (auto& panel : m_Panels)
+			panel.second->Update();
 
 		for (auto& exec : m_SimplePanels)
 			exec.second();

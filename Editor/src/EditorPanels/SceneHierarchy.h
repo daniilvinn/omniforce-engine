@@ -10,7 +10,7 @@ namespace Omni {
 		SceneHierarchyPanel(Scene* ctx) : EditorPanel(ctx) { m_IsOpen = true; };
 		~SceneHierarchyPanel();
 
-		void Render() override;
+		void Update() override;
 		void SetContext(Scene* ctx) override;
 		void SetSelectedNode(Entity node, bool is_selected) { m_SelectedNode = node; m_IsSelected = is_selected; }
 

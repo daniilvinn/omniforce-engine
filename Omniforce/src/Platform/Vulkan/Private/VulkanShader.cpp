@@ -16,6 +16,8 @@ namespace Omni {
 		case ShaderStage::TASK:			return VK_SHADER_STAGE_TASK_BIT_EXT;
 		case ShaderStage::MESH:			return VK_SHADER_STAGE_MESH_BIT_EXT;
 		}
+
+		return (VkShaderStageFlagBits)0;
 	}
 
 	constexpr VkDescriptorType convert(SpvReflectDescriptorType type) {

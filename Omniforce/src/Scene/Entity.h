@@ -46,6 +46,8 @@ namespace Omni {
 			return (m_Handle == other.m_Handle) && (m_OwnerScene == other.m_OwnerScene);
 		}
 
+		bool Valid() const { return m_Handle != entt::null; }
+
 		void Invalidate() { // make this entity handle no longer valid
 			m_Handle = entt::null;
 			m_OwnerScene = nullptr;

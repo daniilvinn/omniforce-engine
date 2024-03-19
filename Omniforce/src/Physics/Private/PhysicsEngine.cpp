@@ -162,7 +162,7 @@ namespace Omni {
 					)
 				);
 
-				auto& trs = entity.GetComponent<TRSComponent>();
+				auto trs = entity.GetWorldTransform();
 
 				body_creation_settings.mPosition = { trs.translation.x, trs.translation.y, trs.translation.z };
 				body_creation_settings.mRotation = JPH::Quat(trs.rotation.x, trs.rotation.y, trs.rotation.z, trs.rotation.w);
@@ -182,8 +182,6 @@ namespace Omni {
 						sphere_collider_component.restitution
 					)
 				);
-
-				
 
 				auto& trs = entity.GetComponent<TRSComponent>();
 				body_creation_settings.mPosition = { trs.translation.x, trs.translation.y, trs.translation.z };
@@ -216,13 +214,13 @@ namespace Omni {
 	void PhysicsEngine::Update()
 	{
 		// fetch new objects' position which was changed from scripts
-		auto group = m_Context->GetRegistry()->group<RigidBody2DComponent, ScriptComponent>(entt::get<TRSComponent>);
+		auto view = m_Context->GetRegistry()->view<RigidBody2DComponent, ScriptComponent>();
 		JPH::BodyInterface& body_interface = m_CoreSystem->GetBodyInterface();
 
-		for (auto& e : group) {
+		for (auto& e : view) {
 			Entity entity(e, m_Context);
 
-			TRSComponent& trs = entity.GetComponent<TRSComponent>();
+			TRSComponent trs = entity.GetWorldTransform();
 			RigidBody2DComponent& rb2d_component = entity.GetComponent<RigidBody2DComponent>();
 			
 			body_interface.SetPosition(
@@ -267,6 +265,13 @@ namespace Omni {
 
 			trs_component.translation = { position.GetX(),position.GetY(),position.GetZ() };
 			trs_component.rotation = glm::normalize(glm::quat(rotation.GetW(), rotation.GetX(), rotation.GetY(), rotation.GetZ()));
+
+			// Transform back to local space if parented 
+			if (Entity parent = entity.GetParent(); parent.Valid()) {
+				TRSComponent parent_trs = parent.GetWorldTransform();
+				trs_component.translation -= parent_trs.translation;
+				trs_component.rotation *= glm::inverse(trs_component.rotation);
+			}
 		}
 	}
 
@@ -288,7 +293,6 @@ namespace Omni {
 
 		return { velocity.GetX(), velocity.GetY(), velocity.GetZ() };
 	}
-
 
 	void PhysicsEngine::SetLinearVelocity(Entity entity, fvec3 velocity)
 	{

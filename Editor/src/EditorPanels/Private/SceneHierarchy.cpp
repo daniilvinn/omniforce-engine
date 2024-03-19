@@ -13,7 +13,7 @@ namespace Omni {
 
 	}
 
-	void SceneHierarchyPanel::Render()
+	void SceneHierarchyPanel::Update()
 	{
 		if (m_IsOpen) {
 			ImGui::Begin("Scene Hierarchy", &m_IsOpen);

@@ -24,12 +24,13 @@ namespace Omni {
 		ShaderLibrary* shader_library = ShaderLibrary::Get();
 		shader_library->LoadShader("Resources/shaders/wireframe.ofs");
 
-		DeviceBufferLayout buffer_layout({ { "position", DeviceDataType::FLOAT3 } });
+		DeviceBufferLayoutElement element("position", DeviceDataType::FLOAT3);
+		DeviceBufferLayout buffer_layout(std::vector{ element });
 
 		PipelineSpecification pipeline_spec = PipelineSpecification::Default();
 		pipeline_spec.culling_mode = PipelineCullingMode::NONE;
 		pipeline_spec.debug_name = "debug renderer wireframe";
-		pipeline_spec.line_width = 4.0f;
+		pipeline_spec.line_width = 2.0f;
 		pipeline_spec.output_attachments_formats = { ImageFormat::RGB32_HDR };
 		pipeline_spec.topology = PipelineTopology::LINES;
 		pipeline_spec.shader = shader_library->GetShader("wireframe.ofs");

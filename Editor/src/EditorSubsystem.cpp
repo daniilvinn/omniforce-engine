@@ -3,6 +3,7 @@
 #include "EditorPanels/SceneHierarchy.h"
 #include "EditorPanels/Properties.h"
 #include "EditorPanels/ContentBrowser.h"
+#include "EditorPanels/Logs.h"
 
 #include "EditorCamera.h"
 
@@ -62,7 +63,7 @@ public:
 
 		//Render and process scene hierarchy panel
 		ImGui::BeginDisabled(m_InRuntime);
-		m_HierarchyPanel->Render();
+		m_HierarchyPanel->Update();
 		if (m_EntitySelected = m_HierarchyPanel->IsNodeSelected()) 
 		{
 			m_SelectedEntity = m_HierarchyPanel->GetSelectedNode();
@@ -70,10 +71,13 @@ public:
 
 		// Properties panel
 		m_PropertiesPanel->SetEntity(m_SelectedEntity, m_HierarchyPanel->IsNodeSelected());
-		m_PropertiesPanel->Render();
+		m_PropertiesPanel->Update();
 
 		// Asset panel
-		m_AssetsPanel->Render();
+		m_AssetsPanel->Update();
+
+		// Logs panel
+		m_LogsPanel->Update();
 
 		// Debug
 		ImGui::Begin("Debug");
@@ -95,6 +99,30 @@ public:
 
 			if (ImGui::Button("Reload script assemblies"))
 				ScriptEngine::Get()->ReloadAssemblies();
+
+			ImGui::Checkbox("Visualize physics colliders", &m_VisualizeColliders);
+
+			if (m_VisualizeColliders) {
+				auto box_colliders_view = m_EditorScene->GetRegistry()->view<BoxColliderComponent>();
+				for (auto& e : box_colliders_view) {
+					Entity entity(e, m_CurrentScene);
+					// Not world transform, since entities with rigid body must be not a child of another entity
+					const TRSComponent& trs = entity.GetComponent<TRSComponent>();
+					const BoxColliderComponent& bc_component = entity.GetComponent<BoxColliderComponent>();
+
+					DebugRenderer::RenderWireframeBox(trs.translation, trs.rotation, bc_component.size * 2.0f, { 0.28f, 0.27f, 1.0f });
+				}
+
+				auto sphere_colliders_view = m_EditorScene->GetRegistry()->view<SphereColliderComponent>();
+				for (auto& e : sphere_colliders_view) {
+					Entity entity(e, m_CurrentScene);
+					// Not world transform, since entities with rigid body must be not a child of another entity
+					const TRSComponent& trs = entity.GetComponent<TRSComponent>();
+					const SphereColliderComponent& sc_component = entity.GetComponent<SphereColliderComponent>();
+
+					DebugRenderer::RenderWireframeSphere(trs.translation, sc_component.radius, { 0.28f, 0.27f, 1.0f });
+				}
+			}
 		}
 		ImGui::End();
 		ImGui::EndDisabled();
@@ -209,6 +237,7 @@ public:
 		m_HierarchyPanel = new SceneHierarchyPanel(m_EditorScene);
 		m_PropertiesPanel = new PropertiesPanel(m_EditorScene);
 		m_AssetsPanel = new ContentBrowser(m_EditorScene);
+		m_LogsPanel = new LogsPanel(m_EditorScene);
 
 		m_ProjectPath = "";
 
@@ -320,8 +349,8 @@ public:
 		// unloading textures from memory and releasing their indices
 		AssetManager* asset_manager = AssetManager::Get();
 		Shared<SceneRenderer> renderer = m_EditorScene->GetRenderer();
-		auto texture_registry = *asset_manager->GetAssetRegistry();
-		for (auto& [id, asset] : texture_registry) {
+		auto& texture_registry = *asset_manager->GetAssetRegistry();
+		for (auto [id, asset] : texture_registry) {
 			if(asset->Type != AssetType::OMNI_IMAGE)
 				continue;
 			renderer->ReleaseResourceIndex(ShareAs<Image>(asset));
@@ -383,7 +412,7 @@ public:
 
 			glm::mat4 model = Utils::ComposeMatrix(trs.translation, trs.rotation, trs.scale);
 			glm::mat4 view = m_EditorCamera->GetViewMatrix();
-			glm::mat4 proj = m_EditorCamera->GetProjectionMatrix();
+			glm::mat4 proj = m_EditorCamera->BuildNonReversedProjection();
 
 			ImGuizmo::SetOrthographic(false);
 			ImGuizmo::SetDrawlist();
@@ -450,10 +479,12 @@ public:
 	bool m_EntitySelected = false;
 	bool m_ViewportFocused = false;
 	bool m_InRuntime = false;
+	bool m_VisualizeColliders = false;
 
 	SceneHierarchyPanel* m_HierarchyPanel;
 	PropertiesPanel* m_PropertiesPanel;
 	ContentBrowser* m_AssetsPanel;
+	LogsPanel* m_LogsPanel;
 
 	std::filesystem::path m_ProjectPath;
 	std::string m_ProjectFilename;

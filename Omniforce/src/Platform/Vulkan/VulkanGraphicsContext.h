@@ -30,10 +30,10 @@ namespace Omni {
 	private:
 		static VulkanGraphicsContext* s_Instance;
 
-		VkInstance m_VulkanInstance;
-		Shared<VulkanDevice> m_Device;
-		Shared<VulkanDebugUtils> m_DebugUtils;
-		Shared<VulkanSwapchain> m_Swapchain;
+		VkInstance m_VulkanInstance = VK_NULL_HANDLE;
+		Shared<VulkanDevice> m_Device = nullptr;
+		Shared<VulkanDebugUtils> m_DebugUtils = nullptr;
+		Shared<VulkanSwapchain> m_Swapchain = nullptr;
 
 	};
 

@@ -71,7 +71,7 @@ namespace Omni {
 		m_CurrentDirectory = m_WorkingDirectory;
 	}
 
-	void ContentBrowser::Render()
+	void ContentBrowser::Update()
 	{
 		auto texture_registry = AssetManager::Get()->GetAssetRegistry();
 
@@ -104,6 +104,7 @@ namespace Omni {
 				ImGui::SameLine();
 				if (ImGui::Button("Close")) {
 					m_CreateDirectoryWindowActive = false;
+					text.clear();
 				}
 
 				ImGui::End();
@@ -141,75 +142,75 @@ namespace Omni {
 			float cb_panel_width = ImGui::GetContentRegionAvail().x;
 			uint32 column_count = std::clamp((uint32)cb_panel_width / (uint32)cell_size, 1u, 15u);
 
-			ImGui::BeginTable("##cb_content_table", column_count);
-			ImGui::TableNextRow();
-			uint32 item_id = column_count;
-			bool filesystem_refetch_requested = false;
+			if (ImGui::BeginTable("##cb_content_table", column_count)) {
+				ImGui::TableNextRow();
+				uint32 item_id = column_count;
+				bool filesystem_refetch_requested = false;
 
-			for (auto& entry : m_CurrentDirectoryEntries) {
-				if (!(item_id % column_count))
-					ImGui::TableNextRow();
+				for (auto& entry : m_CurrentDirectoryEntries) {
+					if (!(item_id % column_count))
+						ImGui::TableNextRow();
 
-				ImGui::TableNextColumn();
+					ImGui::TableNextColumn();
 
-				ImGui::PushID(fmt::format("cb_item_{}", entry.string()).c_str());
+					ImGui::PushID(fmt::format("cb_item_{}", entry.string()).c_str());
 
-				if (std::filesystem::is_directory(entry)) {
-					ImGui::PushStyleColor(ImGuiCol_Button, { 0, 0, 0, 0 });
-					UI::RenderImageButton(m_IconMap["folder.png"], m_Context->GetRenderer()->GetSamplerLinear(), { thumbnail_size, thumbnail_size });
-					ImGui::PopStyleColor();
-				}
-				else if (entry.extension() == ".txt") {
-					UI::RenderImage(m_IconMap["document.png"], m_Context->GetRenderer()->GetSamplerLinear(), {thumbnail_size, thumbnail_size});
-				}
-				else {
-					UI::RenderImage(m_IconMap[AssetTypeToIcon(FileExtensionToAssetType(entry.extension().string()))], m_Context->GetRenderer()->GetSamplerLinear(), { thumbnail_size, thumbnail_size });
-				}
+					if (std::filesystem::is_directory(entry)) {
+						ImGui::PushStyleColor(ImGuiCol_Button, { 0, 0, 0, 0 });
+						UI::RenderImageButton(m_IconMap["folder.png"], m_Context->GetRenderer()->GetSamplerLinear(), { thumbnail_size, thumbnail_size });
+						ImGui::PopStyleColor();
+					}
+					else if (entry.extension() == ".txt") {
+						UI::RenderImage(m_IconMap["document.png"], m_Context->GetRenderer()->GetSamplerLinear(), { thumbnail_size, thumbnail_size });
+					}
+					else {
+						UI::RenderImage(m_IconMap[AssetTypeToIcon(FileExtensionToAssetType(entry.extension().string()))], m_Context->GetRenderer()->GetSamplerLinear(), { thumbnail_size, thumbnail_size });
+					}
 
-				ImGuiDragDropFlags drag_and_drop_flags = ImGuiDragDropFlags_None;
-				drag_and_drop_flags |= ImGuiDragDropFlags_SourceAllowNullID;
+					ImGuiDragDropFlags drag_and_drop_flags = ImGuiDragDropFlags_None;
+					drag_and_drop_flags |= ImGuiDragDropFlags_SourceAllowNullID;
 
-				if (ImGui::BeginDragDropSource(drag_and_drop_flags))
-				{
-					if (!(drag_and_drop_flags & ImGuiDragDropFlags_SourceNoPreviewTooltip))
-						ImGui::Text(entry.string().c_str());
-					ImGui::SetDragDropPayload("content_browser_item", entry.string().c_str(), entry.string().size());
-					ImGui::EndDragDropSource();
-				}
+					if (ImGui::BeginDragDropSource(drag_and_drop_flags))
+					{
+						if (!(drag_and_drop_flags & ImGuiDragDropFlags_SourceNoPreviewTooltip))
+							ImGui::Text(entry.string().c_str());
+						ImGui::SetDragDropPayload("content_browser_item", entry.string().c_str(), entry.string().size());
+						ImGui::EndDragDropSource();
+					}
 
-				ImGui::PopID();
+					ImGui::PopID();
 
-				if (ImGui::IsItemHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
-					ImGui::OpenPopup(fmt::format("##cb_item_actions_{}", entry.string()).c_str());
-				}
+					if (ImGui::IsItemHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
+						ImGui::OpenPopup(fmt::format("##cb_item_actions_{}", entry.string()).c_str());
+					}
 
-				else if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && std::filesystem::is_directory(entry)) {
-					m_CurrentDirectory /= entry.filename();
-					filesystem_refetch_requested = true;
-				}
-
-				if (ImGui::BeginPopup(fmt::format("##cb_item_actions_{}", entry.string()).c_str())) {
-					if (ImGui::MenuItem("Delete")) {
-						std::filesystem::remove_all(entry);
+					else if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && std::filesystem::is_directory(entry)) {
+						m_CurrentDirectory /= entry.filename();
 						filesystem_refetch_requested = true;
 					}
-					if ((uint8)FileExtensionToAssetType(entry.extension().string()) < 4) {
-						if (ImGui::MenuItem("Import")) {
-							m_ConvertAssetWindowActive = true;
+
+					if (ImGui::BeginPopup(fmt::format("##cb_item_actions_{}", entry.string()).c_str())) {
+						if (ImGui::MenuItem("Delete")) {
+							std::filesystem::remove_all(entry);
+							filesystem_refetch_requested = true;
 						}
+						if ((uint8)FileExtensionToAssetType(entry.extension().string()) < 4) {
+							if (ImGui::MenuItem("Import")) {
+								m_ConvertAssetWindowActive = true;
+							}
+						}
+						ImGui::EndPopup();
 					}
-					ImGui::EndPopup();
+
+					ImGui::TextWrapped(entry.filename().string().c_str());
+
+					item_id++;
+
 				}
-
-				ImGui::TextWrapped(entry.filename().string().c_str());
-
-				item_id++;
-
+				ImGui::EndTable();
+				if (filesystem_refetch_requested)
+					FetchCurrentDirectory();
 			}
-			ImGui::EndTable();
-
-			if(filesystem_refetch_requested)
-				FetchCurrentDirectory();
 
 			ImGui::End();
 		}

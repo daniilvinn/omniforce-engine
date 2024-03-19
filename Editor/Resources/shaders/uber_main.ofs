@@ -49,7 +49,7 @@ void main()
 
 	Sphere bounding_sphere = cull_bounds.bounding_sphere;
 	bounding_sphere.center = RotateByQuat(bounding_sphere.center * transform.scale, rotation_quaternion) + transform.translation;
-	bounding_sphere.radius = bounding_sphere.radius * max(transform.scale.xy, transform.scale.z);
+	bounding_sphere.radius = bounding_sphere.radius * max(max(transform.scale.x, transform.scale.y), transform.scale.z);
 
 	// Cull
 	if((dot(normalize(cone_apex - pc.camera_data.position), cone_axis) < cull_bounds.cone_cutoff) && FrustumTestBoundingSphere(pc.camera_data.frustum, bounding_sphere)) {

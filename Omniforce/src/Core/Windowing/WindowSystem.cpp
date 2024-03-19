@@ -12,8 +12,10 @@ namespace Omni {
 		case OMNIFORCE_PLATFORM_WIN64:
 			s_Instance = new Win64WindowSystem();
 			return s_Instance;
-		default:
-			break;
+		default: {
+			std::unreachable();
+			return nullptr;
+		}
 		}
 	}
 

@@ -48,7 +48,7 @@ void main() {
 
         Sphere bounding_sphere = mesh_data.bounding_sphere;
 	    bounding_sphere.center = RotateByQuat(bounding_sphere.center * transform.scale, rotation_quaternion) + transform.translation;
-        bounding_sphere.radius = bounding_sphere.radius * max(transform.scale.xy, transform.scale.z); 
+        bounding_sphere.radius = bounding_sphere.radius * max(max(transform.scale.x, transform.scale.y), transform.scale.z); 
 
        if(FrustumTestBoundingSphere(pc.camera_data.frustum, bounding_sphere)) {
             uint index = atomicAdd(pc.object_counter.count, 1);

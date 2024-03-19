@@ -23,7 +23,7 @@ namespace Omni {
 		m_ZFar = zFar;
 		m_AspectRatio = (std::abs(left) + std::abs(right)) / (std::abs(bottom) + std::abs(top));
 
-		m_ProjectionMatrix = glm::ortho(left, right, bottom, top, zNear, zFar);
+		m_ProjectionMatrix = glm::ortho(left, right, bottom, top, zFar, zNear);
 		m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
 	}
 
@@ -47,6 +47,11 @@ namespace Omni {
 	{
 		m_AspectRatio = ratio;
 		SetProjection(-m_AspectRatio * m_Scale, m_AspectRatio * m_Scale, -m_Scale, m_Scale, m_ZNear, m_ZFar);
+	}
+
+	glm::mat4 Camera2D::BuildNonReversedProjection() const
+	{
+		return glm::ortho(-m_AspectRatio * m_Scale, m_AspectRatio * m_Scale, m_Scale, m_Scale, m_ZNear, m_ZFar);
 	}
 
 	void Camera2D::CalculateMatrices()
@@ -179,6 +184,11 @@ namespace Omni {
 			plane.normal = glm::normalize(plane.normal);
 
 		return frustum;
+	}
+
+	glm::mat4 Camera3D::BuildNonReversedProjection() const
+	{
+		return glm::perspective(m_FieldOfView, m_AspectRatio, m_ZNear, m_ZFar);
 	}
 
 	void Camera3D::CalculateVectors()

@@ -2,7 +2,6 @@
 
 #include "SceneCommon.h"
 
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 
 namespace Omni {
@@ -34,6 +33,7 @@ namespace Omni {
 		virtual void SetAspectRatio(float32 ratio) = 0;
 
 		virtual Frustum GenerateFrustum() = 0;
+		virtual glm::mat4 BuildNonReversedProjection() const = 0;
 
 	protected:
 		Camera(CameraProjectionType type) : m_Type(type) {}
@@ -70,6 +70,7 @@ namespace Omni {
 		float32 GetScale() const { return m_Scale; }
 
 		Frustum GenerateFrustum() override { return {}; };
+		glm::mat4 BuildNonReversedProjection() const override;
 		void CalculateMatrices() override;
 
 	protected:
@@ -116,6 +117,7 @@ namespace Omni {
 
 		void CalculateMatrices() override;
 		Frustum GenerateFrustum() override;
+		glm::mat4 BuildNonReversedProjection() const override;
 
 	private:
 		void CalculateVectors();

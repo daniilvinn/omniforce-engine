@@ -5,10 +5,8 @@
 #include "../VulkanImage.h"
 
 #include <GLFW/glfw3.h>
-
-#define IMGUI_IMPL_VULKAN_NO_PROTOTYPES
-#include <backends/imgui_impl_glfw.h>
-#include <backends/imgui_impl_vulkan.h>
+#include "backends/imgui_impl_vulkan.h"
+#include "backends/imgui_impl_glfw.h"
 #include <robin_hood.h>
 #include <ImGuizmo.h>
 
@@ -60,7 +58,7 @@ namespace Omni {
 
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
-		ImGuiIO& io = ImGui::GetIO(); (void)io;
+		ImGuiIO& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
@@ -198,7 +196,6 @@ namespace Omni {
 	void VulkanImGuiRenderer::EndFrame()
 	{
 		OnRender();
-
 		Renderer::Submit([]() {
 			ImGuiIO& io = ImGui::GetIO(); (void)io;
 			if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
@@ -206,6 +203,7 @@ namespace Omni {
 				ImGui::RenderPlatformWindowsDefault();
 			}
 		});
+
 	}
 
 
