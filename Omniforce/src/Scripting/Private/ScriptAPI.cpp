@@ -70,13 +70,13 @@ namespace Omni {
 		char* msg = mono_string_to_utf8(message);
 		switch (severity)
 		{
-		case Logger::Level::LEVEL_TRACE:			OMNIFORCE_CLIENT_TRACE("[Script] {}", msg);		break;
-		case Logger::Level::LEVEL_INFO:				OMNIFORCE_CLIENT_INFO("[Script] {}", msg);		break;
-		case Logger::Level::LEVEL_WARN:				OMNIFORCE_CLIENT_WARNING("[Script] {}", msg);	break;
-		case Logger::Level::LEVEL_ERROR:			OMNIFORCE_CLIENT_ERROR("[Script] {}", msg);		break;
-		case Logger::Level::LEVEL_CRITICAL:			OMNIFORCE_CLIENT_CRITICAL("[Script] {}", msg);	break;
-		case Logger::Level::LEVEL_NONE:																break;
-		default:									std::unreachable();								break;
+		case Logger::Level::LEVEL_TRACE:			OMNIFORCE_CUSTOM_LOGGER_TRACE("Game", msg);			break;
+		case Logger::Level::LEVEL_INFO:				OMNIFORCE_CUSTOM_LOGGER_INFO("Game", msg);			break;
+		case Logger::Level::LEVEL_WARN:				OMNIFORCE_CUSTOM_LOGGER_WARN("Game", msg);			break;
+		case Logger::Level::LEVEL_ERROR:			OMNIFORCE_CUSTOM_LOGGER_ERROR("Game", msg);			break;
+		case Logger::Level::LEVEL_CRITICAL:			OMNIFORCE_CUSTOM_LOGGER_CRITICAL("Game", msg);		break;
+		case Logger::Level::LEVEL_NONE:																	break;
+		default:									std::unreachable();									break;
 		}
 		mono_free(msg);
 	}
