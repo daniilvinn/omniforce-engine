@@ -183,7 +183,7 @@ namespace Omni {
 				vkCmdPushConstants(m_CurrentCmdBuffer->Raw(), vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
 				delete[] data.data;
 			}
-			uint32 max_draws = (vk_buffer->GetPerFrameSize() - 4) / sizeof glm::uvec3;
+			uint32 max_draws = (vk_buffer->GetSpecification().size - 4) / sizeof glm::uvec3;
 			vkCmdDrawMeshTasksIndirectCountEXT(m_CurrentCmdBuffer->Raw(), vk_buffer->Raw(), 4, vk_buffer->Raw(), 0, max_draws, sizeof VkDrawMeshTasksIndirectCommandEXT);
 		});
 	}
@@ -364,25 +364,20 @@ namespace Omni {
 	void VulkanRenderer::InsertBarrier(const PipelineBarrierInfo& barrier)
 	{
 		Renderer::Submit([=]()mutable {
-			std::vector<VkBufferMemoryBarrier2> buffer_barriers;
+			std::vector<VkMemoryBarrier2> buffer_barriers;
 			std::vector<VkImageMemoryBarrier2> image_barriers;
 
 			VkDependencyInfo dependency = {};
 			dependency.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
 
 			for (auto& buffer_barrier : barrier.buffer_barriers) {
-				Shared<DeviceBuffer> buffer = buffer_barrier.first;
-				Shared<VulkanDeviceBuffer> vk_buffer = ShareAs<VulkanDeviceBuffer>(buffer);
 
-				VkBufferMemoryBarrier2 vk_barrier = {};
-				vk_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+				VkMemoryBarrier2 vk_barrier = {};
+				vk_barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
 				vk_barrier.srcStageMask = (BitMask)buffer_barrier.second.src_stages;
 				vk_barrier.dstStageMask = (BitMask)buffer_barrier.second.dst_stages;
 				vk_barrier.srcAccessMask = buffer_barrier.second.src_access_mask;
 				vk_barrier.dstAccessMask = buffer_barrier.second.src_access_mask;
-				vk_barrier.buffer = vk_buffer->Raw();
-				vk_barrier.size = buffer_barrier.second.buffer_barrier_size;
-				vk_barrier.offset = buffer_barrier.second.buffer_barrier_offset;
 
 				buffer_barriers.push_back(vk_barrier);
 			}
@@ -392,7 +387,7 @@ namespace Omni {
 				Shared<VulkanImage> vk_image = ShareAs<VulkanImage>(image);
 
 				VkImageMemoryBarrier2 vk_barrier = {};
-				vk_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+				vk_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 				vk_barrier.srcStageMask = (BitMask)image_barrier.second.src_stages;
 				vk_barrier.dstStageMask = (BitMask)image_barrier.second.dst_stages;
 				vk_barrier.srcAccessMask = image_barrier.second.src_access_mask;
@@ -404,7 +399,7 @@ namespace Omni {
 				vk_image->SetCurrentLayout(image_barrier.second.new_image_layout);
 
 				image_barriers.push_back(vk_barrier);
-			}
+			}	
 
 			vkCmdPipelineBarrier2(
 				m_CurrentCmdBuffer->Raw(),

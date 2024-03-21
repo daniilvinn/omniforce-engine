@@ -93,31 +93,30 @@ namespace Omni {
 	{
 		Shared<VulkanDeviceCmdBuffer> vk_cmd_buffer = ShareAs<VulkanDeviceCmdBuffer>(cmd_buffer);
 
-		VkImageMemoryBarrier image_memory_barrier = {};
-		image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		VkImageMemoryBarrier2 image_memory_barrier = {};
+		image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 		image_memory_barrier.image = m_Image;
 		image_memory_barrier.oldLayout = (VkImageLayout)m_CurrentLayout;
 		image_memory_barrier.newLayout = (VkImageLayout)new_layout;
-		image_memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		image_memory_barrier.srcStageMask = (BitMask)src_stage;
+		image_memory_barrier.dstStageMask = (BitMask)dst_stage;
 		image_memory_barrier.srcAccessMask = (VkAccessFlags)src_access;
 		image_memory_barrier.dstAccessMask = (VkAccessFlags)dst_access;
+		image_memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		image_memory_barrier.subresourceRange.aspectMask = m_Specification.usage == ImageUsage::DEPTH_BUFFER ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
 		image_memory_barrier.subresourceRange.baseArrayLayer = 0;
 		image_memory_barrier.subresourceRange.layerCount = 1;
 		image_memory_barrier.subresourceRange.baseMipLevel = 0;
 		image_memory_barrier.subresourceRange.levelCount = 1;
 
-		vkCmdPipelineBarrier(vk_cmd_buffer->Raw(),
-			(VkPipelineStageFlags)src_stage,
-			(VkPipelineStageFlags)dst_stage,
-			0,
-			0,
-			nullptr,
-			0,
-			nullptr,
-			1,
-			&image_memory_barrier
+		VkDependencyInfo dep_info = {};
+		dep_info.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+		dep_info.imageMemoryBarrierCount = 1;
+		dep_info.pImageMemoryBarriers = &image_memory_barrier;
+
+		vkCmdPipelineBarrier2(vk_cmd_buffer->Raw(),
+			&dep_info
 		);
 
 		m_CurrentLayout = new_layout;

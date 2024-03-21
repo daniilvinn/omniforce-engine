@@ -47,6 +47,6 @@ layout(push_constant, scalar) uniform PushConstants {
 } pc;
 
 void main() {
-    color = vec4(vec3(pc.color.r / 255, pc.color.g / 255, pc.color.b / 255), 1.0f);
+    color = vec4(pc.color.r / 255, pc.color.g / 255, pc.color.b / 255, 1.0f);
     gl_FragDepth = 1.0f;
 }

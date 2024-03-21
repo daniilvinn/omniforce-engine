@@ -18,7 +18,7 @@ layout(push_constant) uniform _pc {
 } pc;
 
 void main() {
-    if(gl_GlobalInvocationID.x > (pc.size / 4))
+    if(gl_GlobalInvocationID.x >= (pc.size / 4))
         return;
 
     pc.out_memory.memory[gl_GlobalInvocationID.x] = pc.value;

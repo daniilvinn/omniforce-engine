@@ -178,7 +178,7 @@ namespace Omni {
 				DeviceBufferSpecification spec;
 				// allow for 256 objects per material for beginning.
 				// TODO: allow recreating buffer with bigger size when limit is reached
-				spec.size = (sizeof(DeviceRenderableObject) * 256) * frames_in_flight;
+				spec.size = (sizeof(DeviceRenderableObject) * 512) * frames_in_flight;
 				spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
 				spec.heap = DeviceBufferMemoryHeap::DEVICE;
 				spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
@@ -186,13 +186,13 @@ namespace Omni {
 
 				value = DeviceBuffer::Create(spec);
 
-				spec.size = (sizeof(DeviceRenderableObject) * 256);
+				spec.size = (sizeof(DeviceRenderableObject) * 512);
 				spec.memory_usage = DeviceBufferMemoryUsage::NO_HOST_ACCESS;
 				OMNI_DEBUG_ONLY_CODE(spec.debug_name = "Device culled render queue buffer");
 
 				m_CulledDeviceRenderQueue.emplace(pipeline, DeviceBuffer::Create(spec));
 
-				spec.size = (4 + sizeof(glm::uvec3) * 256);
+				spec.size = (4 + sizeof(glm::uvec3) * 512);
 				spec.buffer_usage = DeviceBufferUsage::INDIRECT_PARAMS;
 				OMNI_DEBUG_ONLY_CODE(spec.debug_name = "Device indirect draw params buffer");
 
@@ -336,7 +336,7 @@ namespace Omni {
 			pcs.data = (byte*)push_constants;
 			pcs.size = sizeof ComputeClearPassPushConstants;
 
-			uvec3 dimensions = { (uint32)(culled_objects_buffer->GetSpecification().size / 4 + 63) + 64, 1u, 1u };
+			uvec3 dimensions = { (uint32)(culled_objects_buffer->GetSpecification().size / 4 + 63) / 64, 1u, 1u };
 			Renderer::DispatchCompute(m_ClearPass, dimensions, pcs);
 
 			push_constants = new ComputeClearPassPushConstants;
@@ -347,14 +347,14 @@ namespace Omni {
 			pcs.data = (byte*)push_constants;
 			pcs.size = sizeof ComputeClearPassPushConstants;
 
-			dimensions = { (uint32)(indirect_params_buffer->GetSpecification().size / 4 + 63) + 64, 1u, 1u };
+			dimensions = { (uint32)(indirect_params_buffer->GetSpecification().size / 4 + 63) / 64, 1u, 1u };
 			Renderer::DispatchCompute(m_ClearPass, dimensions, pcs);
 
 			PipelineResourceBarrierInfo indirect_params_barrier = {};
 			indirect_params_barrier.src_stages = (BitMask)PipelineStage::COMPUTE_SHADER;
 			indirect_params_barrier.dst_stages = (BitMask)PipelineStage::COMPUTE_SHADER;
 			indirect_params_barrier.src_access_mask = (BitMask)PipelineAccess::SHADER_WRITE;
-			indirect_params_barrier.dst_access_mask = (BitMask)PipelineAccess::SHADER_WRITE;
+			indirect_params_barrier.dst_access_mask = (BitMask)PipelineAccess::SHADER_WRITE | (BitMask)PipelineAccess::SHADER_READ;
 			indirect_params_barrier.buffer_barrier_offset = 0;
 			indirect_params_barrier.buffer_barrier_size = indirect_params_buffer->GetSpecification().size;
 
@@ -362,7 +362,7 @@ namespace Omni {
 			culled_objects_barrier.src_stages = (BitMask)PipelineStage::COMPUTE_SHADER;
 			culled_objects_barrier.dst_stages = (BitMask)PipelineStage::COMPUTE_SHADER;
 			culled_objects_barrier.src_access_mask = (BitMask)PipelineAccess::SHADER_WRITE;
-			culled_objects_barrier.dst_access_mask = (BitMask)PipelineAccess::SHADER_WRITE;
+			culled_objects_barrier.dst_access_mask = (BitMask)PipelineAccess::SHADER_WRITE | (BitMask)PipelineAccess::SHADER_READ;
 			culled_objects_barrier.buffer_barrier_offset = 0;
 			culled_objects_barrier.buffer_barrier_size = culled_objects_buffer->GetSpecification().size;
 
@@ -404,29 +404,28 @@ namespace Omni {
 			compute_push_constants_data->render_objects_data_bda = device_render_queue.second->GetDeviceAddress() + device_render_queue.second->GetFrameOffset();
 			compute_push_constants_data->original_object_count = m_HostRenderQueue[device_render_queue.first].size();
 			compute_push_constants_data->culled_objects_bda = culled_objects_buffer->GetDeviceAddress();
-			compute_push_constants_data->object_counter_bda = indirect_params_buffer->GetDeviceAddress();
-			compute_push_constants_data->indirect_draw_params_bda = indirect_params_buffer->GetDeviceAddress() + 4;
+			compute_push_constants_data->output_buffer_bda = indirect_params_buffer->GetDeviceAddress();
 
 			MiscData compute_pc = {};
 			compute_pc.data = (byte*)compute_push_constants_data;
 			compute_pc.size = sizeof IndirectFrustumCullPassPushContants;
 
-			uint32 num_work_groups = (m_HostRenderQueue.size() + 31) / 32;
+			uint32 num_work_groups = (m_HostRenderQueue[device_render_queue.first].size() + 31) / 32;
 			Renderer::DispatchCompute(m_IndirectFrustumCullPipeline, { num_work_groups, 1, 1 }, compute_pc);
 
 			PipelineResourceBarrierInfo indirect_params_barrier = {};
-			indirect_params_barrier.src_stages = (BitMask)PipelineStage::COMPUTE_SHADER;
-			indirect_params_barrier.dst_stages = (BitMask)PipelineStage::DRAW_INDIRECT;
-			indirect_params_barrier.src_access_mask = (BitMask)PipelineAccess::SHADER_WRITE;
-			indirect_params_barrier.dst_access_mask = (BitMask)PipelineAccess::INDIRECT_COMMAND_READ;
+			indirect_params_barrier.src_stages = (BitMask)PipelineStage::ALL_COMMANDS;
+			indirect_params_barrier.dst_stages = (BitMask)PipelineStage::ALL_COMMANDS;
+			indirect_params_barrier.src_access_mask = (BitMask)PipelineAccess::MEMORY_READ | (BitMask)PipelineAccess::MEMORY_WRITE;
+			indirect_params_barrier.dst_access_mask = (BitMask)PipelineAccess::MEMORY_READ | (BitMask)PipelineAccess::MEMORY_WRITE;
 			indirect_params_barrier.buffer_barrier_offset = 0;
 			indirect_params_barrier.buffer_barrier_size = indirect_params_buffer->GetSpecification().size;
 
 			PipelineResourceBarrierInfo culled_objects_barrier = {};
-			culled_objects_barrier.src_stages = (BitMask)PipelineStage::COMPUTE_SHADER;
-			culled_objects_barrier.dst_stages = (BitMask)PipelineStage::TASK_SHADER | (BitMask)PipelineStage::MESH_SHADER;
-			culled_objects_barrier.src_access_mask = (BitMask)PipelineAccess::SHADER_WRITE;
-			culled_objects_barrier.dst_access_mask = (BitMask)PipelineAccess::SHADER_READ;
+			culled_objects_barrier.src_stages = (BitMask)PipelineStage::ALL_COMMANDS;
+			culled_objects_barrier.dst_stages = (BitMask)PipelineStage::ALL_COMMANDS;
+			culled_objects_barrier.src_access_mask = (BitMask)PipelineAccess::MEMORY_READ | (BitMask)PipelineAccess::MEMORY_WRITE;
+			culled_objects_barrier.dst_access_mask = (BitMask)PipelineAccess::MEMORY_READ | (BitMask)PipelineAccess::MEMORY_WRITE;
 			culled_objects_barrier.buffer_barrier_offset = 0;
 			culled_objects_barrier.buffer_barrier_size = culled_objects_buffer->GetSpecification().size;
 
@@ -440,7 +439,6 @@ namespace Omni {
 
 		// Render 3D
 		std::vector<std::pair<Shared<DeviceBuffer>, PipelineResourceBarrierInfo>> render_barriers;
-		uint32 first_render = true;
 		Renderer::BeginRender(
 			{ m_GBuffer.positions, m_GBuffer.base_color, m_GBuffer.normals, m_GBuffer.metallic_roughness_occlusion, m_CurrentDepthAttachment },
 			m_CurrectMainRenderTarget->GetSpecification().extent,

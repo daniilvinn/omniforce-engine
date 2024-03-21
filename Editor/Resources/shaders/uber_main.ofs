@@ -32,6 +32,8 @@ void main()
 	Transform transform = render_object_data.transform;
 	MeshData mesh_data = pc.mesh_data[render_object_data.geometry_data_id];
 
+	debugPrintfEXT("WG size: %v3u, meshlet count: %u", gl_NumWorkGroups, mesh_data.meshlet_count);
+
 	if(gl_GlobalInvocationID.x >= mesh_data.meshlet_count) { // check if we are out of bounds
 		return;
 	}

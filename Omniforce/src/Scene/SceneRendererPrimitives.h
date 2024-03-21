@@ -45,10 +45,7 @@ namespace Omni {
 		uint32 original_object_count;
 		const uint32 _unused = 0;
 		uint64 culled_objects_bda;
-		uint64 object_counter_bda;
-		uint64 indirect_draw_params_bda;
-		const uint64 _unused1 = 0;
-
+		uint64 output_buffer_bda;
 	};
 
 	struct PBRFullScreenPassPushConstants {
