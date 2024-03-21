@@ -37,6 +37,18 @@ namespace Omni {
 		// The simplest implementation, though probably the worst one
 		// TODO: implement ring buffer
 		std::vector<EditorLogPanelEntry> m_Messages;
+
+		struct Filters {
+			bool trace = true;
+			bool info = true;
+			bool warn = true;
+			bool error = true;
+			bool critical = true;
+			bool engine = true;
+			bool game = true;
+		} m_FilterTogglesStatus;
+
+		BitMask m_Filters = 0b1111111;
 	};
 
 }

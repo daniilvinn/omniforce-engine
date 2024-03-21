@@ -48,21 +48,14 @@ namespace Omni {
 		{
 			switch (level)
 			{
-			case spdlog::level::trace:		return Logger::Level::LEVEL_NONE;
-			case spdlog::level::debug:		return Logger::Level::LEVEL_NONE;
+			case spdlog::level::trace:		return Logger::Level::LEVEL_TRACE;
+			case spdlog::level::debug:		return Logger::Level::LEVEL_TRACE;
 			case spdlog::level::info:		return Logger::Level::LEVEL_INFO;
 			case spdlog::level::warn:		return Logger::Level::LEVEL_WARN;
 			case spdlog::level::err:		return Logger::Level::LEVEL_ERROR;
-			case spdlog::level::critical:	return Logger::Level::LEVEL_ERROR;
+			case spdlog::level::critical:	return Logger::Level::LEVEL_CRITICAL;
 			default:						return Logger::Level::LEVEL_NONE;
 			}
-
-			return Logger::Level::LEVEL_NONE;;
-		}
-
-		Logger::Level GetMessageSeverityLevel(std::string_view message)
-		{
-			size_t offset = message.find(".client.");
 
 			return Logger::Level::LEVEL_NONE;;
 		}
@@ -110,21 +103,14 @@ namespace Omni {
 		{
 			switch (level)
 			{
-			case spdlog::level::trace:		return Logger::Level::LEVEL_NONE;
-			case spdlog::level::debug:		return Logger::Level::LEVEL_NONE;
+			case spdlog::level::trace:		return Logger::Level::LEVEL_TRACE;
+			case spdlog::level::debug:		return Logger::Level::LEVEL_TRACE;
 			case spdlog::level::info:		return Logger::Level::LEVEL_INFO;
 			case spdlog::level::warn:		return Logger::Level::LEVEL_WARN;
 			case spdlog::level::err:		return Logger::Level::LEVEL_ERROR;
-			case spdlog::level::critical:	return Logger::Level::LEVEL_ERROR;
+			case spdlog::level::critical:	return Logger::Level::LEVEL_CRITICAL;
 			default:						return Logger::Level::LEVEL_NONE;
 			}
-
-			return Logger::Level::LEVEL_NONE;;
-		}
-
-		Logger::Level GetMessageSeverityLevel(std::string_view message)
-		{
-			size_t offset = message.find(".client.");
 
 			return Logger::Level::LEVEL_NONE;;
 		}

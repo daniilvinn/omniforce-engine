@@ -2,11 +2,11 @@ namespace Omni
 {
     public enum MessageSeverity : byte
     {
-        TRACE = 0,
-        INFO,
-        WARN,
-        ERROR,
-        CRITICAL,
+        TRACE       = 1 << 0,
+        INFO        = 1 << 1,
+        WARN        = 1 << 2,
+        ERROR       = 1 << 3,
+        CRITICAL    = 1 << 4
     }
 
     public static class Debug
