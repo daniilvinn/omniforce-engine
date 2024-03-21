@@ -222,8 +222,6 @@ namespace Omni {
 			Shared<VulkanImageSampler> vk_sampler = ShareAs<VulkanImageSampler>(sampler);
 			if (imgui_image_descriptor_sets.find(image->Handle) == imgui_image_descriptor_sets.end()) {
 
-				
-
 				VkDescriptorSet imgui_image_id = ImGui_ImplVulkan_AddTexture(
 					vk_sampler->Raw(),
 					vk_image->RawView(),

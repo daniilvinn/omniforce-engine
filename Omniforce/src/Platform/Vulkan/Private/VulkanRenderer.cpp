@@ -364,7 +364,7 @@ namespace Omni {
 	void VulkanRenderer::InsertBarrier(const PipelineBarrierInfo& barrier)
 	{
 		Renderer::Submit([=]()mutable {
-			std::vector<VkMemoryBarrier2> buffer_barriers;
+			std::vector<VkMemoryBarrier2> memory_barriers;
 			std::vector<VkImageMemoryBarrier2> image_barriers;
 
 			VkDependencyInfo dependency = {};
@@ -379,7 +379,7 @@ namespace Omni {
 				vk_barrier.srcAccessMask = buffer_barrier.second.src_access_mask;
 				vk_barrier.dstAccessMask = buffer_barrier.second.src_access_mask;
 
-				buffer_barriers.push_back(vk_barrier);
+				memory_barriers.push_back(vk_barrier);
 			}
 
 			for (auto& image_barrier : barrier.image_barriers) {
@@ -400,6 +400,11 @@ namespace Omni {
 
 				image_barriers.push_back(vk_barrier);
 			}	
+
+			dependency.memoryBarrierCount = memory_barriers.size();
+			dependency.pMemoryBarriers = memory_barriers.data();
+			dependency.imageMemoryBarrierCount = image_barriers.size();
+			dependency.pImageMemoryBarriers = image_barriers.data();
 
 			vkCmdPipelineBarrier2(
 				m_CurrentCmdBuffer->Raw(),
