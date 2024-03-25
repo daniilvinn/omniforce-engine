@@ -327,42 +327,24 @@ namespace Omni {
 			Shared<DeviceBuffer> culled_objects_buffer = m_CulledDeviceRenderQueue[host_render_queue.first];
 			Shared<DeviceBuffer> indirect_params_buffer = m_DeviceIndirectDrawParams[host_render_queue.first];
 
-			ComputeClearPassPushConstants* push_constants = new ComputeClearPassPushConstants;
-			push_constants->out_bda = culled_objects_buffer->GetDeviceAddress();
-			push_constants->data_size = culled_objects_buffer->GetSpecification().size;
-			push_constants->value = 0u;
-
-			MiscData pcs = {};
-			pcs.data = (byte*)push_constants;
-			pcs.size = sizeof ComputeClearPassPushConstants;
-
-			uvec3 dimensions = { (uint32)(culled_objects_buffer->GetSpecification().size / 4 + 63) / 64, 1u, 1u };
-			Renderer::DispatchCompute(m_ClearPass, dimensions, pcs);
-
-			push_constants = new ComputeClearPassPushConstants;
-			push_constants->out_bda = indirect_params_buffer->GetDeviceAddress();
-			push_constants->data_size = indirect_params_buffer->GetSpecification().size;
-			push_constants->value = 0u;
-
-			pcs.data = (byte*)push_constants;
-			pcs.size = sizeof ComputeClearPassPushConstants;
-
-			dimensions = { (uint32)(indirect_params_buffer->GetSpecification().size / 4 + 63) / 64, 1u, 1u };
-			Renderer::DispatchCompute(m_ClearPass, dimensions, pcs);
-
+			Renderer::Submit([=]() {
+				culled_objects_buffer->Clear(Renderer::GetCmdBuffer(), 0, culled_objects_buffer->GetSpecification().size, 0);
+				indirect_params_buffer->Clear(Renderer::GetCmdBuffer(), 0, indirect_params_buffer->GetSpecification().size, 0);
+			});
+		
 			PipelineResourceBarrierInfo indirect_params_barrier = {};
-			indirect_params_barrier.src_stages = (BitMask)PipelineStage::COMPUTE_SHADER;
+			indirect_params_barrier.src_stages = (BitMask)PipelineStage::TRANSFER;
 			indirect_params_barrier.dst_stages = (BitMask)PipelineStage::COMPUTE_SHADER;
-			indirect_params_barrier.src_access_mask = (BitMask)PipelineAccess::SHADER_WRITE;
+			indirect_params_barrier.src_access_mask = (BitMask)PipelineAccess::TRANSFER_WRITE;
 			indirect_params_barrier.dst_access_mask = (BitMask)PipelineAccess::SHADER_WRITE | (BitMask)PipelineAccess::SHADER_READ;
 			indirect_params_barrier.buffer_barrier_offset = 0;
 			indirect_params_barrier.buffer_barrier_size = indirect_params_buffer->GetSpecification().size;
 
 			PipelineResourceBarrierInfo culled_objects_barrier = {};
-			culled_objects_barrier.src_stages = (BitMask)PipelineStage::COMPUTE_SHADER;
+			culled_objects_barrier.src_stages = (BitMask)PipelineStage::TRANSFER;
 			culled_objects_barrier.dst_stages = (BitMask)PipelineStage::COMPUTE_SHADER;
-			culled_objects_barrier.src_access_mask = (BitMask)PipelineAccess::SHADER_WRITE;
-			culled_objects_barrier.dst_access_mask = (BitMask)PipelineAccess::SHADER_WRITE | (BitMask)PipelineAccess::SHADER_READ;
+			culled_objects_barrier.src_access_mask = (BitMask)PipelineAccess::TRANSFER_WRITE;
+			culled_objects_barrier.dst_access_mask = (BitMask)PipelineAccess::SHADER_WRITE;
 			culled_objects_barrier.buffer_barrier_offset = 0;
 			culled_objects_barrier.buffer_barrier_size = culled_objects_buffer->GetSpecification().size;
 
@@ -414,18 +396,18 @@ namespace Omni {
 			Renderer::DispatchCompute(m_IndirectFrustumCullPipeline, { num_work_groups, 1, 1 }, compute_pc);
 
 			PipelineResourceBarrierInfo indirect_params_barrier = {};
-			indirect_params_barrier.src_stages = (BitMask)PipelineStage::ALL_COMMANDS;
-			indirect_params_barrier.dst_stages = (BitMask)PipelineStage::ALL_COMMANDS;
-			indirect_params_barrier.src_access_mask = (BitMask)PipelineAccess::MEMORY_READ | (BitMask)PipelineAccess::MEMORY_WRITE;
-			indirect_params_barrier.dst_access_mask = (BitMask)PipelineAccess::MEMORY_READ | (BitMask)PipelineAccess::MEMORY_WRITE;
+			indirect_params_barrier.src_stages = (BitMask)PipelineStage::COMPUTE_SHADER;
+			indirect_params_barrier.dst_stages = (BitMask)PipelineStage::DRAW_INDIRECT;
+			indirect_params_barrier.src_access_mask = (BitMask)PipelineAccess::SHADER_WRITE;
+			indirect_params_barrier.dst_access_mask = (BitMask)PipelineAccess::INDIRECT_COMMAND_READ;
 			indirect_params_barrier.buffer_barrier_offset = 0;
 			indirect_params_barrier.buffer_barrier_size = indirect_params_buffer->GetSpecification().size;
 
 			PipelineResourceBarrierInfo culled_objects_barrier = {};
-			culled_objects_barrier.src_stages = (BitMask)PipelineStage::ALL_COMMANDS;
-			culled_objects_barrier.dst_stages = (BitMask)PipelineStage::ALL_COMMANDS;
-			culled_objects_barrier.src_access_mask = (BitMask)PipelineAccess::MEMORY_READ | (BitMask)PipelineAccess::MEMORY_WRITE;
-			culled_objects_barrier.dst_access_mask = (BitMask)PipelineAccess::MEMORY_READ | (BitMask)PipelineAccess::MEMORY_WRITE;
+			culled_objects_barrier.src_stages = (BitMask)PipelineStage::COMPUTE_SHADER;
+			culled_objects_barrier.dst_stages = (BitMask)PipelineStage::TASK_SHADER | (BitMask)PipelineStage::MESH_SHADER;
+			culled_objects_barrier.src_access_mask = (BitMask)PipelineAccess::SHADER_WRITE;
+			culled_objects_barrier.dst_access_mask = (BitMask)PipelineAccess::SHADER_READ;
 			culled_objects_barrier.buffer_barrier_offset = 0;
 			culled_objects_barrier.buffer_barrier_size = culled_objects_buffer->GetSpecification().size;
 

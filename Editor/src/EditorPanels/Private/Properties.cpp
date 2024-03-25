@@ -68,9 +68,12 @@ namespace Omni {
 						}
 						ImGui::EndDisabled();
 
-						ImGui::BeginDisabled(m_Entity.HasComponent<RigidBody2DComponent>());
-						if (ImGui::MenuItem("Rigid body 2D component"))
-							m_Entity.AddComponent<RigidBody2DComponent>();
+						ImGui::BeginDisabled(m_Entity.HasComponent<RigidBodyComponent>());
+						if (ImGui::MenuItem("Rigid body component")) {
+							m_Entity.AddComponent<RigidBodyComponent>();
+							if (m_Entity.GetParent().Valid())
+								OMNIFORCE_CUSTOM_LOGGER_WARN("OmniEditor", "Added RigidBody component for game object \"{}\", which has parent. Rigid body is disabled if game object has parent.", tag.c_str());
+						}
 						ImGui::EndDisabled();
 
 						ImGui::BeginDisabled(m_Entity.HasComponent<BoxColliderComponent>() || m_Entity.HasComponent<SphereColliderComponent>());
@@ -349,14 +352,14 @@ namespace Omni {
 						}
 					}
 				}
-				if (m_Entity.HasComponent<RigidBody2DComponent>()) {
+				if (m_Entity.HasComponent<RigidBodyComponent>()) {
 					if (ImGui::Button(" - ##rb2d_component")) {
-						m_Entity.RemoveComponent<RigidBody2DComponent>();
+						m_Entity.RemoveComponent<RigidBodyComponent>();
 					}
 					else {
 						ImGui::SameLine();
-						if (ImGui::TreeNode("Rigid body 2D component")) {
-							RigidBody2DComponent& rb2d_component = m_Entity.GetComponent<RigidBody2DComponent>();
+						if (ImGui::TreeNode("Rigid body component")) {
+							RigidBodyComponent& rb2d_component = m_Entity.GetComponent<RigidBodyComponent>();
 
 							ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, { 5.0f, 5.0f });
 							if(ImGui::BeginTable("##rb2d_properties_table", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH))
@@ -371,7 +374,7 @@ namespace Omni {
 									for (int32 i = 0; i < IM_ARRAYSIZE(motion_type_strings); i++) {
 										bool selected = i == (int32)rb2d_component.type;
 										if (ImGui::Selectable(motion_type_strings[i], &selected))
-											rb2d_component.type = (RigidBody2DComponent::Type)i;
+											rb2d_component.type = (RigidBodyComponent::Type)i;
 									}
 									ImGui::EndCombo();
 								}

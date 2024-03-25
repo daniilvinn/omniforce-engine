@@ -23,12 +23,12 @@ namespace Omni {
 
 	PhysicsEngine* PhysicsEngine::s_Instance = nullptr;
 
-	constexpr JPH::EMotionType convert(RigidBody2DComponent::Type type) {
+	constexpr JPH::EMotionType convert(RigidBodyComponent::Type type) {
 		switch (type)
 		{
-		case RigidBody2DComponent::Type::STATIC:			return JPH::EMotionType::Static;
-		case RigidBody2DComponent::Type::DYNAMIC:			return JPH::EMotionType::Dynamic;
-		case RigidBody2DComponent::Type::KINEMATIC:			return JPH::EMotionType::Kinematic;
+		case RigidBodyComponent::Type::STATIC:			return JPH::EMotionType::Static;
+		case RigidBodyComponent::Type::DYNAMIC:			return JPH::EMotionType::Dynamic;
+		case RigidBodyComponent::Type::KINEMATIC:			return JPH::EMotionType::Kinematic;
 		default:											std::unreachable();
 		}
 	}
@@ -124,18 +124,18 @@ namespace Omni {
 
 		// Create and add Jolt bodies
 		auto registry = context->GetRegistry();
-		auto rb2d_view = registry->view<RigidBody2DComponent>();
+		auto rb2d_view = registry->view<RigidBodyComponent>();
 		JPH::BodyInterface& body_interface = m_CoreSystem->GetBodyInterface();
 
 		for (auto& e : rb2d_view) {
 			Entity entity(e, context);
-			auto& rb2d_component = entity.GetComponent<RigidBody2DComponent>();
+			auto& rb2d_component = entity.GetComponent<RigidBodyComponent>();
 			
 			JPH::BodyCreationSettings body_creation_settings;
 			body_creation_settings.mGravityFactor = (float32)!rb2d_component.disable_gravity;
 			body_creation_settings.mAllowedDOFs = JPH::EAllowedDOFs::All;
 			body_creation_settings.mMotionType = convert(rb2d_component.type);
-			body_creation_settings.mObjectLayer = rb2d_component.type == RigidBody2DComponent::Type::STATIC ? BodyLayers::NON_MOVING : BodyLayers::MOVING;
+			body_creation_settings.mObjectLayer = rb2d_component.type == RigidBodyComponent::Type::STATIC ? BodyLayers::NON_MOVING : BodyLayers::MOVING;
 			body_creation_settings.mLinearDamping = rb2d_component.linear_drag;
 			body_creation_settings.mAngularDamping = rb2d_component.angular_drag;
 			body_creation_settings.mIsSensor = rb2d_component.sensor_mode;
@@ -214,14 +214,14 @@ namespace Omni {
 	void PhysicsEngine::Update()
 	{
 		// fetch new objects' position which was changed from scripts
-		auto view = m_Context->GetRegistry()->view<RigidBody2DComponent, ScriptComponent>();
+		auto view = m_Context->GetRegistry()->view<RigidBodyComponent, ScriptComponent>();
 		JPH::BodyInterface& body_interface = m_CoreSystem->GetBodyInterface();
 
 		for (auto& e : view) {
 			Entity entity(e, m_Context);
 
 			TRSComponent trs = entity.GetWorldTransform();
-			RigidBody2DComponent& rb2d_component = entity.GetComponent<RigidBody2DComponent>();
+			RigidBodyComponent& rb2d_component = entity.GetComponent<RigidBodyComponent>();
 			
 			body_interface.SetPosition(
 				*(JPH::BodyID*)rb2d_component.internal_body, 
@@ -279,14 +279,14 @@ namespace Omni {
 	{
 		JPH::BodyInterface& body_interface = m_CoreSystem->GetBodyInterface();
 		body_interface.AddImpulse(
-			*(JPH::BodyID*)entity.GetComponent<RigidBody2DComponent>().internal_body, 
+			*(JPH::BodyID*)entity.GetComponent<RigidBodyComponent>().internal_body, 
 			{ impulse.x, impulse.y, impulse.z }
 		);
 	}
 
 	fvec3 PhysicsEngine::GetLinearVelocity(Entity entity)
 	{
-		RigidBody2DComponent rb2d_component = entity.GetComponent<RigidBody2DComponent>();
+		RigidBodyComponent rb2d_component = entity.GetComponent<RigidBodyComponent>();
 		JPH::BodyID body_id = *(JPH::BodyID*)rb2d_component.internal_body;
 
 		JPH::Vec3 velocity = m_CoreSystem->GetBodyInterface().GetLinearVelocity(body_id);
@@ -296,7 +296,7 @@ namespace Omni {
 
 	void PhysicsEngine::SetLinearVelocity(Entity entity, fvec3 velocity)
 	{
-		RigidBody2DComponent rb2d_component = entity.GetComponent<RigidBody2DComponent>();
+		RigidBodyComponent rb2d_component = entity.GetComponent<RigidBodyComponent>();
 		JPH::BodyID body_id = *(JPH::BodyID*)rb2d_component.internal_body;
 
 		JPH::Vec3 value(velocity.x, velocity.y, velocity.z);
@@ -306,7 +306,7 @@ namespace Omni {
 
 	void PhysicsEngine::AddForce(Entity entity, fvec3 force)
 	{
-		RigidBody2DComponent rb2d_component = entity.GetComponent<RigidBody2DComponent>();
+		RigidBodyComponent rb2d_component = entity.GetComponent<RigidBodyComponent>();
 		JPH::BodyID body_id = *(JPH::BodyID*)rb2d_component.internal_body;
 
 		JPH::Vec3 value(force.x, force.y, force.z);
@@ -315,7 +315,7 @@ namespace Omni {
 
 	void PhysicsEngine::AddTorque(Entity entity, fvec3 torque)
 	{
-		RigidBody2DComponent rb2d_component = entity.GetComponent<RigidBody2DComponent>();
+		RigidBodyComponent rb2d_component = entity.GetComponent<RigidBodyComponent>();
 		JPH::BodyID body_id = *(JPH::BodyID*)rb2d_component.internal_body;
 
 		JPH::Vec3 value(torque.x, torque.y, torque.z);

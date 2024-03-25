@@ -26,9 +26,6 @@ namespace Omni {
 		Logger::AddLogger(editor_logger);
 		Logger::AddLogger(game_logger);
 
-		OMNIFORCE_CUSTOM_LOGGER_INFO("OmniEditor", "test from editor");
-		OMNIFORCE_CUSTOM_LOGGER_INFO("Game", "test from game");
-
 		m_Messages.reserve(257);
 	}
 

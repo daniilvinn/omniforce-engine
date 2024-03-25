@@ -55,7 +55,7 @@ namespace Omni {
 		ExplicitComponentCopy<TRSComponent>(other->m_Registry, m_Registry, other->m_Entities);
 		ExplicitComponentCopy<SpriteComponent>(other->m_Registry, m_Registry, other->m_Entities);
 		ExplicitComponentCopy<CameraComponent>(other->m_Registry, m_Registry, other->m_Entities);
-		ExplicitComponentCopy<RigidBody2DComponent>(other->m_Registry, m_Registry, other->m_Entities);
+		ExplicitComponentCopy<RigidBodyComponent>(other->m_Registry, m_Registry, other->m_Entities);
 		ExplicitComponentCopy<BoxColliderComponent>(other->m_Registry, m_Registry, other->m_Entities);
 		ExplicitComponentCopy<SphereColliderComponent>(other->m_Registry, m_Registry, other->m_Entities);
 		ExplicitComponentCopy<ScriptComponent>(other->m_Registry, m_Registry, other->m_Entities);

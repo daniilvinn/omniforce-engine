@@ -377,7 +377,7 @@ namespace Omni {
 				vk_barrier.srcStageMask = (BitMask)buffer_barrier.second.src_stages;
 				vk_barrier.dstStageMask = (BitMask)buffer_barrier.second.dst_stages;
 				vk_barrier.srcAccessMask = buffer_barrier.second.src_access_mask;
-				vk_barrier.dstAccessMask = buffer_barrier.second.src_access_mask;
+				vk_barrier.dstAccessMask = buffer_barrier.second.dst_access_mask;
 
 				memory_barriers.push_back(vk_barrier);
 			}
@@ -391,10 +391,15 @@ namespace Omni {
 				vk_barrier.srcStageMask = (BitMask)image_barrier.second.src_stages;
 				vk_barrier.dstStageMask = (BitMask)image_barrier.second.dst_stages;
 				vk_barrier.srcAccessMask = image_barrier.second.src_access_mask;
-				vk_barrier.dstAccessMask = image_barrier.second.src_access_mask;
+				vk_barrier.dstAccessMask = image_barrier.second.dst_access_mask;
 				vk_barrier.image = vk_image->Raw();
 				vk_barrier.oldLayout = (VkImageLayout)vk_image->GetCurrentLayout();
 				vk_barrier.newLayout = (VkImageLayout)image_barrier.second.new_image_layout;
+				vk_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				vk_barrier.subresourceRange.baseArrayLayer = 0;
+				vk_barrier.subresourceRange.layerCount = image->GetSpecification().array_layers;
+				vk_barrier.subresourceRange.baseMipLevel = 0;
+				vk_barrier.subresourceRange.levelCount = image->GetSpecification().mip_levels;
 
 				vk_image->SetCurrentLayout(image_barrier.second.new_image_layout);
 

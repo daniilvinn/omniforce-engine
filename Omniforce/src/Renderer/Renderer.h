@@ -59,7 +59,7 @@ namespace Omni {
 		static void DispatchCompute(Shared<Pipeline> pipeline, const glm::uvec3& dimensions, MiscData data);
 		static void RenderUnindexed(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vertex_buffer, MiscData data);
 
-		static void Render(bool execute = true);
+		static void Render();
 		static void RenderImGui();
 
 	private:

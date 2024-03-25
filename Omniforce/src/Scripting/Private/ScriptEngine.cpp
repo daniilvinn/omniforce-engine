@@ -185,7 +185,7 @@ namespace Omni {
 			script_component.script_object = mAvailableClassesList[script_component.class_name].AllocateObject(uuid_component.id);
 		}
 
-		auto group = registry->group<RigidBody2DComponent, ScriptComponent>();
+		auto group = registry->group<RigidBodyComponent, ScriptComponent>();
 		m_PendingCallbacks.reserve(group.size());
 	}
 
