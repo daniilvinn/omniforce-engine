@@ -14,6 +14,9 @@ file (GLOB_RECURSE ENGINE_FILES
     "src/*.hpp"
     "vendor/ImGuizmo/ImGuizmo.h"
     "vendor/ImGuizmo/ImGuizmo.cpp"
+    "vendor/taskflow/taskflow/*.h"
+    "vendor/taskflow/taskflow/*.cpp"
+    "vendor/taskflow/taskflow/*.hpp"
 )
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ENGINE_FILES})
@@ -32,6 +35,7 @@ target_include_directories(${ENGINE_TARGET}
         "src/"
         "vendor/imgui"
         "vendor/ImGuizmo"
+        "vendor/taskflow"
     PRIVATE 
         "${Vulkan_SDK}\\Include" 
         "${Vulkan_SDK}\\Source" 
@@ -45,7 +49,14 @@ target_include_directories(${ENGINE_TARGET}
         "vendor/NVAftermath/include"
 )
 target_link_directories(${ENGINE_TARGET} INTERFACE "${Vulkan_SDK}\\Lib" PUBLIC "vendor/mono/lib" "vendor/NVAftermath/lib/x64")
-target_compile_definitions(${ENGINE_TARGET} PUBLIC OMNIFORCE_STATIC GLM_FORCE_DEPTH_ZERO_TO_ONE GLM_FORCE_SSE2 VK_NO_PROTOTYPES IMGUI_IMPL_VULKAN_NO_PROTOTYPES)
+target_compile_definitions(${ENGINE_TARGET} PUBLIC 
+    OMNIFORCE_STATIC 
+    GLM_FORCE_DEPTH_ZERO_TO_ONE 
+    GLM_FORCE_SSE2 
+    VK_NO_PROTOTYPES 
+    IMGUI_IMPL_VULKAN_NO_PROTOTYPES
+    NOMINMAX
+)
 
 target_link_libraries(
     ${ENGINE_TARGET} 

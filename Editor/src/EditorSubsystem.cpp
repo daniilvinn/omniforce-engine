@@ -230,8 +230,6 @@ public:
 
 	void Launch() override
 	{
-		JobSystem::Get()->Wait();
-
 		m_EditorScene = new Scene(SceneType::SCENE_TYPE_3D);
 
 		m_HierarchyPanel = new SceneHierarchyPanel(m_EditorScene);

@@ -34,7 +34,10 @@ namespace EditorUtils {
 
 		Shared<AssetBase> image = Image::Create(image_spec, 0);
 
-		JobSystem::Get()->Execute([=]() {
+		auto executor = JobSystem::GetExecutor();
+
+		tf::Taskflow taskflow;
+		taskflow.emplace([=]() {
 			uint64 ofr_additional_data = (uint64)additional_data->width | (uint64)additional_data->height << 32;
 
 			uint32 mip_levels = Utils::ComputeNumMipLevelsBC7(additional_data->width, additional_data->height) + 1;
@@ -53,6 +56,8 @@ namespace EditorUtils {
 
 			delete additional_data;
 		});
+
+		executor->run(taskflow);
 
 		if (!import)
 			image->Destroy();

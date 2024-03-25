@@ -22,3 +22,6 @@
 [submodule "Omniforce/vendor/imgui"]
 	path = Omniforce/vendor/imgui
 	url = https://github.com/ocornut/imgui.git
+[submodule "Omniforce/vendor/taskflow"]
+	path = Omniforce/vendor/taskflow
+	url = https://github.com/taskflow/taskflow.git

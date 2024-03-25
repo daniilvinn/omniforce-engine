@@ -360,12 +360,13 @@ namespace Omni {
 		m_Registry.clear();
 
 		nlohmann::json textures = node["Textures"];
-		JobSystem* js = JobSystem::Get();
 
 		std::shared_mutex renderer_mtx;
+		auto executor = JobSystem::GetExecutor();
 
+		tf::Taskflow taskflow;
 		for (auto i : textures.items()) {
-			js->Execute([&, i]() {
+			taskflow.emplace([&, i]() {
 				std::string texture_path = i.value().get<std::string>();
 
 				OFRController ofr_controller(FileSystem::GetWorkingDirectory().append(texture_path));
@@ -403,7 +404,7 @@ namespace Omni {
 				renderer_mtx.unlock();
 			});
 		}
-		js->Wait();
+		executor->run(taskflow).wait();
 
 		nlohmann::json& entities_node = node["GameObjects"];
 		for (auto i : entities_node.items()) {

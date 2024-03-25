@@ -93,8 +93,10 @@ namespace Omni {
 		std::vector<byte> bc7_encoded_data = AssetCompressor::CompressBC7(image_data_with_mips, image_width, image_height, num_mip_levels);
 
 		// Compress by GDeflate and write to a file
-		JobSystem* js = JobSystem::Get();
-		js->Execute([bc7_encoded_data, path, num_mip_levels, image_width, image_height]() mutable {
+		auto executor = JobSystem::GetExecutor();
+
+		tf::Taskflow taskflow;
+		taskflow.emplace([bc7_encoded_data, path, num_mip_levels, image_width, image_height]() mutable {
 			// Open file stream
 			std::filesystem::path final_path = FileSystem::GetWorkingDirectory() / "assets/compressed" / (path.stem().string() + ".oft");
 			std::ofstream fout(final_path, std::ios::binary | std::ios::out | std::ios::beg);
@@ -152,6 +154,8 @@ namespace Omni {
 
 			fout.close();
 		});
+
+		executor->run(taskflow);
 
 		ImageSpecification texture_spec = {};
 		texture_spec.pixels = std::move(bc7_encoded_data);

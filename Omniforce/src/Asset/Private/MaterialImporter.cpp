@@ -148,23 +148,20 @@ namespace Omni {
 
 		std::shared_mutex mutex;
 
-		JobSystem* js = JobSystem::Get();
+		auto task_executor = JobSystem::GetExecutor();
 
-		js->Execute([&]() { HandleProperty("ALPHA_CUTOFF", in_material.alphaCutoff, material, root, mutex); });
-		//if (in_material.alphaMode == ftf::AlphaMode::Mask)
-		//	js->Execute([&]() { HandleProperty("ALPHA_MASK", 1, material, root, mutex); });
+		tf::Taskflow taskflow;
 
-		js->Execute([&]() { HandleProperty("BASE_COLOR_FACTOR", c(in_material.pbrData.baseColorFactor), material, root, mutex); });
-		js->Execute([&]() { HandleProperty("METALLIC_FACTOR", in_material.pbrData.metallicFactor, material, root, mutex); });
-		js->Execute([&]() { HandleProperty("ROUGHNESS_FACTOR", in_material.pbrData.roughnessFactor, material, root, mutex); });
+		taskflow.emplace([&]() { HandleProperty("ALPHA_CUTOFF", in_material.alphaCutoff, material, root, mutex); });
+		taskflow.emplace([&]() { HandleProperty("BASE_COLOR_FACTOR", c(in_material.pbrData.baseColorFactor), material, root, mutex); });
+		taskflow.emplace([&]() { HandleProperty("METALLIC_FACTOR", in_material.pbrData.metallicFactor, material, root, mutex); });
+		taskflow.emplace([&]() { HandleProperty("ROUGHNESS_FACTOR", in_material.pbrData.roughnessFactor, material, root, mutex); });
+		taskflow.emplace([&]() { HandleProperty("BASE_COLOR_MAP", in_material.pbrData.baseColorTexture, material, root, mutex); });
+		taskflow.emplace([&]() { HandleProperty("METALLIC_ROUGHNESS_MAP", in_material.pbrData.metallicRoughnessTexture, material, root, mutex); });
+		taskflow.emplace([&]() { HandleProperty("NORMAL_MAP", in_material.normalTexture, material, root, mutex); });
+		taskflow.emplace([&]() { HandleProperty("OCCLUSION_MAP", in_material.occlusionTexture, material, root, mutex); });
 
-		js->Execute([&]() { HandleProperty("BASE_COLOR_MAP", in_material.pbrData.baseColorTexture, material, root, mutex); });
-		js->Execute([&]() { HandleProperty("METALLIC_ROUGHNESS_MAP", in_material.pbrData.metallicRoughnessTexture, material, root, mutex); });
-
-		js->Execute([&]() { HandleProperty("NORMAL_MAP", in_material.normalTexture, material, root, mutex); });
-		js->Execute([&]() { HandleProperty("OCCLUSION_MAP", in_material.occlusionTexture, material, root, mutex); });
-
-		js->Wait();
+		task_executor->run(taskflow).wait();
 
 		return id;
 	}
