@@ -33,6 +33,7 @@ namespace Omni {
 
 	struct DeviceRenderableObject {
 		TRS trs;
+		const uint32 lod = 0; // computed on the device
 		uint32 render_data_index;
 		uint64 material_bda;
 	};
