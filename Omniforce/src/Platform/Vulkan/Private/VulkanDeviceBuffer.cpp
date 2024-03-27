@@ -52,6 +52,16 @@ namespace Omni {
 			m_Specification.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
 
 		m_Allocation = alloc->AllocateBuffer(&buffer_create_info, vma_flags, &m_Buffer);
+
+		OMNI_DEBUG_ONLY_CODE(
+			VkDebugUtilsObjectNameInfoEXT name_info = {};
+			name_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+			name_info.objectType = VK_OBJECT_TYPE_BUFFER;
+			name_info.objectHandle = (uint64)m_Buffer;
+			name_info.pObjectName = spec.debug_name.c_str();
+
+			vkSetDebugUtilsObjectNameEXT(VulkanGraphicsContext::Get()->GetDevice()->Raw(), &name_info);
+		);
 	}
 
 	VulkanDeviceBuffer::VulkanDeviceBuffer(const DeviceBufferSpecification& spec, void* data, uint64 data_size)

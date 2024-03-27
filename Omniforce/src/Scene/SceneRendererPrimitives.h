@@ -6,6 +6,8 @@
 
 namespace Omni {
 
+	constexpr uint32 OMNI_MAX_MESH_LOD_COUNT = 6;
+
 	struct DeviceCameraData {
 		glm::mat4 view;
 		glm::mat4 proj;
@@ -16,13 +18,15 @@ namespace Omni {
 	};
 
 	struct DeviceMeshData {
-		Sphere bounding_sphere;
-		uint32 meshlet_count;
-		uint64 geometry_bda;
-		uint64 attributes_bda;
-		uint64 meshlets_bda;
-		uint64 micro_indices_bda;
-		uint64 meshlets_cull_data_bda;
+		struct LOD {
+			Sphere bounding_sphere;
+			uint32 meshlet_count;
+			uint64 geometry_bda;
+			uint64 attributes_bda;
+			uint64 meshlets_bda;
+			uint64 micro_indices_bda;
+			uint64 meshlets_cull_data_bda;
+		} lods[OMNI_MAX_MESH_LOD_COUNT];
 	};
 
 	struct TRS {

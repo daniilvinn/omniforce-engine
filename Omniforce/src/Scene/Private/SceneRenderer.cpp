@@ -6,13 +6,14 @@
 #include <Renderer/DeviceBuffer.h>
 #include <Renderer/PipelineBarrier.h>
 #include <Core/Utils.h>
-#include "../SceneRendererPrimitives.h"
-
+#include <Threading/JobSystem.h>
 #include <Asset/AssetManager.h>
 #include <Asset/AssetCompressor.h>
 #include <Platform/Vulkan/VulkanCommon.h>
-
 #include <DebugUtils/DebugRenderer.h>
+#include "../SceneRendererPrimitives.h"
+
+#include <taskflow/taskflow.hpp>
 
 namespace Omni {
 
@@ -137,10 +138,14 @@ namespace Omni {
 		// Initialize pipelines
 		{
 			ShaderLibrary* shader_library = ShaderLibrary::Get();
-			shader_library->LoadShader("Resources/shaders/sprite.ofs");
-			shader_library->LoadShader("Resources/shaders/cull_indirect.ofs");
-			shader_library->LoadShader("Resources/shaders/PBR.ofs");
-			shader_library->LoadShader("Resources/shaders/compute_clear.ofs");
+			// Load shaders
+			tf::Taskflow taskflow;
+			tf::Task shaders_load_task = taskflow.emplace([&shader_library](tf::Subflow& sf) {
+				sf.emplace([&]() { shader_library->LoadShader("Resources/shaders/sprite.ofs"); });
+				sf.emplace([&]() { shader_library->LoadShader("Resources/shaders/cull_indirect.ofs"); });
+				sf.emplace([&]() { shader_library->LoadShader("Resources/shaders/PBR.ofs"); });
+			});
+			JobSystem::GetExecutor()->run(taskflow).wait();
 
 			// 2D pass
 			PipelineSpecification pipeline_spec = PipelineSpecification::Default();
@@ -165,11 +170,6 @@ namespace Omni {
 			pipeline_spec.debug_name = "frustum cull prepass";
 
 			m_IndirectFrustumCullPipeline = Pipeline::Create(pipeline_spec);
-
-			pipeline_spec.shader = shader_library->GetShader("compute_clear.ofs");
-			pipeline_spec.debug_name = "clear pass";
-
-			m_ClearPass = Pipeline::Create(pipeline_spec);
 		}
 		// Initialize device render queue and all buffers for indirect drawing
 		{
@@ -564,13 +564,13 @@ namespace Omni {
 	uint32 SceneRenderer::AcquireResourceIndex(Shared<Mesh> mesh)
 	{
 		DeviceMeshData mesh_data = {};
-		mesh_data.bounding_sphere = mesh->GetBoundingSphere();
-		mesh_data.meshlet_count = mesh->GetMeshletCount();
-		mesh_data.geometry_bda = mesh->GetBuffer(MeshBufferKey::GEOMETRY)->GetDeviceAddress();
-		mesh_data.attributes_bda = mesh->GetBuffer(MeshBufferKey::ATTRIBUTES)->GetDeviceAddress();
-		mesh_data.meshlets_bda = mesh->GetBuffer(MeshBufferKey::MESHLETS)->GetDeviceAddress();
-		mesh_data.micro_indices_bda = mesh->GetBuffer(MeshBufferKey::MICRO_INDICES)->GetDeviceAddress();
-		mesh_data.meshlets_cull_data_bda = mesh->GetBuffer(MeshBufferKey::MESHLETS_CULL_DATA)->GetDeviceAddress();
+		mesh_data.lods[0].bounding_sphere = mesh->GetBoundingSphere();
+		mesh_data.lods[0].meshlet_count = mesh->GetMeshletCount();
+		mesh_data.lods[0].geometry_bda = mesh->GetBuffer(MeshBufferKey::GEOMETRY)->GetDeviceAddress();
+		mesh_data.lods[0].attributes_bda = mesh->GetBuffer(MeshBufferKey::ATTRIBUTES)->GetDeviceAddress();
+		mesh_data.lods[0].meshlets_bda = mesh->GetBuffer(MeshBufferKey::MESHLETS)->GetDeviceAddress();
+		mesh_data.lods[0].micro_indices_bda = mesh->GetBuffer(MeshBufferKey::MICRO_INDICES)->GetDeviceAddress();
+		mesh_data.lods[0].meshlets_cull_data_bda = mesh->GetBuffer(MeshBufferKey::MESHLETS_CULL_DATA)->GetDeviceAddress();
 
 		return m_MeshResourcesBuffer.Allocate(mesh->Handle, mesh_data);
 	}
