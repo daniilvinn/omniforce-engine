@@ -32,23 +32,7 @@ namespace Omni {
 		default:							std::unreachable();				break;
 		}
 
-		OMNI_DEBUG_ONLY_CODE(
-			VkDebugUtilsObjectNameInfoEXT name_info = {};
-			name_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
-			name_info.objectType = VK_OBJECT_TYPE_IMAGE;
-			name_info.objectHandle = (uint64)m_Image;
-			name_info.pObjectName = spec.debug_name.c_str();
-
-			vkSetDebugUtilsObjectNameEXT(VulkanGraphicsContext::Get()->GetDevice()->Raw(), &name_info);
-
-			VkDebugUtilsObjectNameInfoEXT view_name_info = {};
-			view_name_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
-			view_name_info.objectType = VK_OBJECT_TYPE_IMAGE_VIEW;
-			view_name_info.objectHandle = (uint64)m_ImageView;
-			view_name_info.pObjectName = fmt::format("{} view", spec.debug_name.c_str()).c_str();
-
-			vkSetDebugUtilsObjectNameEXT(VulkanGraphicsContext::Get()->GetDevice()->Raw(), &view_name_info);
-		);
+		
 	}
 
 	VulkanImage::VulkanImage(const ImageSpecification& spec, VkImage image, VkImageView view)

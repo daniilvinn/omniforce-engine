@@ -306,7 +306,7 @@ namespace Omni {
 				(BitMask)PipelineAccess::UNIFORM_READ,
 				(BitMask)PipelineAccess::COLOR_ATTACHMENT_WRITE
 			);
-		});
+			});
 
 	}
 
@@ -330,8 +330,8 @@ namespace Omni {
 			Renderer::Submit([=]() {
 				culled_objects_buffer->Clear(Renderer::GetCmdBuffer(), 0, culled_objects_buffer->GetSpecification().size, 0);
 				indirect_params_buffer->Clear(Renderer::GetCmdBuffer(), 0, indirect_params_buffer->GetSpecification().size, 0);
-			});
-		
+				});
+
 			PipelineResourceBarrierInfo indirect_params_barrier = {};
 			indirect_params_barrier.src_stages = (BitMask)PipelineStage::TRANSFER;
 			indirect_params_barrier.dst_stages = (BitMask)PipelineStage::COMPUTE_SHADER;
@@ -528,7 +528,7 @@ namespace Omni {
 				(BitMask)PipelineAccess::COLOR_ATTACHMENT_WRITE,
 				(BitMask)PipelineAccess::MEMORY_READ | (BitMask)PipelineAccess::MEMORY_WRITE
 			);
-		});
+			});
 	}
 
 	Shared<Image> SceneRenderer::GetFinalImage()

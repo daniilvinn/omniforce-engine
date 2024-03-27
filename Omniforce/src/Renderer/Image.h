@@ -66,7 +66,6 @@ namespace Omni {
 		ImageType type = ImageType::TYPE_2D;
 		uint8 array_layers = 1;
 		uint8 mip_levels = 1;
-		OMNI_DEBUG_ONLY_FIELD(std::string debug_name);
 
 		static ImageSpecification Default() {
 			ImageSpecification spec;
@@ -76,7 +75,6 @@ namespace Omni {
 			spec.type = ImageType::TYPE_2D;
 			spec.mip_levels = 1;
 			spec.array_layers = 1;
-			OMNI_DEBUG_ONLY_CODE(spec.debug_name = "");
 
 			return spec;
 		};

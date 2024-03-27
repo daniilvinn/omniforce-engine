@@ -13,11 +13,11 @@ using namespace Omni;
 
 bool g_EngineRunning;
 
-#ifdef OMNIFORCE_DEBUG
-int main()
-#else OMNIFORCE_RELEASE
+#ifdef OMNIFORCE_RELEASE
 INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     PSTR lpCmdLine, INT nCmdShow)
+#else
+int main()
 #endif
 {
 	g_EngineRunning = true;

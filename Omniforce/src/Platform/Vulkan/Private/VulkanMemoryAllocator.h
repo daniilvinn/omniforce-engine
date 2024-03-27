@@ -3,6 +3,7 @@
 #include "../VulkanCommon.h"
 
 #include <vulkan-memory-allocator-hpp/vk_mem_alloc.h>
+#include <shared_mutex>
 
 namespace Omni {
 
@@ -39,6 +40,7 @@ namespace Omni {
 			uint64 currently_allocated;
 		} m_Statistics;
 
+		std::shared_mutex m_Mutex;
 	};
 
 }

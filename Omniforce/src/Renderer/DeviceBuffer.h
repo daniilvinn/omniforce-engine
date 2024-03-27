@@ -46,7 +46,6 @@ namespace Omni {
 		DeviceBufferUsage buffer_usage;
 		DeviceBufferMemoryUsage memory_usage;
 		DeviceBufferMemoryHeap heap;
-		OMNI_DEBUG_ONLY_FIELD(std::string debug_name);
 	};
 
 	class OMNIFORCE_API DeviceBuffer 

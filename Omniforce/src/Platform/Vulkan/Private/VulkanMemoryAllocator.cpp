@@ -58,11 +58,13 @@ namespace Omni {
 
 	void VulkanMemoryAllocator::InvalidateAllocation(VmaAllocation allocation, uint64 size /*= VK_WHOLE_SIZE*/, uint64 offset /*= 0*/)
 	{
+		std::lock_guard lock(m_Mutex);
 		vmaInvalidateAllocation(m_Allocator, allocation, offset, size);
 	}
 
 	VmaAllocation VulkanMemoryAllocator::AllocateBuffer(VkBufferCreateInfo* create_info, uint32_t flags, VkBuffer* buffer)
 	{
+		std::lock_guard lock(m_Mutex);
 		VmaAllocationCreateInfo allocation_create_info = {};
 		allocation_create_info.usage = VMA_MEMORY_USAGE_AUTO;
 		allocation_create_info.flags = flags;
@@ -86,6 +88,7 @@ namespace Omni {
 
 	VmaAllocation VulkanMemoryAllocator::AllocateImage(VkImageCreateInfo* create_info, uint32_t flags, VkImage* image)
 	{
+		std::lock_guard lock(m_Mutex);
 		if (create_info->extent.depth == 0)
 			OMNIFORCE_CORE_WARNING("Trying to allocate image with 0 depth. No allocation done");
 
@@ -110,6 +113,7 @@ namespace Omni {
 
 	void VulkanMemoryAllocator::DestroyBuffer(VkBuffer* buffer, VmaAllocation* allocation)
 	{
+		std::lock_guard lock(m_Mutex);
 		VmaAllocationInfo allocation_info;
 		vmaGetAllocationInfo(m_Allocator, *allocation, &allocation_info);
 
@@ -130,6 +134,7 @@ namespace Omni {
 
 	void VulkanMemoryAllocator::DestroyImage(VkImage* image, VmaAllocation* allocation)
 	{
+		std::lock_guard lock(m_Mutex);
 		VmaAllocationInfo allocation_info;
 		vmaGetAllocationInfo(m_Allocator, *allocation, &allocation_info);
 
@@ -151,6 +156,7 @@ namespace Omni {
 
 	void* VulkanMemoryAllocator::MapMemory(VmaAllocation allocation)
 	{
+		std::lock_guard lock(m_Mutex);
 		void* mapped_memory;
 		VK_CHECK_RESULT(vmaMapMemory(m_Allocator, allocation, &mapped_memory));
 		return mapped_memory;
@@ -158,6 +164,7 @@ namespace Omni {
 
 	void VulkanMemoryAllocator::UnmapMemory(VmaAllocation allocation)
 	{
+		std::lock_guard lock(m_Mutex);
 		vmaUnmapMemory(m_Allocator, allocation);
 	}
 

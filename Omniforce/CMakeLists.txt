@@ -56,6 +56,9 @@ target_compile_definitions(${ENGINE_TARGET} PUBLIC
     VK_NO_PROTOTYPES 
     IMGUI_IMPL_VULKAN_NO_PROTOTYPES
     NOMINMAX
+    "$<$<CONFIG:Debug>:OMNIFORCE_DEBUG>"
+    "$<$<CONFIG:RelWithDebInfo>:OMNIFORCE_RELWITHDEBINFO>"
+    "$<$<CONFIG:Release>:OMNIFORCE_RELEASE>"
 )
 
 target_link_libraries(

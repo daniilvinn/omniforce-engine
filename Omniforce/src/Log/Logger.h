@@ -100,7 +100,7 @@ namespace Omni {
 		std::string m_LogBuffer;
 	};
 
-#ifdef OMNIFORCE_DEBUG
+#ifndef OMNIFORCE_RELEASE
 	#define OMNIFORCE_INITIALIZE_LOG_SYSTEM(log_level) Omni::Logger::Init(log_level);
 	#define OMNIFORCE_WRITE_LOGS_TO_FILE()		Omni::Logger::Get()->WriteLogFile();
 

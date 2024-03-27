@@ -132,10 +132,9 @@ namespace Omni {
 		return asset_handle;
 	}
 
-	AssetHandle MaterialImporter::Import(const ftf::Asset& root, const ftf::Material& in_material)
+	Omni::AssetHandle MaterialImporter::Import(tf::Subflow& subflow, const ftf::Asset& root, const ftf::Material& in_material)
 	{
 		AssetHandle id = rh::hash<std::string>()(in_material.name.c_str());
-
 		Shared<Material> material = Material::Create(in_material.name.c_str(), id);
 
 		AssetManager* asset_manager = AssetManager::Get();
@@ -146,22 +145,14 @@ namespace Omni {
 		else
 			material->AddShaderMacro("__OMNI_SHADING_MODEL_NON_PBR");
 
-		std::shared_mutex mutex;
-
-		auto task_executor = JobSystem::GetExecutor();
-
-		tf::Taskflow taskflow;
-
-		taskflow.emplace([&]() { HandleProperty("ALPHA_CUTOFF", in_material.alphaCutoff, material, root, mutex); });
-		taskflow.emplace([&]() { HandleProperty("BASE_COLOR_FACTOR", c(in_material.pbrData.baseColorFactor), material, root, mutex); });
-		taskflow.emplace([&]() { HandleProperty("METALLIC_FACTOR", in_material.pbrData.metallicFactor, material, root, mutex); });
-		taskflow.emplace([&]() { HandleProperty("ROUGHNESS_FACTOR", in_material.pbrData.roughnessFactor, material, root, mutex); });
-		taskflow.emplace([&]() { HandleProperty("BASE_COLOR_MAP", in_material.pbrData.baseColorTexture, material, root, mutex); });
-		taskflow.emplace([&]() { HandleProperty("METALLIC_ROUGHNESS_MAP", in_material.pbrData.metallicRoughnessTexture, material, root, mutex); });
-		taskflow.emplace([&]() { HandleProperty("NORMAL_MAP", in_material.normalTexture, material, root, mutex); });
-		taskflow.emplace([&]() { HandleProperty("OCCLUSION_MAP", in_material.occlusionTexture, material, root, mutex); });
-
-		task_executor->run(taskflow).wait();
+		subflow.emplace([&, material]() { HandleProperty("ALPHA_CUTOFF", in_material.alphaCutoff, material, root, m_Mutex); });
+		subflow.emplace([&, material]() { HandleProperty("BASE_COLOR_FACTOR", c(in_material.pbrData.baseColorFactor), material, root, m_Mutex); });
+		subflow.emplace([&, material]() { HandleProperty("METALLIC_FACTOR", in_material.pbrData.metallicFactor, material, root, m_Mutex); });
+		subflow.emplace([&, material]() { HandleProperty("ROUGHNESS_FACTOR", in_material.pbrData.roughnessFactor, material, root, m_Mutex); });
+		subflow.emplace([&, material]() { HandleProperty("BASE_COLOR_MAP", in_material.pbrData.baseColorTexture, material, root, m_Mutex); });
+		subflow.emplace([&, material]() { HandleProperty("METALLIC_ROUGHNESS_MAP", in_material.pbrData.metallicRoughnessTexture, material, root, m_Mutex); });
+		subflow.emplace([&, material]() { HandleProperty("NORMAL_MAP", in_material.normalTexture, material, root, m_Mutex); });
+		subflow.emplace([&, material]() { HandleProperty("OCCLUSION_MAP", in_material.occlusionTexture, material, root, m_Mutex); });
 
 		return id;
 	}
