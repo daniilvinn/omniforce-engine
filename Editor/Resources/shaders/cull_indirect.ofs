@@ -4,7 +4,6 @@
 
 #extension GL_EXT_buffer_reference2     : require
 #extension GL_EXT_scalar_block_layout   : require
-#extension GL_EXT_debug_printf          : require
 
 #include "camera_data.glslh"
 #include "render_object.glslh"
@@ -56,8 +55,6 @@ void main() {
         pc.culled_objects[index].material_bda = object.material_bda;
 
         float screen_space_radius = vec4(pc.camera_data.view_proj * vec4(bounding_sphere.radius, bounding_sphere.radius, bounding_sphere.center.z, 1.0f)).r;
-
-        debugPrintfEXT("Original: %f projected: %f", bounding_sphere.radius, screen_space_radius);
 
         uint meshlet_count = (mesh_data.meshlet_count + 31) / 32;
         pc.output_buffer.draw_params[index] = uvec3(meshlet_count, 1, 1);
