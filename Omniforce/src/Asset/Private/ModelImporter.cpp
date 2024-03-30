@@ -207,16 +207,21 @@ namespace Omni {
 					}
 
 					// Compute entire mesh bounding sphere
-					Sphere bounding_sphere = mesh_preprocessor.GenerateBoundingSphere(geometry);
+					Bounds mesh_bounds = mesh_preprocessor.GenerateMeshBounds(geometry);
 
-					mtx.lock();
-					mesh = Mesh::Create(
+					MeshData lod_data = {
 						remapped_vertices,
 						remapped_attributes,
 						meshlets->meshlets,
 						meshlets->local_indices,
 						meshlets->cull_bounds,
-						bounding_sphere
+						mesh_bounds.sphere
+					};
+
+					mtx.lock();
+					mesh = Mesh::Create(
+						lod_data,
+						mesh_bounds.aabb
 					);
 					mtx.unlock();
 

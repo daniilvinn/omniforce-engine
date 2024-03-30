@@ -564,13 +564,16 @@ namespace Omni {
 	uint32 SceneRenderer::AcquireResourceIndex(Shared<Mesh> mesh)
 	{
 		DeviceMeshData mesh_data = {};
-		mesh_data.lods[0].bounding_sphere = mesh->GetBoundingSphere();
-		mesh_data.lods[0].meshlet_count = mesh->GetMeshletCount();
-		mesh_data.lods[0].geometry_bda = mesh->GetBuffer(MeshBufferKey::GEOMETRY)->GetDeviceAddress();
-		mesh_data.lods[0].attributes_bda = mesh->GetBuffer(MeshBufferKey::ATTRIBUTES)->GetDeviceAddress();
-		mesh_data.lods[0].meshlets_bda = mesh->GetBuffer(MeshBufferKey::MESHLETS)->GetDeviceAddress();
-		mesh_data.lods[0].micro_indices_bda = mesh->GetBuffer(MeshBufferKey::MICRO_INDICES)->GetDeviceAddress();
-		mesh_data.lods[0].meshlets_cull_data_bda = mesh->GetBuffer(MeshBufferKey::MESHLETS_CULL_DATA)->GetDeviceAddress();
+		mesh_data.lod0_aabb = mesh->GetAABB();
+		for (int32 i = 0; i < mesh->GetLODCount(); i++) {
+			mesh_data.lods[i].bounding_sphere = mesh->GetBoundingSphere(i);
+			mesh_data.lods[i].meshlet_count = mesh->GetMeshletCount(i);
+			mesh_data.lods[i].geometry_bda = mesh->GetBuffer(i, MeshBufferKey::GEOMETRY)->GetDeviceAddress();
+			mesh_data.lods[i].attributes_bda = mesh->GetBuffer(i, MeshBufferKey::ATTRIBUTES)->GetDeviceAddress();
+			mesh_data.lods[i].meshlets_bda = mesh->GetBuffer(i, MeshBufferKey::MESHLETS)->GetDeviceAddress();
+			mesh_data.lods[i].micro_indices_bda = mesh->GetBuffer(i, MeshBufferKey::MICRO_INDICES)->GetDeviceAddress();
+			mesh_data.lods[i].meshlets_cull_data_bda = mesh->GetBuffer(i, MeshBufferKey::MESHLETS_CULL_DATA)->GetDeviceAddress();
+		}
 
 		return m_MeshResourcesBuffer.Allocate(mesh->Handle, mesh_data);
 	}

@@ -2,6 +2,8 @@
 #define MESH_DATA_GLSLH
 
 #include "sphere.glslh"
+#include "AABB.glslh"
+#include "constants.glslh"
 
 #extension GL_EXT_shader_explicit_arithmetic_types_int8     : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int32    : require
@@ -46,7 +48,7 @@ layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer Mes
     float cone_cutoff;
 };
 
-layout(buffer_reference, scalar, buffer_reference_align = 8) readonly buffer MeshData {
+struct MeshLOD {
     Sphere bounding_sphere;
     uint32_t meshlet_count;
     MeshGeometryData vertices;
@@ -54,6 +56,11 @@ layout(buffer_reference, scalar, buffer_reference_align = 8) readonly buffer Mes
     MeshMeshletsData meshlets_data;
     MeshMicroindices micro_indices;
     MeshletCullBounds meshlets_cull_bounds;
+};
+
+layout(buffer_reference, scalar, buffer_reference_align = 8) readonly buffer MeshData {
+    AABB aabb;
+    MeshLOD lods[OMNI_MAX_MESH_LOD_COUNT];
 };
 
 #endif

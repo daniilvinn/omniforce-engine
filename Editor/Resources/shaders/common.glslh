@@ -32,5 +32,4 @@ vec3 RotateByQuat(vec3 vertex, vec4 quat) {
 	return vertex + ((uv * quat.w) + uuv) * 2.0;
 };
 
-
 #endif

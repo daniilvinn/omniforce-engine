@@ -48,10 +48,9 @@ namespace Omni {
 		return meshlets_data;
 	}
 
-	Sphere MeshPreprocessor::GenerateBoundingSphere(const std::vector<glm::vec3>& points)
+	Omni::Bounds MeshPreprocessor::GenerateMeshBounds(const std::vector<glm::vec3>& points)
 	{
-		Sphere sphere = {};
-		AABB aabb = {};
+		Bounds bounds;
 
 		glm::vec3 farthest_vertex[2] = { points[0], points[0] };
 		glm::vec3 averaged_vertex_position(0.0f);
@@ -60,13 +59,13 @@ namespace Omni {
 		for (auto& point : points) {
 			averaged_vertex_position += point;
 			for (int i = 0; i < 3; i++) {
-				aabb.min[i] = glm::min(aabb.min[i], point[i]);
-				aabb.max[i] = glm::max(aabb.max[i], point[i]);
+				bounds.aabb.min[i] = glm::min(bounds.aabb.min[i], point[i]);
+				bounds.aabb.max[i] = glm::max(bounds.aabb.max[i], point[i]);
 			}
 		}
 
 		averaged_vertex_position /= points.size();
-		glm::vec3 aabb_centroid = 0.5f * (aabb.min + aabb.max);
+		glm::vec3 aabb_centroid = 0.5f * (bounds.aabb.min + bounds.aabb.max);
 
 		// Second pass - find farthest vertices for both averaged vertex position and AABB centroid
 		for (auto& point : points) {
@@ -79,30 +78,34 @@ namespace Omni {
 		float32 averaged_vertex_to_farthest_distance = glm::distance(farthest_vertex[0], averaged_vertex_position);
 		float32 aabb_centroid_to_farthest_distance = glm::distance(farthest_vertex[1], aabb_centroid);
 
-		sphere.center = averaged_vertex_to_farthest_distance < aabb_centroid_to_farthest_distance ? averaged_vertex_position : aabb_centroid;
-		sphere.radius = glm::min(averaged_vertex_to_farthest_distance, aabb_centroid_to_farthest_distance);
+		bounds.sphere.center = averaged_vertex_to_farthest_distance < aabb_centroid_to_farthest_distance ? averaged_vertex_position : aabb_centroid;
+		bounds.sphere.radius = glm::min(averaged_vertex_to_farthest_distance, aabb_centroid_to_farthest_distance);
 
-		return sphere;
+		return bounds;
 	}
 
-	void MeshPreprocessor::OptimizeMesh(std::vector<byte>& vertices, std::vector<uint32>& indices, uint8 vertex_stride)
+	void MeshPreprocessor::OptimizeMesh(std::vector<byte>& inout_vertices, std::vector<uint32>& inout_indices, uint8 vertex_stride)
 	{
-		std::vector<uint32> remap_table(indices.size());
-		uint32 unique_vertices = meshopt_generateVertexRemap(remap_table.data(), indices.data(), indices.size(), vertices.data(), vertices.size() / vertex_stride, vertex_stride);
+		std::vector<uint32> remap_table(inout_indices.size());
+		uint32 unique_vertices = meshopt_generateVertexRemap(remap_table.data(), inout_indices.data(), inout_indices.size(), inout_vertices.data(), inout_vertices.size() / vertex_stride, vertex_stride);
 
 		std::vector<uint32> remapped_ib(remap_table.size());
 		std::vector<byte> remapped_vb(unique_vertices * vertex_stride);
 
-		meshopt_remapIndexBuffer(remapped_ib.data(), indices.data(), remapped_ib.size(), remap_table.data());
-		meshopt_remapVertexBuffer(remapped_vb.data(), vertices.data(), vertices.size() / vertex_stride, vertex_stride, remap_table.data());
+		meshopt_remapIndexBuffer(remapped_ib.data(), inout_indices.data(), remapped_ib.size(), remap_table.data());
+		meshopt_remapVertexBuffer(remapped_vb.data(), inout_vertices.data(), inout_vertices.size() / vertex_stride, vertex_stride, remap_table.data());
 
 		meshopt_optimizeVertexCache(remapped_ib.data(), remapped_ib.data(), remapped_ib.size(), remapped_vb.size() / vertex_stride);
 		meshopt_optimizeOverdraw(remapped_ib.data(), remapped_ib.data(), remapped_ib.size(), (float32*)remapped_vb.data(), remapped_vb.size() / vertex_stride, vertex_stride, 1.05f);
 		meshopt_optimizeVertexFetch(remapped_vb.data(), remapped_ib.data(), remapped_ib.size(), remapped_vb.data(), remapped_vb.size() / vertex_stride, vertex_stride);
 
-		vertices.resize(remapped_vb.size());
-		memcpy(vertices.data(), remapped_vb.data(), remapped_vb.size());
-		memcpy(indices.data(), remapped_ib.data(), remapped_ib.size() * sizeof(uint32));
+		inout_vertices.resize(remapped_vb.size());
+
+		float result_error = 0.0f;
+		//inout_indices.resize(meshopt_simplify(inout_indices.data(), remapped_ib.data(), remapped_ib.size(), (float32*)remapped_vb.data(), remapped_vb.size() / vertex_stride, vertex_stride, remapped_ib.size() / 50, 0.5, 0, &result_error));
+		
+		memcpy(inout_vertices.data(), remapped_vb.data(), remapped_vb.size());
+		memcpy(inout_indices.data(), remapped_ib.data(), remapped_ib.size() * sizeof(uint32));
 	}
 
 	std::vector<glm::vec3> MeshPreprocessor::RemapVertices(const std::vector<glm::vec3>& src_vertices, const std::vector<uint32> remap_table)
@@ -139,6 +142,30 @@ namespace Omni {
 		linesVertices.shrink_to_fit();
 
 		return linesVertices;
+	}
+
+	std::vector<uint32> MeshPreprocessor::GenerateLOD(const std::vector<byte>& vertices, uint32 vertex_stride, const std::vector<uint32>& indices, uint32 target_index_count, float32 target_error, bool lock_borders)
+	{
+		std::vector<uint32> result(indices.size());
+
+		float32 out_error = 0.0f;
+
+		uint32 final_index_count = meshopt_simplify(
+			result.data(),
+			indices.data(),
+			indices.size(),
+			(float32*)vertices.data(),
+			vertices.size() / vertex_stride,
+			vertex_stride,
+			target_index_count,
+			target_error, 
+			lock_borders ? meshopt_SimplifyLockBorder : 0, 
+			&out_error
+		);
+
+		result.resize(final_index_count);
+
+		return result;
 	}
 
 }

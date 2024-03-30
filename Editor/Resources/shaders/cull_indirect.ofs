@@ -39,7 +39,8 @@ void main() {
     // Cull
     RenderObjectData object = pc.render_objects_queue[gl_GlobalInvocationID.x];
     Transform transform = object.transform;
-    MeshData mesh_data = pc.mesh_data[object.geometry_data_id];
+    MeshData root_mesh_data = pc.mesh_data[object.geometry_data_id];
+    MeshLOD mesh_data = root_mesh_data.lods[0];
 
     vec4 rotation_quaternion = vec4(unpackSnorm2x16(transform.packed_rotation[0]), unpackSnorm2x16(transform.packed_rotation[1]));
 
@@ -53,8 +54,7 @@ void main() {
         pc.culled_objects[index].transform = object.transform;
         pc.culled_objects[index].geometry_data_id = object.geometry_data_id;
         pc.culled_objects[index].material_bda = object.material_bda;
-
-        float screen_space_radius = vec4(pc.camera_data.view_proj * vec4(bounding_sphere.radius, bounding_sphere.radius, bounding_sphere.center.z, 1.0f)).r;
+        pc.culled_objects[index].lod = 0;
 
         uint meshlet_count = (mesh_data.meshlet_count + 31) / 32;
         pc.output_buffer.draw_params[index] = uvec3(meshlet_count, 1, 1);

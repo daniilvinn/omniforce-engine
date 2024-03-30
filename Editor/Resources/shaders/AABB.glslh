@@ -1,0 +1,9 @@
+#ifndef AABB_GLSLH
+#define AABB_GLSLH
+
+struct AABB {
+	vec3 min;
+	vec3 max;
+};
+
+#endif

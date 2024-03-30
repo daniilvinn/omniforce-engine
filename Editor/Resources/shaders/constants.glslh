@@ -1,0 +1,6 @@
+#ifndef CONSTANTS_GLSLH
+#define CONSTANTS_GLSLH
+
+const uint OMNI_MAX_MESH_LOD_COUNT = 4;
+
+#endif

@@ -2,11 +2,11 @@
 
 #include <Foundation/Types.h>
 
+#include <Renderer/Mesh.h>
+
 #include <glm/glm.hpp>
 
 namespace Omni {
-
-	constexpr uint32 OMNI_MAX_MESH_LOD_COUNT = 6;
 
 	struct DeviceCameraData {
 		glm::mat4 view;
@@ -18,6 +18,7 @@ namespace Omni {
 	};
 
 	struct DeviceMeshData {
+		AABB lod0_aabb; // used for lod selection
 		struct LOD {
 			Sphere bounding_sphere;
 			uint32 meshlet_count;
@@ -26,7 +27,7 @@ namespace Omni {
 			uint64 meshlets_bda;
 			uint64 micro_indices_bda;
 			uint64 meshlets_cull_data_bda;
-		} lods[OMNI_MAX_MESH_LOD_COUNT];
+		} lods[Mesh::OMNI_MAX_MESH_LOD_COUNT];
 	};
 
 	struct TRS {

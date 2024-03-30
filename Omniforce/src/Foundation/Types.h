@@ -203,6 +203,15 @@ namespace Omni {
 		glm::vec3 min, max;
 	};
 
+	struct AABB_2D {
+		glm::vec2 min, max;
+	};
+
+	struct Bounds {
+		Sphere sphere;
+		AABB aabb;
+	};
+
 	struct Plane {
 		glm::vec3 normal;
 		float32 distance;
