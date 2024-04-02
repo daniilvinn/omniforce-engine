@@ -61,8 +61,8 @@ namespace Omni {
 		const float32 Z = .850650808352039932f;
 		const float32 N = 0.f;
 
-		VertexList icosahedron_vertices =
-		{
+		VertexList icosahedron_vertices(12);
+		icosahedron_vertices = {
 			{-X,N,Z}, {X,N,Z}, {-X,N,-Z}, {X,N,-Z},
 			{N,Z,X}, {N,Z,-X}, {N,-Z,X}, {N,-Z,-X},
 			{Z,X,N}, {-Z,X, N}, {Z,-X,N}, {-Z,-X, N}
@@ -80,12 +80,6 @@ namespace Omni {
 		for (int i = 0; i < subdivisions; i++) {
 			icosahedron_indices = subdivide(icosahedron_vertices, icosahedron_indices);
 		}
-
-		float32 farthest_vertex = 0.0f;
-
-		for (auto& vertex : icosahedron_vertices)
-			if (glm::length(vertex) > farthest_vertex)
-				farthest_vertex = glm::length(vertex);
 		
 		std::vector<uint32> indices(icosahedron_indices.size() * 3);
 		memcpy(indices.data(), icosahedron_indices.data(), indices.size() * 4);

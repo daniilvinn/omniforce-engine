@@ -6,6 +6,9 @@
 
 namespace Omni {
 
+	// Collection of Mesh-Material pairs.
+	// This class is used just for convenience of handling meshes with multiple submeshes.
+	// This is NOT prefab - all submeshes have no transforms, hence there are no hierarchy of nodes in this class.
 	class OMNIFORCE_API Model : public AssetBase {
 	public:
 		Model(const std::vector<std::pair<AssetHandle, AssetHandle>>& meshes);

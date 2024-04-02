@@ -19,12 +19,11 @@ namespace Omni {
 	public:
 		GeneratedMeshlets* GenerateMeshlets(const std::vector<glm::vec3>& vertices, const std::vector<uint32>& indices);
 		Bounds GenerateMeshBounds(const std::vector<glm::vec3>& points);
-		void OptimizeMesh(std::vector<byte>& vertices, std::vector<uint32>& indices, uint8 vertex_stride);
+		void OptimizeMesh(std::vector<byte>* out_vertices, std::vector<uint32>* out_indices, const std::vector<byte>& vertices, const std::vector<uint32>& indices, uint8 vertex_stride);
 		std::vector<glm::vec3> RemapVertices(const std::vector<glm::vec3>& src_vertices, const std::vector<uint32> remap_table);
 		std::vector<glm::vec3> ConvertToLineTopology(const std::vector<glm::vec3>& vertices);
 		std::vector<uint32> GenerateLOD(const std::vector<byte>& vertices, uint32 vertex_stride, const std::vector<uint32>& indices, uint32 target_index_count, float32 target_error, bool lock_borders);
-
-	private:
+		void SplitVertexData(std::vector<glm::vec3>* geometry, std::vector<byte>* attributes, const std::vector<byte>& in_vertex_data, uint32 stride);
 
 	};
 

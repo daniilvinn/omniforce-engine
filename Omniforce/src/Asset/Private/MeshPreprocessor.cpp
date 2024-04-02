@@ -84,28 +84,20 @@ namespace Omni {
 		return bounds;
 	}
 
-	void MeshPreprocessor::OptimizeMesh(std::vector<byte>& inout_vertices, std::vector<uint32>& inout_indices, uint8 vertex_stride)
+	void MeshPreprocessor::OptimizeMesh(std::vector<byte>* out_vertices, std::vector<uint32>* out_indices, const std::vector<byte>& vertices, const std::vector<uint32>& indices, uint8 vertex_stride)
 	{
-		std::vector<uint32> remap_table(inout_indices.size());
-		uint32 unique_vertices = meshopt_generateVertexRemap(remap_table.data(), inout_indices.data(), inout_indices.size(), inout_vertices.data(), inout_vertices.size() / vertex_stride, vertex_stride);
+		std::vector<uint32> remap_table(indices.size());
+		uint32 unique_vertices = meshopt_generateVertexRemap(remap_table.data(), indices.data(), indices.size(), vertices.data(), vertices.size() / vertex_stride, vertex_stride);
 
-		std::vector<uint32> remapped_ib(remap_table.size());
-		std::vector<byte> remapped_vb(unique_vertices * vertex_stride);
+		out_indices->resize(remap_table.size());
+		out_vertices->resize(unique_vertices * vertex_stride);
 
-		meshopt_remapIndexBuffer(remapped_ib.data(), inout_indices.data(), remapped_ib.size(), remap_table.data());
-		meshopt_remapVertexBuffer(remapped_vb.data(), inout_vertices.data(), inout_vertices.size() / vertex_stride, vertex_stride, remap_table.data());
+		meshopt_remapIndexBuffer(out_indices->data(), indices.data(), out_indices->size(), remap_table.data());
+		meshopt_remapVertexBuffer(out_vertices->data(), vertices.data(), vertices.size() / vertex_stride, vertex_stride, remap_table.data());
 
-		meshopt_optimizeVertexCache(remapped_ib.data(), remapped_ib.data(), remapped_ib.size(), remapped_vb.size() / vertex_stride);
-		meshopt_optimizeOverdraw(remapped_ib.data(), remapped_ib.data(), remapped_ib.size(), (float32*)remapped_vb.data(), remapped_vb.size() / vertex_stride, vertex_stride, 1.05f);
-		meshopt_optimizeVertexFetch(remapped_vb.data(), remapped_ib.data(), remapped_ib.size(), remapped_vb.data(), remapped_vb.size() / vertex_stride, vertex_stride);
-
-		inout_vertices.resize(remapped_vb.size());
-
-		float result_error = 0.0f;
-		//inout_indices.resize(meshopt_simplify(inout_indices.data(), remapped_ib.data(), remapped_ib.size(), (float32*)remapped_vb.data(), remapped_vb.size() / vertex_stride, vertex_stride, remapped_ib.size() / 50, 0.5, 0, &result_error));
-		
-		memcpy(inout_vertices.data(), remapped_vb.data(), remapped_vb.size());
-		memcpy(inout_indices.data(), remapped_ib.data(), remapped_ib.size() * sizeof(uint32));
+		meshopt_optimizeVertexCache(out_indices->data(), out_indices->data(), out_indices->size(), out_vertices->size() / vertex_stride);
+		meshopt_optimizeOverdraw(out_indices->data(), out_indices->data(), out_indices->size(), (float32*)out_vertices->data(), out_vertices->size() / vertex_stride, vertex_stride, 1.05f);
+		meshopt_optimizeVertexFetch(out_vertices->data(), out_indices->data(), out_indices->size(), out_vertices->data(), out_vertices->size() / vertex_stride, vertex_stride);
 	}
 
 	std::vector<glm::vec3> MeshPreprocessor::RemapVertices(const std::vector<glm::vec3>& src_vertices, const std::vector<uint32> remap_table)
@@ -166,6 +158,17 @@ namespace Omni {
 		result.resize(final_index_count);
 
 		return result;
+	}
+
+	void MeshPreprocessor::SplitVertexData(std::vector<glm::vec3>* geometry, std::vector<byte>* attributes, const std::vector<byte>& in_vertex_data, uint32 stride)
+	{
+		uint32 num_iterations = in_vertex_data.size() / stride;
+		uint32 deinterleaved_stride = stride - sizeof glm::vec3;
+		// split data back
+		for (int i = 0; i < num_iterations; i++) {
+			memcpy(geometry->data() + i, in_vertex_data.data() + i * stride, sizeof(glm::vec3));
+			memcpy(attributes->data() + i * deinterleaved_stride, in_vertex_data.data() + i * stride + sizeof(glm::vec3), deinterleaved_stride);
+		}
 	}
 
 }

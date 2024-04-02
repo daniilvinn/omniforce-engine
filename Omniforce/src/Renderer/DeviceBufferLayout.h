@@ -15,6 +15,22 @@ namespace Omni {
 		DeviceBufferLayoutElement(const std::string& in_name, DeviceDataType format)
 			: name(in_name), format(format) {}
 
+		DeviceBufferLayoutElement(DeviceBufferLayoutElement& other)
+		{
+			name = other.name;
+			format = other.format;
+			size = other.size;
+			offset = other.offset;
+		}
+
+		DeviceBufferLayoutElement(const DeviceBufferLayoutElement& other)
+		{
+			name = other.name;
+			format = other.format;
+			size = other.size;
+			offset = other.offset;
+		}
+
 		bool operator==(const DeviceBufferLayoutElement& other) const {
 			bool result = true;
 			result &= format == other.format;

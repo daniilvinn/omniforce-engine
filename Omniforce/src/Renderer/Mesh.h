@@ -7,6 +7,8 @@
 #include <Renderer/DeviceBuffer.h>
 #include <Renderer/Meshlet.h>
 
+#include <Log/Logger.h>
+
 #include <map>
 #include <array>
 
@@ -26,7 +28,7 @@ namespace Omni {
 		std::vector<RenderableMeshlet> meshlets;
 		std::vector<byte> local_indices;
 		std::vector<MeshletCullBounds> cull_data;
-		Sphere& bounding_sphere;
+		Sphere bounding_sphere;
 	};
 
 	struct MeshLODData {
@@ -48,9 +50,9 @@ namespace Omni {
 
 		void Destroy() override;
 
-		Shared<DeviceBuffer> GetBuffer(uint32 lod_index, MeshBufferKey key) { OMNIFORCE_ASSERT_TAGGED(lod_index < OMNI_MAX_MESH_LOD_COUNT, "Exceeded max lod count"); return m_LODs[lod_index].buffers.at(key); };
-		const uint32& GetMeshletCount(uint32 lod_index) const { OMNIFORCE_ASSERT_TAGGED(lod_index < OMNI_MAX_MESH_LOD_COUNT, "Exceeded max lod count"); return m_LODs[lod_index].meshlet_count; }
-		const Sphere& GetBoundingSphere(uint32 lod_index) const { OMNIFORCE_ASSERT_TAGGED(lod_index < OMNI_MAX_MESH_LOD_COUNT, "Exceeded max lod count"); return m_LODs[lod_index].bounding_sphere; }
+		Shared<DeviceBuffer> GetBuffer(uint32 lod_index, MeshBufferKey key) { OMNIFORCE_ASSERT_TAGGED(lod_index < m_LODCount, "Exceeded lod count"); return m_LODs[lod_index].buffers.at(key); };
+		const uint32& GetMeshletCount(uint32 lod_index) const { OMNIFORCE_ASSERT_TAGGED(lod_index < m_LODCount, "Exceeded lod count"); return m_LODs[lod_index].meshlet_count; }
+		const Sphere& GetBoundingSphere(uint32 lod_index) const { OMNIFORCE_ASSERT_TAGGED(lod_index < m_LODCount, "Exceeded lod count"); return m_LODs[lod_index].bounding_sphere; }
 		const AABB& GetAABB() const { return m_AABB; }
 		uint8 GetLODCount() const { return m_LODCount; }
 

@@ -31,7 +31,8 @@ namespace Omni {
 		AssetHandle LoadTextureProperty(uint64 texture_index, const ftf::Asset& root);
 
 	private:
-		std::shared_mutex m_Mutex;
+		std::shared_mutex m_Mutex; // used to load material properties
+		inline static std::shared_mutex s_MaterialRegisterMutex; // used when registering material
 
 	};
 
