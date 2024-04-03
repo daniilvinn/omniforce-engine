@@ -30,7 +30,7 @@ namespace Omni {
 		PipelineSpecification pipeline_spec = PipelineSpecification::Default();
 		pipeline_spec.culling_mode = PipelineCullingMode::NONE;
 		pipeline_spec.debug_name = "debug renderer wireframe";
-		pipeline_spec.line_width = 2.0f;
+		pipeline_spec.line_width = 1.8f;
 		pipeline_spec.output_attachments_formats = { ImageFormat::RGB32_HDR };
 		pipeline_spec.topology = PipelineTopology::LINES;
 		pipeline_spec.shader = shader_library->GetShader("wireframe.ofs");
@@ -43,23 +43,42 @@ namespace Omni {
 
 		// Icosphere
 		auto icosphere_data = mesh_generator.GenerateIcosphere(2);
-		std::vector<glm::vec3> icosphere_vertices = mesh_preprocessor.ConvertToLineTopology(mesh_preprocessor.RemapVertices(icosphere_data.first, icosphere_data.second));
+
+		std::vector<byte> vertex_data(icosphere_data.first.size() * sizeof(glm::vec3));
+		memcpy(vertex_data.data(), icosphere_data.first.data(), vertex_data.size());
+
+		// Get rid of index buffer
+		std::vector<byte> primitive_vertices(icosphere_data.second.size() * sizeof glm::vec3);
+		mesh_preprocessor.RemapVertices(&primitive_vertices, &vertex_data, 12, &icosphere_data.second);
+		
+		// Convert to line topology
+		vertex_data.resize(icosphere_data.second.size() * sizeof(glm::vec3) * 2);
+		mesh_preprocessor.ConvertToLineTopology(&vertex_data, &primitive_vertices, sizeof glm::vec3);
 
 		DeviceBufferSpecification buffer_spec = {};
 		buffer_spec.buffer_usage = DeviceBufferUsage::VERTEX_BUFFER;
 		buffer_spec.heap = DeviceBufferMemoryHeap::DEVICE;
 		buffer_spec.memory_usage = DeviceBufferMemoryUsage::NO_HOST_ACCESS;
-		buffer_spec.size = icosphere_vertices.size() * sizeof glm::vec3;
+		buffer_spec.size = vertex_data.size();
 
-		m_IcosphereMesh = DeviceBuffer::Create(buffer_spec, icosphere_vertices.data(), buffer_spec.size);
+		m_IcosphereMesh = DeviceBuffer::Create(buffer_spec, vertex_data.data(), buffer_spec.size);
 
 		// Cube
 		auto cube_data = mesh_generator.GenerateCube();
-		std::vector<glm::vec3> cube_vertices = mesh_preprocessor.ConvertToLineTopology(mesh_preprocessor.RemapVertices(cube_data.first, cube_data.second));
 
-		buffer_spec.size = cube_vertices.size() * sizeof glm::vec3;
+		vertex_data.resize(cube_data.first.size() * sizeof glm::vec3);
 
-		m_CubeMesh = DeviceBuffer::Create(buffer_spec, cube_vertices.data(), buffer_spec.size);
+		memcpy(vertex_data.data(), cube_data.first.data(), vertex_data.size());
+
+		primitive_vertices.resize(cube_data.second.size() * sizeof glm::vec3);
+		mesh_preprocessor.RemapVertices(&primitive_vertices, &vertex_data, 12, &cube_data.second);
+
+		vertex_data.resize(cube_data.second.size() * sizeof(glm::vec3) * 2);
+		mesh_preprocessor.ConvertToLineTopology(&vertex_data, &primitive_vertices, sizeof glm::vec3);
+
+		buffer_spec.size = vertex_data.size();
+
+		m_CubeMesh = DeviceBuffer::Create(buffer_spec, vertex_data.data(), buffer_spec.size);
 	}
 
 	DebugRenderer::~DebugRenderer()

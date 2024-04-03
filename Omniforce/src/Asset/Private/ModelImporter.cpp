@@ -69,29 +69,29 @@ namespace Omni {
 				std::vector<byte> vertex_data;
 				std::vector<uint32> index_data;
 
-				auto attribute_read_task = subflow.emplace([&, this]() {
+				//auto attribute_read_task = subflow.emplace([&, this]() {
 					ReadVertexAttributes(&vertex_data, &index_data, &ftf_asset, &ftf_mesh, &attribute_metadata_table, vertex_stride);
-				});
+				//});
 
 				// 3. Process mesh data - generate lods, optimize mesh, generate meshlets etc.
 				Shared<Mesh> mesh = nullptr;
 				AABB lod0_aabb = {};
 
-				auto mesh_process_task = subflow.emplace([&, this]() {
+				//auto mesh_process_task = subflow.emplace([&, this]() {
 					ProcessMeshData(&mesh, &lod0_aabb, &vertex_data, &index_data, vertex_stride, &mtx);
-				}).succeed(attribute_read_task);
+				//}).succeed(attribute_read_task);
 
 				// 4. Process material data - load textures, generate mip-maps, compress. Also copies scalar material properties
 				//    Material processing requires additional steps in order to make sure that no duplicates will be created.
 				const ftf::Material& ftf_material = ftf_asset.materials[ftf_mesh.primitives[0].materialIndex.value()];
 				Shared<Material> material = nullptr;
 
-				auto material_process_task = subflow.emplace([&, this](tf::Subflow& sf) {
+				//auto material_process_task = subflow.emplace([&, this](tf::Subflow& sf) {
 					if (!material_table.contains(ftf_mesh.primitives[0].materialIndex.value())) {
 						material_table.emplace(ftf_mesh.primitives[0].materialIndex.value(), rh::hash<std::string>()(ftf_material.name.c_str()));
-						ProcessMaterialData(sf, &material, &ftf_asset, &ftf_material, &attribute_metadata_table, &mtx);
+						ProcessMaterialData(subflow, &material, &ftf_asset, &ftf_material, &attribute_metadata_table, &mtx);
 					}
-				});
+				//});
 
 				// Join so the stack doesn't get freed and we can safely use its memory
 				subflow.join();
@@ -179,21 +179,21 @@ namespace Omni {
 	{
 		auto& primitive = mesh->primitives[0];
 		// Iterate through attributes and find their offsets
+		uint32 attribute_stride = 12;
 		for (auto& attribute : primitive.attributes) {
-			// If on "POSIIION" attribute, we just update stride and continue. No need to register it as "attribute"
-			if (attribute.first == "POSITION") {
-				*out_stride += sizeof glm::vec3;
+			// If on "POSIIION" attribute - skip iteration, since geometry is not considered as vertex attribute and is always at 0 offset
+			if (attribute.first == "POSITION")
 				continue;
-			}
 
 			// Get fastgltf accesor
 			auto& attrib_accessor = asset->accessors[attribute.second];
 
 			// Calculate size. Emplace entry with key being attribute name and value being offset. Update stride
 			uint8 attrib_size = fastgltf::getElementByteSize(attrib_accessor.type, attrib_accessor.componentType);
-			out_table->emplace(attribute.first, *out_stride);
-			*out_stride += attrib_size;
+			out_table->emplace(attribute.first, attribute_stride);
+			attribute_stride += attrib_size;
 		}
+		*out_stride = attribute_stride;
 	}
 
 	void ModelImporter::ReadVertexAttributes(std::vector<byte>* out_vertex_data, std::vector<uint32>* out_index_data, const ftf::Asset* asset, 
@@ -244,9 +244,10 @@ namespace Omni {
 		// Init crucial data
 		std::array<MeshData, 4> mesh_lods;
 		AABB lod0_aabb;
-
+		
 		// Process mesh data on per-LOD basis. It involves generating LOD index buffer, optimizing mesh, generating meshlets and remapping data
 		for (int32 i = 0; i < Mesh::OMNI_MAX_MESH_LOD_COUNT; i++) {
+#if 0
 			MeshPreprocessor mesh_preprocessor;
 			uint8 deinterleaved_stride = vertex_stride - sizeof glm::vec3;
 
@@ -256,7 +257,7 @@ namespace Omni {
 				*vertex_data,
 				vertex_stride,
 				*index_data,
-				index_data->size() / glm::pow(4, i),
+				Utils::Align(index_data->size() / glm::pow(4, i), 3),
 				0.1f + 0.1f * 3,
 				false
 			);
@@ -310,6 +311,39 @@ namespace Omni {
 			};
 
 			delete meshlets;
+#endif
+			MeshPreprocessor mesh_preprocessor = {};
+
+			std::vector<uint32> lod_indices;
+
+			if (i == 0)
+				lod_indices = *index_data;
+			else
+				mesh_preprocessor.GenerateMeshLOD(&lod_indices, vertex_data, index_data, vertex_stride, Utils::Align(index_data->size() / glm::pow(i, 3), 3));
+
+			std::vector<byte> optimized_vertices;
+			std::vector<uint32> optimized_indices;
+
+			mesh_preprocessor.OptimizeMesh(&optimized_vertices, &optimized_indices, vertex_data, &lod_indices, vertex_stride);
+
+			lod_indices.clear(); // just reduce peak memory
+
+			GeneratedMeshlets* generated_meshlets = mesh_preprocessor.GenerateMeshlets(&optimized_vertices, &optimized_indices, vertex_stride);
+
+			std::vector<byte> remapped_vertices(generated_meshlets->indices.size() * vertex_stride);
+			mesh_preprocessor.RemapVertices(&remapped_vertices, vertex_data, vertex_stride, &generated_meshlets->indices);
+
+			mesh_preprocessor.SplitVertexData(&mesh_lods[i].geometry, &mesh_lods[i].attributes, &remapped_vertices, vertex_stride);
+
+			Bounds mesh_bounds = mesh_preprocessor.GenerateMeshBounds(&mesh_lods[i].geometry);
+
+			mesh_lods[i].meshlets			= std::move(generated_meshlets->meshlets);
+			mesh_lods[i].local_indices		= std::move(generated_meshlets->local_indices);
+			mesh_lods[i].cull_data			= std::move(generated_meshlets->cull_bounds);
+			mesh_lods[i].bounding_sphere	= mesh_bounds.sphere;
+
+			if (i == 0)
+				lod0_aabb = mesh_bounds.aabb;
 		}
 
 		// Create mesh under mutex
