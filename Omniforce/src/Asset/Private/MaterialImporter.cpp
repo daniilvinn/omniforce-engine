@@ -14,7 +14,7 @@ namespace Omni {
 	}
 
 	template<>
-	void MaterialImporter::HandleProperty<ftf::Optional<ftf::TextureInfo>>(std::string_view key, const ftf::Optional<ftf::TextureInfo>& property, Shared<Material> material, const ftf::Asset& root, std::shared_mutex& mutex)
+	void MaterialImporter::HandleProperty<ftf::Optional<ftf::TextureInfo>>(std::string_view key, const ftf::Optional<ftf::TextureInfo>& property, Shared<Material> material, const ftf::Asset* root, std::shared_mutex& mutex)
 	{
 		if (!property.has_value())
 			return;
@@ -28,7 +28,7 @@ namespace Omni {
 	}
 
 	template<>
-	void MaterialImporter::HandleProperty<ftf::Optional<ftf::NormalTextureInfo>>(std::string_view key, const ftf::Optional<ftf::NormalTextureInfo>& property, Shared<Material> material, const ftf::Asset& root, std::shared_mutex& mutex)
+	void MaterialImporter::HandleProperty<ftf::Optional<ftf::NormalTextureInfo>>(std::string_view key, const ftf::Optional<ftf::NormalTextureInfo>& property, Shared<Material> material, const ftf::Asset* root, std::shared_mutex& mutex)
 	{
 		if (!property.has_value())
 			return;
@@ -47,7 +47,7 @@ namespace Omni {
 	}
 
 	template<>
-	void MaterialImporter::HandleProperty<ftf::Optional<ftf::OcclusionTextureInfo>>(std::string_view key, const ftf::Optional<ftf::OcclusionTextureInfo>& property, Shared<Material> material, const ftf::Asset& root, std::shared_mutex& mutex)
+	void MaterialImporter::HandleProperty<ftf::Optional<ftf::OcclusionTextureInfo>>(std::string_view key, const ftf::Optional<ftf::OcclusionTextureInfo>& property, Shared<Material> material, const ftf::Asset* root, std::shared_mutex& mutex)
 	{
 		if (!property.has_value())
 			return;
@@ -60,15 +60,15 @@ namespace Omni {
 		mutex.unlock();
 	}
 
-	AssetHandle MaterialImporter::LoadTextureProperty(uint64 texture_index, const ftf::Asset& root)
+	AssetHandle MaterialImporter::LoadTextureProperty(uint64 texture_index, const ftf::Asset* root)
 	{
-		const auto& ftf_texture = root.textures[texture_index];
+		const auto& ftf_texture = root->textures[texture_index];
 
 		if (!ftf_texture.imageIndex.has_value())
 			return 0;
 
 		const uint64 ftf_image_index = ftf_texture.imageIndex.value();
-		const auto& ftf_image = root.images[ftf_image_index];
+		const auto& ftf_image = root->images[ftf_image_index];
 		const auto& ftf_image_data = ftf_image.data;
 
 		std::vector<byte> image_data;
@@ -132,37 +132,28 @@ namespace Omni {
 		return asset_handle;
 	}
 
-	Omni::AssetHandle MaterialImporter::Import(tf::Subflow& subflow, const ftf::Asset& root, const ftf::Material& in_material)
+	Omni::AssetHandle MaterialImporter::Import(tf::Subflow& subflow, const ftf::Asset* root, const ftf::Material* in_material)
 	{
 		// Check if such material is already loaded.
 		// Check under mutex lock, if two threads are attemping to load exact same material
-		AssetHandle id = rh::hash<std::string>()(in_material.name.c_str());
-		Shared<Material> material;
-		{
-			std::lock_guard lock(s_MaterialRegisterMutex);
-			
-			AssetManager* asset_manager = AssetManager::Get();
+		AssetHandle id = rh::hash<std::string>()(in_material->name.c_str());
+		Shared<Material> material = Material::Create(in_material->name.c_str(), id);
 
-			if (asset_manager->HasAsset(id))
-				return id;
+		AssetManager::Get()->RegisterAsset(material, id);
 
-			material = Material::Create(in_material.name.c_str(), id);
-			asset_manager->RegisterAsset(material, id);
-		}
-
-		if (in_material.pbrData.baseColorTexture.has_value())
+		if (in_material->pbrData.baseColorTexture.has_value())
 			material->AddShaderMacro("__OMNI_SHADING_MODEL_PBR");
 		else
 			material->AddShaderMacro("__OMNI_SHADING_MODEL_NON_PBR");
 
-		subflow.emplace([&]() { HandleProperty("ALPHA_CUTOFF", in_material.alphaCutoff, material, root, m_Mutex); });
-		subflow.emplace([&]() { HandleProperty("BASE_COLOR_FACTOR", c(in_material.pbrData.baseColorFactor), material, root, m_Mutex); });
-		subflow.emplace([&]() { HandleProperty("METALLIC_FACTOR", in_material.pbrData.metallicFactor, material, root, m_Mutex); });
-		subflow.emplace([&]() { HandleProperty("ROUGHNESS_FACTOR", in_material.pbrData.roughnessFactor, material, root, m_Mutex); });
-		subflow.emplace([&]() { HandleProperty("BASE_COLOR_MAP", in_material.pbrData.baseColorTexture, material, root, m_Mutex); });
-		subflow.emplace([&]() { HandleProperty("METALLIC_ROUGHNESS_MAP", in_material.pbrData.metallicRoughnessTexture, material, root, m_Mutex); });
-		subflow.emplace([&]() { HandleProperty("NORMAL_MAP", in_material.normalTexture, material, root, m_Mutex); });
-		subflow.emplace([&]() { HandleProperty("OCCLUSION_MAP", in_material.occlusionTexture, material, root, m_Mutex); });
+		subflow.emplace([=]() { HandleProperty("ALPHA_CUTOFF", in_material->alphaCutoff, material, root, m_Mutex); });
+		subflow.emplace([=]() { HandleProperty("BASE_COLOR_FACTOR", c(in_material->pbrData.baseColorFactor), material, root, m_Mutex); });
+		subflow.emplace([=]() { HandleProperty("METALLIC_FACTOR", in_material->pbrData.metallicFactor, material, root, m_Mutex); });
+		subflow.emplace([=]() { HandleProperty("ROUGHNESS_FACTOR", in_material->pbrData.roughnessFactor, material, root, m_Mutex); });
+		subflow.emplace([=]() { HandleProperty("BASE_COLOR_MAP", in_material->pbrData.baseColorTexture, material, root, m_Mutex); });
+		subflow.emplace([=]() { HandleProperty("METALLIC_ROUGHNESS_MAP", in_material->pbrData.metallicRoughnessTexture, material, root, m_Mutex); });
+		subflow.emplace([=]() { HandleProperty("NORMAL_MAP", in_material->normalTexture, material, root, m_Mutex); });
+		subflow.emplace([=]() { HandleProperty("OCCLUSION_MAP", in_material->occlusionTexture, material, root, m_Mutex); });
 
 		return id;
 	}

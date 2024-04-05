@@ -12,7 +12,6 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP /W1")
 endif()
 
-
 # Include sub-projects.
 add_subdirectory ("Omniforce/vendor/Jolt/Build")
 add_subdirectory ("Omniforce/vendor/volk")

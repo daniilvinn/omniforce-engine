@@ -82,7 +82,6 @@ namespace Omni {
 
 	Shared<Mesh> Mesh::Create(const std::array<MeshData, OMNI_MAX_MESH_LOD_COUNT>& lods, const AABB& aabb)
 	{
-
 		return std::make_shared<Mesh>(lods, aabb);
 	}
 

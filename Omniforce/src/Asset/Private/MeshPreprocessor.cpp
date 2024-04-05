@@ -97,10 +97,10 @@ namespace Omni {
 
 	void MeshPreprocessor::OptimizeMesh(std::vector<byte>* out_vertices, std::vector<uint32>* out_indices, const std::vector<byte>* vertices, const std::vector<uint32>* indices, uint8 vertex_stride)
 	{
-		std::vector<uint32> remap_table(indices->size());
+		std::vector<uint32> remap_table(vertices->size() / vertex_stride);
 		uint32 unique_vertices = meshopt_generateVertexRemap(remap_table.data(), indices->data(), indices->size(), vertices->data(), vertices->size() / vertex_stride, vertex_stride);
 
-		out_indices->resize(remap_table.size());
+		out_indices->resize(indices->size());
 		out_vertices->resize(unique_vertices * vertex_stride);
 
 		meshopt_remapIndexBuffer(out_indices->data(), indices->data(), out_indices->size(), remap_table.data());
@@ -136,7 +136,7 @@ namespace Omni {
 		}
 	}
 
-	void MeshPreprocessor::GenerateMeshLOD(std::vector<uint32>* out_indices, const std::vector<byte>* vertex_data, const std::vector<uint32>* index_data, uint32 vertex_stride, uint32 target_index_count) {
+	void MeshPreprocessor::GenerateMeshLOD(std::vector<uint32>* out_indices, const std::vector<byte>* vertex_data, const std::vector<uint32>* index_data, uint32 vertex_stride, uint32 target_index_count, float32 target_error) {
 		out_indices->resize(index_data->size());
 		out_indices->resize(meshopt_simplify(
 			out_indices->data(),
@@ -146,7 +146,7 @@ namespace Omni {
 			vertex_data->size() / vertex_stride,
 			vertex_stride,
 			target_index_count,
-			0.3f
+			target_error
 		));
 	}
 

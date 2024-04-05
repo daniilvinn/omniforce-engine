@@ -17,10 +17,10 @@ namespace Omni {
 	// Internal for engine. To be used only in other importers
 	class MaterialImporter {
 	public:
-		AssetHandle Import(tf::Subflow& subflow, const ftf::Asset& root, const ftf::Material& in_material);
+		AssetHandle Import(tf::Subflow& subflow, const ftf::Asset* root, const ftf::Material* in_material);
 
 	private:
-		template<typename T> void HandleProperty(std::string_view key, const T& property, Shared<Material> material, const ftf::Asset & root, std::shared_mutex& mutex)
+		template<typename T> void HandleProperty(std::string_view key, const T& property, Shared<Material> material, const ftf::Asset* root, std::shared_mutex& mutex)
 		{
 			mutex.lock();
 			material->AddProperty(key, property);
@@ -28,11 +28,10 @@ namespace Omni {
 			mutex.unlock();
 		}
 
-		AssetHandle LoadTextureProperty(uint64 texture_index, const ftf::Asset& root);
+		AssetHandle LoadTextureProperty(uint64 texture_index, const ftf::Asset* root);
 
 	private:
 		std::shared_mutex m_Mutex; // used to load material properties
-		inline static std::shared_mutex s_MaterialRegisterMutex; // used when registering material
 
 	};
 

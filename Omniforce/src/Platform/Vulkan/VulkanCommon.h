@@ -26,7 +26,7 @@ constexpr std::string VkResultToString(VkResult result)
 		break;
 	case VK_NOT_READY:
 		return "VK_NOT_READY";
-		break;
+		break;	
 	case VK_TIMEOUT:
 		return "VK_TIMEOUT";
 		break;
