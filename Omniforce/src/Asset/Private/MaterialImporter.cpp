@@ -1,3 +1,6 @@
+// NOTE:
+// All material texture importing must be rewritten pretty much entirely, except of loading individual properties
+
 #include "../Importers/MaterialImporter.h">
 
 #include <Asset/AssetManager.h>
@@ -6,10 +9,11 @@
 #include <Asset/AssetCompressor.h>
 #include <Core/Utils.h>
 #include <Threading/JobSystem.h>
+#include <Log/Logger.h>
 
 namespace Omni {
 
-	glm::vec4 c(std::array<float32, 4> in) {
+	glm::vec4 c(const std::array<float32, 4>& in) {
 		return { in[0], in[1], in[2], in[3] };
 	}
 
@@ -75,32 +79,32 @@ namespace Omni {
 		uint32 image_width, image_height;
 
 		std::visit(ftf::visitor{
-					[](auto& arg) {},
-					[&](const ftf::sources::URI filepath) {
-						ImageSourceImporter image_importer;
-						ImageSourceMetadata* image_metadata = (ImageSourceMetadata*)image_importer.GetMetadata(filepath.uri.path());
-						image_data.resize(image_metadata->width * image_metadata->height * image_metadata->source_channels);
+				[](auto& arg) {},
+				[&](const ftf::sources::URI filepath) {
+					ImageSourceImporter image_importer;
+					ImageSourceMetadata* image_metadata = (ImageSourceMetadata*)image_importer.GetMetadata(filepath.uri.path());
+					image_data.resize(image_metadata->width * image_metadata->height * image_metadata->source_channels);
 
-						image_importer.ImportFromSource(&image_data, filepath.uri.path());
+					image_importer.ImportFromSource(&image_data, filepath.uri.path());
 
-						image_width = image_metadata->width;
-						image_height = image_metadata->height;
+					image_width = image_metadata->width;
+					image_height = image_metadata->height;
 
-						delete image_metadata;
-					},
-					[&](const ftf::sources::Vector& vector) {
-						ImageSourceImporter image_importer;
-						ImageSourceMetadata* image_metadata = image_importer.GetMetadataFromMemory(vector.bytes);
+					delete image_metadata;
+				},
+				[&](const ftf::sources::Vector& vector) {
+					ImageSourceImporter image_importer;
+					ImageSourceMetadata* image_metadata = image_importer.GetMetadataFromMemory(vector.bytes);
 
-						image_data.resize(image_metadata->width * image_metadata->height * 4);
+					image_data.resize(image_metadata->width * image_metadata->height * 4);
 
-						image_importer.ImportFromMemory(&image_data, vector.bytes);
+					image_importer.ImportFromMemory(&image_data, vector.bytes);
 
-						image_width = image_metadata->width;
-						image_height = image_metadata->height;
+					image_width = image_metadata->width;
+					image_height = image_metadata->height;
 
-						delete image_metadata;
-					}
+					delete image_metadata;
+				}
 			},
 			ftf_image_data
 		);
@@ -110,20 +114,31 @@ namespace Omni {
 		std::vector<RGBA32> intermediate_storage (image_data.size() / sizeof RGBA32);
 		memcpy(intermediate_storage.data(), image_data.data(), image_data.size());
 
-		std::vector<RGBA32> mip_mapped_image = compressor.GenerateMipMaps(
-			intermediate_storage,
-			image_width,
-			image_height
-		);
+		OMNIFORCE_ASSERT_TAGGED(image_width && image_height, "Image dimension can not be zero");
 
-		uint8 mip_levels_count = Utils::ComputeNumMipLevelsBC7(image_width, image_height) + 1;
-		//image_data = compressor.CompressBC7({ mip_mapped_image.begin(), mip_mapped_image.end() }, image_width, image_height, mip_levels_count);
-		image_data.resize(mip_mapped_image.size() * sizeof RGBA32);
-		memcpy(image_data.data(), mip_mapped_image.data(), image_data.size());
+		std::vector<RGBA32> mip_mapped_image = intermediate_storage;
+		uint8 mip_levels_count = 1;
+
+		bool encode_with_bc7 = image_width >= 4 && image_height >= 4;
+		if (encode_with_bc7) {
+			 mip_mapped_image = compressor.GenerateMipMaps(
+				intermediate_storage,
+				image_width,
+				image_height
+			);
+
+			mip_levels_count += Utils::ComputeNumMipLevelsBC7(image_width, image_height);
+
+			image_data = compressor.CompressBC7({ mip_mapped_image.begin(), mip_mapped_image.end() }, image_width, image_height, mip_levels_count);
+		}
+		else {
+			image_data.resize(mip_mapped_image.size() * sizeof RGBA32);
+			memcpy(image_data.data(), mip_mapped_image.data(), image_data.size());
+		}
 
 		ImageSpecification image_spec = ImageSpecification::Default();
 		image_spec.extent = { image_width, image_height, 1 };
-		image_spec.format = ImageFormat::RGBA32_UNORM;
+		image_spec.format = encode_with_bc7 ? ImageFormat::BC7 : ImageFormat::RGBA32_UNORM;
 		image_spec.pixels = std::move(image_data);
 		image_spec.mip_levels = mip_levels_count;
 

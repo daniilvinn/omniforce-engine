@@ -13,6 +13,7 @@
 #include <Renderer/Mesh.h>
 #include <Renderer/Image.h>
 #include <Threading/JobSystem.h>
+#include <Platform/Vulkan/Private/VulkanMemoryAllocator.h>
 
 #include <map>
 #include <array>
@@ -58,7 +59,6 @@ namespace Omni {
 
 			// If everything is ok after validation, then load it
 			taskflow.emplace([&, this](tf::Subflow& subflow) {
-
 				// 1. Read attribute metadata - find offsets, vertex stride
 				VertexAttributeMetadataTable attribute_metadata_table = {};
 				uint32 vertex_stride = 0;
@@ -87,17 +87,28 @@ namespace Omni {
 				Shared<Material> material = nullptr;
 
 				auto material_process_task = subflow.emplace([&, this](tf::Subflow& sf) {
-					if (!material_table.contains(ftf_mesh.primitives[0].materialIndex.value())) {
-						material_table.emplace(ftf_mesh.primitives[0].materialIndex.value(), rh::hash<std::string>()(ftf_material.name.c_str()));
-						ProcessMaterialData(sf, &material, &ftf_asset, &ftf_material, &attribute_metadata_table, &mtx);
+					bool material_requires_processing = false;
+					{
+						std::lock_guard lock(mtx);
+						if (!material_table.contains(ftf_mesh.primitives[0].materialIndex.value())) {
+							material_table.emplace(ftf_mesh.primitives[0].materialIndex.value(), rh::hash<std::string>()(ftf_material.name.c_str()));
+							material_requires_processing = true;
+						}
 					}
+
+					if (material_requires_processing)
+						ProcessMaterialData(sf, &material, &ftf_asset, &ftf_material, &attribute_metadata_table, &mtx);
 				});
+
+
+				subflow.emplace([&]() {
+					std::lock_guard lock(mtx);
+					// Register mesh-material pair
+					submeshes.push_back({ mesh->Handle, material_table.at(ftf_mesh.primitives[0].materialIndex.value()) });
+				}).succeed(mesh_process_task, material_process_task);
 
 				// Join so the stack doesn't get freed and we can safely use its memory
 				subflow.join();
-
-				// Register mesh-material pair
-				submeshes.push_back({mesh->Handle, material_table.at(ftf_mesh.primitives[0].materialIndex.value())});
 			}).succeed(primitive_validate_task);
 		}
 		
@@ -145,7 +156,7 @@ namespace Omni {
 
 		// If errors are present, abort loading
 		if (const auto error = expected_asset.error(); error != ftf::Error::None) {
-			OMNIFORCE_CORE_ERROR("Failed to load asset source with path: {}. [{}]: {}. Aborting import.", path.string(),
+			OMNIFORCE_CORE_ERROR("Failed to load asset source with path: {}. [{}]: {} Aborting import.", path.string(),
 				ftf::getErrorName(error), ftf::getErrorMessage(error));
 		}
 
@@ -156,7 +167,7 @@ namespace Omni {
 	{
 		// Check if material is PBR-compatible. Currently engine supports only PBR materials
 		if (!material->pbrData.baseColorTexture.has_value()) {
-			OMNIFORCE_CORE_WARNING("One of the submeshes \"{}\" has no PBR material. Skipping submesh");
+			OMNIFORCE_CORE_WARNING("One of the submeshes \"{}\" has no PBR material. Skipping submesh", mesh->name);
 			OMNIFORCE_CUSTOM_LOGGER_WARN("OmniEditor", "One of the submeshes has no PBR material. Skipping submesh");
 			return true;
 		}
@@ -252,14 +263,33 @@ namespace Omni {
 			// Generate LOD. If i == 0, we basically generate a lod which is completely equal to source mesh
 			std::vector<uint32> lod_indices;
 
-			mesh_preprocessor.GenerateMeshLOD(
-				&lod_indices, 
-				vertex_data, 
-				index_data, 
-				vertex_stride, 
-				Utils::Align(index_data->size() / (1 * glm::pow(4, i)), 3),
-				i ? 0.3f : 1.0f
-			);
+			if (i != 0) {
+				uint32 target_index_count = index_data->size() / (1 * glm::pow(4, i)) + (index_data->size() % 3);
+				float target_error = 0.5f;
+
+				// If simplifier was unable to generate LOD (returned index count is 0), try to generate with higher error until lod is generated
+				while (lod_indices.size() == 0)
+				{
+					mesh_preprocessor.GenerateMeshLOD(
+						&lod_indices,
+						vertex_data,
+						index_data,
+						vertex_stride,
+						target_index_count < 6 ? 6 : target_index_count, // clamp index count to 6 (plane)
+						target_error
+					);
+
+					// HACK: Multiply target index count by 1.5 so we can generate generate something and increase target error by 0.1f;
+					// Best solution would be to stop generation of LODs and use amount of lods we were able to generate, instead of fixed amount of 4
+					target_error += 0.1f;
+					target_index_count *= std::clamp(6u, (uint32)(target_index_count * 1.5f), (uint32)index_data->size());
+				}
+			}
+			else {
+				lod_indices = *index_data;
+			}
+
+			OMNIFORCE_ASSERT_TAGGED(lod_indices.size(), "Mesh LOD generation failed. How did we return from loop above though?");
 
 			// Optimize mesh (remove redundant vertices, optimize for vertex cache etc.)
 			std::vector<byte> optimized_vertices;
@@ -296,24 +326,25 @@ namespace Omni {
 		}
 
 		// Create mesh under mutex
-		mtx->lock();
-		*out_mesh = Mesh::Create(
-			mesh_lods,
-			lod0_aabb
-		);
-		mtx->unlock();
+		{
+			std::lock_guard lock(*mtx);
+			*out_mesh = Mesh::Create(
+				mesh_lods,
+				lod0_aabb
+			);
+		}
 
 		AssetManager::Get()->RegisterAsset(ShareAs<AssetBase>(*out_mesh));
 	}
 
-	void ModelImporter::ProcessMaterialData(tf::Subflow& properties_load_subflow, Shared<Material>* out_material, const ftf::Asset* asset, 
+	void ModelImporter::ProcessMaterialData(tf::Subflow& subflow, Shared<Material>* out_material, const ftf::Asset* asset, 
 		const ftf::Material* material, const VertexAttributeMetadataTable* vertex_macro_table, std::shared_mutex* mtx)
 	{
 		MaterialImporter material_importer;
 
 		// Import mesh and join its task subflow used to load and process material properties
-		*out_material = AssetManager::Get()->GetAsset<Material>(material_importer.Import(properties_load_subflow, asset, material));
-		properties_load_subflow.join();
+		*out_material = AssetManager::Get()->GetAsset<Material>(material_importer.Import(subflow, asset, material));
+		subflow.join();
 
 		// Add additional macros generated from vertex layout to generate correct shader variant
 		for (auto& metadata_entry : *vertex_macro_table)

@@ -564,7 +564,7 @@ namespace Omni {
 	uint32 SceneRenderer::AcquireResourceIndex(Shared<Mesh> mesh)
 	{
 		DeviceMeshData mesh_data = {};
-		mesh_data.lod0_aabb = mesh->GetAABB();
+		mesh_data.lod_distance_multiplier = 1.0f;
 		for (int32 i = 0; i < mesh->GetLODCount(); i++) {
 			mesh_data.lods[i].bounding_sphere = mesh->GetBoundingSphere(i);
 			mesh_data.lods[i].meshlet_count = mesh->GetMeshletCount(i);

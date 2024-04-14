@@ -59,7 +59,7 @@ struct MeshLOD {
 };
 
 layout(buffer_reference, scalar, buffer_reference_align = 8) readonly buffer MeshData {
-    AABB aabb;
+    float lod_distance_multiplier;
     MeshLOD lods[OMNI_MAX_MESH_LOD_COUNT];
 };
 

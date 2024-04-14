@@ -191,7 +191,6 @@ namespace Omni {
 						}
 					}
 				}
-#if 0
 				if (m_Entity.HasComponent<MeshComponent>()) {
 					if (ImGui::Button(" - ##mesh_component")) {
 						m_Entity.RemoveComponent<MeshComponent>();
@@ -204,40 +203,10 @@ namespace Omni {
 							{
 								ImGui::TableNextRow();
 								ImGui::TableNextColumn();
-								ImGui::Text("Mesh path");
+								ImGui::Text("Level of Detail");
 
 								ImGui::TableNextColumn();
-								if (mc.filename.empty()) {
-									if (ImGui::Button("Browse##mesh_component_properties_browse_button", { -FLT_MIN, 0.0f })) {
-
-										const char* filters[] = { "*.fbx", "*.gltf", "*.obj" };
-										char* filepath = tinyfd_openFileDialog(
-											"Open file",
-											std::filesystem::absolute("assets/meshes/").string().c_str(),
-											3,
-											filters,
-											NULL,
-											false
-										);
-
-										if (filepath != NULL) {
-											std::filesystem::path full_mesh_path(filepath);
-											std::filesystem::path mesh_path = FileSystem::GetWorkingDirectory().append("assets/meshes/").append(full_mesh_path.filename().string());
-
-											std::filesystem::copy_file(filepath,
-												mesh_path,
-												std::filesystem::exists(mesh_path) ? 
-													std::filesystem::copy_options::overwrite_existing : std::filesystem::copy_options::none
-											);
-
-											mc.mesh_handle = AssetManager::Get()->LoadAssetSource(mesh_path);
-											mc.filename = mesh_path.filename().string();
-										}
-									}
-								}
-								else {
-									ImGui::Text(mc.filename.c_str());
-								}
+								ImGui::Text("WIP"); //ImGui::SliderInt("##mesh_component_lod_slider", &mc.lod, 0, 3);
 
 								ImGui::EndTable();
 							}
@@ -245,7 +214,6 @@ namespace Omni {
 						}
 					}
 				}
-#endif
 				if (m_Entity.HasComponent<CameraComponent>()) {
 					if (ImGui::Button(" - ##camera_component")) {
 						m_Entity.RemoveComponent<CameraComponent>();

@@ -18,7 +18,7 @@ namespace Omni {
 	};
 
 	struct DeviceMeshData {
-		AABB lod0_aabb; // used for lod selection
+		float32 lod_distance_multiplier;
 		struct LOD {
 			Sphere bounding_sphere;
 			uint32 meshlet_count;
