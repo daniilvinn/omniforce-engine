@@ -4,6 +4,8 @@
 #include <Memory/VirtualMemoryBlock.h>
 #include <Renderer/DeviceCmdBuffer.h>
 
+#include <Log/Logger.h>
+
 namespace Omni {
 
 	template<typename T>
@@ -30,6 +32,8 @@ namespace Omni {
 		uint32 Allocate(const UUID& id, const T& data) {
 			uint32 offset = m_IndexAllocator->Allocate(sizeof T, alignof(T));
 			uint32 index = offset / sizeof T;
+
+			OMNIFORCE_ASSERT_TAGGED(offset != UINT32_MAX, "Failed to find free block. It can be caused by fragmentation or exceeded resource limits");
 
 			m_StagingForCopy->UploadData(0, (void*)&data, sizeof T);
 

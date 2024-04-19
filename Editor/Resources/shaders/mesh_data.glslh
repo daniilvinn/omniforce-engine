@@ -30,7 +30,7 @@ layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer Mes
     #endif
 };
 
-layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer MeshMeshletsData {
+layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer MeshMeshletsData {
     uint vertex_offset;
     uint triangle_offset;
     uint vertex_count;
@@ -58,7 +58,7 @@ struct MeshLOD {
     MeshletCullBounds meshlets_cull_bounds;
 };
 
-layout(buffer_reference, scalar, buffer_reference_align = 8) readonly buffer MeshData {
+layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer MeshData {
     float lod_distance_multiplier;
     MeshLOD lods[OMNI_MAX_MESH_LOD_COUNT];
 };

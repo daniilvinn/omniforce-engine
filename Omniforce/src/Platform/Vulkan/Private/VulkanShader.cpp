@@ -138,8 +138,6 @@ namespace Omni {
 
 				for (int i = 0; i < reflect_push_constant_ranges[0]->member_count; i++) {
 					auto& member = reflect_push_constant_ranges[0]->members[i];
-
-					int x = 5;
 				}
 			}
 

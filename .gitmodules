@@ -25,3 +25,6 @@
 [submodule "Omniforce/vendor/taskflow"]
 	path = Omniforce/vendor/taskflow
 	url = https://github.com/taskflow/taskflow.git
+[submodule "Omniforce/vendor/glm"]
+	path = Omniforce/vendor/glm
+	url = https://github.com/g-truc/glm.git

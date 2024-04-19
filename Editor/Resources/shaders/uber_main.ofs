@@ -28,6 +28,7 @@ void main()
 	uint lid = gl_LocalInvocationIndex; // lid = lane id
 	
 	RenderObjectData render_object_data = pc.render_objects_data[gl_DrawID];
+
 	Transform transform = render_object_data.transform;
 	MeshData root_mesh_data = pc.mesh_data[render_object_data.geometry_data_id];
 	MeshLOD mesh_data = root_mesh_data.lods[render_object_data.lod];
@@ -49,7 +50,7 @@ void main()
 
 	Sphere bounding_sphere = cull_bounds.bounding_sphere;
 	bounding_sphere.center = RotateByQuat(bounding_sphere.center * transform.scale, rotation_quaternion) + transform.translation;
-	bounding_sphere.radius = bounding_sphere.radius * max(max(transform.scale.x, transform.scale.y), transform.scale.z);
+    bounding_sphere.radius = bounding_sphere.radius * max(max(transform.scale.x, transform.scale.y), transform.scale.z);
 
 	// Cull
 	if((dot(normalize(cone_apex - pc.camera_data.position), cone_axis) < cull_bounds.cone_cutoff) && FrustumTestBoundingSphere(pc.camera_data.frustum, bounding_sphere)) {
@@ -102,6 +103,7 @@ layout(location = 1) out VertexOutput {
 void main()
 {
 	RenderObjectData render_object_data = pc.render_objects_data[gl_DrawID];
+
 	MeshData root_mesh_data = pc.mesh_data[render_object_data.geometry_data_id];
 	MeshLOD mesh_data = root_mesh_data.lods[render_object_data.lod];
 
@@ -111,7 +113,7 @@ void main()
 	MeshMeshletsData meshlet_data = mesh_data.meshlets_data[task_payload.meshlet_ids[gl_WorkGroupID.x]];
 
 	// vertices
-	uint vertex_processing_iterations = uint(round(float(meshlet_data.vertex_count) / float(gl_WorkGroupSize.x) + 0.4999999f));
+	uint vertex_processing_iterations = (meshlet_data.vertex_count + gl_WorkGroupSize.x - 1) / gl_WorkGroupSize.x;
 	for(int i = 0; i < vertex_processing_iterations; i++) {
 		if((gl_LocalInvocationIndex * vertex_processing_iterations + i) >= meshlet_data.vertex_count) {
 			break;
@@ -124,7 +126,7 @@ void main()
 		gl_MeshVerticesEXT[gl_LocalInvocationIndex * vertex_processing_iterations + i].gl_Position = pc.camera_data.view_proj * vec4(vertex, 1.0f);
 	}
 
-	uint index_processing_iterations = uint(round(float(meshlet_data.triangle_count) / float(gl_WorkGroupSize.x) + 0.49999f));
+	uint index_processing_iterations = (meshlet_data.triangle_count + gl_WorkGroupSize.x - 1) / gl_WorkGroupSize.x;
 	for(int i = 0; i < index_processing_iterations; i++) {
 		if(gl_LocalInvocationIndex * index_processing_iterations + i >= meshlet_data.triangle_count) {
 			break;

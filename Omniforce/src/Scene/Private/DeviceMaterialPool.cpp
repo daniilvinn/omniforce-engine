@@ -68,6 +68,7 @@ namespace Omni {
 		m_StagingForCopy->UploadData(0, material_data, material_size);
 
 		uint32 dst_offset = m_VirtualAllocator->Allocate(material_size, 16);
+		OMNIFORCE_ASSERT_TAGGED(dst_offset != UINT32_MAX, "Failed to allocate material data. Exceeded limit?");
 		m_OffsetsMap.emplace(material, dst_offset);
 
 		Shared<DeviceCmdBuffer> cmd_buffer = DeviceCmdBuffer::Create(DeviceCmdBufferLevel::PRIMARY, DeviceCmdBufferType::TRANSIENT, DeviceCmdType::GENERAL);

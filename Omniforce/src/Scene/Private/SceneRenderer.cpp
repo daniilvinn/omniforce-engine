@@ -23,8 +23,8 @@ namespace Omni {
 	}
 
 	SceneRenderer::SceneRenderer(const SceneRendererSpecification& spec)
-		: m_Specification(spec), m_MaterialDataPool(this, 1024 * 256 /* 256Kb of data*/), m_TextureIndexAllocator(VirtualMemoryBlock::Create(4 * INT16_MAX)),
-		m_MeshResourcesBuffer(1024 * sizeof DeviceMeshData) // allow up to 1024 meshes be allocated at once
+		: m_Specification(spec), m_MaterialDataPool(this, 4096 * 256 /* 256Kb of data*/), m_TextureIndexAllocator(VirtualMemoryBlock::Create(4 * INT16_MAX)),
+		m_MeshResourcesBuffer(4096 * sizeof DeviceMeshData) // allow up to 4096 meshes be allocated at once
 	{
 		AssetManager* asset_manager = AssetManager::Get();
 
@@ -178,7 +178,7 @@ namespace Omni {
 				DeviceBufferSpecification spec;
 				// allow for 256 objects per material for beginning.
 				// TODO: allow recreating buffer with bigger size when limit is reached
-				spec.size = (sizeof(DeviceRenderableObject) * 512) * frames_in_flight;
+				spec.size = (sizeof(DeviceRenderableObject) * 4096) * frames_in_flight;
 				spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
 				spec.heap = DeviceBufferMemoryHeap::DEVICE;
 				spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
@@ -186,13 +186,13 @@ namespace Omni {
 
 				value = DeviceBuffer::Create(spec);
 
-				spec.size = (sizeof(DeviceRenderableObject) * 512);
+				spec.size = (sizeof(DeviceRenderableObject) * 4096);
 				spec.memory_usage = DeviceBufferMemoryUsage::NO_HOST_ACCESS;
 				OMNI_DEBUG_ONLY_CODE(spec.debug_name = "Device culled render queue buffer");
 
 				m_CulledDeviceRenderQueue.emplace(pipeline, DeviceBuffer::Create(spec));
 
-				spec.size = (4 + sizeof(glm::uvec3) * 512);
+				spec.size = (4 + sizeof(glm::uvec3) * 4096);
 				spec.buffer_usage = DeviceBufferUsage::INDIRECT_PARAMS;
 				OMNI_DEBUG_ONLY_CODE(spec.debug_name = "Device indirect draw params buffer");
 
@@ -306,7 +306,7 @@ namespace Omni {
 				(BitMask)PipelineAccess::UNIFORM_READ,
 				(BitMask)PipelineAccess::COLOR_ATTACHMENT_WRITE
 			);
-			});
+		});
 
 	}
 
@@ -517,7 +517,7 @@ namespace Omni {
 			Renderer::EndRender({ m_CurrectMainRenderTarget });
 		}
 
-		DebugRenderer::Render(m_CurrectMainRenderTarget);
+		DebugRenderer::Render(m_CurrectMainRenderTarget, m_CurrentDepthAttachment);
 
 		Renderer::Submit([=]() {
 			m_CurrectMainRenderTarget->SetLayout(
@@ -573,6 +573,8 @@ namespace Omni {
 			mesh_data.lods[i].meshlets_bda = mesh->GetBuffer(i, MeshBufferKey::MESHLETS)->GetDeviceAddress();
 			mesh_data.lods[i].micro_indices_bda = mesh->GetBuffer(i, MeshBufferKey::MICRO_INDICES)->GetDeviceAddress();
 			mesh_data.lods[i].meshlets_cull_data_bda = mesh->GetBuffer(i, MeshBufferKey::MESHLETS_CULL_DATA)->GetDeviceAddress();
+
+			OMNIFORCE_CORE_INFO(mesh_data.lods[i].meshlets_bda);
 		}
 
 		return m_MeshResourcesBuffer.Allocate(mesh->Handle, mesh_data);

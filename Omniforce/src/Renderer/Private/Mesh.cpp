@@ -1,9 +1,11 @@
 #include "../Mesh.h"
 
+#include <Log/Logger.h>
+
 #include <memory>
 #include <vector>
-
 #include <iostream>
+
 
 namespace Omni {
 
@@ -41,6 +43,11 @@ namespace Omni {
 	{
 		int32 i = 0;
 		for (auto& lod : lods) {
+			OMNIFORCE_ASSERT_TAGGED(lod.geometry.size() >= 3, "Geometry must have at least three vertices. LOD: {}", i);
+			OMNIFORCE_ASSERT_TAGGED(lod.meshlets.size() != 0, "Geometry must have at least one meshlet. LOD: {}", i);
+			OMNIFORCE_ASSERT_TAGGED(lod.local_indices.size() >= 3, "Geometry must have at least 3 local indices for a single triangle. LOD: {}", i);
+			OMNIFORCE_ASSERT_TAGGED(lod.bounding_sphere.radius != 0.0f, "Geometry can't have a bounding sphere with 0 radius. LOD: {}", i);
+
 			DeviceBufferSpecification buffer_spec = {};
 			buffer_spec.memory_usage = DeviceBufferMemoryUsage::NO_HOST_ACCESS;
 			buffer_spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;

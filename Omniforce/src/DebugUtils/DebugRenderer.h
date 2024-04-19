@@ -22,7 +22,7 @@ namespace Omni {
 		static void RenderWireframeSphere(const glm::vec3& position, float radius, const glm::vec3& color);
 		static void RenderWireframeBox(const glm::vec3& translation, const glm::quat rotation, const glm::vec3 scale, const glm::vec3& color);
 
-		static void Render(Shared<Image> target);
+		static void Render(Shared<Image> target, Shared<Image> depth_target);
 
 	private:
 		DebugRenderer();

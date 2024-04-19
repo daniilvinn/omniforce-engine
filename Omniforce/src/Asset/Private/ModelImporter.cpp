@@ -111,7 +111,7 @@ namespace Omni {
 				subflow.join();
 			}).succeed(primitive_validate_task);
 		}
-		
+
 		// Execute task graph
 		JobSystem::GetExecutor()->run(taskflow).wait();
 
@@ -188,9 +188,10 @@ namespace Omni {
 
 	void ModelImporter::ReadVertexMetadata(VertexAttributeMetadataTable* out_table, uint32* out_stride, const ftf::Asset* asset, const ftf::Mesh* mesh)
 	{
-		auto& primitive = mesh->primitives[0];
-		// Iterate through attributes and find their offsets
 		uint32 attribute_stride = 12;
+		auto& primitive = mesh->primitives[0];
+
+		// Iterate through attributes and add them to map, effectively sorting them
 		for (auto& attribute : primitive.attributes) {
 			// If on "POSIIION" attribute - skip iteration, since geometry is not considered as vertex attribute and is always at 0 offset
 			if (attribute.first == "POSITION")
@@ -198,11 +199,15 @@ namespace Omni {
 
 			// Get fastgltf accesor
 			auto& attrib_accessor = asset->accessors[attribute.second];
+			out_table->emplace(attribute.first, 0);
+		}
 
-			// Calculate size. Emplace entry with key being attribute name and value being offset. Update stride
-			uint8 attrib_size = fastgltf::getElementByteSize(attrib_accessor.type, attrib_accessor.componentType);
-			out_table->emplace(attribute.first, attribute_stride);
-			attribute_stride += attrib_size;
+		// Now evaluate offsets for sorted attributes
+		for (auto& attribute : *out_table) {
+			attribute.second = attribute_stride;
+
+			const auto& attribute_accessor = asset->accessors[primitive.findAttribute(attribute.first)->second];
+			attribute_stride += ftf::getElementByteSize(attribute_accessor.type, attribute_accessor.componentType);
 		}
 		*out_stride = attribute_stride;
 	}
@@ -351,6 +356,7 @@ namespace Omni {
 			(*out_material)->AddShaderMacro(fmt::format("__OMNI_HAS_VERTEX_{}", metadata_entry.first));
 
 		// All data is gathered - compile material pipeline
+		std::lock_guard lock(*mtx);
 		(*out_material)->CompilePipeline();
 	}
 }

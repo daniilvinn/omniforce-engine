@@ -101,6 +101,7 @@ public:
 				ScriptEngine::Get()->ReloadAssemblies();
 
 			ImGui::Checkbox("Visualize physics colliders", &m_VisualizeColliders);
+			ImGui::Checkbox("Visualize mesh cull bounds", &m_VisualizeCullBounds);
 
 			if (m_VisualizeColliders) {
 				auto box_colliders_view = m_EditorScene->GetRegistry()->view<BoxColliderComponent>();
@@ -121,6 +122,24 @@ public:
 					const SphereColliderComponent& sc_component = entity.GetComponent<SphereColliderComponent>();
 
 					DebugRenderer::RenderWireframeSphere(trs.translation, sc_component.radius, { 0.28f, 0.27f, 1.0f });
+				}
+			}
+			if (m_VisualizeCullBounds) {
+				auto mesh_view = m_CurrentScene->GetRegistry()->view<MeshComponent>();
+				for (auto& e : mesh_view) {
+					Entity entity(e, m_CurrentScene);
+
+					const TRSComponent trs = entity.GetWorldTransform();
+					const MeshComponent& mesh_component = entity.GetComponent<MeshComponent>();
+
+					Shared<Mesh> mesh = AssetManager::Get()->GetAsset<Mesh>(mesh_component.mesh_handle);
+					Sphere bounding_sphere = mesh->GetBoundingSphere(0);
+
+					DebugRenderer::RenderWireframeSphere(
+						trs.translation + bounding_sphere.center,
+						bounding_sphere.radius,
+						{ 0.28f, 0.27f, 1.0f }
+					);
 				}
 			}
 		}
@@ -478,6 +497,7 @@ public:
 	bool m_ViewportFocused = false;
 	bool m_InRuntime = false;
 	bool m_VisualizeColliders = false;
+	bool m_VisualizeCullBounds = false;
 
 	SceneHierarchyPanel* m_HierarchyPanel;
 	PropertiesPanel* m_PropertiesPanel;

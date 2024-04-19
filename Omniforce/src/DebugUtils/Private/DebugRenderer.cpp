@@ -35,6 +35,7 @@ namespace Omni {
 		pipeline_spec.topology = PipelineTopology::LINES;
 		pipeline_spec.shader = shader_library->GetShader("wireframe.ofs");
 		pipeline_spec.input_layout = buffer_layout;
+		pipeline_spec.depth_test_enable = true;
 
 		m_WireframePipeline = Pipeline::Create(pipeline_spec);
 
@@ -141,9 +142,9 @@ namespace Omni {
 		});
 	};
 
-	void DebugRenderer::Render(Shared<Image> target)
+	void DebugRenderer::Render(Shared<Image> target, Shared<Image> depth_target)
 	{
-		Renderer::BeginRender({ target }, target->GetSpecification().extent, { 0,0 }, { 0.0f, 0.0f, 0.0f, 0.0f });
+		Renderer::BeginRender({ target, depth_target }, target->GetSpecification().extent, { 0,0 }, { 0.0f, 0.0f, 0.0f, 0.0f });
 
 		for (auto& request : renderer->m_DebugRequests)
 			request();

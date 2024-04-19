@@ -4,7 +4,6 @@
 
 #extension GL_EXT_buffer_reference2     : require
 #extension GL_EXT_scalar_block_layout   : require
-#extension GL_EXT_debug_printf          : require
 
 #include "camera_data.glslh"
 #include "render_object.glslh"
@@ -53,7 +52,6 @@ void main() {
             break;
         }
     }
-    debugPrintfEXT("Selected LOD: %u", selected_lod);
     
     // Take corresponding bounding sphere and test it against frustum
     MeshLOD mesh_data = root_mesh_data.lods[selected_lod];
@@ -63,7 +61,6 @@ void main() {
     bounding_sphere.radius = bounding_sphere.radius * max(max(transform.scale.x, transform.scale.y), transform.scale.z);
 
     if(FrustumTestBoundingSphere(pc.camera_data.frustum, bounding_sphere)) {
-        // If test is passed, fill in the data
         uint index = atomicAdd(pc.output_buffer.count, 1);
 
         pc.culled_objects[index].transform = object.transform;
@@ -73,6 +70,5 @@ void main() {
 
         uint meshlet_count = (mesh_data.meshlet_count + 31) / 32;
         pc.output_buffer.draw_params[index] = uvec3(meshlet_count, 1, 1);
-        debugPrintfEXT("Meshlet count: %u", meshlet_count);
     }
 }

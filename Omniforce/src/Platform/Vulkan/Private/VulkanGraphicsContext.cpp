@@ -40,7 +40,7 @@ namespace Omni {
 		VkInstanceCreateInfo instance_create_info = {};
 		instance_create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 
-		if (OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG) {
+		if (OMNIFORCE_BUILD_CONFIG != OMNIFORCE_RELEASE_CONFIG) {
 			VkDebugUtilsMessengerCreateInfoEXT messenger_create_info = VulkanDebugUtils::GetMessengerCreateInfo();
 			instance_create_info.pNext = &messenger_create_info;
 		}
@@ -57,7 +57,7 @@ namespace Omni {
 		VK_CHECK_RESULT(vkCreateInstance(&instance_create_info, nullptr, &m_VulkanInstance));
 		volkLoadInstance(m_VulkanInstance);
 
-		if(OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG)
+		if(OMNIFORCE_BUILD_CONFIG != OMNIFORCE_RELEASE_CONFIG)
 			m_DebugUtils = std::make_shared<VulkanDebugUtils>(this);
 
 		VkPhysicalDeviceFeatures device_features = {};
@@ -100,7 +100,7 @@ namespace Omni {
 		m_Swapchain->DestroySwapchain();
 		m_Swapchain->DestroySurface();
 		m_Device->Destroy();
-		if (OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG)
+		if (OMNIFORCE_BUILD_CONFIG == OMNIFORCE_RELEASE_CONFIG)
 			m_DebugUtils->Destroy(this);
 		vkDestroyInstance(m_VulkanInstance, nullptr);
 		volkFinalize();
@@ -113,7 +113,7 @@ namespace Omni {
 
 		std::vector<const char*> extensions(glfw_extensions, glfw_extensions + glfw_extension_count);
 
-		if (OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG) 
+		if (OMNIFORCE_BUILD_CONFIG != OMNIFORCE_RELEASE_CONFIG) 
 		{
 			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 		}
@@ -131,7 +131,7 @@ namespace Omni {
 		vkEnumerateInstanceLayerProperties(&property_count, layer_properties.data());
 
 		std::vector<const char*> layers;
-		if (OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG)
+		if (OMNIFORCE_BUILD_CONFIG != OMNIFORCE_RELEASE_CONFIG)
 		{
 			layers.push_back("VK_LAYER_KHRONOS_validation");
 		}

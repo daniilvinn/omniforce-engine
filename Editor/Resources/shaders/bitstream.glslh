@@ -10,7 +10,6 @@ layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Rea
 }
 
 uint BitStreamRead(BitStream bitstream, uint num_bits, uint bit_offset) {
-
 	uint value = 0;
 
 	// Optimization by using right shift instead of division by 32.
@@ -45,7 +44,6 @@ uint BitStreamRead(BitStream bitstream, uint num_bits, uint bit_offset) {
 }
 
 uint BitStreamRead(ReadOnlyBitStream bitstream, uint num_bits, uint bit_offset) {
-
 	uint value = 0;
 
 	// Optimization by using right shift instead of division by 32.
