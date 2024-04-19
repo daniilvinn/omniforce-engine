@@ -61,6 +61,7 @@ void main() {
     bounding_sphere.radius = bounding_sphere.radius * max(max(transform.scale.x, transform.scale.y), transform.scale.z);
 
     if(FrustumTestBoundingSphere(pc.camera_data.frustum, bounding_sphere)) {
+        // If test is passed, fill in the data
         uint index = atomicAdd(pc.output_buffer.count, 1);
 
         pc.culled_objects[index].transform = object.transform;

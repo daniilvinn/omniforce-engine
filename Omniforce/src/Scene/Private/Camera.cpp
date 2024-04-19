@@ -169,11 +169,11 @@ namespace Omni {
 	Frustum Camera3D::GenerateFrustum()
 	{
 		Frustum     frustum;
-		const float half_v_side = m_ZNear * tanf(m_FieldOfView * 0.5f);
+		const float half_v_side = m_ZFar * tanf(m_FieldOfView * 0.5f);
 		const float half_h_side = half_v_side * m_AspectRatio;
-		const glm::vec3 front_mult_far = m_ZNear * m_FrontVector;
+		const glm::vec3 front_mult_far = m_ZFar * m_FrontVector;
 
-		frustum.planes[0] = { m_Position + m_ZFar * m_FrontVector, m_FrontVector };
+		frustum.planes[0] = { m_Position + m_ZNear * m_FrontVector, m_FrontVector };
 		frustum.planes[1] = { m_Position + front_mult_far, -m_FrontVector };
 		frustum.planes[2] = { m_Position, glm::cross(front_mult_far - m_RightVector * half_h_side, m_UpVector) };
 		frustum.planes[3] = { m_Position, glm::cross(m_UpVector, front_mult_far + m_RightVector * half_h_side) };

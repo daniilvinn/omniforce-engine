@@ -3,6 +3,9 @@
 #include <glm/gtx/norm.hpp>
 #include <meshoptimizer.h>
 
+#include <Seb.h>
+#include <Seb_point.h>
+
 namespace Omni {
 
 	GeneratedMeshlets* MeshPreprocessor::GenerateMeshlets(const std::vector<byte>* vertices, const std::vector<uint32>* indices, uint32 vertex_stride)
@@ -63,34 +66,31 @@ namespace Omni {
 	{
 		Bounds bounds = {};
 
-		glm::vec3 farthest_vertex[2] = { points->at(0), points->at(1) };
-		glm::vec3 averaged_vertex_position(0.0f);
-		float32 radius[2] = { 0.0f, 0.0f };
-
 		for (auto& point : *points) {
-			averaged_vertex_position += point;
 			for (int i = 0; i < 3; i++) {
 				bounds.aabb.min[i] = glm::min(bounds.aabb.min[i], point[i]);
 				bounds.aabb.max[i] = glm::max(bounds.aabb.max[i], point[i]);
 			}
 		}
 
-		averaged_vertex_position /= points->size();
-		glm::vec3 aabb_centroid = 0.5f * (bounds.aabb.min + bounds.aabb.max);
+		namespace SEB = SEB_NAMESPACE;
 
-		// Second pass - find farthest vertices for both averaged vertex position and AABB centroid
+		std::vector<SEB::Point<float32>> seb_points;
+		std::vector<float32> vertex_points(3);
 		for (auto& point : *points) {
-			if (glm::distance2(averaged_vertex_position, point) > glm::distance2(averaged_vertex_position, farthest_vertex[0]))
-				farthest_vertex[0] = point;
-			if (glm::distance2(aabb_centroid, point) > glm::distance2(aabb_centroid, farthest_vertex[1]))
-				farthest_vertex[1] = point;
+			for (uint32 i = 0; i < 3; i++) {
+				vertex_points[i] = point[i];
+			}
+			seb_points.push_back(SEB::Point<float32>(3, vertex_points.begin()));
 		}
 
-		float32 averaged_vertex_to_farthest_distance = glm::distance(farthest_vertex[0], averaged_vertex_position);
-		float32 aabb_centroid_to_farthest_distance = glm::distance(farthest_vertex[1], aabb_centroid);
+		SEB::Smallest_enclosing_ball<float32> seb(3, seb_points);
+		auto center_position_iterator = seb.center_begin();
 
-		bounds.sphere.center = averaged_vertex_to_farthest_distance < aabb_centroid_to_farthest_distance ? averaged_vertex_position : aabb_centroid;
-		bounds.sphere.radius = glm::min(averaged_vertex_to_farthest_distance, aabb_centroid_to_farthest_distance);
+		for (uint32 i = 0; i < 3; i++) {
+			bounds.sphere.center[i] = center_position_iterator[i];
+		}
+		bounds.sphere.radius = seb.radius();
 
 		return bounds;
 	}

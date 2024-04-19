@@ -25,7 +25,6 @@ add_library(${ENGINE_TARGET} ${ENGINE_FILES})
 
 find_package(spdlog CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
-find_package(glm CONFIG REQUIRED)
 find_package(Stb REQUIRED)
 find_package(EnTT CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
@@ -36,6 +35,7 @@ target_include_directories(${ENGINE_TARGET}
         "vendor/imgui"
         "vendor/ImGuizmo"
         "vendor/taskflow"
+        "vendor/glm"
     PRIVATE 
         "${Vulkan_SDK}\\Include" 
         "${Vulkan_SDK}\\Source" 
@@ -47,12 +47,14 @@ target_include_directories(${ENGINE_TARGET}
         "vendor/meshoptimizer/src"
         "vendor/fastgltf/include"
         "vendor/NVAftermath/include"
+        "vendor/miniball/cpp/main"
 )
-target_link_directories(${ENGINE_TARGET} INTERFACE "${Vulkan_SDK}\\Lib" PUBLIC "vendor/mono/lib" "vendor/NVAftermath/lib/x64")
+target_link_directories(${ENGINE_TARGET} PUBLIC "${Vulkan_SDK}\\Lib" "${Vulkan_SDK}\\Bin" PUBLIC "vendor/mono/lib" "vendor/NVAftermath/lib/x64")
 target_compile_definitions(${ENGINE_TARGET} PUBLIC 
     OMNIFORCE_STATIC 
     GLM_FORCE_DEPTH_ZERO_TO_ONE 
     GLM_FORCE_SSE2 
+    GLM_ENABLE_EXPERIMENTAL
     VK_NO_PROTOTYPES 
     IMGUI_IMPL_VULKAN_NO_PROTOTYPES
     NOMINMAX
@@ -66,7 +68,6 @@ target_link_libraries(
     PUBLIC 
         spdlog::spdlog 
         spdlog::spdlog_header_only
-        glm::glm
         EnTT::EnTT
 	    nlohmann_json::nlohmann_json
         ${OMNI_IMGUI_TARGET}
@@ -76,9 +77,9 @@ target_link_libraries(
 target_link_libraries(
     ${ENGINE_TARGET}
     PRIVATE 
-        glfw
         debug shaderc_sharedd.lib optimized shaderc_shared.lib
         debug shaderc_utild.lib optimized shaderc_util.lib
+        glfw
         Jolt
         libmono-static-sgen.lib
         MonoPosixHelper.lib
