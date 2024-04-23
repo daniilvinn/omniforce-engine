@@ -17,7 +17,7 @@ namespace Omni {
 	{
 		switch (variant_index)
 		{
-		case 0: return 4;
+		case 0: return 8;
 		case 1: return 4;
 		case 2: return 4;
 		case 3: return 16;

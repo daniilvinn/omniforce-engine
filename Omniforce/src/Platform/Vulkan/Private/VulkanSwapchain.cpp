@@ -318,6 +318,8 @@ namespace Omni {
 		present_info.pWaitSemaphores = &m_Semaphores[m_CurrentFrameIndex].render_complete;
 		present_info.pResults = nullptr;
 
+		
+
 		VkResult present_result = vkQueuePresentKHR(device->GetGeneralQueue(), &present_info);
 
 		if (present_result == VK_ERROR_OUT_OF_DATE_KHR || present_result == VK_SUBOPTIMAL_KHR)
@@ -332,7 +334,6 @@ namespace Omni {
 
 			CreateSwapchain(new_spec);
 		}
-		
 		
 		m_CurrentFrameIndex = (m_CurrentImageIndex + 1) % m_Specification.frames_in_flight;
 	}

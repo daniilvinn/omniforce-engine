@@ -17,6 +17,7 @@ namespace fastgltf {
 	class Asset;
 	class Mesh;
 	class Material;
+	class Primitive;
 }
 
 namespace Omni {
@@ -39,18 +40,18 @@ namespace Omni {
 		/*
 		*  Used to validate support of the mesh and use returned result further for conditional tasking
 		*/
-		bool ValidateSubmesh(const ftf::Mesh* mesh, const ftf::Material* material);
+		bool ValidateSubmesh(const ftf::Mesh* mesh, const ftf::Primitive* primitive, const ftf::Material* material);
 
 		/*
 		*  Evaluate attribute offsets and vertex stride
 		*/
-		void ReadVertexMetadata(VertexAttributeMetadataTable* out_table, uint32* out_size, const ftf::Asset* asset, const ftf::Mesh* mesh);
+		void ReadVertexMetadata(VertexAttributeMetadataTable* out_table, uint32* out_size, const ftf::Asset* asset, const ftf::Primitive* mesh);
 
 		/*
 		*  Read vertex and index data to buffers
 		*/
 		void ReadVertexAttributes(std::vector<byte>* out_vertex_data, std::vector<uint32>* out_index_data, const ftf::Asset* asset,
-			const ftf::Mesh* mesh, const VertexAttributeMetadataTable* metadata, uint32 vertex_stride );
+			const ftf::Primitive* mesh, const VertexAttributeMetadataTable* metadata, uint32 vertex_stride );
 
 		/*
 		*  Process vertex data: optimize, generate lods, meshlets and create Mesh objects

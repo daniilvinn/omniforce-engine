@@ -134,12 +134,28 @@ public:
 
 					Shared<Mesh> mesh = AssetManager::Get()->GetAsset<Mesh>(mesh_component.mesh_handle);
 					Sphere bounding_sphere = mesh->GetBoundingSphere(0);
+					AABB aabb = mesh->GetAABB();
+
+					float32 max_scale = glm::max(glm::max(trs.scale.x, trs.scale.y), trs.scale.z);
 
 					DebugRenderer::RenderWireframeSphere(
-						trs.translation + bounding_sphere.center,
-						bounding_sphere.radius,
+						trs.translation + bounding_sphere.center * trs.scale,
+						bounding_sphere.radius * max_scale,
 						{ 0.28f, 0.27f, 1.0f }
 					);
+
+					glm::vec3 aabb_scale = glm::vec3{
+						(aabb.max.x - aabb.min.x),
+						(aabb.max.y - aabb.min.y),
+						(aabb.max.z - aabb.min.z)
+					};
+					glm::vec3 aabb_translation = glm::vec3{
+						(aabb.min.x + aabb.max.x) * 0.5f + trs.translation.x,
+						(aabb.min.y + aabb.max.y) * 0.5f + trs.translation.y,
+						(aabb.min.z + aabb.max.z) * 0.5f + trs.translation.z
+					};
+
+					DebugRenderer::RenderWireframeBox(aabb_translation, trs.rotation, aabb_scale, { 0.28f, 0.27f, 1.0f });
 				}
 			}
 		}

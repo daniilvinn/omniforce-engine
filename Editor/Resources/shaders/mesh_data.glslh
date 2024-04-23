@@ -7,6 +7,7 @@
 
 #extension GL_EXT_shader_explicit_arithmetic_types_int8     : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int32    : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16  : require
 #extension GL_EXT_buffer_reference2                         : require
 #extension GL_EXT_scalar_block_layout                       : require
 
@@ -14,18 +15,18 @@ layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer Mes
     vec3 vertex_position;
 };
 
-layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer MeshAttributesData {
-    #if !defined(__OMNI_HAS_VERTEX_NORMAL) && !defined(__OMNI_HAS_VERTEX_TANGENT) && !defined(__OMNI_HAS_VERTEX_TEXCOORD_0) // using a trick so it compiles for other non-3D passes
+layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer MeshAttributesData {
+    #if !defined(__OMNI_HAS_VERTEX_NORMAL) && !defined(__OMNI_HAS_VERTEX_TANGENT) && !defined(__OMNI_HAS_VERTEX_TEXCOORDS) // using a trick so it compiles for other non-3D passes
         float unused;
     #else
         #ifdef __OMNI_HAS_VERTEX_NORMAL
-            vec3 normal;
+            f16vec2 normal;
         #endif
         #ifdef __OMNI_HAS_VERTEX_TANGENT
-            vec4 tangent;
+            f16vec2 tangent;
         #endif
-        #ifdef __OMNI_HAS_VERTEX_TEXCOORD_0
-            vec2 uv;
+        #ifdef __OMNI_HAS_VERTEX_TEXCOORDS
+            f16vec2 uv[__OMNI_MESH_TEXCOORD_COUNT];
         #endif
     #endif
 };

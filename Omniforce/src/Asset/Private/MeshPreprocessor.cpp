@@ -65,6 +65,8 @@ namespace Omni {
 	Bounds MeshPreprocessor::GenerateMeshBounds(const std::vector<glm::vec3>* points)
 	{
 		Bounds bounds = {};
+		bounds.aabb.min = glm::vec3(FLT_MAX);
+		bounds.aabb.max = glm::vec3(FLT_MIN);
 
 		for (auto& point : *points) {
 			for (int i = 0; i < 3; i++) {
@@ -73,6 +75,7 @@ namespace Omni {
 			}
 		}
 
+#if 0
 		namespace SEB = SEB_NAMESPACE;
 
 		std::vector<SEB::Point<float32>> seb_points;
@@ -91,6 +94,18 @@ namespace Omni {
 			bounds.sphere.center[i] = center_position_iterator[i];
 		}
 		bounds.sphere.radius = seb.radius();
+#endif
+		bounds.sphere.center = { 
+			(bounds.aabb.min.x + bounds.aabb.max.x) * 0.5f, 
+			(bounds.aabb.min.y + bounds.aabb.max.y) * 0.5f,
+			(bounds.aabb.min.z + bounds.aabb.max.z) * 0.5f,
+		};
+		
+		bounds.sphere.radius = glm::sqrt(
+			glm::pow(bounds.aabb.max.x - bounds.aabb.min.x, 2) +
+			glm::pow(bounds.aabb.max.y - bounds.aabb.min.y, 2) +
+			glm::pow(bounds.aabb.max.z - bounds.aabb.min.z, 2)
+		) * 0.5f;
 
 		return bounds;
 	}

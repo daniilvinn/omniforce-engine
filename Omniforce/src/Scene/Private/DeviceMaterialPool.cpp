@@ -51,8 +51,13 @@ namespace Omni {
 
 		for (auto& material_entry : material_table) {
 			if (material_entry.second.index() == 0) {
-				AssetHandle texture_handle = std::get<AssetHandle>(material_entry.second);
-				material_entry.second = m_Context->AcquireResourceIndex(asset_manager->GetAsset<Image>(texture_handle), SamplerFilteringMode::LINEAR);
+				MaterialTextureProperty texture_property = std::get<MaterialTextureProperty>(material_entry.second);
+				texture_property.first = m_Context->AcquireResourceIndex(asset_manager->GetAsset<Image>(texture_property.first), SamplerFilteringMode::LINEAR);
+
+				// HACK: encode texture index and uv channel index in AssetHandle.
+				// Very cursed approach but it should works.
+				// Probably needs to be redesigned to something like "RuntimeMaterialInstance"
+				material_entry.second = MaterialTextureProperty((uint64)texture_property.first | (((uint64)texture_property.second) << 32), 0);
 			}
 		}
 

@@ -26,7 +26,7 @@ namespace Omni {
 		AssetHandle image_handle = LoadTextureProperty(property.value().textureIndex, root);
 
 		mutex.lock();
-		material->AddProperty(key, image_handle);
+		material->AddProperty(key, MaterialTextureProperty(image_handle, property.value().texCoordIndex));
 		material->AddShaderMacro(fmt::format("__OMNI_HAS_{}", key));
 		mutex.unlock();
 	}
@@ -40,7 +40,7 @@ namespace Omni {
 		AssetHandle image_handle = LoadTextureProperty(property.value().textureIndex, root);
 
 		mutex.lock();
-		material->AddProperty(key, image_handle);
+		material->AddProperty(key, MaterialTextureProperty(image_handle, property.value().texCoordIndex));
 		material->AddShaderMacro(fmt::format("__OMNI_HAS_{}", key));
 		// TODO: add scale
 		//if (property.value().scale != 1.0f) {
@@ -59,7 +59,7 @@ namespace Omni {
 		AssetHandle image_handle = LoadTextureProperty(property.value().textureIndex, root);
 
 		mutex.lock();
-		material->AddProperty(key, image_handle);
+		material->AddProperty(key, MaterialTextureProperty(image_handle, property.value().texCoordIndex));
 		material->AddShaderMacro(fmt::format("__OMNI_HAS_{}", key));
 		mutex.unlock();
 	}
@@ -119,7 +119,7 @@ namespace Omni {
 		std::vector<RGBA32> mip_mapped_image = intermediate_storage;
 		uint8 mip_levels_count = 1;
 
-		bool encode_with_bc7 = image_width >= 4 && image_height >= 4;
+		bool encode_with_bc7 = false;// image_width >= 4 && image_height >= 4;
 		if (encode_with_bc7) {
 			 mip_mapped_image = compressor.GenerateMipMaps(
 				intermediate_storage,

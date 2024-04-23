@@ -173,6 +173,7 @@ namespace Omni {
 
 		auto function_list = std::move(s_InternalData.cmd_generation_function_list);
 
+
 		//JobSystem* js = JobSystem::Get();
 		//js->Execute([function_list = std::move(s_InternalData.cmd_generation_function_list)]() {
 			for(auto& func : function_list) {

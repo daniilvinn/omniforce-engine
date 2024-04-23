@@ -10,7 +10,8 @@
 
 namespace Omni {
 
-	using MaterialProperty = std::variant<AssetHandle, float32, uint32, glm::vec4>;
+	using MaterialTextureProperty = std::pair<AssetHandle, uint32>; // texture id - uv channel
+	using MaterialProperty = std::variant<MaterialTextureProperty, float32, uint32, glm::vec4>;
 
 	class OMNIFORCE_API Material : public AssetBase {
 	public:

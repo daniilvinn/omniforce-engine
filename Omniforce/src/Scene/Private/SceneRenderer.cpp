@@ -528,7 +528,7 @@ namespace Omni {
 				(BitMask)PipelineAccess::COLOR_ATTACHMENT_WRITE,
 				(BitMask)PipelineAccess::MEMORY_READ | (BitMask)PipelineAccess::MEMORY_WRITE
 			);
-			});
+		});
 	}
 
 	Shared<Image> SceneRenderer::GetFinalImage()
@@ -573,8 +573,6 @@ namespace Omni {
 			mesh_data.lods[i].meshlets_bda = mesh->GetBuffer(i, MeshBufferKey::MESHLETS)->GetDeviceAddress();
 			mesh_data.lods[i].micro_indices_bda = mesh->GetBuffer(i, MeshBufferKey::MICRO_INDICES)->GetDeviceAddress();
 			mesh_data.lods[i].meshlets_cull_data_bda = mesh->GetBuffer(i, MeshBufferKey::MESHLETS_CULL_DATA)->GetDeviceAddress();
-
-			OMNIFORCE_CORE_INFO(mesh_data.lods[i].meshlets_bda);
 		}
 
 		return m_MeshResourcesBuffer.Allocate(mesh->Handle, mesh_data);

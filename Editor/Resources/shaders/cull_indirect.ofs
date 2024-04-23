@@ -44,21 +44,25 @@ void main() {
 
     vec4 rotation_quaternion = vec4(unpackSnorm2x16(transform.packed_rotation[0]), unpackSnorm2x16(transform.packed_rotation[1]));
 
-    // Select lod based on distance and multiplier
+    // Select lod based on distance to LOD_0's bounding sphere position and multiplier
+    Sphere bounding_sphere = root_mesh_data.lods[0].bounding_sphere;
+	bounding_sphere.center = RotateByQuat(bounding_sphere.center * transform.scale, rotation_quaternion) + transform.translation;
+
     uint32_t selected_lod = 0;
     for(int i = 0; i < OMNI_MAX_MESH_LOD_COUNT; i++) {
-        if(length(pc.camera_data.position - transform.translation) < OMNI_LOD_DISTANCES[i] * root_mesh_data.lod_distance_multiplier) {
+        if(length(pc.camera_data.position - bounding_sphere.center) < OMNI_LOD_DISTANCES[i] * root_mesh_data.lod_distance_multiplier) {
             selected_lod = i;
             break;
         }
     }
-    
+
     // Take corresponding bounding sphere and test it against frustum
     MeshLOD mesh_data = root_mesh_data.lods[selected_lod];
 
-    Sphere bounding_sphere = mesh_data.bounding_sphere;
+    bounding_sphere = mesh_data.bounding_sphere;
 	bounding_sphere.center = RotateByQuat(bounding_sphere.center * transform.scale, rotation_quaternion) + transform.translation;
     bounding_sphere.radius = bounding_sphere.radius * max(max(transform.scale.x, transform.scale.y), transform.scale.z);
+    
 
     if(FrustumTestBoundingSphere(pc.camera_data.frustum, bounding_sphere)) {
         // If test is passed, fill in the data

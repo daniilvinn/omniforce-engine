@@ -156,12 +156,13 @@ namespace Omni {
 		VkPhysicalDeviceIndexTypeUint8FeaturesEXT uint8_index_feature_enable_struct = {};
 		uint8_index_feature_enable_struct.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT;
 		uint8_index_feature_enable_struct.pNext = &mesh_shading_enable_struct;
-		uint8_index_feature_enable_struct.indexTypeUint8 = VK_TRUE;
+		uint8_index_feature_enable_struct.indexTypeUint8 = true;
 
 		VkPhysicalDeviceVulkan11Features vulkan_1_1_features = {};
 		vulkan_1_1_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
 		vulkan_1_1_features.pNext = &uint8_index_feature_enable_struct;
 		vulkan_1_1_features.shaderDrawParameters = true;
+		vulkan_1_1_features.storageBuffer16BitAccess = true;
 
 		VkPhysicalDeviceVulkan12Features vulkan_1_2_features = {};
 		vulkan_1_2_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
@@ -177,11 +178,12 @@ namespace Omni {
 		vulkan_1_2_features.storageBuffer8BitAccess = true;
 		vulkan_1_2_features.shaderInt8 = true;
 		vulkan_1_2_features.storagePushConstant8 = true;
+		vulkan_1_2_features.shaderFloat16 = true;
 
 		VkPhysicalDeviceVulkan13Features vulkan_1_3_features = {};
 		vulkan_1_3_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
 		vulkan_1_3_features.pNext = &vulkan_1_2_features;
-		vulkan_1_3_features.dynamicRendering = VK_TRUE;
+		vulkan_1_3_features.dynamicRendering = true;
 		vulkan_1_3_features.maintenance4 = true;
 		vulkan_1_3_features.synchronization2 = true;
 

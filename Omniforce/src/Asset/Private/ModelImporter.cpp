@@ -6,6 +6,7 @@
 #include <Asset/AssetManager.h>
 #include <Asset/MeshPreprocessor.h>
 #include <Asset/AssetCompressor.h>
+#include <Asset/VertexQuantizer.h>
 #include <Asset/Material.h>
 #include <Asset/Model.h>
 #include <Asset/Importers/MaterialImporter.h>
@@ -14,9 +15,11 @@
 #include <Renderer/Image.h>
 #include <Threading/JobSystem.h>
 #include <Platform/Vulkan/Private/VulkanMemoryAllocator.h>
+#include <Core/BitStream.h>
 
 #include <map>
 #include <array>
+#include <atomic>
 
 #include <glm/gtc/type_precision.hpp>
 #include <glm/glm.hpp>
@@ -49,67 +52,74 @@ namespace Omni {
 		tf::Taskflow taskflow;
 		rhumap<uint32, AssetHandle> material_table; // material index - AssetHandle table
 
+		std::atomic_uint32_t mesh_load_progress_counter = 0;
+
 		// Iterate over each mesh and spawn a task to load it
 		for (auto& ftf_mesh : ftf_asset.meshes) {
-			// Spawn conditional task to validate mesh (e.g. check it or its material is supported)
-			auto primitive_validate_task = taskflow.emplace([&ftf_mesh, &ftf_asset, this]() -> bool {
-				ftf::Material& material = ftf_asset.materials[ftf_mesh.primitives[0].materialIndex.value()];
-				return ValidateSubmesh(&ftf_mesh, &material);
-			});
-
-			// If everything is ok after validation, then load it
-			taskflow.emplace([&, this](tf::Subflow& subflow) {
-				// 1. Read attribute metadata - find offsets, vertex stride
-				VertexAttributeMetadataTable attribute_metadata_table = {};
-				uint32 vertex_stride = 0;
-
-				ReadVertexMetadata(&attribute_metadata_table, &vertex_stride, &ftf_asset, &ftf_mesh);
-
-				// 2. Read vertex and index data. Record it in subflow so it can be executed in parallel to material loading
-				std::vector<byte> vertex_data;
-				std::vector<uint32> index_data;
-
-				auto attribute_read_task = subflow.emplace([&, this]() {
-					ReadVertexAttributes(&vertex_data, &index_data, &ftf_asset, &ftf_mesh, &attribute_metadata_table, vertex_stride);
+			for (auto& primitive : ftf_mesh.primitives) {
+				// Spawn conditional task to validate mesh (e.g. check it or its material is supported)
+				auto primitive_validate_task = taskflow.emplace([&ftf_mesh, &primitive, &ftf_asset, this]() -> bool {
+					ftf::Material& material = ftf_asset.materials[primitive.materialIndex.value()];
+					return ValidateSubmesh(&ftf_mesh, &primitive, &material);
 				});
 
-				// 3. Process mesh data - generate lods, optimize mesh, generate meshlets etc.
-				Shared<Mesh> mesh = nullptr;
-				AABB lod0_aabb = {};
+				// If everything is ok after validation, then load it
+				taskflow.emplace([&, this](tf::Subflow& subflow) {
+					// 1. Read attribute metadata - find offsets, vertex stride
+					VertexAttributeMetadataTable attribute_metadata_table = {};
+					uint32 vertex_stride = 0;
 
-				auto mesh_process_task = subflow.emplace([&, this]() {
-					ProcessMeshData(&mesh, &lod0_aabb, &vertex_data, &index_data, vertex_stride, &mtx);
-				}).succeed(attribute_read_task);
+					ReadVertexMetadata(&attribute_metadata_table, &vertex_stride, &ftf_asset, &primitive);
 
-				// 4. Process material data - load textures, generate mip-maps, compress. Also copies scalar material properties
-				//    Material processing requires additional steps in order to make sure that no duplicates will be created.
-				const ftf::Material& ftf_material = ftf_asset.materials[ftf_mesh.primitives[0].materialIndex.value()];
-				Shared<Material> material = nullptr;
+					// 2. Read vertex and index data. Record it in subflow so it can be executed in parallel to material loading
+					std::vector<byte> vertex_data;
+					std::vector<uint32> index_data;
 
-				auto material_process_task = subflow.emplace([&, this](tf::Subflow& sf) {
-					bool material_requires_processing = false;
-					{
-						std::lock_guard lock(mtx);
-						if (!material_table.contains(ftf_mesh.primitives[0].materialIndex.value())) {
-							material_table.emplace(ftf_mesh.primitives[0].materialIndex.value(), rh::hash<std::string>()(ftf_material.name.c_str()));
-							material_requires_processing = true;
+					auto attribute_read_task = subflow.emplace([&, this]() {
+						ReadVertexAttributes(&vertex_data, &index_data, &ftf_asset, &primitive, &attribute_metadata_table, vertex_stride);
+					});
+
+					// 3. Process mesh data - generate lods, optimize mesh, generate meshlets etc.
+					Shared<Mesh> mesh = nullptr;
+					AABB lod0_aabb = {};
+
+					auto mesh_process_task = subflow.emplace([&, this]() {
+						ProcessMeshData(&mesh, &lod0_aabb, &vertex_data, &index_data, vertex_stride, &mtx);
+						OMNIFORCE_CORE_TRACE("[{}/{}] Loaded mesh: {}", ++mesh_load_progress_counter, ftf_asset.meshes.size(), ftf_mesh.name);
+					}).succeed(attribute_read_task);
+
+					// 4. Process material data - load textures, generate mip-maps, compress. Also copies scalar material properties
+					//    Material processing requires additional steps in order to make sure that no duplicates will be created.
+					const ftf::Material& ftf_material = ftf_asset.materials[primitive.materialIndex.value()];
+					Shared<Material> material = nullptr;
+
+					auto material_process_task = subflow.emplace([&, this](tf::Subflow& sf) {
+						bool material_requires_processing = false;
+						{
+							std::lock_guard lock(mtx);
+							if (!material_table.contains(primitive.materialIndex.value())) {
+								material_table.emplace(primitive.materialIndex.value(), rh::hash<std::string>()(ftf_material.name.c_str()));
+								material_requires_processing = true;
+							}
 						}
-					}
 
-					if (material_requires_processing)
-						ProcessMaterialData(sf, &material, &ftf_asset, &ftf_material, &attribute_metadata_table, &mtx);
-				});
+						if (material_requires_processing) {
+							ProcessMaterialData(sf, &material, &ftf_asset, &ftf_material, &attribute_metadata_table, &mtx);
+							OMNIFORCE_CORE_TRACE("Loaded material: {}", ftf_material.name);
+						}
+					});
 
 
-				subflow.emplace([&]() {
-					std::lock_guard lock(mtx);
-					// Register mesh-material pair
-					submeshes.push_back({ mesh->Handle, material_table.at(ftf_mesh.primitives[0].materialIndex.value()) });
-				}).succeed(mesh_process_task, material_process_task);
+					subflow.emplace([&]() {
+						std::lock_guard lock(mtx);
+						// Register mesh-material pair
+						submeshes.push_back({ mesh->Handle, material_table.at(primitive.materialIndex.value()) });
+					}).succeed(mesh_process_task, material_process_task);
 
-				// Join so the stack doesn't get freed and we can safely use its memory
-				subflow.join();
-			}).succeed(primitive_validate_task);
+					// Join so the stack doesn't get freed and we can safely use its memory
+					subflow.join();
+				}).succeed(primitive_validate_task);
+			}
 		}
 
 		// Execute task graph
@@ -163,7 +173,7 @@ namespace Omni {
 		*asset = std::move(expected_asset.get());
 	}
 
-	bool ModelImporter::ValidateSubmesh(const ftf::Mesh* mesh, const ftf::Material* material)
+	bool ModelImporter::ValidateSubmesh(const ftf::Mesh* mesh, const ftf::Primitive* primitive, const ftf::Material* material)
 	{
 		// Check if material is PBR-compatible. Currently engine supports only PBR materials
 		if (!material->pbrData.baseColorTexture.has_value()) {
@@ -172,13 +182,13 @@ namespace Omni {
 			return true;
 		}
 		// Check if mesh data is indexed
-		else if (!mesh->primitives[0].indicesAccessor.has_value()) {
+		else if (!primitive->indicesAccessor.has_value()) {
 			OMNIFORCE_CORE_ERROR("One of the submeshes has no indices. Unindexed meshes are not supported. Skipping submesh");
 			OMNIFORCE_CUSTOM_LOGGER_ERROR("OmniEditor", "One of the submeshes has no indices. Unindexed meshes are not supported. Skipping submesh");
 			return true;
 		}
 		// Check if topology is triangle list. Currently only triangle lists are supported
-		else if (mesh->primitives[0].type != ftf::PrimitiveType::Triangles) {
+		else if (primitive->type != ftf::PrimitiveType::Triangles) {
 			OMNIFORCE_CORE_ERROR("One of the submeshes primitive type is other than triangle list - currently only triangle list is supported. Skipping submesh");
 			OMNIFORCE_CUSTOM_LOGGER_ERROR("OmniEditor", "One of the submeshes primitive type is other than triangle list - currently only triangle list is supported. Skipping submesh");
 			return true;
@@ -186,13 +196,12 @@ namespace Omni {
 		return false;
 	}
 
-	void ModelImporter::ReadVertexMetadata(VertexAttributeMetadataTable* out_table, uint32* out_stride, const ftf::Asset* asset, const ftf::Mesh* mesh)
+	void ModelImporter::ReadVertexMetadata(VertexAttributeMetadataTable* out_table, uint32* out_size, const ftf::Asset* asset, const ftf::Primitive* primitive)
 	{
 		uint32 attribute_stride = 12;
-		auto& primitive = mesh->primitives[0];
 
 		// Iterate through attributes and add them to map, effectively sorting them
-		for (auto& attribute : primitive.attributes) {
+		for (auto& attribute : primitive->attributes) {
 			// If on "POSIIION" attribute - skip iteration, since geometry is not considered as vertex attribute and is always at 0 offset
 			if (attribute.first == "POSITION")
 				continue;
@@ -206,19 +215,19 @@ namespace Omni {
 		for (auto& attribute : *out_table) {
 			attribute.second = attribute_stride;
 
-			const auto& attribute_accessor = asset->accessors[primitive.findAttribute(attribute.first)->second];
-			attribute_stride += ftf::getElementByteSize(attribute_accessor.type, attribute_accessor.componentType);
+			const auto& attribute_accessor = asset->accessors[primitive->findAttribute(attribute.first)->second];
+
+			attribute_stride += VertexDataQuantizer::GetRuntimeAttributeSize(attribute.first);
 		}
-		*out_stride = attribute_stride;
+		*out_size = attribute_stride;
 	}
 
 	void ModelImporter::ReadVertexAttributes(std::vector<byte>* out_vertex_data, std::vector<uint32>* out_index_data, const ftf::Asset* asset, 
-		const ftf::Mesh* mesh, const VertexAttributeMetadataTable* metadata, uint32 vertex_stride)
+		const ftf::Primitive* primitive, const VertexAttributeMetadataTable* metadata, uint32 vertex_stride)
 	{
-		auto& primitive = mesh->primitives[0];
 		// Load indices
 		{
-			const auto& indices_accessor = asset->accessors[primitive.indicesAccessor.value()];
+			const auto& indices_accessor = asset->accessors[primitive->indicesAccessor.value()];
 			out_index_data->resize(indices_accessor.count);
 			{
 				ftf::iterateAccessorWithIndex<uint32>(*asset, indices_accessor,
@@ -227,8 +236,9 @@ namespace Omni {
 		}
 
 		// Load geometry
+		VertexDataQuantizer quantizer;
 		{
-			const auto& vertices_accessor = asset->accessors[primitive.findAttribute("POSITION")->second];
+			const auto& vertices_accessor = asset->accessors[primitive->findAttribute("POSITION")->second];
 			out_vertex_data->resize(vertices_accessor.count * vertex_stride);
 			{
 				ftf::iterateAccessorWithIndex<glm::vec3>(*asset, vertices_accessor,
@@ -238,19 +248,43 @@ namespace Omni {
 
 		// Load attributes iterating through attribute metadata table to retrieve corresponding offset in data buffer
 		for (auto& attrib : *metadata) {
-			const auto& accessor = asset->accessors[primitive.findAttribute(attrib.first)->second];
+			const auto& accessor = asset->accessors[primitive->findAttribute(attrib.first)->second];
 
-			if (accessor.type == ftf::AccessorType::Vec2) {
+			if (attrib.first.find("TEXCOORD") != std::string::npos) {
 				ftf::iterateAccessorWithIndex<glm::vec2>(*asset, accessor,
-					[&](const glm::vec2 value, std::size_t idx) { memcpy(out_vertex_data->data() + idx * vertex_stride + attrib.second, &value, sizeof(value)); });
+					[&](const glm::vec2 value, std::size_t idx) { 
+						const glm::u16vec2 quantized_uv = quantizer.QuantizeUV(value);
+						memcpy(out_vertex_data->data() + idx * vertex_stride + attrib.second, &quantized_uv, sizeof(quantized_uv));
+					}
+				);
 			}
-			else if (accessor.type == ftf::AccessorType::Vec3) {
+			else if (attrib.first.find("NORMAL") != std::string::npos) {
 				ftf::iterateAccessorWithIndex<glm::vec3>(*asset, accessor,
-					[&](const glm::vec3 value, std::size_t idx) { memcpy(out_vertex_data->data() + idx * vertex_stride + attrib.second, &value, sizeof(value)); });
+					[&](const glm::vec3 value, std::size_t idx) {
+						const glm::u16vec2 quantized_normal = quantizer.QuantizeNormal(value);
+						memcpy(out_vertex_data->data() + idx * vertex_stride + attrib.second, &quantized_normal, sizeof(quantized_normal));
+					}
+				);
 			}
-			else if (accessor.type == ftf::AccessorType::Vec4) {
+			else if (attrib.first.find("TANGENT") != std::string::npos) {
 				ftf::iterateAccessorWithIndex<glm::vec4>(*asset, accessor,
-					[&](const glm::vec4 value, std::size_t idx) { memcpy(out_vertex_data->data() + idx * vertex_stride + attrib.second, &value, sizeof(value)); });
+					[&](const glm::vec4 value, std::size_t idx) {
+						const glm::u16vec2 quantized_tangent = quantizer.QuantizeTangent(value);
+						memcpy(out_vertex_data->data() + idx * vertex_stride + attrib.second, &quantized_tangent, sizeof(quantized_tangent));
+					}
+				);
+			}
+			else if (attrib.first.find("COLOR") != std::string::npos) {
+				OMNIFORCE_ASSERT_TAGGED(false, "Vertex colors are not implemented");
+			}
+			else if (attrib.first.find("JOINTS") != std::string::npos) {
+				OMNIFORCE_ASSERT_TAGGED(false, "Skinned meshes are not supported");
+			}
+			else if (attrib.first.find("WEIGHTS") != std::string::npos) {
+				OMNIFORCE_ASSERT_TAGGED(false, "Skinned meshes are not supported");
+			}
+			else {
+				OMNIFORCE_ASSERT_TAGGED(false, "Unknown attribute");
 			}
 		}
 	}
@@ -270,7 +304,7 @@ namespace Omni {
 
 			if (i != 0) {
 				uint32 target_index_count = index_data->size() / (1 * glm::pow(4, i)) + (index_data->size() % 3);
-				float target_error = 0.5f;
+				float target_error = 0.1f;
 
 				// If simplifier was unable to generate LOD (returned index count is 0), try to generate with higher error until lod is generated
 				while (lod_indices.size() == 0)
@@ -284,10 +318,9 @@ namespace Omni {
 						target_error
 					);
 
-					// HACK: Multiply target index count by 1.5 so we can generate generate something and increase target error by 0.1f;
+					// HACK: Multiply target index count by 20% so we can generate generate something;
 					// Best solution would be to stop generation of LODs and use amount of lods we were able to generate, instead of fixed amount of 4
-					target_error += 0.1f;
-					target_index_count *= std::clamp(6u, (uint32)(target_index_count * 1.5f), (uint32)index_data->size());
+					target_index_count *= std::clamp(6u, (uint32)(target_index_count * 1.2f), (uint32)index_data->size());
 				}
 			}
 			else {
@@ -352,8 +385,18 @@ namespace Omni {
 		subflow.join();
 
 		// Add additional macros generated from vertex layout to generate correct shader variant
-		for (auto& metadata_entry : *vertex_macro_table)
+		// Also compute num uv channels in mesh
+		uint32 num_uv_channels = 0;
+		for (auto& metadata_entry : *vertex_macro_table) {
+			if (metadata_entry.first.find("TEXCOORD") != std::string::npos) {
+				if(num_uv_channels == 0)
+					(*out_material)->AddShaderMacro("__OMNI_HAS_VERTEX_TEXCOORDS");
+				num_uv_channels++;
+			}
 			(*out_material)->AddShaderMacro(fmt::format("__OMNI_HAS_VERTEX_{}", metadata_entry.first));
+		}
+		// Set macro of num of UV channels
+		(*out_material)->AddShaderMacro("__OMNI_MESH_TEXCOORD_COUNT", std::to_string(num_uv_channels));
 
 		// All data is gathered - compile material pipeline
 		std::lock_guard lock(*mtx);

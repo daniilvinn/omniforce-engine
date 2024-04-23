@@ -11,7 +11,7 @@
 namespace Omni {
 
 	class OMNIFORCE_API VertexDataQuantizer {
-
+	public:
 		// NOTE: mesh bitrate doesn't equal to vertex bitrate.
 		// Vertex bitrate is precision within a single unit (in our case - a single meter, so 1.0f)
 		// and is used to determine how much precision there can be within a single unit. 
@@ -83,6 +83,18 @@ namespace Omni {
 
 		glm::u16vec2 QuantizeUV(glm::vec2 uv) {
 			return glm::packHalf(uv);
+		}
+
+		static uint32 GetRuntimeAttributeSize(std::string_view key) {
+			// if key is NORMAL, TANGENT, TEXCOORD_n, COLOR_n, return 4 bytes size (f16vec2 for all attributes except color, which is u8vec4)
+			if (key == "NORMAL" || key == "TANGENT" || key.find("TEXCOORD") != std::string::npos || key.find("COLOR") != std::string::npos)
+				return 4;
+			else if (key.find("JOINTS") != std::string::npos || key.find("WEIGHTS") != std::string::npos)
+				return 8;
+			else 
+				OMNIFORCE_ASSERT_TAGGED(false, "Unknown attribute key");
+
+			return 0;
 		}
 
 	private:
