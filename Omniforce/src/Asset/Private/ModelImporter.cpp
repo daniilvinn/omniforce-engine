@@ -366,7 +366,7 @@ namespace Omni {
 
 			// Quantize vertex positions
 			VertexDataQuantizer quantizer;
-			const uint32 vertex_bitrate = 12;
+			const uint32 vertex_bitrate = 8;
 			mesh_lods[i].quantization_grid_size = vertex_bitrate;
 			uint32 mesh_bitrate = quantizer.ComputeMeshBitrate(vertex_bitrate, lod0_aabb);
 			uint32 vertex_bitstream_bit_size = deinterleaved_vertex_data.size() * mesh_bitrate * 3;
@@ -399,6 +399,21 @@ namespace Omni {
 						);
 
 						vertex_stream->Append(meshlet_bitrate, value);
+					}
+
+					glm::uvec3 quantized_vertex = glm::uvec3(0u);
+					quantized_vertex.x = vertex_stream->Read(meshlet_bitrate, meshlet.vertex_bit_offset + vertex_idx * meshlet_bitrate * 3);
+					quantized_vertex.y = vertex_stream->Read(meshlet_bitrate, meshlet.vertex_bit_offset + vertex_idx * meshlet_bitrate * 3 + meshlet_bitrate);
+					quantized_vertex.z = vertex_stream->Read(meshlet_bitrate, meshlet.vertex_bit_offset + vertex_idx * meshlet_bitrate * 3 + meshlet_bitrate * 2);
+
+					glm::vec3 decoded_value = quantizer.DequantizeVertexChannel(quantized_vertex, vertex_bitrate, { meshlet_bounds.bounding_sphere_center, meshlet_bounds.radius });
+
+					for (uint32 vertex_channel = 0; vertex_channel < 3; vertex_channel++) {
+						float32 error = std::abs(decoded_value[vertex_channel] - deinterleaved_vertex_data[base_vertex_offset + vertex_idx][vertex_channel]);
+						if (error < min_error)
+							min_error = error;
+						if (error > max_error)
+							max_error = error;
 					}
 
 				}

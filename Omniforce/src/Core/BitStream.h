@@ -47,7 +47,7 @@ namespace Omni {
 
 			// Write first half of a value to current bit stream "cell" (uint32). If value fits entirely,
 			// then I write entire value to a cell with bit offset of `local_offset`
-			m_Storage[index] = (data << local_offset);
+			m_Storage[index] |= (data << local_offset);
 
 			// If it overflows, we have to write another half of the value to the next cell
 			if (local_offset + num_bits > 32u)
