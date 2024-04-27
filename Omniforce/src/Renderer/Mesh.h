@@ -6,6 +6,7 @@
 #include <Asset/AssetBase.h>
 #include <Renderer/DeviceBuffer.h>
 #include <Renderer/Meshlet.h>
+#include <Core/BitStream.h>
 
 #include <Log/Logger.h>
 
@@ -23,17 +24,19 @@ namespace Omni {
 	};
 
 	struct MeshData {
-		std::vector<glm::vec3> geometry;
+		Scope<BitStream> geometry;
 		std::vector<byte> attributes;
 		std::vector<RenderableMeshlet> meshlets;
 		std::vector<byte> local_indices;
 		std::vector<MeshletCullBounds> cull_data;
+		int32 quantization_grid_size;
 		Sphere bounding_sphere;
 	};
 
 	struct MeshLODData {
 		std::map<MeshBufferKey, Shared<DeviceBuffer>> buffers;
 		uint32 meshlet_count = 0;
+		int32 quantization_grid_size;
 		Sphere bounding_sphere;
 	};
 
@@ -52,6 +55,7 @@ namespace Omni {
 
 		Shared<DeviceBuffer> GetBuffer(uint32 lod_index, MeshBufferKey key) { OMNIFORCE_ASSERT_TAGGED(lod_index < m_LODCount, "Exceeded lod count"); return m_LODs[lod_index].buffers.at(key); };
 		const uint32& GetMeshletCount(uint32 lod_index) const { OMNIFORCE_ASSERT_TAGGED(lod_index < m_LODCount, "Exceeded lod count"); return m_LODs[lod_index].meshlet_count; }
+		const int32& GetQuantizationGridSize(uint32 lod_index) const { OMNIFORCE_ASSERT_TAGGED(lod_index < m_LODCount, "Exceeded lod count"); return m_LODs[lod_index].quantization_grid_size; }
 		const Sphere& GetBoundingSphere(uint32 lod_index) const { OMNIFORCE_ASSERT_TAGGED(lod_index < m_LODCount, "Exceeded lod count"); return m_LODs[lod_index].bounding_sphere; }
 		const AABB& GetAABB() const { return m_AABB; }
 		uint8 GetLODCount() const { return m_LODCount; }

@@ -74,6 +74,7 @@ void main()
 #include "render_object.glslh"
 #include "mesh_data.glslh"
 #include "mesh_quantization.glslh"
+#include "sphere.glslh"
 
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 layout(triangles, max_vertices = 64, max_primitives = 124) out;
@@ -112,6 +113,12 @@ void main()
 	vec4 rotation_quaternion = vec4(unpackSnorm2x16(transform.packed_rotation[0]), unpackSnorm2x16(transform.packed_rotation[1]));
 
 	MeshMeshletsData meshlet_data = mesh_data.meshlets_data[task_payload.meshlet_ids[gl_WorkGroupID.x]];
+	Sphere meshlet_sphere = mesh_data.meshlets_cull_bounds[task_payload.meshlet_ids[gl_WorkGroupID.x]].bounding_sphere;
+
+	// Optimization with early memory allocation to hide allocation latency
+	if(gl_LocalInvocationIndex == 0) {
+        SetMeshOutputsEXT(meshlet_data.vertex_count, meshlet_data.triangle_count);
+    };
 
 	// vertices
 	uint vertex_processing_iterations = (meshlet_data.vertex_count + gl_WorkGroupSize.x - 1) / gl_WorkGroupSize.x;
@@ -120,9 +127,25 @@ void main()
 			break;
 		}
 
+		#if 0
 		vec3 vertex = mesh_data.vertices[meshlet_data.vertex_offset + (gl_LocalInvocationIndex * vertex_processing_iterations + i)].vertex_position;
         vertex = RotateByQuat(vertex * transform.scale, rotation_quaternion) + transform.translation;
 		vertex_output[gl_LocalInvocationIndex * vertex_processing_iterations + i].position = vertex;
+		#endif
+
+		vec3 vertex = DecodeVertex(
+			// Read from bit stream
+			uvec3(
+				BitStreamRead(mesh_data.vertices, meshlet_data.bitrate, meshlet_data.vertex_bit_offset + 
+					(gl_LocalInvocationIndex * meshlet_data.bitrate * 3 * vertex_processing_iterations + (i * 3 * meshlet_data.bitrate))),
+				BitStreamRead(mesh_data.vertices, meshlet_data.bitrate, meshlet_data.vertex_bit_offset + 
+					(gl_LocalInvocationIndex * meshlet_data.bitrate * 3 * vertex_processing_iterations + (i * 3 * meshlet_data.bitrate)) + meshlet_data.bitrate),
+				BitStreamRead(mesh_data.vertices, meshlet_data.bitrate, meshlet_data.vertex_bit_offset + 
+					(gl_LocalInvocationIndex * meshlet_data.bitrate * 3 * vertex_processing_iterations + (i * 3 * meshlet_data.bitrate)) + meshlet_data.bitrate * 2)
+			), 
+			mesh_data.quantization_grid_size, 
+			meshlet_sphere
+		);
 
 		gl_MeshVerticesEXT[gl_LocalInvocationIndex * vertex_processing_iterations + i].gl_Position = pc.camera_data.view_proj * vec4(vertex, 1.0f);
 	}
@@ -172,10 +195,6 @@ void main()
 			vertex_output[gl_LocalInvocationIndex * num_processing_attributes + i].tangent = vec4(tangent);
 		#endif
 	}
-
-    if(gl_LocalInvocationIndex == 0) {
-        SetMeshOutputsEXT(meshlet_data.vertex_count, meshlet_data.triangle_count);
-    }
 }
 
 #pragma stage : fragment

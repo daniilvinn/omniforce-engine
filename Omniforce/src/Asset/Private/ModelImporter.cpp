@@ -345,12 +345,12 @@ namespace Omni {
 
 			// Split vertex data into two data streams: geometry and attributes.
 			// It is an optimization used for depth-prepass and shadow maps rendering to speed up data reads.
-			mesh_lods[i].geometry.resize(remapped_vertices.size() / vertex_stride);
+			std::vector<glm::vec3> deinterleaved_vertex_data(remapped_vertices.size() / vertex_stride);
 			mesh_lods[i].attributes.resize(remapped_vertices.size() / vertex_stride * (vertex_stride - sizeof glm::vec3));
-			mesh_preprocessor.SplitVertexData(&mesh_lods[i].geometry, &mesh_lods[i].attributes, &remapped_vertices, vertex_stride);
+			mesh_preprocessor.SplitVertexData(&deinterleaved_vertex_data, &mesh_lods[i].attributes, &remapped_vertices, vertex_stride);
 
 			// Generate mesh bounds
-			Bounds mesh_bounds = mesh_preprocessor.GenerateMeshBounds(&mesh_lods[i].geometry);
+			Bounds mesh_bounds = mesh_preprocessor.GenerateMeshBounds(&deinterleaved_vertex_data);
 
 			// Copy data
 			mesh_lods[i].meshlets			= std::move(generated_meshlets->meshlets);
@@ -358,9 +358,54 @@ namespace Omni {
 			mesh_lods[i].cull_data			= std::move(generated_meshlets->cull_bounds);
 			mesh_lods[i].bounding_sphere	= mesh_bounds.sphere;
 
+			delete generated_meshlets;
+
 			// If i == 0, save generated mesh AABB, which will be used for LOD selection on runtime
 			if (i == 0)
 				lod0_aabb = mesh_bounds.aabb;
+
+			// Quantize vertex positions
+			VertexDataQuantizer quantizer;
+			const uint32 vertex_bitrate = 12;
+			mesh_lods[i].quantization_grid_size = vertex_bitrate;
+			uint32 mesh_bitrate = quantizer.ComputeMeshBitrate(vertex_bitrate, lod0_aabb);
+			uint32 vertex_bitstream_bit_size = deinterleaved_vertex_data.size() * mesh_bitrate * 3;
+
+			// byte size is aligned by 4 bytes. So if we have 17 bits worth of data, we create a 4 bytes long bit stream. 
+			// if we have 67 bits worth of data, we create 12 bytes long bit stream
+			// We reserve worse case memory size
+			Scope<BitStream> vertex_stream = std::make_unique<BitStream>((vertex_bitstream_bit_size + 31u) / 32u * 4u);
+			uint32 meshlet_idx = 0;
+			float32 min_error = FLT_MAX;
+			float32 max_error = FLT_MIN;
+			float32 average_error = 0.0f;
+			for (auto& meshlet_bounds : mesh_lods[i].cull_data) {
+				uint32 meshlet_bitrate = std::ceil(std::log2(meshlet_bounds.radius * 2 * (1u << vertex_bitrate))); // we need diameter of a sphere, not radius
+
+				RenderableMeshlet& meshlet = mesh_lods[i].meshlets[meshlet_idx];
+
+				meshlet.vertex_bit_offset = vertex_stream->GetNumBitsUsed();
+				meshlet.bitrate = meshlet_bitrate;
+
+				uint32 base_vertex_offset = mesh_lods[i].meshlets[meshlet_idx].vertex_offset;
+				for (uint32 vertex_idx = 0; vertex_idx < meshlet.vertex_count; vertex_idx++) {
+					for(uint32 vertex_channel = 0; vertex_channel < 3; vertex_channel++) {
+						float32 meshlet_space_value = deinterleaved_vertex_data[base_vertex_offset + vertex_idx][vertex_channel] - meshlet_bounds.bounding_sphere_center[vertex_channel];
+
+						uint32 value = quantizer.QuantizeVertexChannel(
+							meshlet_space_value,
+							vertex_bitrate,
+							meshlet_bounds.radius
+						);
+
+						vertex_stream->Append(meshlet_bitrate, value);
+					}
+
+				}
+				meshlet_idx++;
+			}
+
+			mesh_lods[i].geometry = std::move(vertex_stream);
 		}
 
 		// Create mesh under mutex

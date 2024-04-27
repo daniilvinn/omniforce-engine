@@ -4,6 +4,8 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_float16		: require
 #extension GL_EXT_shader_explicit_arithmetic_types_int16		: require
 
+#include "sphere.glslh"
+
 f16vec2 OctahedronWrap(f16vec2 v) {
     f16vec2 w = 1.0hf - abs( v.yx );
     if (v.x < 0.0hf) w.x = -w.x;
@@ -43,13 +45,16 @@ f16vec4 DecodeTangent(f16vec2 f)
 	return t;
 }
 
-float DecodeVertexChannel(uint v, int bitrate, float aabb_min) {
-	// To decode quantized value, we need to convert it to float, divide by `1 << bitrate` 
-	// and subtract by min value of a dimension we're decoding to restore sign.
-	// But instead of division by POT value, we divide bitrate (not `1 << bitrate`) from float's exponent using `ldexp()` built-in, which is equal to
-	// division of a float by power-of-two value.
-
-	return ldexp(float(v), -bitrate) - abs(aabb_min);
+// To decode quantized value, we need to convert it to float, divide by `1 << bitrate`,
+// subtract by min value of a dimension we're decoding to restore sign and add meshlet's center position to transform vertex from meshlet-space to model-space
+// But instead of division by POT value, we divide bitrate (not `1 << bitrate`) from float's exponent using `ldexp()` built-in, which is equal to
+// division of a float by power-of-two value.
+vec3 DecodeVertex(const uvec3 encoded_vertex, int vertex_bitrate, const Sphere meshlet_bounds) {
+	return vec3(
+		ldexp(float(encoded_vertex.x), -vertex_bitrate),
+		ldexp(float(encoded_vertex.y), -vertex_bitrate),
+		ldexp(float(encoded_vertex.z), -vertex_bitrate)
+	) - meshlet_bounds.radius + meshlet_bounds.center;
 }
 
 #endif

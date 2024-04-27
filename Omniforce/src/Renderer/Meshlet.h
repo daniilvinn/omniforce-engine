@@ -6,14 +6,16 @@
 namespace Omni {
 
 	struct OMNIFORCE_API RenderableMeshlet {
+		uint32 vertex_bit_offset;
 		uint32 vertex_offset;
 		uint32 triangle_offset;
 		uint32 vertex_count;
-		uint32 triangles_count;
+		uint32 triangle_count;
+		uint32 bitrate;
 	};
 
 	struct OMNIFORCE_API MeshletCullBounds {
-		fvec3 bounding_sphere_center;
+		glm::vec3 bounding_sphere_center;
 		float32 radius;
 
 		fvec3 cone_apex;

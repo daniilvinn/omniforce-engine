@@ -568,6 +568,7 @@ namespace Omni {
 		for (int32 i = 0; i < mesh->GetLODCount(); i++) {
 			mesh_data.lods[i].bounding_sphere = mesh->GetBoundingSphere(i);
 			mesh_data.lods[i].meshlet_count = mesh->GetMeshletCount(i);
+			mesh_data.lods[i].quantization_grid_size = mesh->GetQuantizationGridSize(i);
 			mesh_data.lods[i].geometry_bda = mesh->GetBuffer(i, MeshBufferKey::GEOMETRY)->GetDeviceAddress();
 			mesh_data.lods[i].attributes_bda = mesh->GetBuffer(i, MeshBufferKey::ATTRIBUTES)->GetDeviceAddress();
 			mesh_data.lods[i].meshlets_bda = mesh->GetBuffer(i, MeshBufferKey::MESHLETS)->GetDeviceAddress();

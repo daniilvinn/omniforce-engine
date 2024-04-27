@@ -18,10 +18,10 @@ namespace Omni {
 		meshlets_data->indices.resize(num_meshlets * 64);
 		meshlets_data->local_indices.resize(num_meshlets * 124 * 3);
 
-		meshopt_Meshlet* meshlets = new meshopt_Meshlet[num_meshlets];
+		meshopt_Meshlet* meshopt_meshlets = new meshopt_Meshlet[num_meshlets];
 
 		uint64 actual_num_meshlets = meshopt_buildMeshlets(
-			meshlets, 
+			meshopt_meshlets, 
 			meshlets_data->indices.data(), 
 			meshlets_data->local_indices.data(),
 			indices->data(), 
@@ -41,12 +41,16 @@ namespace Omni {
 		meshlets_data->cull_bounds.resize(actual_num_meshlets);
 		uint32 idx = 0;
 		for (auto& meshlet : meshlets_data->meshlets) {
-			memcpy(&meshlet, &meshlets[idx], sizeof(RenderableMeshlet));
+			meshlet.vertex_offset = meshopt_meshlets[idx].vertex_offset;
+			meshlet.vertex_count = meshopt_meshlets[idx].vertex_count;
+			meshlet.triangle_offset = meshopt_meshlets[idx].triangle_offset;
+			meshlet.triangle_count = meshopt_meshlets[idx].triangle_count;
+			meshlet.vertex_bit_offset = 0;
 
 			meshopt_Bounds bounds = meshopt_computeMeshletBounds(
 				&meshlets_data->indices[meshlet.vertex_offset],
 				&meshlets_data->local_indices[meshlet.triangle_offset],
-				meshlet.triangles_count, 
+				meshlet.triangle_count, 
 				(float32*)vertices->data(), 
 				vertices->size() / vertex_stride,
 				vertex_stride
@@ -57,7 +61,7 @@ namespace Omni {
 			idx++;
 		}
 
-		delete[] meshlets;
+		delete[] meshopt_meshlets;
 
 		return meshlets_data;
 	}

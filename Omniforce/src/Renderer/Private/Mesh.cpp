@@ -17,8 +17,8 @@ namespace Omni {
 		buffer_spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
 		buffer_spec.heap = DeviceBufferMemoryHeap::DEVICE;
 
-		buffer_spec.size = lod0.geometry.size() * sizeof glm::vec3;
-		m_LODs[0].buffers.emplace(MeshBufferKey::GEOMETRY, DeviceBuffer::Create(buffer_spec, (void*)lod0.geometry.data(), buffer_spec.size));
+		buffer_spec.size = lod0.geometry->GetNumStorageBytesUsed();
+		m_LODs[0].buffers.emplace(MeshBufferKey::GEOMETRY, DeviceBuffer::Create(buffer_spec, (void*)lod0.geometry->GetStorage(), buffer_spec.size));
 
 		buffer_spec.size = lod0.attributes.size();
 		m_LODs[0].buffers.emplace(MeshBufferKey::ATTRIBUTES, DeviceBuffer::Create(buffer_spec, (void*)lod0.attributes.data(), buffer_spec.size));
@@ -43,7 +43,6 @@ namespace Omni {
 	{
 		int32 i = 0;
 		for (auto& lod : lods) {
-			OMNIFORCE_ASSERT_TAGGED(lod.geometry.size() >= 3, "Geometry must have at least three vertices. LOD: {}", i);
 			OMNIFORCE_ASSERT_TAGGED(lod.meshlets.size() != 0, "Geometry must have at least one meshlet. LOD: {}", i);
 			OMNIFORCE_ASSERT_TAGGED(lod.local_indices.size() >= 3, "Geometry must have at least 3 local indices for a single triangle. LOD: {}", i);
 			OMNIFORCE_ASSERT_TAGGED(lod.bounding_sphere.radius != 0.0f, "Geometry can't have a bounding sphere with 0 radius. LOD: {}", i);
@@ -53,8 +52,8 @@ namespace Omni {
 			buffer_spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
 			buffer_spec.heap = DeviceBufferMemoryHeap::DEVICE;
 
-			buffer_spec.size = lod.geometry.size() * sizeof glm::vec3;
-			m_LODs[i].buffers.emplace(MeshBufferKey::GEOMETRY, DeviceBuffer::Create(buffer_spec, (void*)lod.geometry.data(), buffer_spec.size));
+			buffer_spec.size = lod.geometry->GetNumStorageBytesUsed();
+			m_LODs[i].buffers.emplace(MeshBufferKey::GEOMETRY, DeviceBuffer::Create(buffer_spec, (void*)lod.geometry->GetStorage(), buffer_spec.size));
 
 			buffer_spec.size = lod.attributes.size();
 			m_LODs[i].buffers.emplace(MeshBufferKey::ATTRIBUTES, DeviceBuffer::Create(buffer_spec, (void*)lod.attributes.data(), buffer_spec.size));
@@ -70,6 +69,7 @@ namespace Omni {
 
 			m_LODs[i].meshlet_count = lod.meshlets.size();
 			m_LODs[i].bounding_sphere = lod.bounding_sphere;
+			m_LODs[i].quantization_grid_size = lod.quantization_grid_size;
 
 			i++;
 		}

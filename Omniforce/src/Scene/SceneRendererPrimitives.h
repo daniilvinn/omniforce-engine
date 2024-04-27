@@ -22,6 +22,7 @@ namespace Omni {
 		struct LOD {
 			Sphere bounding_sphere;
 			uint32 meshlet_count;
+			int32 quantization_grid_size;
 			uint64 geometry_bda;
 			uint64 attributes_bda;
 			uint64 meshlets_bda;

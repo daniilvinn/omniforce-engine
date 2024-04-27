@@ -14,9 +14,9 @@ namespace Omni {
 			OMNIFORCE_ASSERT_TAGGED(size % 4 == 0, "Bit stream size can only be a multiple of 4");
 			OMNIFORCE_ASSERT_TAGGED(size >= 4, "Bit stream size must be greater or equal than 4");
 
-			m_StorageSize = Utils::Align(size, 4);
+			m_StorageSize = Utils::Align(size, 4u);
 
-			m_Storage = new uint32[size / 4];
+			m_Storage = new uint32[size / 4u];
 			m_NumBitsUsed = 0;
 
 			memset(m_Storage, 0, m_StorageSize);
@@ -98,10 +98,11 @@ namespace Omni {
 			return value;
 		}
 
-		const uint32* GetStorage() const { return m_Storage; }
-		uint32 GetNumUsedBits() const { return m_NumBitsUsed; }
-		uint32 GetNumBytesUsed() const { return (m_NumBitsUsed + 7u) / 8u; }
-		uint32 GetStorageSize() const { return m_StorageSize; }
+		const uint32* GetStorage()		const { return m_Storage; }
+		uint32 GetNumBitsUsed()			const { return m_NumBitsUsed; }
+		uint32 GetNumBytesUsed()		const { return (m_NumBitsUsed + 7u) / 8u; }
+		uint32 GetNumStorageBytesUsed() const { return Utils::Align(m_NumBitsUsed / 8u, 4); }
+		uint32 GetStorageSize()			const { return m_StorageSize; }
 
 	private:
 		uint32* m_Storage;
