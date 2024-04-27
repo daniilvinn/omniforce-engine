@@ -366,7 +366,7 @@ namespace Omni {
 
 			// Quantize vertex positions
 			VertexDataQuantizer quantizer;
-			const uint32 vertex_bitrate = 8;
+			const uint32 vertex_bitrate = 4;
 			mesh_lods[i].quantization_grid_size = vertex_bitrate;
 			uint32 mesh_bitrate = quantizer.ComputeMeshBitrate(vertex_bitrate, lod0_aabb);
 			uint32 vertex_bitstream_bit_size = deinterleaved_vertex_data.size() * mesh_bitrate * 3;
@@ -390,17 +390,29 @@ namespace Omni {
 				uint32 base_vertex_offset = mesh_lods[i].meshlets[meshlet_idx].vertex_offset;
 				for (uint32 vertex_idx = 0; vertex_idx < meshlet.vertex_count; vertex_idx++) {
 					for(uint32 vertex_channel = 0; vertex_channel < 3; vertex_channel++) {
-						float32 meshlet_space_value = deinterleaved_vertex_data[base_vertex_offset + vertex_idx][vertex_channel] - meshlet_bounds.bounding_sphere_center[vertex_channel];
+
+						uint32 quantized_radius = std::ceil(meshlet_bounds.radius * (1u << vertex_bitrate));
+						float32 radius = (float32)quantized_radius / (1u << vertex_bitrate);
+
+						glm::uvec3 quantized_center = glm::uvec3((meshlet_bounds.bounding_sphere_center + 30.0f) * (float32)(1u << vertex_bitrate));
+						glm::vec3 dequantized_center = glm::vec3(quantized_center) / (float32)(1u << vertex_bitrate) - 30.0f;
+
+						float32 meshlet_space_value = deinterleaved_vertex_data[base_vertex_offset + vertex_idx][vertex_channel] - dequantized_center[vertex_channel];
+
+						
 
 						uint32 value = quantizer.QuantizeVertexChannel(
 							meshlet_space_value,
 							vertex_bitrate,
-							meshlet_bounds.radius
+							radius
 						);
 
 						vertex_stream->Append(meshlet_bitrate, value);
 					}
 
+
+
+#if 0
 					glm::uvec3 quantized_vertex = glm::uvec3(0u);
 					quantized_vertex.x = vertex_stream->Read(meshlet_bitrate, meshlet.vertex_bit_offset + vertex_idx * meshlet_bitrate * 3);
 					quantized_vertex.y = vertex_stream->Read(meshlet_bitrate, meshlet.vertex_bit_offset + vertex_idx * meshlet_bitrate * 3 + meshlet_bitrate);
@@ -415,6 +427,7 @@ namespace Omni {
 						if (error > max_error)
 							max_error = error;
 					}
+#endif
 
 				}
 				meshlet_idx++;
