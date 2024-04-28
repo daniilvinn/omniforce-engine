@@ -149,6 +149,8 @@ void main()
 			meshlet_center
 		);
 
+		vertex = RotateByQuat(vertex * transform.scale, rotation_quaternion) + transform.translation;
+
 		gl_MeshVerticesEXT[gl_LocalInvocationIndex * vertex_processing_iterations + i].gl_Position = pc.camera_data.view_proj * vec4(vertex, 1.0f);
 	}
 
