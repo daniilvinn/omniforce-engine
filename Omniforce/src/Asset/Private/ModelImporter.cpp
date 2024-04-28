@@ -366,74 +366,52 @@ namespace Omni {
 
 			// Quantize vertex positions
 			VertexDataQuantizer quantizer;
-			const uint32 vertex_bitrate = 4;
+			const uint32 vertex_bitrate = 8;
 			mesh_lods[i].quantization_grid_size = vertex_bitrate;
 			uint32 mesh_bitrate = quantizer.ComputeMeshBitrate(vertex_bitrate, lod0_aabb);
 			uint32 vertex_bitstream_bit_size = deinterleaved_vertex_data.size() * mesh_bitrate * 3;
+			uint32 grid_size = 1u << vertex_bitrate;
 
 			// byte size is aligned by 4 bytes. So if we have 17 bits worth of data, we create a 4 bytes long bit stream. 
 			// if we have 67 bits worth of data, we create 12 bytes long bit stream
 			// We reserve worse case memory size
 			Scope<BitStream> vertex_stream = std::make_unique<BitStream>((vertex_bitstream_bit_size + 31u) / 32u * 4u);
 			uint32 meshlet_idx = 0;
+
+			// Precision tests
 			float32 min_error = FLT_MAX;
 			float32 max_error = FLT_MIN;
-			float32 average_error = 0.0f;
+
 			for (auto& meshlet_bounds : mesh_lods[i].cull_data) {
-				uint32 meshlet_bitrate = std::ceil(std::log2(meshlet_bounds.radius * 2 * (1u << vertex_bitrate))); // we need diameter of a sphere, not radius
+				uint32 meshlet_bitrate = std::clamp((uint32)std::ceil(std::log2(meshlet_bounds.radius * 2 * grid_size)), 1u, 32u); // we need diameter of a sphere, not radius
+				int32 vertex_decode_mask = 1u << (meshlet_bitrate - 1);
 
 				RenderableMeshlet& meshlet = mesh_lods[i].meshlets[meshlet_idx];
 
 				meshlet.vertex_bit_offset = vertex_stream->GetNumBitsUsed();
 				meshlet.bitrate = meshlet_bitrate;
 
+				meshlet_bounds.bounding_sphere_center = glm::round(meshlet_bounds.bounding_sphere_center * float32(grid_size)) / float32(grid_size);
+
 				uint32 base_vertex_offset = mesh_lods[i].meshlets[meshlet_idx].vertex_offset;
 				for (uint32 vertex_idx = 0; vertex_idx < meshlet.vertex_count; vertex_idx++) {
 					for(uint32 vertex_channel = 0; vertex_channel < 3; vertex_channel++) {
-
-						uint32 quantized_radius = std::ceil(meshlet_bounds.radius * (1u << vertex_bitrate));
-						float32 radius = (float32)quantized_radius / (1u << vertex_bitrate);
-
-						glm::uvec3 quantized_center = glm::uvec3((meshlet_bounds.bounding_sphere_center + 30.0f) * (float32)(1u << vertex_bitrate));
-						glm::vec3 dequantized_center = glm::vec3(quantized_center) / (float32)(1u << vertex_bitrate) - 30.0f;
-
-						float32 meshlet_space_value = deinterleaved_vertex_data[base_vertex_offset + vertex_idx][vertex_channel] - dequantized_center[vertex_channel];
-
-						
+						float32 meshlet_space_value = deinterleaved_vertex_data[base_vertex_offset + vertex_idx][vertex_channel] - meshlet_bounds.bounding_sphere_center[vertex_channel];
 
 						uint32 value = quantizer.QuantizeVertexChannel(
 							meshlet_space_value,
 							vertex_bitrate,
-							radius
+							meshlet_bitrate
 						);
 
 						vertex_stream->Append(meshlet_bitrate, value);
 					}
-
-
-
-#if 0
-					glm::uvec3 quantized_vertex = glm::uvec3(0u);
-					quantized_vertex.x = vertex_stream->Read(meshlet_bitrate, meshlet.vertex_bit_offset + vertex_idx * meshlet_bitrate * 3);
-					quantized_vertex.y = vertex_stream->Read(meshlet_bitrate, meshlet.vertex_bit_offset + vertex_idx * meshlet_bitrate * 3 + meshlet_bitrate);
-					quantized_vertex.z = vertex_stream->Read(meshlet_bitrate, meshlet.vertex_bit_offset + vertex_idx * meshlet_bitrate * 3 + meshlet_bitrate * 2);
-
-					glm::vec3 decoded_value = quantizer.DequantizeVertexChannel(quantized_vertex, vertex_bitrate, { meshlet_bounds.bounding_sphere_center, meshlet_bounds.radius });
-
-					for (uint32 vertex_channel = 0; vertex_channel < 3; vertex_channel++) {
-						float32 error = std::abs(decoded_value[vertex_channel] - deinterleaved_vertex_data[base_vertex_offset + vertex_idx][vertex_channel]);
-						if (error < min_error)
-							min_error = error;
-						if (error > max_error)
-							max_error = error;
-					}
-#endif
-
 				}
 				meshlet_idx++;
 			}
 
 			mesh_lods[i].geometry = std::move(vertex_stream);
+
 		}
 
 		// Create mesh under mutex

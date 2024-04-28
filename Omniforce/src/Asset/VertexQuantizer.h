@@ -31,19 +31,21 @@ namespace Omni {
 		}
 
 		// Quantize by addition of AABB's channel min value to remove sign and multiplying by unit grid size (`1u << bitrate`)
-		uint32 QuantizeVertexChannel(float32 f, uint32 local_bitrate, float32 meshlet_radius) {
-			return (f + meshlet_radius) * (1u << local_bitrate);
+		uint32 QuantizeVertexChannel(float32 f, uint32 local_bitrate, uint32 meshlet_bitrate) {
+			int32 v = std::round(f * (1u << local_bitrate));
+			uint32 result = v < 0 ? (1u << meshlet_bitrate) + v : v;
+			return result;
 		}
 
 		// Decode it by subtracting encoded value's exponent with vertex bitrate 
 		// (ldexp() with negative argument), which is equal to division by POT value (`1 << local_bitrate`)
 		// and subtract AABB's min value to restore sign
-		glm::vec3 DequantizeVertexChannel(glm::uvec3 f, int32 local_bitrate, const Sphere& meshlet_sphere) {
+		glm::vec3 DequantizeVertexChannel(glm::ivec3 f, int32 local_bitrate, const glm::vec3& meshlet_center) {
 			return glm::vec3(
 				std::ldexp((float32)f.x, -local_bitrate),
 				std::ldexp((float32)f.y, -local_bitrate),
 				std::ldexp((float32)f.z, -local_bitrate)
-			) - meshlet_sphere.radius + meshlet_sphere.center;
+			) + meshlet_center;
 		}
 
 		glm::u16vec2 QuantizeNormal(glm::vec3 n) {

@@ -49,12 +49,8 @@ f16vec4 DecodeTangent(f16vec2 f)
 // subtract by min value of a dimension we're decoding to restore sign and add meshlet's center position to transform vertex from meshlet-space to model-space
 // But instead of division by POT value, we divide bitrate (not `1 << bitrate`) from float's exponent using `ldexp()` built-in, which is equal to
 // division of a float by power-of-two value.
-vec3 DecodeVertex(const uvec3 encoded_vertex, int vertex_bitrate, const Sphere meshlet_bounds) {
-	return vec3(
-		ldexp(float(encoded_vertex.x), -vertex_bitrate),
-		ldexp(float(encoded_vertex.y), -vertex_bitrate),
-		ldexp(float(encoded_vertex.z), -vertex_bitrate)
-	) - meshlet_bounds.radius + meshlet_bounds.center;
+vec3 DecodeVertex(const ivec3 encoded_vertex, int vertex_bitrate, const vec3 meshlet_center) {
+	return ldexp(vec3(encoded_vertex), ivec3(-vertex_bitrate)) + meshlet_center;
 }
 
 #endif
