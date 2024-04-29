@@ -1,11 +1,11 @@
 #ifndef TASK_PAYLOAD_GLSLH
 #define TASK_PAYLOAD_GLSLH
 
-#include "mesh_data.glslh"
-#include "Transform.glslh"
+#extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
 
 struct TaskPayload {
-	uint meshlet_ids[32];
+	uint base_offset;
+	uint8_t meshlet_ids[32];
 };
 
 taskPayloadSharedEXT TaskPayload task_payload;

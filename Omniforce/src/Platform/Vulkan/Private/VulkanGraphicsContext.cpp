@@ -50,9 +50,6 @@ namespace Omni {
 		instance_create_info.enabledExtensionCount = extensions.size();
 		instance_create_info.ppEnabledLayerNames = layers.data();
 		instance_create_info.enabledLayerCount = layers.size();
-#ifdef OMNIFORCE_DEBUG
-
-#endif
 
 		VK_CHECK_RESULT(vkCreateInstance(&instance_create_info, nullptr, &m_VulkanInstance));
 		volkLoadInstance(m_VulkanInstance);

@@ -55,11 +55,12 @@ void main()
 	// Cull
 	if((dot(normalize(cone_apex - pc.camera_data.position), cone_axis) < cull_bounds.cone_cutoff) && FrustumTestBoundingSphere(pc.camera_data.frustum, bounding_sphere)) {
 		uint id_index = atomicAdd(s_actual_num_meshlets, 1);
-		task_payload.meshlet_ids[id_index] = gl_GlobalInvocationID.x;
+		task_payload.meshlet_ids[id_index] = uint8_t(gl_GlobalInvocationID.x & 0x1F);
 	}
 
 	// Emit mesh work groups
 	if(lid == 0 && s_actual_num_meshlets != 0) {
+		task_payload.base_offset = gl_GlobalInvocationID.x;
 		EmitMeshTasksEXT(s_actual_num_meshlets, 1, 1);
 	}
 }
@@ -112,8 +113,8 @@ void main()
 	Transform transform = render_object_data.transform;
 	vec4 rotation_quaternion = vec4(unpackSnorm2x16(transform.packed_rotation[0]), unpackSnorm2x16(transform.packed_rotation[1]));
 
-	MeshMeshletsData meshlet_data = mesh_data.meshlets_data[task_payload.meshlet_ids[gl_WorkGroupID.x]];
-	vec3 meshlet_center = mesh_data.meshlets_cull_bounds[task_payload.meshlet_ids[gl_WorkGroupID.x]].bounding_sphere.center;
+	MeshMeshletsData meshlet_data = mesh_data.meshlets_data[task_payload.base_offset + task_payload.meshlet_ids[gl_WorkGroupID.x]];
+	vec3 meshlet_center = mesh_data.meshlets_cull_bounds[task_payload.base_offset + task_payload.meshlet_ids[gl_WorkGroupID.x]].bounding_sphere.center;
 
 	// Optimization with early memory allocation to hide allocation latency
 	if(gl_LocalInvocationIndex == 0) {

@@ -28,8 +28,9 @@ namespace Omni {
 		}
 
 		void Append(uint32 num_bits, uint32 data) {
-			// Assertion to check if we are out of bit stream bounds, since bit stream is not resizable 
-			OMNIFORCE_ASSERT_TAGGED(m_NumBitsUsed + num_bits <= m_StorageSize * 8u, "Bit stream overflow");
+			// Resize if overflow detected
+			if (m_NumBitsUsed + num_bits > m_StorageSize * 8u)
+				Resize(Utils::Align(m_StorageSize * 1.2, 4));
 
 			// Check if num bits is within (0, 32] range 
 			OMNIFORCE_ASSERT_TAGGED(num_bits <= 32 && num_bits > 0, "num_bits must be in (0, 32] range");
@@ -96,6 +97,17 @@ namespace Omni {
 			}
 
 			return value;
+		}
+
+		void Resize(uint32 new_size) {
+			OMNIFORCE_ASSERT_TAGGED(new_size % 4 == 0, "Size must be a multiple of 4");
+
+			uint32* new_storage = new uint32[new_size];
+			memcpy(new_storage, m_Storage, GetNumStorageBytesUsed());
+
+			delete[] m_Storage;
+			m_Storage = new_storage;
+			m_StorageSize = new_size;
 		}
 
 		const uint32* GetStorage()		const { return m_Storage; }

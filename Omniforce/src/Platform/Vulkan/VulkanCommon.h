@@ -6,7 +6,7 @@
 
 #include <volk.h>
 
-#ifdef OMNIFORCE_DEBUG
+#ifndef OMNIFORCE_RELEASE
 	#define VK_CHECK_RESULT(fn)																								\
 			{ VkResult res = fn;																							\
 			if(res != VK_SUCCESS) {																							\
