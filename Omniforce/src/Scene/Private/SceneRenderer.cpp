@@ -538,6 +538,7 @@ namespace Omni {
 
 	uint32 SceneRenderer::AcquireResourceIndex(Shared<Image> image, SamplerFilteringMode filtering_mode)
 	{
+		std::lock_guard lock(m_Mutex);
 		uint32 index = m_TextureIndexAllocator->Allocate(4, 1) / sizeof uint32;
 
 		Shared<ImageSampler> sampler;

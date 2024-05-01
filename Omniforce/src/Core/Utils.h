@@ -15,6 +15,8 @@
 #include <glm/gtc/quaternion.hpp>
 #include <omp.h>
 
+#include <Log/Logger.h>
+
 namespace Omni {
 
 	namespace Utils {
@@ -59,6 +61,9 @@ namespace Omni {
 			if (min_alignment > 0) {
 				alignedSize = (alignedSize + min_alignment - 1) & ~(min_alignment - 1);
 			}
+
+			OMNIFORCE_ASSERT_TAGGED(alignedSize % min_alignment == 0, "Alignment failed");
+
 			return alignedSize;
 		}
 

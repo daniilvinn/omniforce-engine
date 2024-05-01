@@ -14,6 +14,7 @@
 #include <Memory/VirtualMemoryBlock.h>
 
 #include <vector>
+#include <shared_mutex>
 
 #include <robin_hood.h>
 #include <glm/glm.hpp>
@@ -119,6 +120,7 @@ namespace Omni {
 
 		std::vector<PointLight> m_HostPointLights;
 		Shared<DeviceBuffer> m_DevicePointLights;
+		std::shared_mutex m_Mutex;
 
 	};
 
