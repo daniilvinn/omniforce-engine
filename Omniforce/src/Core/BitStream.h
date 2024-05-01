@@ -103,6 +103,7 @@ namespace Omni {
 			OMNIFORCE_ASSERT_TAGGED(new_size % 4 == 0, "Size must be a multiple of 4");
 
 			uint32* new_storage = new uint32[new_size];
+			memset(new_storage, 0, new_size);
 			memcpy(new_storage, m_Storage, GetNumStorageBytesUsed());
 
 			delete[] m_Storage;
@@ -113,7 +114,7 @@ namespace Omni {
 		const uint32* GetStorage()		const { return m_Storage; }
 		uint32 GetNumBitsUsed()			const { return m_NumBitsUsed; }
 		uint32 GetNumBytesUsed()		const { return (m_NumBitsUsed + 7u) / 8u; }
-		uint32 GetNumStorageBytesUsed() const { return Utils::Align(m_NumBitsUsed / 8u, 4); }
+		uint32 GetNumStorageBytesUsed() const { return Utils::Align((m_NumBitsUsed + 7) / 8u, 4); }
 		uint32 GetStorageSize()			const { return m_StorageSize; }
 
 	private:
