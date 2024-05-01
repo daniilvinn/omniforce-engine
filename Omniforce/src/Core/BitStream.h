@@ -85,7 +85,7 @@ namespace Omni {
 			uint32 bitmask = ((1 << num_bits) - 1) << local_offset;
 
 			// Shift the read bits back to the beginning of a value
-			value |= (m_Storage[index] & bitmask) >> local_offset;
+			value = (m_Storage[index] & bitmask) >> local_offset;
 
 			// If value is not encoded entirely within a single cell, we need to do a second read from next cell
 			if (local_offset + num_bits > 32u) {
