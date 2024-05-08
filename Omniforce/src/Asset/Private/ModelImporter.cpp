@@ -295,6 +295,8 @@ namespace Omni {
 		std::array<MeshData, Mesh::OMNI_MAX_MESH_LOD_COUNT> mesh_lods = {};
 		AABB lod0_aabb = {};
 		
+		std::vector<glm::vec3> edges_vbo;
+
 		// Process mesh data on per-LOD basis. It involves generating LOD index buffer, optimizing mesh, generating meshlets and remapping data
 		for (uint32 i = 0; i < Mesh::OMNI_MAX_MESH_LOD_COUNT; i++) {
 			MeshPreprocessor mesh_preprocessor = {};
@@ -332,12 +334,77 @@ namespace Omni {
 			// Optimize mesh (remove redundant vertices, optimize for vertex cache etc.)
 			std::vector<byte> optimized_vertices;
 			std::vector<uint32> optimized_indices;
-
-			// Passing nullptr as index data to index vertices
+			
 			mesh_preprocessor.OptimizeMesh(&optimized_vertices, &optimized_indices, vertex_data, &lod_indices, vertex_stride);
 
 			// Generate meshlets for mesh shading-based geometry processing.
 			GeneratedMeshlets* generated_meshlets = mesh_preprocessor.GenerateMeshlets(&optimized_vertices, &optimized_indices, vertex_stride);
+			
+#define GENERATE_EDGE_VBO
+#ifdef GENERATE_EDGE_VBO
+			if (i == 0) {
+				std::unordered_map<MeshletEdge, std::vector<uint32>, MeshletEdgeHasher> edges2Meshlets;
+				std::unordered_map<uint32, std::vector<MeshletEdge>> meshlets2Edges; // probably could be a vector
+
+				std::vector<uint32> geometry_only_indices;
+
+				// A hack to satisfity meshopt with `index_count % 3 == 0` requirement
+				uint32 ib_padding = 3 - (generated_meshlets->indices.size() % 3);
+				generated_meshlets->indices.resize(generated_meshlets->indices.size() + ib_padding);
+
+				mesh_preprocessor.GenerateShadowIndexBuffer(
+					&geometry_only_indices,
+					&generated_meshlets->indices,
+					&optimized_vertices,
+					12,
+					vertex_stride
+				);
+				generated_meshlets->indices.resize(generated_meshlets->indices.size() - ib_padding);
+
+				// per meshlet
+				for (uint32 meshlet_idx = 0; meshlet_idx < generated_meshlets->meshlets.size(); meshlet_idx++) {
+					auto& meshlet = generated_meshlets->meshlets[meshlet_idx];
+
+					auto getVertexIndex = [&](uint32 index) {
+						return geometry_only_indices[generated_meshlets->local_indices[index + meshlet.triangle_offset] + meshlet.vertex_offset];
+					};
+
+					// per triangle
+					for (uint32 triangle_idx = 0; triangle_idx < meshlet.triangle_count; triangle_idx++) {
+						// per edge
+						for (uint32 edge_idx = 0; edge_idx < 3; edge_idx++) {
+							MeshletEdge edge{ getVertexIndex(edge_idx + triangle_idx * 3), getVertexIndex(((edge_idx + 1) % 3) + triangle_idx * 3) };
+
+							auto& edge_meshlets = edges2Meshlets[edge];
+							if (std::find(edge_meshlets.begin(), edge_meshlets.end(), meshlet_idx) == edge_meshlets.end())
+								edge_meshlets.push_back(meshlet_idx);
+							meshlets2Edges[meshlet_idx].emplace_back(edge);
+						}
+
+					}
+				}
+
+				// remove edges which are not connected to 2 different meshlets
+				std::erase_if(edges2Meshlets, [](const auto& pair) {
+					return pair.second.size() <= 1;
+				});
+
+				edges_vbo.reserve(edges2Meshlets.size() * 2);
+				for (auto& edge_meshlets_pair : edges2Meshlets) {
+					glm::vec3 v = {};
+
+					// First vertex
+					uint32 v_offset = edge_meshlets_pair.first.first * vertex_stride;
+					memcpy(&v, optimized_vertices.data() + v_offset, sizeof glm::vec3);
+					edges_vbo.push_back(v);
+
+					// Second vertex
+					v_offset = edge_meshlets_pair.first.second * vertex_stride;
+					memcpy(&v, optimized_vertices.data() + v_offset, sizeof glm::vec3);
+					edges_vbo.push_back(v);
+				}
+			}
+#endif
 
 			// Remap vertices to get rid of generated index buffer after generation of meshlets
 			std::vector<byte> remapped_vertices(generated_meshlets->indices.size() * vertex_stride);
@@ -366,7 +433,7 @@ namespace Omni {
 
 			// Quantize vertex positions
 			VertexDataQuantizer quantizer;
-			const uint32 vertex_bitrate = 8;
+			const uint32 vertex_bitrate = 24;
 			mesh_lods[i].quantization_grid_size = vertex_bitrate;
 			uint32 mesh_bitrate = quantizer.ComputeMeshBitrate(vertex_bitrate, lod0_aabb);
 			uint32 vertex_bitstream_bit_size = deinterleaved_vertex_data.size() * mesh_bitrate * 3;
@@ -422,6 +489,7 @@ namespace Omni {
 				mesh_lods,
 				lod0_aabb
 			);
+			(*out_mesh)->CreateEdgesBuffer(edges_vbo);
 		}
 
 		AssetManager::Get()->RegisterAsset(ShareAs<AssetBase>(*out_mesh));

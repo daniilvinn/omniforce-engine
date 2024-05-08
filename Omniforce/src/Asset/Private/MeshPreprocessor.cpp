@@ -136,6 +136,13 @@ namespace Omni {
 			memcpy(out_vertices->data() + vertex_stride * i, in_vertices->data() + vertex_stride * remap_table->at(i), vertex_stride);
 	}
 
+	void MeshPreprocessor::RemapVertices(std::vector<glm::vec3>* out_vertices, const std::vector<glm::vec3>* in_vertices, const std::vector<uint32>* remap_table)
+	{
+		out_vertices->resize(remap_table->size());
+		for (uint32 i = 0; i < remap_table->size(); i++)
+			out_vertices[i] = in_vertices[remap_table->at(i)];
+	}
+
 	void MeshPreprocessor::ConvertToLineTopology(std::vector<byte>* out_vertices, const std::vector<byte>* in_vertices, uint32 vertex_stride)
 	{
 		uint32 num_iterations = in_vertices->size() / vertex_stride;
@@ -178,6 +185,20 @@ namespace Omni {
 			memcpy(geometry->data() + i, in_vertex_data->data() + i * vertex_stride, sizeof(glm::vec3));
 			memcpy(attributes->data() + i * deinterleaved_stride, in_vertex_data->data() + i * vertex_stride + sizeof(glm::vec3), deinterleaved_stride);
 		}
+	}
+
+	void MeshPreprocessor::GenerateShadowIndexBuffer(std::vector<uint32>* out, const std::vector<uint32>* indices, std::vector<byte>* vertices, uint32 vertex_size, uint32 vertex_stride)
+	{
+		out->resize(indices->size());
+		meshopt_generateShadowIndexBuffer(
+			out->data(),
+			indices->data(),
+			indices->size(),
+			vertices->data(),
+			vertices->size() / vertex_stride,
+			vertex_size,
+			vertex_stride
+		);
 	}
 
 }

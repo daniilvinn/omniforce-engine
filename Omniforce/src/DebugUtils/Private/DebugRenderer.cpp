@@ -30,7 +30,7 @@ namespace Omni {
 		PipelineSpecification pipeline_spec = PipelineSpecification::Default();
 		pipeline_spec.culling_mode = PipelineCullingMode::NONE;
 		pipeline_spec.debug_name = "debug renderer wireframe";
-		pipeline_spec.line_width = 1.8f;
+		pipeline_spec.line_width = 3.0f;
 		pipeline_spec.output_attachments_formats = { ImageFormat::RGB32_HDR };
 		pipeline_spec.topology = PipelineTopology::LINES;
 		pipeline_spec.shader = shader_library->GetShader("wireframe.ofs");
@@ -141,6 +141,30 @@ namespace Omni {
 			Renderer::RenderUnindexed(renderer->m_WireframePipeline, renderer->m_CubeMesh, pcs);
 		});
 	};
+
+	void DebugRenderer::RenderWireframeLines(Shared<DeviceBuffer> vbo, const glm::vec3& translation, const glm::quat rotation, const glm::vec3 scale, const glm::vec3& color)
+	{
+		renderer->m_DebugRequests.push_back([=]() {
+			TRS trs = {};
+			trs.translation = translation;
+			trs.rotation = { glm::packSnorm2x16({ rotation.x, rotation.y }), glm::packSnorm2x16({ rotation.z, rotation.w }) };
+			trs.scale = scale;
+
+			glm::u8vec3 encoded_color = { color.r * 255, color.g * 255, color.b * 255 };
+
+			PushConstants* pc_data = new PushConstants;
+			memset(pc_data, 0u, sizeof PushConstants);
+			pc_data->camera_data_bda = renderer->m_CameraBuffer->GetDeviceAddress() + renderer->m_CameraBuffer->GetFrameOffset();
+			pc_data->trs = trs;
+			pc_data->lines_color = encoded_color;
+
+			MiscData pcs = {};
+			pcs.data = (byte*)pc_data;
+			pcs.size = sizeof PushConstants;
+
+			Renderer::RenderUnindexed(renderer->m_WireframePipeline, vbo, pcs);
+		});
+	}
 
 	void DebugRenderer::Render(Shared<Image> target, Shared<Image> depth_target)
 	{

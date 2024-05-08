@@ -102,6 +102,7 @@ public:
 
 			ImGui::Checkbox("Visualize physics colliders", &m_VisualizeColliders);
 			ImGui::Checkbox("Visualize mesh cull bounds", &m_VisualizeCullBounds);
+			ImGui::Checkbox("Visualize mesh cluster edges", &m_VisualizeClusterEdges);
 
 			if (m_VisualizeColliders) {
 				auto box_colliders_view = m_EditorScene->GetRegistry()->view<BoxColliderComponent>();
@@ -149,6 +150,7 @@ public:
 						(aabb.max.y - aabb.min.y),
 						(aabb.max.z - aabb.min.z)
 					};
+
 					glm::vec3 aabb_translation = glm::vec3{
 						(aabb.min.x + aabb.max.x) * 0.5f + trs.translation.x,
 						(aabb.min.y + aabb.max.y) * 0.5f + trs.translation.y,
@@ -157,6 +159,20 @@ public:
 
 					DebugRenderer::RenderWireframeBox(aabb_translation, trs.rotation, aabb_scale, { 0.28f, 0.27f, 1.0f });
 				}
+			}
+			if (m_VisualizeClusterEdges) {
+				auto mesh_view = m_CurrentScene->GetRegistry()->view<MeshComponent>();
+				for (auto& e : mesh_view) {
+					Entity entity(e, m_CurrentScene);
+
+					const TRSComponent trs = entity.GetWorldTransform();
+					const MeshComponent& mesh_component = entity.GetComponent<MeshComponent>();
+
+					Shared<Mesh> mesh = AssetManager::Get()->GetAsset<Mesh>(mesh_component.mesh_handle);
+
+					DebugRenderer::RenderWireframeLines(mesh->edges_vbo, trs.translation, trs.rotation, trs.scale + 0.001f, { 1.0f, 0.95f, 0.20f });
+				}
+
 			}
 		}
 		ImGui::End();
@@ -514,6 +530,7 @@ public:
 	bool m_InRuntime = false;
 	bool m_VisualizeColliders = false;
 	bool m_VisualizeCullBounds = false;
+	bool m_VisualizeClusterEdges = false;
 
 	SceneHierarchyPanel* m_HierarchyPanel;
 	PropertiesPanel* m_PropertiesPanel;

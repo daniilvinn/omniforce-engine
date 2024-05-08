@@ -99,9 +99,17 @@ layout(location = 1) out VertexOutput {
 #ifdef __OMNI_HAS_NORMAL_MAP
 	vec4 tangent;
 #endif
+	uvec4 color;
 } vertex_output[];
 
 #include "task_payload.glslh"
+
+uint pcg_hash(uint seed)
+{
+    uint state = seed * 747796405u + 2891336453u;
+    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+    return (word >> 22u) ^ word;
+}
 
 void main()
 {
@@ -199,6 +207,15 @@ void main()
 
 			vertex_output[gl_LocalInvocationIndex * num_processing_attributes + i].tangent = vec4(tangent);
 		#endif
+
+		uint meshlet_id = task_payload.base_offset + task_payload.meshlet_ids[gl_WorkGroupID.x];
+		vertex_output[gl_LocalInvocationIndex * num_processing_attributes + i].color = uvec4(
+			pcg_hash(meshlet_id),
+			pcg_hash(meshlet_id + 1),
+			pcg_hash(meshlet_id + 2),
+			1
+		);
+
 	}
 }
 
@@ -232,6 +249,7 @@ layout(location = 1) in Input {
 #ifdef __OMNI_HAS_NORMAL_MAP
 	vec4 tangent;
 #endif
+	uvec4 color;
 } v_InputAttributes;
 
 
@@ -297,6 +315,7 @@ void main() {
 		#endif
 	#endif
     out_color = color;
+	out_color = normalize(vec4(v_InputAttributes.color));
 
 	// Normal
 	#if defined(__OMNI_HAS_NORMAL_MAP) && defined(__OMNI_HAS_VERTEX_NORMAL) && defined(__OMNI_HAS_VERTEX_TANGENT)

@@ -99,4 +99,15 @@ namespace Omni {
 				buffer.second->Destroy();
 	}
 
+	void Mesh::CreateEdgesBuffer(const std::vector<glm::vec3>& points)
+	{
+		DeviceBufferSpecification buffer_spec = {};
+		buffer_spec.memory_usage = DeviceBufferMemoryUsage::NO_HOST_ACCESS;
+		buffer_spec.heap = DeviceBufferMemoryHeap::DEVICE;
+		buffer_spec.buffer_usage = DeviceBufferUsage::VERTEX_BUFFER;
+		buffer_spec.size = points.size() * sizeof glm::vec3;
+
+		edges_vbo = DeviceBuffer::Create(buffer_spec, (void*)points.data(), buffer_spec.size);
+	}
+
 }
