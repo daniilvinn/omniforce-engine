@@ -188,7 +188,7 @@ namespace Omni {
 		}
 	}
 
-	void MeshPreprocessor::GenerateShadowIndexBuffer(std::vector<uint32>* out, const std::vector<uint32>* indices, std::vector<byte>* vertices, uint32 vertex_size, uint32 vertex_stride)
+	void MeshPreprocessor::GenerateShadowIndexBuffer(std::vector<uint32>* out, const std::vector<uint32>* indices, const std::vector<byte>* vertices, uint32 vertex_size, uint32 vertex_stride)
 	{
 		out->resize(indices->size());
 		meshopt_generateShadowIndexBuffer(
