@@ -61,7 +61,9 @@ namespace Omni {
 		uint8 GetLODCount() const { return m_LODCount; }
 
 		void CreateEdgesBuffer(const std::vector<glm::vec3>& points);
+		void CreateGroupEdgesBuffer(const std::vector<glm::vec3>& points);
 
+		Shared<DeviceBuffer> group_edges_vbo;
 		Shared<DeviceBuffer> edges_vbo;
 
 	private:

@@ -103,6 +103,7 @@ public:
 			ImGui::Checkbox("Visualize physics colliders", &m_VisualizeColliders);
 			ImGui::Checkbox("Visualize mesh cull bounds", &m_VisualizeCullBounds);
 			ImGui::Checkbox("Visualize mesh cluster edges", &m_VisualizeClusterEdges);
+			ImGui::Checkbox("Scene cluster debug view", &m_SceneDebugViewEnabled);
 
 			if (m_VisualizeColliders) {
 				auto box_colliders_view = m_EditorScene->GetRegistry()->view<BoxColliderComponent>();
@@ -170,10 +171,43 @@ public:
 
 					Shared<Mesh> mesh = AssetManager::Get()->GetAsset<Mesh>(mesh_component.mesh_handle);
 
-					DebugRenderer::RenderWireframeLines(mesh->edges_vbo, trs.translation, trs.rotation, trs.scale + 0.001f, { 1.0f, 0.95f, 0.20f });
+					//DebugRenderer::RenderWireframeLines(mesh->edges_vbo, trs.translation, trs.rotation, trs.scale + 0.001f, { 1.0f, 0.95f, 0.20f });
+					DebugRenderer::RenderWireframeLines(mesh->group_edges_vbo, trs.translation, trs.rotation, trs.scale + 0.0001f, { 1.0f, 0.95f, 0.20f });
 				}
-
 			}
+			if (m_SceneDebugViewEnabled) {
+				if (!m_CurrentScene->GetRenderer()->IsInDebugMode()) {
+					m_CurrentScene->GetRenderer()->EnterDebugMode(DebugSceneView::CLUSTER);
+				}
+				
+				const char* items[] = { "Cluster view", "Triangle view" };
+				uint32 current_item = uint32(m_CurrentScene->GetRenderer()->GetCurrentDebugMode());
+				if (ImGui::BeginCombo("View", items[current_item])) {
+
+					for (int i = 0; i < IM_ARRAYSIZE(items); i++) {
+						bool is_selected = current_item == i;
+
+						switch (i)
+						{
+						case 0:  ImGui::Selectable("Cluster view", &is_selected);  break;
+						case 1:  ImGui::Selectable("Triangle view", &is_selected); break;
+						default: break;
+						}
+
+						if (is_selected) {
+							m_CurrentScene->GetRenderer()->EnterDebugMode(DebugSceneView(i));
+							current_item = i;
+							ImGui::SetItemDefaultFocus();
+						}
+					}
+
+					ImGui::EndCombo();
+				}
+			}
+			else {
+				m_CurrentScene->GetRenderer()->ExitDebugMode();
+			}
+
 		}
 		ImGui::End();
 		ImGui::EndDisabled();
@@ -531,6 +565,7 @@ public:
 	bool m_VisualizeColliders = false;
 	bool m_VisualizeCullBounds = false;
 	bool m_VisualizeClusterEdges = false;
+	bool m_SceneDebugViewEnabled = false;
 
 	SceneHierarchyPanel* m_HierarchyPanel;
 	PropertiesPanel* m_PropertiesPanel;

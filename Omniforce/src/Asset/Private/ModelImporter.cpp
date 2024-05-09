@@ -28,6 +28,7 @@
 #include <fastgltf/tools.hpp>
 #include <fmt/format.h>
 #include <taskflow/taskflow.hpp>
+#include <metis.h>
 
 namespace Omni {
 
@@ -295,7 +296,8 @@ namespace Omni {
 		std::array<MeshData, Mesh::OMNI_MAX_MESH_LOD_COUNT> mesh_lods = {};
 		AABB lod0_aabb = {};
 		
-		std::vector<glm::vec3> edges_vbo;
+		std::vector<glm::vec3> meshlet_edges_vbo;
+		std::vector<glm::vec3> group_edges_vbo;
 
 		// Process mesh data on per-LOD basis. It involves generating LOD index buffer, optimizing mesh, generating meshlets and remapping data
 		for (uint32 i = 0; i < Mesh::OMNI_MAX_MESH_LOD_COUNT; i++) {
@@ -389,20 +391,150 @@ namespace Omni {
 					return pair.second.size() <= 1;
 				});
 
-				edges_vbo.reserve(edges2Meshlets.size() * 2);
+				meshlet_edges_vbo.reserve(edges2Meshlets.size() * 2);
 				for (auto& edge_meshlets_pair : edges2Meshlets) {
 					glm::vec3 v = {};
 
 					// First vertex
 					uint32 v_offset = edge_meshlets_pair.first.first * vertex_stride;
 					memcpy(&v, optimized_vertices.data() + v_offset, sizeof glm::vec3);
-					edges_vbo.push_back(v);
+					meshlet_edges_vbo.push_back(v);
 
 					// Second vertex
 					v_offset = edge_meshlets_pair.first.second * vertex_stride;
 					memcpy(&v, optimized_vertices.data() + v_offset, sizeof glm::vec3);
-					edges_vbo.push_back(v);
+					meshlet_edges_vbo.push_back(v);
 				}
+
+				idx_t vertexCount = generated_meshlets->meshlets.size(); // vertex count, from the point of view of METIS, where Meshlet = vertex
+				idx_t ncon = 1; // only one constraint, minimum required by METIS
+				idx_t nparts = generated_meshlets->meshlets.size() / 4; // groups of 4
+				assert(nparts > 1); // must be at least 2 partitions
+				idx_t options[METIS_NOPTIONS];
+				METIS_SetDefaultOptions(options);
+
+				// edge-cut, ie minimum cost betweens groups.
+				options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
+				options[METIS_OPTION_CCORDER] = 1; // identify connected components first
+
+				// prepare storage for partition data
+				// each vertex will get its partition index inside this vector after the edge-cut
+				std::vector<idx_t> partition;
+				partition.resize(vertexCount);
+
+				// xadj
+				std::vector<idx_t> xadjacency;
+				xadjacency.reserve(vertexCount + 1);
+
+				// adjncy
+				std::vector<idx_t> edgeAdjacency;
+				// weight of each edge
+				std::vector<idx_t> edgeWeights;
+
+				for (std::size_t meshletIndex = 0; meshletIndex < generated_meshlets->meshlets.size(); meshletIndex++) {
+					std::size_t startIndexInEdgeAdjacency = edgeAdjacency.size();
+					for (const auto& edge : meshlets2Edges[meshletIndex]) {
+						auto connectionsIter = edges2Meshlets.find(edge);
+						if (connectionsIter == edges2Meshlets.end()) {
+							continue;
+						}
+						const auto& connections = connectionsIter->second;
+						for (const auto& connectedMeshlet : connections) {
+							if (connectedMeshlet != meshletIndex) {
+								auto existingEdgeIter = std::find(edgeAdjacency.begin() + startIndexInEdgeAdjacency, edgeAdjacency.end(), connectedMeshlet);
+								if (existingEdgeIter == edgeAdjacency.end()) {
+									// first time we see this connection to the other meshlet
+									edgeAdjacency.emplace_back(connectedMeshlet);
+									edgeWeights.emplace_back(1);
+								}
+								else {
+									// not the first time! increase number of times we encountered this meshlet
+									std::ptrdiff_t d = std::distance(edgeAdjacency.begin(), existingEdgeIter);
+									assert(d >= 0);
+									assert(d < edgeWeights.size()); // "edgeWeights and edgeAdjacency do not have the same length?"
+									edgeWeights[d]++;
+								}
+							}
+						}
+					}
+					xadjacency.push_back(startIndexInEdgeAdjacency);
+				}
+				xadjacency.push_back(edgeAdjacency.size());
+
+				idx_t edgeCut; // final cost of the cut found by METIS
+				int result = METIS_PartGraphKway(
+					&vertexCount,
+					&ncon,
+					xadjacency.data(),
+					edgeAdjacency.data(),
+					nullptr, /* vertex weights */
+					nullptr, /* vertex size */
+					edgeWeights.data(),
+					&nparts,
+					nullptr,
+					nullptr,
+					options,
+					&edgeCut,
+					partition.data()
+				);
+
+				OMNIFORCE_ASSERT_TAGGED(result == METIS_OK, "Virtual mesh builder: graph partition failed");
+
+				std::vector<std::vector<uint32>> groups;
+				groups.resize(nparts);
+				for (std::size_t i = 0; i < generated_meshlets->meshlets.size(); i++) {
+					idx_t partitionNumber = partition[i];
+					groups[partitionNumber].push_back(i);
+				}
+
+				std::unordered_map<MeshletEdge, std::vector<uint32>, MeshletEdgeHasher> group_edges;
+				// per meshlet
+				for (uint32 group_idx = 0; group_idx < groups.size(); group_idx++) {
+					auto& group = groups[group_idx];
+
+					for(auto& meshlet_idx : group) {
+						auto& meshlet = generated_meshlets->meshlets[meshlet_idx];
+
+						auto getVertexIndex = [&](uint32 index) {
+							return geometry_only_indices[generated_meshlets->local_indices[index + meshlet.triangle_offset] + meshlet.vertex_offset];
+						};
+
+						// per triangle
+						for (uint32 triangle_idx = 0; triangle_idx < meshlet.triangle_count; triangle_idx++) {
+							// per edge
+							for (uint32 edge_idx = 0; edge_idx < 3; edge_idx++) {
+								MeshletEdge edge{ getVertexIndex(edge_idx + triangle_idx * 3), getVertexIndex(((edge_idx + 1) % 3) + triangle_idx * 3) };
+
+								auto& edge_meshlets = group_edges[edge];
+								if (std::find(edge_meshlets.begin(), edge_meshlets.end(), group_idx) == edge_meshlets.end())
+									edge_meshlets.push_back(group_idx);
+							}
+
+						}
+					}
+				}
+				// per meshlet end
+
+				std::erase_if(group_edges, [](const auto& pair) {
+					return pair.second.size() <= 1;
+				});
+
+				group_edges_vbo.reserve(edges2Meshlets.size() * 2);
+				for (auto& edge_group_pair : group_edges) {
+					glm::vec3 v = {};
+
+					// First vertex
+					uint32 v_offset = edge_group_pair.first.first * vertex_stride;
+					memcpy(&v, optimized_vertices.data() + v_offset, sizeof glm::vec3);
+					group_edges_vbo.push_back(v);
+
+					// Second vertex
+					v_offset = edge_group_pair.first.second * vertex_stride;
+					memcpy(&v, optimized_vertices.data() + v_offset, sizeof glm::vec3);
+					group_edges_vbo.push_back(v);
+				}
+
+
 			}
 #endif
 
@@ -433,7 +565,7 @@ namespace Omni {
 
 			// Quantize vertex positions
 			VertexDataQuantizer quantizer;
-			const uint32 vertex_bitrate = 24;
+			const uint32 vertex_bitrate = 8;
 			mesh_lods[i].quantization_grid_size = vertex_bitrate;
 			uint32 mesh_bitrate = quantizer.ComputeMeshBitrate(vertex_bitrate, lod0_aabb);
 			uint32 vertex_bitstream_bit_size = deinterleaved_vertex_data.size() * mesh_bitrate * 3;
@@ -489,7 +621,8 @@ namespace Omni {
 				mesh_lods,
 				lod0_aabb
 			);
-			(*out_mesh)->CreateEdgesBuffer(edges_vbo);
+			(*out_mesh)->CreateEdgesBuffer(meshlet_edges_vbo);
+			(*out_mesh)->CreateGroupEdgesBuffer(group_edges_vbo);
 		}
 
 		AssetManager::Get()->RegisterAsset(ShareAs<AssetBase>(*out_mesh));

@@ -2,10 +2,11 @@
 #pragma stage : task
 #version 460 core
 
-#extension GL_EXT_scalar_block_layout	: require
-#extension GL_EXT_buffer_reference2		: require
-#extension GL_EXT_nonuniform_qualifier	: require
-#extension GL_EXT_mesh_shader			: require
+#extension GL_EXT_scalar_block_layout					 : require
+#extension GL_EXT_buffer_reference2						 : require
+#extension GL_EXT_nonuniform_qualifier					 : require
+#extension GL_EXT_mesh_shader							 : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 
 #include "common.glslh" // common
 #include "mesh_data.glslh" // mesh data
@@ -21,6 +22,7 @@ layout(push_constant, scalar) uniform pc_ {
     CameraData camera_data;
     MeshData mesh_data;
     RenderObjectData render_objects_data;
+	uint64_t mode;
 } pc;
 
 void main()
@@ -67,39 +69,29 @@ void main()
 
 #pragma stage : mesh
 #version 460 core
+
 #extension GL_EXT_mesh_shader									: require
-#extension GL_EXT_debug_printf									: require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16		: require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64		: require
 
 #include "common.glslh"
 #include "render_object.glslh"
 #include "mesh_data.glslh"
 #include "mesh_quantization.glslh"
 #include "sphere.glslh"
+#include "pcg_hash.glslh"
 
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 layout(triangles, max_vertices = 64, max_primitives = 124) out;
-
-layout(location = 0) out uint64_t out_material_bda[];
 
 layout(push_constant, scalar) uniform pc_ {
     CameraData camera_data;
     MeshData mesh_data;
     RenderObjectData render_objects_data;
+	uint64_t mode;
 } pc;
 
-layout(location = 1) out VertexOutput {
-	vec3 position;
-#ifdef __OMNI_HAS_VERTEX_TEXCOORDS
-    vec2 uv[__OMNI_MESH_TEXCOORD_COUNT];
-#endif
-#ifdef __OMNI_HAS_VERTEX_NORMAL
-	vec3 normal;
-#endif
-#ifdef __OMNI_HAS_NORMAL_MAP
-	vec4 tangent;
-#endif
-} vertex_output[];
+layout(location = 0) flat out uvec4 color[];
 
 #include "task_payload.glslh"
 
@@ -166,6 +158,9 @@ void main()
 			mesh_data.micro_indices[meshlet_data.triangle_offset + ((gl_LocalInvocationIndex * index_processing_iterations + i) * 3 + 1)].micro_index,
 			mesh_data.micro_indices[meshlet_data.triangle_offset + ((gl_LocalInvocationIndex * index_processing_iterations + i) * 3 + 2)].micro_index
 		);
+
+		gl_MeshPrimitivesEXT[gl_LocalInvocationIndex * index_processing_iterations + i].gl_PrimitiveID = int(pcg_hash(pcg_hash(gl_LocalInvocationIndex * index_processing_iterations + i)));
+
 	}
 
 	// attributes and material bda
@@ -175,150 +170,51 @@ void main()
 			break;
 		}
 
-		out_material_bda[gl_LocalInvocationIndex * num_processing_attributes + i] = render_object_data.material_bda;
-	
-		#ifdef __OMNI_HAS_VERTEX_TEXCOORDS
-			for(int j = 0; j < __OMNI_MESH_TEXCOORD_COUNT; j++) {
-				vertex_output[gl_LocalInvocationIndex * num_processing_attributes + i].uv[j] = vec2(mesh_data.attributes[meshlet_data.vertex_offset + (gl_LocalInvocationIndex * num_processing_attributes + i)].uv[j]);
-			}
-		#endif
+		uint meshlet_id = task_payload.base_offset + task_payload.meshlet_ids[gl_WorkGroupID.x];
 
-		// Process normals, tangents and bitangents
-		#ifdef __OMNI_HAS_VERTEX_NORMAL
-			f16vec3 normal = normalize(
-				RotateByQuat(
-					DecodeNormal(mesh_data.attributes[meshlet_data.vertex_offset + (gl_LocalInvocationIndex * num_processing_attributes + i)].normal), 
-					f16vec4(rotation_quaternion)
-				)
-			);
-			vertex_output[gl_LocalInvocationIndex * num_processing_attributes + i].normal = vec3(normal);
-		#endif
-		#if defined(__OMNI_HAS_NORMAL_MAP) && defined(__OMNI_HAS_VERTEX_NORMAL) && defined(__OMNI_HAS_VERTEX_TANGENT)
-			f16vec4 tangent = DecodeTangent(mesh_data.attributes[meshlet_data.vertex_offset + (gl_LocalInvocationIndex * num_processing_attributes + i)].tangent);
-			tangent.xyz = normalize(tangent.xyz - dot(tangent.xyz, normal) * normal); // reorthogonalize
+		color[gl_LocalInvocationIndex * num_processing_attributes + i] = uvec4(
+			pcg_hash(meshlet_id),
+			pcg_hash(meshlet_id + 1),
+			pcg_hash(meshlet_id + 2),
+			1
+		);
 
-			vertex_output[gl_LocalInvocationIndex * num_processing_attributes + i].tangent = vec4(tangent);
-		#endif
 	}
 }
 
 #pragma stage : fragment
 #version 460 core
+
 #extension GL_EXT_nonuniform_qualifier							: require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16		: require
-#extension GL_EXT_debug_printf									: require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64		: require
 
 #include "common.glslh"
 #include "mesh_data.glslh"
 #include "render_object.glslh"
 #include "texture.glslh"
+#include "pcg_hash.glslh"
 
 layout(push_constant, scalar) uniform pc_ {
     CameraData camera_data;
     MeshData mesh_data;
     RenderObjectData render_objects_data;
+	uint64_t mode;
 } pc;
 
-layout(location = 0) flat in uint64_t v_MaterialBDA;
+layout(location = 0) flat in uvec4 color;
 
-layout(location = 1) in Input {
-	vec3 position;
-#ifdef __OMNI_HAS_VERTEX_TEXCOORDS
-    vec2 uv[__OMNI_MESH_TEXCOORD_COUNT];
-#endif
-#ifdef __OMNI_HAS_VERTEX_NORMAL
-	vec3 normal;
-#endif
-#ifdef __OMNI_HAS_NORMAL_MAP
-	vec4 tangent;
-#endif
-} v_InputAttributes;
-
-
-layout(buffer_reference, scalar, buffer_reference_align = 16) readonly buffer Material {
-	#ifdef __OMNI_HAS_ALPHA_CUTOFF
-        float alpha_cutoff;
-    #endif
-    #ifdef __OMNI_HAS_BASE_COLOR_FACTOR
-        vec4 base_color_factor;
-    #endif
-    #ifdef __OMNI_HAS_BASE_COLOR_MAP
-        Texture base_color_map;
-    #endif
-    #ifdef __OMNI_HAS_METALLIC_FACTOR
-        float metallic_factor;
-    #endif
-    #ifdef __OMNI_HAS_METALLIC_ROUGHNESS_MAP
-        Texture metallic_roughness_map;
-    #endif
-    #ifdef __OMNI_HAS_NORMAL_MAP
-        Texture normal_map;
-    #endif
-    #ifdef __OMNI_HAS_OCCLUSION_MAP
-        Texture occlusion_map;
-    #endif
-    #ifdef __OMNI_HAS_ROUGHNESS_FACTOR
-        float roughness_factor;
-    #endif
-};
-
-layout(location = 0) out vec4 out_position;
-layout(location = 1) out vec4 out_color;
-layout(location = 2) out vec4 out_normal;
-layout(location = 3) out vec4 out_metallic_roughness_occlusion;
-
-#ifdef __OMNI_HAS_NORMAL_MAP
-	f16vec3 FetchNormal(Texture normal_map) {
-	#ifndef __OMNI_HAS_VERTEX_TEXCOORDS
-		return f16vec3(0.0f, 0.0f, 1.0f);
-	#else
-		f16vec3 normal = f16vec3(texture(texture_bank[normal_map.texture_index], vec2(v_InputAttributes.uv[normal_map.uv_channel_index].x, 1.0 - v_InputAttributes.uv[normal_map.uv_channel_index].y)).rgb);
-		return normal * 2.0hf - 1.0hf;
-	#endif
-	}
-#endif
+layout(location = 0) out vec4 out_color;
 
 void main() {
-	Material material = Material(v_MaterialBDA);
-
-	// Positions
-	out_position = vec4(v_InputAttributes.position, 1.0f);
-
-	// Base color
-	vec4 color = vec4(1.0f, 0.0f, 1.0f, 1.0f);
-	#ifdef __OMNI_HAS_BASE_COLOR_MAP
-		color = texture(
-			texture_bank[material.base_color_map.texture_index], 
-			vec2(v_InputAttributes.uv[material.base_color_map.uv_channel_index].x, 
-			1.0f - v_InputAttributes.uv[material.base_color_map.uv_channel_index].y)
+	uvec4 desired_color = color;
+	if(pc.mode == 1) {
+		desired_color = uvec4(
+			pcg_hash(gl_PrimitiveID),
+			pcg_hash(gl_PrimitiveID + 1),
+			pcg_hash(gl_PrimitiveID + 2),
+			1
 		);
-		#ifdef __OMNI_HAS_ALPHA_CUTOFF // alpha masking
-			if(color.a <= material.alpha_cutoff) discard;
-		#endif
-	#endif
-    out_color = color;
-
-	// Normal
-	#if defined(__OMNI_HAS_NORMAL_MAP) && defined(__OMNI_HAS_VERTEX_NORMAL) && defined(__OMNI_HAS_VERTEX_TANGENT)
-		f16vec4 T = f16vec4(v_InputAttributes.tangent);
-		f16vec3 N = f16vec3(v_InputAttributes.normal);
-		f16vec3 B = cross(N, T.xyz) * T.w;
-
-		N = normalize(f16mat3(T.xyz,B,N) * FetchNormal(material.normal_map));
-		out_normal = vec4(vec3(N), 1.0f);
-	#else 
-		out_normal = vec4(v_InputAttributes.normal, 1.0f);
-	#endif
-
-	// Metallic roughness occlusion
-	vec3 metallic_roughness_occlusion = vec3(0.0f, 0.0f, 1.0f);
-	#ifdef __OMNI_HAS_METALLIC_ROUGHNESS_MAP
-		metallic_roughness_occlusion = texture(
-		texture_bank[material.metallic_roughness_map.texture_index], 
-		vec2(v_InputAttributes.uv[material.metallic_roughness_map.uv_channel_index].x, 
-		1.0f - v_InputAttributes.uv[material.metallic_roughness_map.uv_channel_index].y)
-	).xyz;
-	#endif
-	out_metallic_roughness_occlusion = vec4(metallic_roughness_occlusion, 1.0f);
-
+	}
+	out_color = normalize(vec4(desired_color));
 }

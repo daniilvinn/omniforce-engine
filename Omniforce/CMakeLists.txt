@@ -48,8 +48,15 @@ target_include_directories(${ENGINE_TARGET}
         "vendor/fastgltf/include"
         "vendor/NVAftermath/include"
         "vendor/miniball/cpp/main"
+        "vendor/METIS"
 )
-target_link_directories(${ENGINE_TARGET} PUBLIC "${Vulkan_SDK}\\Lib" "${Vulkan_SDK}\\Bin" PUBLIC "vendor/mono/lib" "vendor/NVAftermath/lib/x64")
+target_link_directories(${ENGINE_TARGET} PUBLIC 
+    "${Vulkan_SDK}\\Lib" 
+    "${Vulkan_SDK}\\Bin" 
+    "vendor/mono/lib" 
+    "vendor/NVAftermath/lib/x64"
+    "vendor/METIS"
+)
 target_compile_definitions(${ENGINE_TARGET} PUBLIC 
     OMNIFORCE_STATIC 
     GLM_FORCE_DEPTH_ZERO_TO_ONE 
@@ -61,6 +68,8 @@ target_compile_definitions(${ENGINE_TARGET} PUBLIC
     "$<$<CONFIG:Debug>:OMNIFORCE_DEBUG>"
     "$<$<CONFIG:RelWithDebInfo>:OMNIFORCE_RELWITHDEBINFO>"
     "$<$<CONFIG:Release>:OMNIFORCE_RELEASE>"
+    IDXTYPEWIDTH=64
+    REALTYPEWIDTH=64
 )
 
 target_link_libraries(
@@ -92,6 +101,8 @@ target_link_libraries(
         nv_libdeflate
         meshoptimizer
         fastgltf
+        metis.lib
+        GKlib.lib
 )
 
 set_property(TARGET ${ENGINE_TARGET} PROPERTY CXX_STANDARD 23)

@@ -23,6 +23,7 @@ namespace Omni {
 		// Init pipeline
 		ShaderLibrary* shader_library = ShaderLibrary::Get();
 		shader_library->LoadShader("Resources/shaders/wireframe.ofs");
+		shader_library->LoadShader("Resources/shaders/cluster_debug_view.ofs");
 
 		DeviceBufferLayoutElement element("position", DeviceDataType::FLOAT3);
 		DeviceBufferLayout buffer_layout(std::vector{ element });
@@ -30,14 +31,22 @@ namespace Omni {
 		PipelineSpecification pipeline_spec = PipelineSpecification::Default();
 		pipeline_spec.culling_mode = PipelineCullingMode::NONE;
 		pipeline_spec.debug_name = "debug renderer wireframe";
-		pipeline_spec.line_width = 3.0f;
+		pipeline_spec.line_width = 3.5f;
 		pipeline_spec.output_attachments_formats = { ImageFormat::RGB32_HDR };
 		pipeline_spec.topology = PipelineTopology::LINES;
 		pipeline_spec.shader = shader_library->GetShader("wireframe.ofs");
 		pipeline_spec.input_layout = buffer_layout;
 		pipeline_spec.depth_test_enable = true;
+		pipeline_spec.color_blending_enable = false;
 
 		m_WireframePipeline = Pipeline::Create(pipeline_spec);
+
+		pipeline_spec.culling_mode = PipelineCullingMode::BACK;
+		pipeline_spec.debug_name = "cluster debug view";
+		pipeline_spec.topology = PipelineTopology::TRIANGLES;
+		pipeline_spec.shader = shader_library->GetShader("cluster_debug_view.ofs");
+
+		m_DebugViewPipeline = Pipeline::Create(pipeline_spec);
 
 		PrimitiveMeshGenerator mesh_generator;
 		MeshPreprocessor mesh_preprocessor;
@@ -104,15 +113,15 @@ namespace Omni {
 
 			glm::u8vec3 encoded_color = { color.r * 255, color.g * 255, color.b * 255 };
 
-			PushConstants* pc_data = new PushConstants;
-			memset(pc_data, 0u, sizeof PushConstants);
+			WireframePushConstants* pc_data = new WireframePushConstants;
+			memset(pc_data, 0u, sizeof WireframePushConstants);
 			pc_data->camera_data_bda = renderer->m_CameraBuffer->GetDeviceAddress() + renderer->m_CameraBuffer->GetFrameOffset();
 			pc_data->trs = trs;
 			pc_data->lines_color = encoded_color;
 			
 			MiscData pcs = {};
 			pcs.data = (byte*)pc_data;
-			pcs.size = sizeof PushConstants;
+			pcs.size = sizeof WireframePushConstants;
 
 			Renderer::RenderUnindexed(renderer->m_WireframePipeline, renderer->m_IcosphereMesh, pcs);
 		});
@@ -128,15 +137,15 @@ namespace Omni {
 
 			glm::u8vec3 encoded_color = { color.r * 255, color.g * 255, color.b * 255 };
 
-			PushConstants* pc_data = new PushConstants;
-			memset(pc_data, 0u, sizeof PushConstants);
+			WireframePushConstants* pc_data = new WireframePushConstants;
+			memset(pc_data, 0u, sizeof WireframePushConstants);
 			pc_data->camera_data_bda = renderer->m_CameraBuffer->GetDeviceAddress() + renderer->m_CameraBuffer->GetFrameOffset();
 			pc_data->trs = trs;
 			pc_data->lines_color = encoded_color;
 
 			MiscData pcs = {};
 			pcs.data = (byte*)pc_data;
-			pcs.size = sizeof PushConstants;
+			pcs.size = sizeof WireframePushConstants;
 
 			Renderer::RenderUnindexed(renderer->m_WireframePipeline, renderer->m_CubeMesh, pcs);
 		});
@@ -152,23 +161,43 @@ namespace Omni {
 
 			glm::u8vec3 encoded_color = { color.r * 255, color.g * 255, color.b * 255 };
 
-			PushConstants* pc_data = new PushConstants;
-			memset(pc_data, 0u, sizeof PushConstants);
+			WireframePushConstants* pc_data = new WireframePushConstants;
+			memset(pc_data, 0u, sizeof WireframePushConstants);
 			pc_data->camera_data_bda = renderer->m_CameraBuffer->GetDeviceAddress() + renderer->m_CameraBuffer->GetFrameOffset();
 			pc_data->trs = trs;
 			pc_data->lines_color = encoded_color;
 
 			MiscData pcs = {};
 			pcs.data = (byte*)pc_data;
-			pcs.size = sizeof PushConstants;
+			pcs.size = sizeof WireframePushConstants;
 
 			Renderer::RenderUnindexed(renderer->m_WireframePipeline, vbo, pcs);
 		});
 	}
 
-	void DebugRenderer::Render(Shared<Image> target, Shared<Image> depth_target)
+	void DebugRenderer::RenderSceneDebugView(Shared<DeviceBuffer> camera_data, Shared<DeviceBuffer> mesh_data, Shared<DeviceBuffer> render_queue, Shared<DeviceBuffer> indirect_params, DebugSceneView mode)
 	{
-		Renderer::BeginRender({ target, depth_target }, target->GetSpecification().extent, { 0,0 }, { 0.0f, 0.0f, 0.0f, 0.0f });
+		renderer->m_DebugRequests.push_back([=]() {
+
+			uint64* pc_data = new uint64[4];
+			memset(pc_data, 0u, sizeof uint64 * 4);
+			
+			pc_data[0] = camera_data->GetDeviceAddress() + camera_data->GetFrameOffset();
+			pc_data[1] = mesh_data->GetDeviceAddress();
+			pc_data[2] = render_queue->GetDeviceAddress();
+			pc_data[3] = uint64(mode);
+
+			MiscData pcs = {};
+			pcs.data = (byte*)pc_data;
+			pcs.size = sizeof uint64 * 4;
+
+			Renderer::RenderMeshTasksIndirect(renderer->m_DebugViewPipeline, indirect_params, pcs);
+		});
+	}
+
+	void DebugRenderer::Render(Shared<Image> target, Shared<Image> depth_target, fvec4 clear_value)
+	{
+		Renderer::BeginRender({ target, depth_target }, target->GetSpecification().extent, { 0,0 }, clear_value);
 
 		for (auto& request : renderer->m_DebugRequests)
 			request();
