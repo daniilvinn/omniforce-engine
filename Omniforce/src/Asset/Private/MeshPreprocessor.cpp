@@ -162,7 +162,7 @@ namespace Omni {
 		}
 	}
 
-	void MeshPreprocessor::GenerateMeshLOD(std::vector<uint32>* out_indices, const std::vector<byte>* vertex_data, const std::vector<uint32>* index_data, uint32 vertex_stride, uint32 target_index_count, float32 target_error) {
+	void MeshPreprocessor::GenerateMeshLOD(std::vector<uint32>* out_indices, const std::vector<byte>* vertex_data, const std::vector<uint32>* index_data, uint32 vertex_stride, uint32 target_index_count, float32 target_error, bool lock_borders) {
 		out_indices->resize(index_data->size());
 		out_indices->resize(meshopt_simplify(
 			out_indices->data(),
@@ -172,7 +172,8 @@ namespace Omni {
 			vertex_data->size() / vertex_stride,
 			vertex_stride,
 			target_index_count,
-			target_error
+			target_error,
+			lock_borders ? meshopt_SimplifyLockBorder : 0
 		));
 	}
 

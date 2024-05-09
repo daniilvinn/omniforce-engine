@@ -161,20 +161,6 @@ public:
 					DebugRenderer::RenderWireframeBox(aabb_translation, trs.rotation, aabb_scale, { 0.28f, 0.27f, 1.0f });
 				}
 			}
-			if (m_VisualizeClusterEdges) {
-				auto mesh_view = m_CurrentScene->GetRegistry()->view<MeshComponent>();
-				for (auto& e : mesh_view) {
-					Entity entity(e, m_CurrentScene);
-
-					const TRSComponent trs = entity.GetWorldTransform();
-					const MeshComponent& mesh_component = entity.GetComponent<MeshComponent>();
-
-					Shared<Mesh> mesh = AssetManager::Get()->GetAsset<Mesh>(mesh_component.mesh_handle);
-
-					//DebugRenderer::RenderWireframeLines(mesh->edges_vbo, trs.translation, trs.rotation, trs.scale + 0.001f, { 1.0f, 0.95f, 0.20f });
-					DebugRenderer::RenderWireframeLines(mesh->group_edges_vbo, trs.translation, trs.rotation, trs.scale + 0.0001f, { 1.0f, 0.95f, 0.20f });
-				}
-			}
 			if (m_SceneDebugViewEnabled) {
 				if (!m_CurrentScene->GetRenderer()->IsInDebugMode()) {
 					m_CurrentScene->GetRenderer()->EnterDebugMode(DebugSceneView::CLUSTER);

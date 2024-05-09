@@ -295,9 +295,6 @@ namespace Omni {
 		// Init crucial data
 		std::array<MeshData, Mesh::OMNI_MAX_MESH_LOD_COUNT> mesh_lods = {};
 		AABB lod0_aabb = {};
-		
-		std::vector<glm::vec3> meshlet_edges_vbo;
-		std::vector<glm::vec3> group_edges_vbo;
 
 		// Process mesh data on per-LOD basis. It involves generating LOD index buffer, optimizing mesh, generating meshlets and remapping data
 		for (uint32 i = 0; i < Mesh::OMNI_MAX_MESH_LOD_COUNT; i++) {
@@ -319,7 +316,7 @@ namespace Omni {
 						index_data,
 						vertex_stride,
 						target_index_count < 6 ? 6 : target_index_count, // clamp index count to 6 (plane)
-						target_error
+						target_error, false
 					);
 
 					// HACK: Multiply target index count by 20% so we can generate generate something;
@@ -487,54 +484,6 @@ namespace Omni {
 					groups[partitionNumber].push_back(i);
 				}
 
-				std::unordered_map<MeshletEdge, std::vector<uint32>, MeshletEdgeHasher> group_edges;
-				// per meshlet
-				for (uint32 group_idx = 0; group_idx < groups.size(); group_idx++) {
-					auto& group = groups[group_idx];
-
-					for(auto& meshlet_idx : group) {
-						auto& meshlet = generated_meshlets->meshlets[meshlet_idx];
-
-						auto getVertexIndex = [&](uint32 index) {
-							return geometry_only_indices[generated_meshlets->local_indices[index + meshlet.triangle_offset] + meshlet.vertex_offset];
-						};
-
-						// per triangle
-						for (uint32 triangle_idx = 0; triangle_idx < meshlet.triangle_count; triangle_idx++) {
-							// per edge
-							for (uint32 edge_idx = 0; edge_idx < 3; edge_idx++) {
-								MeshletEdge edge{ getVertexIndex(edge_idx + triangle_idx * 3), getVertexIndex(((edge_idx + 1) % 3) + triangle_idx * 3) };
-
-								auto& edge_meshlets = group_edges[edge];
-								if (std::find(edge_meshlets.begin(), edge_meshlets.end(), group_idx) == edge_meshlets.end())
-									edge_meshlets.push_back(group_idx);
-							}
-
-						}
-					}
-				}
-				// per meshlet end
-
-				std::erase_if(group_edges, [](const auto& pair) {
-					return pair.second.size() <= 1;
-				});
-
-				group_edges_vbo.reserve(edges2Meshlets.size() * 2);
-				for (auto& edge_group_pair : group_edges) {
-					glm::vec3 v = {};
-
-					// First vertex
-					uint32 v_offset = edge_group_pair.first.first * vertex_stride;
-					memcpy(&v, optimized_vertices.data() + v_offset, sizeof glm::vec3);
-					group_edges_vbo.push_back(v);
-
-					// Second vertex
-					v_offset = edge_group_pair.first.second * vertex_stride;
-					memcpy(&v, optimized_vertices.data() + v_offset, sizeof glm::vec3);
-					group_edges_vbo.push_back(v);
-				}
-
-
 			}
 #endif
 
@@ -621,8 +570,6 @@ namespace Omni {
 				mesh_lods,
 				lod0_aabb
 			);
-			(*out_mesh)->CreateEdgesBuffer(meshlet_edges_vbo);
-			(*out_mesh)->CreateGroupEdgesBuffer(group_edges_vbo);
 		}
 
 		AssetManager::Get()->RegisterAsset(ShareAs<AssetBase>(*out_mesh));
