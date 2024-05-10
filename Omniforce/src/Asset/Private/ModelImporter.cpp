@@ -11,6 +11,7 @@
 #include <Asset/Model.h>
 #include <Asset/Importers/MaterialImporter.h>
 #include <Asset/Importers/ImageImporter.h>
+#include <Asset/VirtualMeshBuilder.h>
 #include <Renderer/Mesh.h>
 #include <Renderer/Image.h>
 #include <Threading/JobSystem.h>
@@ -202,7 +203,7 @@ namespace Omni {
 		uint32 attribute_stride = 12;
 
 		// Iterate through attributes and add them to map, effectively sorting them
-		for (auto& attribute : primitive->attributes) {
+		for (auto attribute : primitive->attributes) {
 			// If on "POSIIION" attribute - skip iteration, since geometry is not considered as vertex attribute and is always at 0 offset
 			if (attribute.first == "POSITION")
 				continue;
@@ -338,14 +339,18 @@ namespace Omni {
 
 			// Generate meshlets for mesh shading-based geometry processing.
 			GeneratedMeshlets* generated_meshlets = mesh_preprocessor.GenerateMeshlets(&optimized_vertices, &optimized_indices, vertex_stride);
-			
-#define GENERATE_EDGE_VBO
-#ifdef GENERATE_EDGE_VBO
-			if (i == 0) {
-				
-
+		
+			if (i == 0 && generated_meshlets->meshlets.size() >= 8) {
+				std::lock_guard lock(*mtx);
+				VirtualMeshBuilder vmesh_builder = {};
+				auto groups = vmesh_builder.GroupMeshClusters(
+					generated_meshlets->meshlets, 
+					generated_meshlets->indices, 
+					generated_meshlets->local_indices, 
+					*vertex_data, 
+					vertex_stride
+				);
 			}
-#endif
 
 			// Remap vertices to get rid of generated index buffer after generation of meshlets
 			std::vector<byte> remapped_vertices(generated_meshlets->indices.size() * vertex_stride);

@@ -3,7 +3,18 @@
 #include "Log/Logger.h"
 
 #include <unordered_map>
+#include <fstream>
 
+#ifdef IDXTYPEWIDTH
+	#undef IDXTYPEWIDTH
+#endif
+
+#ifdef REALTYPEWIDTH
+	#undef REALTYPEWIDTH
+#endif
+
+#define IDXTYPEWIDTH 64
+#define REALTYPEWIDTH 64
 #include <metis.h>
 
 namespace Omni {
@@ -42,10 +53,6 @@ namespace Omni {
 		for (uint32 meshlet_idx = 0; meshlet_idx < meshlets.size(); meshlet_idx++) {
 			auto& meshlet = meshlets[meshlet_idx];
 
-			auto getVertexIndex = [&](uint32 index) {
-				return geometry_only_indices[local_indices[index + meshlet.triangle_offset] + meshlet.vertex_offset];
-			};
-
 			// per triangle
 			for (uint32 triangle_idx = 0; triangle_idx < meshlet.triangle_count; triangle_idx++) {
 				// per edge
@@ -58,24 +65,25 @@ namespace Omni {
 					auto& edge_meshlets = edges_meshlets_map[edge];
 					auto& meshlet_edges = meshlets_edges_map[meshlet_idx];
 
-					// If edge-meshlets pair already contains current meshlet idx - don't register it
-					if (std::find(edge_meshlets.begin(), edge_meshlets.end(), meshlet_idx) == edge_meshlets.end())
-						edge_meshlets.push_back(meshlet_idx);
+					if (edge.first != edge.second) {
+						// If edge-meshlets pair already contains current meshlet idx - don't register it
+						if (std::find(edge_meshlets.begin(), edge_meshlets.end(), meshlet_idx) == edge_meshlets.end())
+							edge_meshlets.push_back(meshlet_idx);
 
-					// If meshlet-edges pair already contains an edge - don't register it
-					if (std::find(meshlet_edges.begin(), meshlet_edges.end(), edge) == meshlet_edges.end())
-						meshlet_edges.emplace_back(edge);
+						// If meshlet-edges pair already contains an edge - don't register it
+						if (std::find(meshlet_edges.begin(), meshlet_edges.end(), edge) == meshlet_edges.end())
+							meshlet_edges.emplace_back(edge);
+					}
 				}
-
 			}
 		}
 
-		// Remove edges non-shared edges
+		// Remove non-shared edges
 		std::erase_if(edges_meshlets_map, [](const auto& pair) {
 			return pair.second.size() <= 1;
 		});
 
-		OMNIFORCE_ASSERT_TAGGED(edges_meshlets_map.size(), "No connections between clusters");
+		OMNIFORCE_ASSERT_TAGGED(edges_meshlets_map.size(), "No connections between clusters detected");
 		OMNIFORCE_ASSERT_TAGGED(meshlets_edges_map.size(), "No cluster edges detected");
 
 		idx_t cluster_graph_vertex_count = meshlets.size(); // Graph is built from meshlets, hence meshlet = graph vertex
@@ -83,13 +91,6 @@ namespace Omni {
 		idx_t num_partitions = meshlets.size() / 4; // Make groups of 4 meshlets
 
 		OMNIFORCE_ASSERT_TAGGED(num_partitions >= 2, "Num partitions must be greater or equal to 2");
-
-		// Setup METIS options for graph edge-cut operations
-		idx_t options[METIS_NOPTIONS];
-		METIS_SetDefaultOptions(options);
-
-		options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
-		options[METIS_OPTION_CCORDER] = 1;
 
 		std::vector<idx_t> partition;
 		partition.resize(cluster_graph_vertex_count);
@@ -100,9 +101,11 @@ namespace Omni {
 
 		// adjncy
 		std::vector<idx_t> edge_adjacency;
+		edge_adjacency.reserve(50000);
 
 		// weight of each edge. Weight of an edge = num shared edges between connected clusters
 		std::vector<idx_t> edge_weights;
+		edge_weights.reserve(50000);
 
 		// Per meshlet
 		for (uint32 meshlet_idx = 0; meshlet_idx < meshlets.size(); meshlet_idx++) {
@@ -111,6 +114,7 @@ namespace Omni {
 			// Per edge
 			for (const auto& edge : meshlets_edges_map[meshlet_idx]) {
 				auto connections_iterator = edges_meshlets_map.find(edge);
+
 				if (connections_iterator == edges_meshlets_map.end())
 					continue;
 
@@ -129,7 +133,7 @@ namespace Omni {
 							// Not first encounter, increment num connections
 							std::ptrdiff_t pointer_difference = std::distance(edge_adjacency.begin(), edge_iterator);
 							OMNIFORCE_ASSERT_TAGGED(pointer_difference >= 0, "Pointer difference less than zero");
-							OMNIFORCE_ASSERT_TAGGED(pointer_difference < edge_weights.size(), "Edge weight and adjacency for have the same size");
+							OMNIFORCE_ASSERT_TAGGED(pointer_difference < edge_weights.size(), "Edge weight and adjacency don't have the same size");
 
 							edge_weights[pointer_difference]++;
 						}
@@ -140,6 +144,24 @@ namespace Omni {
 		}
 		x_adjacency.push_back(edge_adjacency.size());
 
+		OMNIFORCE_ASSERT_TAGGED(x_adjacency.size() == cluster_graph_vertex_count + 1, "Invalid METIS graph build");
+
+		for (auto& edge_adjacency_index : x_adjacency) {
+			OMNIFORCE_ASSERT_TAGGED(edge_adjacency_index <= edge_adjacency.size(), "Out of bounds inside x_adjacency");
+		}
+		for (auto& vertex_index : edge_adjacency) {
+			OMNIFORCE_ASSERT_TAGGED(vertex_index <= cluster_graph_vertex_count, "Out of bounds inside edge_adjacency");
+		}
+
+		// Setup METIS options for graph edge-cut operations
+		idx_t options[METIS_NOPTIONS];
+		METIS_SetDefaultOptions(options);
+
+		options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
+		options[METIS_OPTION_CCORDER] = 1;
+		options[METIS_OPTION_NUMBERING] = 0;
+
+		// Start METIS graph partition
 		idx_t edge_cut;
 		int result = METIS_PartGraphKway(
 			&cluster_graph_vertex_count,
@@ -168,6 +190,7 @@ namespace Omni {
 		}
 
 		return groups;
+
 	}
 
 }
