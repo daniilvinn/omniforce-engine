@@ -338,18 +338,13 @@ namespace Omni {
 			mesh_preprocessor.OptimizeMesh(&optimized_vertices, &optimized_indices, vertex_data, &lod_indices, vertex_stride);
 
 			// Generate meshlets for mesh shading-based geometry processing.
-			GeneratedMeshlets* generated_meshlets = mesh_preprocessor.GenerateMeshlets(&optimized_vertices, &optimized_indices, vertex_stride);
+			Scope<ClusterizedMesh> generated_meshlets = mesh_preprocessor.GenerateMeshlets(&optimized_vertices, &optimized_indices, vertex_stride);
 		
 			if (i == 0 && generated_meshlets->meshlets.size() >= 8) {
 				std::lock_guard lock(*mtx);
 				VirtualMeshBuilder vmesh_builder = {};
-				auto groups = vmesh_builder.GroupMeshClusters(
-					generated_meshlets->meshlets, 
-					generated_meshlets->indices, 
-					generated_meshlets->local_indices, 
-					*vertex_data, 
-					vertex_stride
-				);
+
+				vmesh_builder.BuildClusterGraph(optimized_vertices, optimized_indices, vertex_stride);
 			}
 
 			// Remap vertices to get rid of generated index buffer after generation of meshlets
@@ -370,8 +365,6 @@ namespace Omni {
 			mesh_lods[i].local_indices		= std::move(generated_meshlets->local_indices);
 			mesh_lods[i].cull_data			= std::move(generated_meshlets->cull_bounds);
 			mesh_lods[i].bounding_sphere	= mesh_bounds.sphere;
-
-			delete generated_meshlets;
 
 			// If i == 0, save generated mesh AABB, which will be used for LOD selection on runtime
 			if (i == 0)

@@ -1,26 +1,19 @@
 #include "../VirtualMeshBuilder.h"
 #include "../MeshPreprocessor.h"
-#include "Log/Logger.h"
+#include <Log/Logger.h>
+#include <Asset/MeshPreprocessor.h>
 
 #include <unordered_map>
 #include <fstream>
+#include <span>
 
-#ifdef IDXTYPEWIDTH
-	#undef IDXTYPEWIDTH
-#endif
-
-#ifdef REALTYPEWIDTH
-	#undef REALTYPEWIDTH
-#endif
-
-#define IDXTYPEWIDTH 64
-#define REALTYPEWIDTH 64
 #include <metis.h>
 
 namespace Omni {
 
 	std::vector<std::vector<Omni::uint32>> VirtualMeshBuilder::GroupMeshClusters(
-		std::vector<RenderableMeshlet>& meshlets, 
+		const std::span<RenderableMeshlet>& meshlets,
+		const std::span<MeshClusterGroup>& groups, 
 		std::vector<uint32>& indices, 
 		std::vector<uint8>& local_indices, 
 		const std::vector<byte>& vertices, 
@@ -31,8 +24,8 @@ namespace Omni {
 
 		MeshPreprocessor mesh_preprocessor;
 
-		std::unordered_map<MeshletEdge, std::vector<uint32>, MeshletEdgeHasher> edges_meshlets_map;
-		std::unordered_map<uint32, std::vector<MeshletEdge>> meshlets_edges_map;
+		std::unordered_map<MeshletEdge, std::vector<uint32>, MeshletEdgeHasher> edges_groups_map;
+		std::unordered_map<uint32, std::vector<MeshletEdge>> groups_edges_map;
 
 		std::vector<uint32> geometry_only_indices;
 
@@ -49,49 +42,58 @@ namespace Omni {
 		);
 		indices.resize(indices.size() - ib_padding);
 
-		// per meshlet
-		for (uint32 meshlet_idx = 0; meshlet_idx < meshlets.size(); meshlet_idx++) {
-			auto& meshlet = meshlets[meshlet_idx];
+		// Find edges between meshlets
+		
+		// Per group
+		uint32 group_idx = 0;
+		for (auto& group : groups) {
+			// per meshlet
+			for (uint32 meshlet_idx = 0; meshlet_idx < group.size(); meshlet_idx++) {
+				auto& meshlet = meshlets[group[meshlet_idx]];
 
-			// per triangle
-			for (uint32 triangle_idx = 0; triangle_idx < meshlet.triangle_count; triangle_idx++) {
-				// per edge
-				for (uint32 edge_idx = 0; edge_idx < 3; edge_idx++) {
-					MeshletEdge edge(
-						geometry_only_indices[local_indices[(edge_idx + triangle_idx * 3) + meshlet.triangle_offset] + meshlet.vertex_offset],
-						geometry_only_indices[local_indices[(((edge_idx + 1) % 3) + triangle_idx * 3) + meshlet.triangle_offset] + meshlet.vertex_offset]
-					);
+				// per triangle
+				for (uint32 triangle_idx = 0; triangle_idx < meshlet.triangle_count; triangle_idx++) {
+					// per edge
+					for (uint32 edge_idx = 0; edge_idx < 3; edge_idx++) {
+						MeshletEdge edge(
+							geometry_only_indices[local_indices[(edge_idx + triangle_idx * 3) + meshlet.triangle_offset] + meshlet.vertex_offset],
+							geometry_only_indices[local_indices[(((edge_idx + 1) % 3) + triangle_idx * 3) + meshlet.triangle_offset] + meshlet.vertex_offset]
+						);
 
-					auto& edge_meshlets = edges_meshlets_map[edge];
-					auto& meshlet_edges = meshlets_edges_map[meshlet_idx];
+						auto& edge_groups = edges_groups_map[edge];
+						auto& group_edges = groups_edges_map[group_idx];
 
-					if (edge.first != edge.second) {
-						// If edge-meshlets pair already contains current meshlet idx - don't register it
-						if (std::find(edge_meshlets.begin(), edge_meshlets.end(), meshlet_idx) == edge_meshlets.end())
-							edge_meshlets.push_back(meshlet_idx);
+						if (edge.first != edge.second) {
+							// If edge-meshlets pair already contains current meshlet idx - don't register it
+							if (std::find(edge_groups.begin(), edge_groups.end(), group_idx) == edge_groups.end())
+								edge_groups.push_back(group_idx);
 
-						// If meshlet-edges pair already contains an edge - don't register it
-						if (std::find(meshlet_edges.begin(), meshlet_edges.end(), edge) == meshlet_edges.end())
-							meshlet_edges.emplace_back(edge);
+							// If meshlet-edges pair already contains an edge - don't register it
+							if (std::find(group_edges.begin(), group_edges.end(), edge) == group_edges.end())
+								group_edges.emplace_back(edge);
+						}
 					}
 				}
 			}
+			group_idx++;
 		}
 
 		// Remove non-shared edges
-		std::erase_if(edges_meshlets_map, [](const auto& pair) {
+		std::erase_if(edges_groups_map, [](const auto& pair) {
 			return pair.second.size() <= 1;
 		});
 
-		OMNIFORCE_ASSERT_TAGGED(edges_meshlets_map.size(), "No connections between clusters detected");
-		OMNIFORCE_ASSERT_TAGGED(meshlets_edges_map.size(), "No cluster edges detected");
+		OMNIFORCE_ASSERT_TAGGED(edges_groups_map.size(), "No connections between clusters detected");
+		OMNIFORCE_ASSERT_TAGGED(groups_edges_map.size(), "No cluster edges detected");
 
-		idx_t cluster_graph_vertex_count = meshlets.size(); // Graph is built from meshlets, hence meshlet = graph vertex
+		// Prepare data for METIS graph cut
+		idx_t cluster_graph_vertex_count = groups.size(); // Graph is built from groups, hence group = graph vertex
 		idx_t num_constaints = 1; // Default minimal value
-		idx_t num_partitions = meshlets.size() / 4; // Make groups of 4 meshlets
+		idx_t num_partitions = groups.size() / 4; // Make groups of 4 meshlets
 
 		OMNIFORCE_ASSERT_TAGGED(num_partitions >= 2, "Num partitions must be greater or equal to 2");
 
+		// Prepare xadj, adjncy and adjwgts
 		std::vector<idx_t> partition;
 		partition.resize(cluster_graph_vertex_count);
 
@@ -101,28 +103,26 @@ namespace Omni {
 
 		// adjncy
 		std::vector<idx_t> edge_adjacency;
-		edge_adjacency.reserve(50000);
 
 		// weight of each edge. Weight of an edge = num shared edges between connected clusters
 		std::vector<idx_t> edge_weights;
-		edge_weights.reserve(50000);
 
-		// Per meshlet
-		for (uint32 meshlet_idx = 0; meshlet_idx < meshlets.size(); meshlet_idx++) {
+		// Per group
+		for (uint32 group_idx = 0; group_idx < groups.size(); group_idx++) {
 			uint32 first_adj_index = edge_adjacency.size();
 
 			// Per edge
-			for (const auto& edge : meshlets_edges_map[meshlet_idx]) {
-				auto connections_iterator = edges_meshlets_map.find(edge);
+			for (const auto& edge : groups_edges_map[group_idx]) {
+				auto connections_iterator = edges_groups_map.find(edge);
 
-				if (connections_iterator == edges_meshlets_map.end())
+				if (connections_iterator == edges_groups_map.end())
 					continue;
 
 				const auto& connections = connections_iterator->second;
 
 				// Per connection
 				for (const auto& connected_cluster : connections) {
-					if (connected_cluster != meshlet_idx) {
+					if (connected_cluster != group_idx) {
 						auto edge_iterator = std::find(edge_adjacency.begin() + first_adj_index, edge_adjacency.end(), connected_cluster);
 						if (edge_iterator == edge_adjacency.end()) {
 							// First encounter, register connection
@@ -162,6 +162,7 @@ namespace Omni {
 		options[METIS_OPTION_NUMBERING] = 0;
 
 		// Start METIS graph partition
+		m_Mutex.lock();
 		idx_t edge_cut;
 		int result = METIS_PartGraphKway(
 			&cluster_graph_vertex_count,
@@ -178,19 +179,96 @@ namespace Omni {
 			&edge_cut,
 			partition.data()
 		);
+		m_Mutex.unlock();
 
 		OMNIFORCE_ASSERT_TAGGED(result == METIS_OK, "Graph partition failed");
 
 		// If assertion is not triggered, then we successfully performed the edge-cut and can register partitions
-		std::vector<std::vector<uint32>> groups(num_partitions);
+		std::vector<std::vector<uint32>> partitions(num_partitions);
 
-		for (uint32 i = 0; i < meshlets.size(); i++) {
+		for (uint32 i = 0; i < groups.size(); i++) {
 			idx_t group_index = partition[i];
-			groups[group_index].push_back(i);
+			partitions[group_index].push_back(i);
 		}
 
-		return groups;
+		return partitions;
 
+	}
+
+	void VirtualMeshBuilder::BuildClusterGraph(const std::vector<byte>& vertices, const std::vector<uint32>& indices, uint32 vertex_stride)
+	{
+		MeshPreprocessor mesh_preprocessor = {};
+
+		// Clusterize initial mesh, basically build LOD 0
+		Scope<ClusterizedMesh> meshlets_data = mesh_preprocessor.GenerateMeshlets(&vertices, &indices, vertex_stride);
+
+		if (meshlets_data->meshlets.size() < 8)
+			return;
+
+		// All mesh's meshlet groups
+		// Init with source meshlets, 1 meshlet per group
+		std::vector<MeshClusterGroup> mesh_cluster_groups(meshlets_data->meshlets.size());
+		for (uint32 i = 0; i < mesh_cluster_groups.size(); i++)
+			mesh_cluster_groups[i].push_back(i);
+
+		uint32 current_groups_offset = 0;
+		uint32 current_meshlet_offset = 0;
+
+		while (true) {
+			uint32 group_idx = 0;
+			std::vector<MeshClusterGroup> source_groups = GroupMeshClusters({ meshlets_data->meshlets }, { mesh_cluster_groups }, meshlets_data->indices, meshlets_data->local_indices, vertices, vertex_stride);
+			 
+			for (auto& group : source_groups) {
+				std::vector<uint32> group_indices = {};
+				uint32 group_index_count = 0;
+
+				// Preallocate just enough space
+				for (auto& meshlet_idx : group)
+					group_index_count += meshlets_data->meshlets[meshlet_idx].triangle_count * 3;
+
+				group_indices.reserve(group_index_count);
+
+				// Merge index data
+				// Per meshlet in a group
+				for (auto& meshlet_idx : group) {
+					RenderableMeshlet& meshlet = meshlets_data->meshlets[meshlet_idx];
+
+					// Per index
+					for (uint32 i = 0; i < meshlet.triangle_count * 3; i++) {
+						group_indices.push_back(FetchIndex(indices, meshlet.vertex_offset, meshlets_data->local_indices[meshlet.triangle_offset + i]));
+					}
+
+				}
+
+				// Simplify group
+				std::vector<uint32> simplified_group_indices = {};
+				mesh_preprocessor.GenerateMeshLOD(
+					&simplified_group_indices,
+					&vertices,
+					&group_indices,
+					vertex_stride,
+					group_indices.size() / 2,
+					0.1f,
+					true
+				);
+
+				// Split group back to meshlets
+				Scope<ClusterizedMesh> simplified_group_meshlets = mesh_preprocessor.GenerateMeshlets(&vertices, &simplified_group_indices, vertex_stride);
+				
+				for (auto& m : simplified_group_meshlets->meshlets) {
+					RenderableMeshlet m1 = m;
+					int x = 5;
+				}
+
+			}
+
+
+		}
+	}
+
+	uint32 VirtualMeshBuilder::FetchIndex(const std::vector<uint32> indices, uint32 offset, uint8 local_index)
+	{
+		return indices[offset + local_index];
 	}
 
 }

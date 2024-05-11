@@ -8,9 +8,9 @@
 
 namespace Omni {
 
-	GeneratedMeshlets* MeshPreprocessor::GenerateMeshlets(const std::vector<byte>* vertices, const std::vector<uint32>* indices, uint32 vertex_stride)
+	Scope<ClusterizedMesh> MeshPreprocessor::GenerateMeshlets(const std::vector<byte>* vertices, const std::vector<uint32>* indices, uint32 vertex_stride)
 	{
-		GeneratedMeshlets* meshlets_data = new GeneratedMeshlets;
+		Scope<ClusterizedMesh> meshlets_data = std::make_unique<ClusterizedMesh>();
 
 		uint64 num_meshlets = meshopt_buildMeshletsBound(indices->size(), 64, 124);
 

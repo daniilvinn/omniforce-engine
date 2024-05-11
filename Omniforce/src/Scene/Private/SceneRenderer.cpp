@@ -520,7 +520,7 @@ namespace Omni {
 		}
 		else {
 			for (auto& device_render_queue : m_DeviceRenderQueue)
-				DebugRenderer::RenderSceneDebugView(m_CameraDataBuffer, m_MeshResourcesBuffer.GetStorage(), device_render_queue.second, m_DeviceIndirectDrawParams[device_render_queue.first], m_CurrentDebugMode);
+				DebugRenderer::RenderSceneDebugView(m_CameraDataBuffer, m_MeshResourcesBuffer.GetStorage(), m_CulledDeviceRenderQueue[device_render_queue.first], m_DeviceIndirectDrawParams[device_render_queue.first], m_CurrentDebugMode);
 		}
 
 		DebugRenderer::Render(m_CurrectMainRenderTarget, m_CurrentDepthAttachment, IsInDebugMode() ? fvec4{0.0f, 0.0f, 0.0f, 1.0f} : fvec4{0.0f, 0.0f, 0.0f, 0.0f});

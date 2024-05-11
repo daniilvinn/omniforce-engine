@@ -2,6 +2,7 @@
 
 #include <Foundation/Macros.h>
 #include <Foundation/Types.h>
+#include <Core/Utils.h>
 
 namespace Omni {
 
@@ -23,12 +24,7 @@ namespace Omni {
 		float32 cone_cutoff;
 	};
 
-	template <class T>
-	inline void CombineHashes(T& seed, const T& v)
-	{
-		rh::hash<T> hasher;
-		seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-	}
+	using MeshClusterGroup = std::vector<uint32>;
 
 	struct MeshletEdge {
 		explicit MeshletEdge(uint32 a, uint32 b) : first(std::min(a, b)), second(std::max(a, b)) {}
@@ -42,7 +38,7 @@ namespace Omni {
 	struct MeshletEdgeHasher {
 		uint32 operator()(const MeshletEdge& edge) const {
 			uint32 h = edge.first;
-			CombineHashes(h, edge.second);
+			Utils::CombineHashes(h, edge.second);
 			return h;
 		}
 	};

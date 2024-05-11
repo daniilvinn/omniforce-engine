@@ -55,6 +55,7 @@ void main() {
             break;
         }
     }
+    //selected_lod = 0;
 
     // Take corresponding bounding sphere and test it against frustum
     MeshLOD mesh_data = root_mesh_data.lods[selected_lod];

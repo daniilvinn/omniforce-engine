@@ -102,7 +102,6 @@ public:
 
 			ImGui::Checkbox("Visualize physics colliders", &m_VisualizeColliders);
 			ImGui::Checkbox("Visualize mesh cull bounds", &m_VisualizeCullBounds);
-			ImGui::Checkbox("Visualize mesh cluster edges", &m_VisualizeClusterEdges);
 			ImGui::Checkbox("Scene cluster debug view", &m_SceneDebugViewEnabled);
 
 			if (m_VisualizeColliders) {
@@ -175,8 +174,8 @@ public:
 
 						switch (i)
 						{
-						case 0:  ImGui::Selectable("Cluster view", &is_selected);  break;
-						case 1:  ImGui::Selectable("Triangle view", &is_selected); break;
+						case 0:  ImGui::Selectable("Cluster view", &is_selected);		break;
+						case 1:  ImGui::Selectable("Triangle view", &is_selected);		break;
 						default: break;
 						}
 
@@ -550,7 +549,6 @@ public:
 	bool m_InRuntime = false;
 	bool m_VisualizeColliders = false;
 	bool m_VisualizeCullBounds = false;
-	bool m_VisualizeClusterEdges = false;
 	bool m_SceneDebugViewEnabled = false;
 
 	SceneHierarchyPanel* m_HierarchyPanel;

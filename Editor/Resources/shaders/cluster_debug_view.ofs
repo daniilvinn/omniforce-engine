@@ -91,8 +91,6 @@ layout(push_constant, scalar) uniform pc_ {
 	uint64_t mode;
 } pc;
 
-layout(location = 0) flat out uvec4 color[];
-
 #include "task_payload.glslh"
 
 void main()
@@ -148,6 +146,7 @@ void main()
 	}
 
 	uint index_processing_iterations = (meshlet_data.triangle_count + gl_WorkGroupSize.x - 1) / gl_WorkGroupSize.x;
+	uint meshlet_id = task_payload.base_offset + task_payload.meshlet_ids[gl_WorkGroupID.x];
 	for(int i = 0; i < index_processing_iterations; i++) {
 		if(gl_LocalInvocationIndex * index_processing_iterations + i >= meshlet_data.triangle_count) {
 			break;
@@ -159,27 +158,13 @@ void main()
 			mesh_data.micro_indices[meshlet_data.triangle_offset + ((gl_LocalInvocationIndex * index_processing_iterations + i) * 3 + 2)].micro_index
 		);
 
-		gl_MeshPrimitivesEXT[gl_LocalInvocationIndex * index_processing_iterations + i].gl_PrimitiveID = int(pcg_hash(pcg_hash(gl_LocalInvocationIndex * index_processing_iterations + i)));
+		if(pc.mode == 0)
+			gl_MeshPrimitivesEXT[gl_LocalInvocationIndex * index_processing_iterations + i].gl_PrimitiveID = int(pcg_hash(pcg_hash(meshlet_id)));
+		else if (pc.mode == 1)
+			gl_MeshPrimitivesEXT[gl_LocalInvocationIndex * index_processing_iterations + i].gl_PrimitiveID = int(pcg_hash(pcg_hash(gl_LocalInvocationIndex * index_processing_iterations + i)));
 
 	}
 
-	// attributes and material bda
-	uint num_processing_attributes = 64 / gl_WorkGroupSize.x;
-	for(int i = 0; i < num_processing_attributes; i++) {
-		if((gl_LocalInvocationIndex * vertex_processing_iterations + i) >= meshlet_data.vertex_count) {
-			break;
-		}
-
-		uint meshlet_id = task_payload.base_offset + task_payload.meshlet_ids[gl_WorkGroupID.x];
-
-		color[gl_LocalInvocationIndex * num_processing_attributes + i] = uvec4(
-			pcg_hash(meshlet_id),
-			pcg_hash(meshlet_id + 1),
-			pcg_hash(meshlet_id + 2),
-			1
-		);
-
-	}
 }
 
 #pragma stage : fragment
@@ -202,19 +187,14 @@ layout(push_constant, scalar) uniform pc_ {
 	uint64_t mode;
 } pc;
 
-layout(location = 0) flat in uvec4 color;
-
 layout(location = 0) out vec4 out_color;
 
 void main() {
-	uvec4 desired_color = color;
-	if(pc.mode == 1) {
-		desired_color = uvec4(
-			pcg_hash(gl_PrimitiveID),
-			pcg_hash(gl_PrimitiveID + 1),
-			pcg_hash(gl_PrimitiveID + 2),
-			1
-		);
-	}
-	out_color = normalize(vec4(desired_color));
+	vec4 desired_color = vec4(
+		pcg_hash(gl_PrimitiveID),
+		pcg_hash(gl_PrimitiveID + 1),
+		pcg_hash(gl_PrimitiveID + 2),
+		1
+	);
+	out_color = normalize(desired_color);
 }

@@ -8,7 +8,7 @@
 
 namespace Omni {
 
-	struct GeneratedMeshlets {
+	struct ClusterizedMesh {
 		std::vector<RenderableMeshlet> meshlets;
 		std::vector<uint32> indices;
 		std::vector<byte> local_indices;
@@ -17,7 +17,7 @@ namespace Omni {
 
 	class OMNIFORCE_API MeshPreprocessor {
 	public:
-		GeneratedMeshlets* GenerateMeshlets(const std::vector<byte>* vertices, const std::vector<uint32>* indices, uint32 vertex_stride);
+		Scope<ClusterizedMesh> GenerateMeshlets(const std::vector<byte>* vertices, const std::vector<uint32>* indices, uint32 vertex_stride);
 		Bounds GenerateMeshBounds(const std::vector<glm::vec3>* points);
 		void OptimizeMesh(std::vector<byte>* out_vertices, std::vector<uint32>* out_indices, const std::vector<byte>* vertices, const std::vector<uint32>* indices, uint8 vertex_stride);
 		void RemapVertices(std::vector<byte>* out_vertices, const std::vector<byte>* in_vertices, uint32 vertex_stride, const std::vector<uint32>* remap_table);
