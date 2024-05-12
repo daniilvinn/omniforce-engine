@@ -35,7 +35,6 @@ namespace Omni {
 		VirtualMesh BuildClusterGraph(const std::vector<byte>& vertices, const std::vector<uint32>& indices, uint32 vertex_stride);
 
 	private:
-		uint32 FetchIndex(const std::vector<uint32> indices, uint32 offset, uint8 local_index);
 		inline static std::shared_mutex m_Mutex;
 
 	};

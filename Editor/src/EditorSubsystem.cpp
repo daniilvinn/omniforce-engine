@@ -165,7 +165,7 @@ public:
 					m_CurrentScene->GetRenderer()->EnterDebugMode(DebugSceneView::CLUSTER);
 				}
 				
-				const char* items[] = { "Cluster view", "Triangle view", "Cluster group view"};
+				const char* items[] = { "Cluster view", "Triangle view" };
 				uint32 current_item = uint32(m_CurrentScene->GetRenderer()->GetCurrentDebugMode());
 				if (ImGui::BeginCombo("View", items[current_item])) {
 
@@ -176,7 +176,6 @@ public:
 						{
 						case 0:  ImGui::Selectable("Cluster view", &is_selected);		break;
 						case 1:  ImGui::Selectable("Triangle view", &is_selected);		break;
-						case 2:  ImGui::Selectable("Cluster group view", &is_selected);		break;
 						default: break;
 						}
 

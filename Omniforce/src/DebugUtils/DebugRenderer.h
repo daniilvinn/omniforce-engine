@@ -15,7 +15,6 @@ namespace Omni {
 	enum class DebugSceneView {
 		CLUSTER,
 		TRIANGLE,
-		CLUSTER_GROUP,
 		NONE
 	};
 
