@@ -216,9 +216,6 @@ namespace Omni {
 		// Clusterize initial mesh, basically build LOD 0
 		Scope<ClusterizedMesh> meshlets_data = mesh_preprocessor.GenerateMeshlets(&vertices, &indices, vertex_stride);
 
-		if (meshlets_data->meshlets.size() < 8)
-			return;
-
 		// All mesh's meshlet groups
 		// Init with source meshlets, 1 meshlet per group
 		std::vector<MeshClusterGroup> mesh_cluster_groups(meshlets_data->meshlets.size());
@@ -230,6 +227,9 @@ namespace Omni {
 
 		uint32 lod_idx = 0;
 		while (true) {
+			if (lod_idx == 1)
+				break;
+
 			std::span<MeshClusterGroup> previous_lod_groups(mesh_cluster_groups.begin() + current_source_groups_offset, mesh_cluster_groups.end());
 			std::span<RenderableMeshlet> previous_lod_meshlets(meshlets_data->meshlets.begin(), meshlets_data->meshlets.end());
 
@@ -279,9 +279,11 @@ namespace Omni {
 					&group_indices,
 					vertex_stride,
 					group_indices.size() / 2,
-					1.0f,
+					1000.0f,
 					true
 				);
+
+				OMNIFORCE_ASSERT_TAGGED(simplified_group_indices.size(), "Failed to simplify cluster group");
 
 				// Split group back to meshlets
 				Scope<ClusterizedMesh> simplified_group_meshlets = mesh_preprocessor.GenerateMeshlets(&vertices, &simplified_group_indices, vertex_stride);
@@ -289,10 +291,11 @@ namespace Omni {
 				for (uint32 simplified_meshlet_idx = 0; simplified_meshlet_idx < simplified_group_meshlets->meshlets.size(); simplified_meshlet_idx++) {
 					RenderableMeshlet& simplified_meshlet = simplified_group_meshlets->meshlets.at(simplified_meshlet_idx);
 
-					simplified_meshlet.vertex_offset += meshlets_data->meshlets.at(meshlets_data->meshlets.size() - 1).vertex_offset;
-					simplified_meshlet.triangle_offset += meshlets_data->meshlets.at(meshlets_data->meshlets.size() - 1).triangle_offset;
-				}
+					simplified_meshlet.vertex_offset += meshlets_data->indices.size();
+					simplified_meshlet.triangle_offset += meshlets_data->local_indices.size();
 
+				}
+				
 				// Update group meshlets
 				group.clear();
 				for (uint32 meshlet_idx = 0; meshlet_idx < simplified_group_meshlets->meshlets.size(); meshlet_idx++) {
@@ -300,9 +303,22 @@ namespace Omni {
 				}
 
 				meshlets_data->meshlets.insert(meshlets_data->meshlets.end(), simplified_group_meshlets->meshlets.begin(), simplified_group_meshlets->meshlets.end());
+				meshlets_data->cull_bounds.insert(meshlets_data->cull_bounds.end(), simplified_group_meshlets->cull_bounds.begin(), simplified_group_meshlets->cull_bounds.end());
 				meshlets_data->indices.insert(meshlets_data->indices.end(), simplified_group_meshlets->indices.begin(), simplified_group_meshlets->indices.end());
 				meshlets_data->local_indices.insert(meshlets_data->local_indices.end(), simplified_group_meshlets->local_indices.begin(), simplified_group_meshlets->local_indices.end());
-				meshlets_data->cull_bounds.insert(meshlets_data->cull_bounds.end(), simplified_group_meshlets->cull_bounds.begin(), simplified_group_meshlets->cull_bounds.end());
+
+				for (uint32 simplified_meshlet_idx = 0; simplified_meshlet_idx < simplified_group_meshlets->meshlets.size(); simplified_meshlet_idx++) {
+					RenderableMeshlet& simplified_meshlet = simplified_group_meshlets->meshlets.at(simplified_meshlet_idx);
+
+					OMNIFORCE_ASSERT_TAGGED(simplified_meshlet.triangle_offset + simplified_meshlet.triangle_count * 3 <= meshlets_data->local_indices.size(), "OOB");
+
+					for (uint32 local_index_idx = 0; local_index_idx < simplified_meshlet.triangle_count * 3; local_index_idx++) {
+						OMNIFORCE_ASSERT_TAGGED(simplified_meshlet.triangle_offset + local_index_idx < meshlets_data->local_indices.size(), "OOB");
+						uint32 local_index = meshlets_data->local_indices[simplified_meshlet.triangle_offset + local_index_idx];
+						OMNIFORCE_ASSERT_TAGGED(local_index < simplified_meshlet.vertex_count, "OOB");
+					}
+
+				}
 
 			}
 

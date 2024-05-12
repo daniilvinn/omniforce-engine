@@ -302,6 +302,7 @@ namespace Omni {
 		for (uint32 i = 0; i < Mesh::OMNI_MAX_MESH_LOD_COUNT; i++) {
 			MeshPreprocessor mesh_preprocessor = {};
 
+#if 0
 			// Generate LOD. If i == 0, we basically generate a lod which is completely equal to source mesh
 			std::vector<uint32> lod_indices;
 
@@ -331,12 +332,13 @@ namespace Omni {
 			}
 
 			OMNIFORCE_ASSERT_TAGGED(lod_indices.size(), "Mesh LOD generation failed. How did we return from loop above though?");
+#endif
 
 			// Optimize mesh (remove redundant vertices, optimize for vertex cache etc.)
 			std::vector<byte> optimized_vertices;
 			std::vector<uint32> optimized_indices;
 			
-			mesh_preprocessor.OptimizeMesh(&optimized_vertices, &optimized_indices, vertex_data, &lod_indices, vertex_stride);
+			mesh_preprocessor.OptimizeMesh(&optimized_vertices, &optimized_indices, vertex_data, index_data, vertex_stride);
 
 			// Generate meshlets for mesh shading-based geometry processing.
 			Scope<ClusterizedMesh> generated_meshlets = mesh_preprocessor.GenerateMeshlets(&optimized_vertices, &optimized_indices, vertex_stride);
@@ -348,8 +350,8 @@ namespace Omni {
 			}
 
 			// Remap vertices to get rid of generated index buffer after generation of meshlets
-			std::vector<byte> remapped_vertices(generated_meshlets->indices.size() * vertex_stride);
-			mesh_preprocessor.RemapVertices(&remapped_vertices, &optimized_vertices, vertex_stride, &generated_meshlets->indices);
+			std::vector<byte> remapped_vertices(vmesh.indices.size() * vertex_stride);
+			mesh_preprocessor.RemapVertices(&remapped_vertices, &optimized_vertices, vertex_stride, &vmesh.indices);
 
 			// Split vertex data into two data streams: geometry and attributes.
 			// It is an optimization used for depth-prepass and shadow maps rendering to speed up data reads.
@@ -361,10 +363,23 @@ namespace Omni {
 			Bounds mesh_bounds = mesh_preprocessor.GenerateMeshBounds(&deinterleaved_vertex_data);
 
 			// Copy data
-			mesh_lods[i].meshlets			= std::move(generated_meshlets->meshlets);
-			mesh_lods[i].local_indices		= std::move(generated_meshlets->local_indices);
-			mesh_lods[i].cull_data			= std::move(generated_meshlets->cull_bounds);
+			mesh_lods[i].meshlets			= vmesh.meshlets;
+			mesh_lods[i].local_indices		= vmesh.local_indices;
+			mesh_lods[i].cull_data			= vmesh.cull_bounds;
 			mesh_lods[i].bounding_sphere	= mesh_bounds.sphere;
+
+			// test on OOB
+			for (auto& meshlet : vmesh.meshlets) {
+				OMNIFORCE_ASSERT_TAGGED(meshlet.vertex_offset + meshlet.vertex_count <= deinterleaved_vertex_data.size(), "OOB");
+
+				OMNIFORCE_ASSERT_TAGGED(meshlet.triangle_offset + meshlet.triangle_count <= vmesh.local_indices.size(), "OOB");
+
+				for (uint32 local_index_idx = 0; local_index_idx < meshlet.triangle_count * 3; local_index_idx++) {
+					OMNIFORCE_ASSERT_TAGGED(meshlet.triangle_offset + local_index_idx < vmesh.local_indices.size(), "OOB");
+					uint32 local_index = vmesh.local_indices[meshlet.triangle_offset + local_index_idx];
+					OMNIFORCE_ASSERT_TAGGED(local_index < meshlet.vertex_count, "OOB");
+				}
+			}
 
 			// If i == 0, save generated mesh AABB, which will be used for LOD selection on runtime
 			if (i == 0)
