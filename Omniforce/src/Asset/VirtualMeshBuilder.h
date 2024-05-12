@@ -9,6 +9,16 @@
 
 namespace Omni {
 
+	struct VirtualMesh {
+		std::vector<byte> vertices;
+		std::vector<uint32> indices;
+		std::vector<uint8> local_indices;
+		std::vector<RenderableMeshlet> meshlets;
+		std::vector<MeshClusterGroup> meshlet_groups;
+		std::vector<MeshletCullBounds> cull_bounds;
+		uint32 vertex_stride;
+	};
+
 	// Utility function for building virtual clusterized mesh
 	class VirtualMeshBuilder {
 	public:
@@ -22,7 +32,7 @@ namespace Omni {
 			uint32 vertex_stride
 		);
 
-		void BuildClusterGraph(const std::vector<byte>& vertices, const std::vector<uint32>& indices, uint32 vertex_stride);
+		VirtualMesh BuildClusterGraph(const std::vector<byte>& vertices, const std::vector<uint32>& indices, uint32 vertex_stride);
 
 	private:
 		uint32 FetchIndex(const std::vector<uint32> indices, uint32 offset, uint8 local_index);

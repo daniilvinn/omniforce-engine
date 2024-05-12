@@ -61,6 +61,9 @@ namespace Omni {
 			idx++;
 		}
 
+		meshlets_data->indices.resize(meshlets_data->meshlets[meshlets_data->meshlets.size() - 1].vertex_offset + meshlets_data->meshlets[meshlets_data->meshlets.size() - 1].vertex_count);
+		meshlets_data->local_indices.resize(meshlets_data->meshlets[meshlets_data->meshlets.size() - 1].triangle_offset + meshlets_data->meshlets[meshlets_data->meshlets.size() - 1].triangle_count * 3);
+
 		delete[] meshopt_meshlets;
 
 		return meshlets_data;

@@ -20,7 +20,6 @@ namespace Omni {
 		uint32 vertex_stride
 	) {
 		OMNIFORCE_ASSERT_TAGGED(vertex_stride >= 12, "Vertex stride is less than 12: no vertex position data?");
-		OMNIFORCE_ASSERT_TAGGED(meshlets.size() >= 8, "Less than 8 meshlets - merge them instead of partitioning");
 
 		MeshPreprocessor mesh_preprocessor;
 
@@ -45,6 +44,7 @@ namespace Omni {
 		// Find edges between meshlets
 		
 		// Per group
+		uint32 num_unique_meshlets_in_groups = 0;
 		uint32 group_idx = 0;
 		for (auto& group : groups) {
 			// per meshlet
@@ -75,7 +75,19 @@ namespace Omni {
 					}
 				}
 			}
+			num_unique_meshlets_in_groups += group.size();
 			group_idx++;
+		}
+
+		// Generate a group with all groups if num groups is less than 8 (unable to partition)
+		if (num_unique_meshlets_in_groups < 8) {
+			std::vector<MeshClusterGroup> cluster_group(1);
+			for (auto& group : groups) {
+				for (auto& meshlet_index : group)
+					cluster_group[0].push_back(meshlet_index);
+			}
+
+			return cluster_group;
 		}
 
 		// Remove non-shared edges
@@ -89,7 +101,7 @@ namespace Omni {
 		// Prepare data for METIS graph cut
 		idx_t cluster_graph_vertex_count = groups.size(); // Graph is built from groups, hence group = graph vertex
 		idx_t num_constaints = 1; // Default minimal value
-		idx_t num_partitions = groups.size() / 4; // Make groups of 4 meshlets
+		idx_t num_partitions = num_unique_meshlets_in_groups / 4; // Make groups of 4 meshlets
 
 		OMNIFORCE_ASSERT_TAGGED(num_partitions >= 2, "Num partitions must be greater or equal to 2");
 
@@ -188,14 +200,16 @@ namespace Omni {
 
 		for (uint32 i = 0; i < groups.size(); i++) {
 			idx_t group_index = partition[i];
-			partitions[group_index].push_back(i);
+			for (auto& meshlet_index : groups[i]) {
+				partitions[group_index].push_back(meshlet_index);
+			}
 		}
 
 		return partitions;
 
 	}
 
-	void VirtualMeshBuilder::BuildClusterGraph(const std::vector<byte>& vertices, const std::vector<uint32>& indices, uint32 vertex_stride)
+	VirtualMesh VirtualMeshBuilder::BuildClusterGraph(const std::vector<byte>& vertices, const std::vector<uint32>& indices, uint32 vertex_stride)
 	{
 		MeshPreprocessor mesh_preprocessor = {};
 
@@ -211,14 +225,31 @@ namespace Omni {
 		for (uint32 i = 0; i < mesh_cluster_groups.size(); i++)
 			mesh_cluster_groups[i].push_back(i);
 
-		uint32 current_groups_offset = 0;
-		uint32 current_meshlet_offset = 0;
+		uint32 current_source_groups_offset = 0;
+		uint32 current_source_meshlets_offset = 0;
 
+		uint32 lod_idx = 0;
 		while (true) {
-			uint32 group_idx = 0;
-			std::vector<MeshClusterGroup> source_groups = GroupMeshClusters({ meshlets_data->meshlets }, { mesh_cluster_groups }, meshlets_data->indices, meshlets_data->local_indices, vertices, vertex_stride);
-			 
-			for (auto& group : source_groups) {
+			std::span<MeshClusterGroup> previous_lod_groups(mesh_cluster_groups.begin() + current_source_groups_offset, mesh_cluster_groups.end());
+			std::span<RenderableMeshlet> previous_lod_meshlets(meshlets_data->meshlets.begin(), meshlets_data->meshlets.end());
+
+			std::vector<MeshClusterGroup> groups = GroupMeshClusters(
+				previous_lod_meshlets,
+				previous_lod_groups,
+				meshlets_data->indices, 
+				meshlets_data->local_indices, 
+				vertices, 
+				vertex_stride
+			);
+
+			current_source_groups_offset = mesh_cluster_groups.size();
+			current_source_meshlets_offset = meshlets_data->meshlets.size();
+
+			uint32 lod_cluster_count = 0;
+			for (auto& group : groups) {
+				if(group.size() == 0)
+					continue;
+
 				std::vector<uint32> group_indices = {};
 				uint32 group_index_count = 0;
 
@@ -248,22 +279,59 @@ namespace Omni {
 					&group_indices,
 					vertex_stride,
 					group_indices.size() / 2,
-					0.1f,
+					1.0f,
 					true
 				);
 
 				// Split group back to meshlets
 				Scope<ClusterizedMesh> simplified_group_meshlets = mesh_preprocessor.GenerateMeshlets(&vertices, &simplified_group_indices, vertex_stride);
 				
-				for (auto& m : simplified_group_meshlets->meshlets) {
-					RenderableMeshlet m1 = m;
-					int x = 5;
+				for (uint32 simplified_meshlet_idx = 0; simplified_meshlet_idx < simplified_group_meshlets->meshlets.size(); simplified_meshlet_idx++) {
+					RenderableMeshlet& simplified_meshlet = simplified_group_meshlets->meshlets.at(simplified_meshlet_idx);
+
+					simplified_meshlet.vertex_offset += meshlets_data->meshlets.at(meshlets_data->meshlets.size() - 1).vertex_offset;
+					simplified_meshlet.triangle_offset += meshlets_data->meshlets.at(meshlets_data->meshlets.size() - 1).triangle_offset;
 				}
+
+				// Update group meshlets
+				group.clear();
+				for (uint32 meshlet_idx = 0; meshlet_idx < simplified_group_meshlets->meshlets.size(); meshlet_idx++) {
+					group.push_back(meshlet_idx + meshlets_data->meshlets.size());
+				}
+
+				meshlets_data->meshlets.insert(meshlets_data->meshlets.end(), simplified_group_meshlets->meshlets.begin(), simplified_group_meshlets->meshlets.end());
+				meshlets_data->indices.insert(meshlets_data->indices.end(), simplified_group_meshlets->indices.begin(), simplified_group_meshlets->indices.end());
+				meshlets_data->local_indices.insert(meshlets_data->local_indices.end(), simplified_group_meshlets->local_indices.begin(), simplified_group_meshlets->local_indices.end());
+				meshlets_data->cull_bounds.insert(meshlets_data->cull_bounds.end(), simplified_group_meshlets->cull_bounds.begin(), simplified_group_meshlets->cull_bounds.end());
 
 			}
 
+			std::erase_if(groups, [](auto& value) {
+				return value.size() == 0;
+			});
 
+			mesh_cluster_groups.insert(mesh_cluster_groups.end(), groups.begin(), groups.end());
+
+			OMNIFORCE_CORE_TRACE("Generated LOD {}", lod_idx);
+
+			if(groups.size() == 1)
+				if(groups[0].size() <= 4)
+					break;
+
+			lod_idx++;
 		}
+
+		VirtualMesh mesh = {};
+		mesh.vertices = vertices;
+		mesh.indices = meshlets_data->indices;
+		mesh.local_indices = meshlets_data->local_indices;
+		mesh.meshlets = meshlets_data->meshlets;
+		mesh.meshlet_groups = mesh_cluster_groups;
+		mesh.cull_bounds = meshlets_data->cull_bounds;
+		mesh.vertex_stride = vertex_stride;
+
+		return mesh;
+
 	}
 
 	uint32 VirtualMeshBuilder::FetchIndex(const std::vector<uint32> indices, uint32 offset, uint8 local_index)

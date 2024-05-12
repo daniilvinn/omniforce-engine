@@ -296,6 +296,7 @@ namespace Omni {
 		// Init crucial data
 		std::array<MeshData, Mesh::OMNI_MAX_MESH_LOD_COUNT> mesh_lods = {};
 		AABB lod0_aabb = {};
+		VirtualMesh vmesh = {};
 
 		// Process mesh data on per-LOD basis. It involves generating LOD index buffer, optimizing mesh, generating meshlets and remapping data
 		for (uint32 i = 0; i < Mesh::OMNI_MAX_MESH_LOD_COUNT; i++) {
@@ -341,10 +342,9 @@ namespace Omni {
 			Scope<ClusterizedMesh> generated_meshlets = mesh_preprocessor.GenerateMeshlets(&optimized_vertices, &optimized_indices, vertex_stride);
 		
 			if (i == 0 && generated_meshlets->meshlets.size() >= 8) {
-				std::lock_guard lock(*mtx);
 				VirtualMeshBuilder vmesh_builder = {};
 
-				vmesh_builder.BuildClusterGraph(optimized_vertices, optimized_indices, vertex_stride);
+				vmesh = vmesh_builder.BuildClusterGraph(optimized_vertices, optimized_indices, vertex_stride);
 			}
 
 			// Remap vertices to get rid of generated index buffer after generation of meshlets
