@@ -227,9 +227,6 @@ namespace Omni {
 
 		uint32 lod_idx = 0;
 		while (true) {
-			if (lod_idx == 1)
-				break;
-
 			std::span<MeshClusterGroup> previous_lod_groups(mesh_cluster_groups.begin() + current_source_groups_offset, mesh_cluster_groups.end());
 			std::span<RenderableMeshlet> previous_lod_meshlets(meshlets_data->meshlets.begin(), meshlets_data->meshlets.end());
 
@@ -246,7 +243,13 @@ namespace Omni {
 			current_source_meshlets_offset = meshlets_data->meshlets.size();
 
 			uint32 lod_cluster_count = 0;
+			uint32 group_idx = 0;
 			for (auto& group : groups) {
+				for (auto& meshlet_idx : group) {
+					meshlets_data->meshlets[meshlet_idx].group = group_idx;
+				}
+				group_idx++;
+
 				if(group.size() == 0)
 					continue;
 
@@ -287,7 +290,7 @@ namespace Omni {
 
 				// Split group back to meshlets
 				Scope<ClusterizedMesh> simplified_group_meshlets = mesh_preprocessor.GenerateMeshlets(&vertices, &simplified_group_indices, vertex_stride);
-				
+
 				for (uint32 simplified_meshlet_idx = 0; simplified_meshlet_idx < simplified_group_meshlets->meshlets.size(); simplified_meshlet_idx++) {
 					RenderableMeshlet& simplified_meshlet = simplified_group_meshlets->meshlets.at(simplified_meshlet_idx);
 

@@ -27,6 +27,8 @@ layout(push_constant, scalar) uniform pc_ {
 
 void main()
 {
+	if(gl_GlobalInvocationID.x < 437)
+		return;
 	uint lid = gl_LocalInvocationIndex; // lid = lane id
 	
 	RenderObjectData render_object_data = pc.render_objects_data[gl_DrawID];
@@ -162,6 +164,8 @@ void main()
 			gl_MeshPrimitivesEXT[gl_LocalInvocationIndex * index_processing_iterations + i].gl_PrimitiveID = int(pcg_hash(pcg_hash(meshlet_id)));
 		else if (pc.mode == 1)
 			gl_MeshPrimitivesEXT[gl_LocalInvocationIndex * index_processing_iterations + i].gl_PrimitiveID = int(pcg_hash(pcg_hash(gl_LocalInvocationIndex * index_processing_iterations + i)));
+		else if (pc.mode == 2)
+			gl_MeshPrimitivesEXT[gl_LocalInvocationIndex * index_processing_iterations + i].gl_PrimitiveID = int(pcg_hash(pcg_hash(meshlet_data.group)));
 
 	}
 
