@@ -35,6 +35,7 @@ layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer Mes
 	uint vertex_count;
 	uint triangle_count;
 	uint bitrate;
+    uint group;
 };
 
 layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer MeshMicroindices {

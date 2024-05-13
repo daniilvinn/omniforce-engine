@@ -23,7 +23,7 @@ namespace Omni {
 	class VirtualMeshBuilder {
 	public:
 		// Takes a list of meshlets and mesh data, outputs a list of groups of meshlets
-		std::vector<std::vector<uint32>> GroupMeshClusters(
+		std::vector<MeshClusterGroup> GroupMeshClusters(
 			const std::span<RenderableMeshlet>& meshlets,
 			const std::span<MeshClusterGroup>& groups,
 			std::vector<uint32>& indices,

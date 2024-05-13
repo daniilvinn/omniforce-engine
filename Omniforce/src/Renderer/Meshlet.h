@@ -13,6 +13,7 @@ namespace Omni {
 		uint32 vertex_count;
 		uint32 triangle_count;
 		uint32 bitrate;
+		uint32 group;
 	};
 
 	struct OMNIFORCE_API MeshletCullBounds {

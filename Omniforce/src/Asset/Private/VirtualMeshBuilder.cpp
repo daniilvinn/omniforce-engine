@@ -11,8 +11,8 @@
 
 namespace Omni {
 
-	std::vector<std::vector<Omni::uint32>> VirtualMeshBuilder::GroupMeshClusters(
-		const std::span<RenderableMeshlet>& meshlets,
+	std::vector<Omni::MeshClusterGroup> VirtualMeshBuilder::GroupMeshClusters(
+		const std::span<RenderableMeshlet>& meshlets, 
 		const std::span<MeshClusterGroup>& groups, 
 		std::vector<uint32>& indices, 
 		std::vector<uint8>& local_indices, 
@@ -44,12 +44,10 @@ namespace Omni {
 		// Find edges between meshlets
 		
 		// Per group
-		uint32 num_unique_meshlets_in_groups = 0;
-		uint32 group_idx = 0;
-		for (auto& group : groups) {
+		for (uint32 group_idx = 0; group_idx < groups.size(); group_idx++) {
 			// per meshlet
-			for (uint32 meshlet_idx = 0; meshlet_idx < group.size(); meshlet_idx++) {
-				auto& meshlet = meshlets[group[meshlet_idx]];
+			for (uint32 meshlet_idx = 0; meshlet_idx < meshlets.size(); meshlet_idx++) {
+				auto& meshlet = meshlets[meshlet_idx];
 
 				// per triangle
 				for (uint32 triangle_idx = 0; triangle_idx < meshlet.triangle_count; triangle_idx++) {
@@ -60,34 +58,30 @@ namespace Omni {
 							geometry_only_indices[local_indices[(((edge_idx + 1) % 3) + triangle_idx * 3) + meshlet.triangle_offset] + meshlet.vertex_offset]
 						);
 
-						auto& edge_groups = edges_groups_map[edge];
-						auto& group_edges = groups_edges_map[group_idx];
+						auto& edge_meshlets = edges_groups_map[edge];
+						auto& meshlet_edges = groups_edges_map[meshlet_idx];
 
 						if (edge.first != edge.second) {
 							// If edge-meshlets pair already contains current meshlet idx - don't register it
-							if (std::find(edge_groups.begin(), edge_groups.end(), group_idx) == edge_groups.end())
-								edge_groups.push_back(group_idx);
+							if (std::find(edge_meshlets.begin(), edge_meshlets.end(), meshlet_idx) == edge_meshlets.end())
+								edge_meshlets.push_back(meshlet_idx);
 
 							// If meshlet-edges pair already contains an edge - don't register it
-							if (std::find(group_edges.begin(), group_edges.end(), edge) == group_edges.end())
-								group_edges.emplace_back(edge);
+							if (std::find(meshlet_edges.begin(), meshlet_edges.end(), edge) == meshlet_edges.end())
+								meshlet_edges.emplace_back(edge);
 						}
 					}
 				}
 			}
-			num_unique_meshlets_in_groups += group.size();
-			group_idx++;
 		}
 
 		// Generate a group with all groups if num groups is less than 8 (unable to partition)
-		if (num_unique_meshlets_in_groups < 8) {
-			std::vector<MeshClusterGroup> cluster_group(1);
-			for (auto& group : groups) {
-				for (auto& meshlet_index : group)
-					cluster_group[0].push_back(meshlet_index);
-			}
-
-			return cluster_group;
+		if (meshlets.size() < 8) {
+			MeshClusterGroup cluster_group;
+			for (uint32 meshlet_index = 0; meshlet_index < meshlets.size(); meshlet_index++)
+				cluster_group.push_back(meshlet_index);
+			
+			return { cluster_group };
 		}
 
 		// Remove non-shared edges
@@ -96,12 +90,14 @@ namespace Omni {
 		});
 
 		OMNIFORCE_ASSERT_TAGGED(edges_groups_map.size(), "No connections between clusters detected");
-		OMNIFORCE_ASSERT_TAGGED(groups_edges_map.size(), "No cluster edges detected");
+
+		for(auto& meshlet_edges : groups_edges_map)
+			OMNIFORCE_ASSERT_TAGGED(meshlet_edges.second.size(), "No edges detected cluster for a cluster, probably degenerate cluster");
 
 		// Prepare data for METIS graph cut
-		idx_t cluster_graph_vertex_count = groups.size(); // Graph is built from groups, hence group = graph vertex
+		idx_t cluster_graph_vertex_count = meshlets.size(); // Graph is built from groups, hence group = graph vertex
 		idx_t num_constaints = 1; // Default minimal value
-		idx_t num_partitions = num_unique_meshlets_in_groups / 4; // Make groups of 4 meshlets
+		idx_t num_partitions = meshlets.size() / 8; // Make groups of 4 meshlets
 
 		OMNIFORCE_ASSERT_TAGGED(num_partitions >= 2, "Num partitions must be greater or equal to 2");
 
@@ -120,11 +116,11 @@ namespace Omni {
 		std::vector<idx_t> edge_weights;
 
 		// Per group
-		for (uint32 group_idx = 0; group_idx < groups.size(); group_idx++) {
+		for (uint32 meshlet_idx = 0; meshlet_idx < meshlets.size(); meshlet_idx++) {
 			uint32 first_adj_index = edge_adjacency.size();
 
 			// Per edge
-			for (const auto& edge : groups_edges_map[group_idx]) {
+			for (const auto& edge : groups_edges_map[meshlet_idx]) {
 				auto connections_iterator = edges_groups_map.find(edge);
 
 				if (connections_iterator == edges_groups_map.end())
@@ -134,7 +130,7 @@ namespace Omni {
 
 				// Per connection
 				for (const auto& connected_cluster : connections) {
-					if (connected_cluster != group_idx) {
+					if (connected_cluster != meshlet_idx) {
 						auto edge_iterator = std::find(edge_adjacency.begin() + first_adj_index, edge_adjacency.end(), connected_cluster);
 						if (edge_iterator == edge_adjacency.end()) {
 							// First encounter, register connection
@@ -196,13 +192,11 @@ namespace Omni {
 		OMNIFORCE_ASSERT_TAGGED(result == METIS_OK, "Graph partition failed");
 
 		// If assertion is not triggered, then we successfully performed the edge-cut and can register partitions
-		std::vector<std::vector<uint32>> partitions(num_partitions);
+		std::vector<MeshClusterGroup> partitions(num_partitions);
 
-		for (uint32 i = 0; i < groups.size(); i++) {
-			idx_t group_index = partition[i];
-			for (auto& meshlet_index : groups[i]) {
-				partitions[group_index].push_back(meshlet_index);
-			}
+		for (uint32 i = 0; i < cluster_graph_vertex_count; i++) {
+			uint32 partition_index = partition[i];
+			partitions[partition_index].push_back(i);
 		}
 
 		return partitions;
@@ -225,16 +219,18 @@ namespace Omni {
 		uint32 current_source_groups_offset = 0;
 		uint32 current_source_meshlets_offset = 0;
 
-		uint32 lod_idx = 0;
+		for (uint32 i = 0; i < meshlets_data->meshlets.size(); i++)
+			meshlets_data->meshlets[i].group = i;
+
+		uint32 lod_idx = 1;
 		while (true) {
-			if(lod_idx)
-				break;
+			OMNIFORCE_CORE_TRACE("Building LOD_{}", lod_idx);
 
 			std::span<MeshClusterGroup> previous_lod_groups(mesh_cluster_groups.begin() + current_source_groups_offset, mesh_cluster_groups.end());
 			std::span<RenderableMeshlet> previous_lod_meshlets(meshlets_data->meshlets.begin(), meshlets_data->meshlets.end());
 
 			std::vector<MeshClusterGroup> groups = GroupMeshClusters(
-				previous_lod_meshlets,
+				previous_lod_meshlets, 
 				previous_lod_groups,
 				meshlets_data->indices, 
 				meshlets_data->local_indices, 
@@ -245,56 +241,43 @@ namespace Omni {
 			current_source_groups_offset = mesh_cluster_groups.size();
 			current_source_meshlets_offset = meshlets_data->meshlets.size();
 
-			uint32 group_idx = 0;
 			for (auto& group : groups) {
 				std::vector<uint32> merged_indices;
+				uint32 num_merged_indices = 0;
+
+				for (auto& meshlet_idx : group)
+					num_merged_indices += meshlets_data->meshlets[meshlet_idx].triangle_count * 3;
+
+				merged_indices.reserve(num_merged_indices);
 
 				for (auto& meshlet_idx : group) {
 					RenderableMeshlet& meshlet = meshlets_data->meshlets[meshlet_idx];
-					merged_indices.reserve(merged_indices.capacity() + meshlet.triangle_count * 3);
 
 					for (uint32 index_idx = 0; index_idx < meshlet.triangle_count * 3; index_idx++) {
 						merged_indices.push_back(meshlets_data->indices[meshlet.vertex_offset + meshlets_data->local_indices[meshlet.triangle_offset + index_idx]]);
 					}
 				}
 
-				std::vector<uint32> simplified_group_indices;
-				mesh_preprocessor.GenerateMeshLOD(
-					&simplified_group_indices,
-					&vertices,
-					&merged_indices,
-					vertex_stride,
-					merged_indices.size() / 2,
-					1.0f,
-					true
-				);
+				std::vector<uint32> simplified_indices;
+				mesh_preprocessor.GenerateMeshLOD(&simplified_indices, &vertices, &merged_indices, vertex_stride, merged_indices.size() / 2, 0.01f, true);
 
-				Scope<ClusterizedMesh> simplified_group_meshlets = mesh_preprocessor.GenerateMeshlets(&vertices, &simplified_group_indices, vertex_stride);;
-				
-				for (uint32 meshlet_idx = 0; meshlet_idx < simplified_group_meshlets->meshlets.size(); meshlet_idx++) {
-					RenderableMeshlet& meshlet = simplified_group_meshlets->meshlets[meshlet_idx];
+				Scope<ClusterizedMesh> simplified_meshlets = mesh_preprocessor.GenerateMeshlets(&vertices, &simplified_indices, vertex_stride);
 
+				uint32 group_id = UUID() % 482034808ull;
+				for (auto& meshlet : simplified_meshlets->meshlets) {
 					meshlet.vertex_offset += meshlets_data->indices.size();
 					meshlet.triangle_offset += meshlets_data->local_indices.size();
+					meshlet.group = group_id;
 				}
 
-				group.clear();
-				for (uint32 meshlet_idx = 0; meshlet_idx < simplified_group_meshlets->meshlets.size(); meshlet_idx++) {
-					group.push_back(meshlet_idx + meshlets_data->meshlets.size());
-				}
+				meshlets_data->meshlets.insert(meshlets_data->meshlets.end(), simplified_meshlets->meshlets.begin(), simplified_meshlets->meshlets.end());
+				meshlets_data->indices.insert(meshlets_data->indices.end(), simplified_meshlets->indices.begin(), simplified_meshlets->indices.end());
+				meshlets_data->local_indices.insert(meshlets_data->local_indices.end(), simplified_meshlets->local_indices.begin(), simplified_meshlets->local_indices.end());
+				meshlets_data->cull_bounds.insert(meshlets_data->cull_bounds.end(), simplified_meshlets->cull_bounds.begin(), simplified_meshlets->cull_bounds.end());
 
-				meshlets_data->meshlets.insert(meshlets_data->meshlets.end(), simplified_group_meshlets->meshlets.begin(), simplified_group_meshlets->meshlets.end());
-				meshlets_data->indices.insert(meshlets_data->indices.end(), simplified_group_meshlets->indices.begin(), simplified_group_meshlets->indices.end());
-				meshlets_data->local_indices.insert(meshlets_data->local_indices.end(), simplified_group_meshlets->local_indices.begin(), simplified_group_meshlets->local_indices.end());
-				meshlets_data->cull_bounds.insert(meshlets_data->cull_bounds.end(), simplified_group_meshlets->cull_bounds.begin(), simplified_group_meshlets->cull_bounds.end());
 			}
-
-			mesh_cluster_groups.insert(mesh_cluster_groups.begin(), groups.begin(), groups.end());
-
-			if(groups.size() == 1)
-				if(groups[0].size() <= 4)
-					break;
-
+			
+			break;
 			lod_idx++;
 		}
 

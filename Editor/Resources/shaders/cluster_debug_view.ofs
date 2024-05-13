@@ -31,6 +31,13 @@ void main()
 	
 	RenderObjectData render_object_data = pc.render_objects_data[gl_DrawID];
 
+	if(render_object_data.lod == 0)
+		if(gl_GlobalInvocationID.x >= 434)
+			return;
+	if(render_object_data.lod > 0)
+		if(gl_GlobalInvocationID.x < 434 && (lid != 0))
+			return;
+
 	Transform transform = render_object_data.transform;
 	MeshData root_mesh_data = pc.mesh_data[render_object_data.geometry_data_id];
 	MeshLOD mesh_data = root_mesh_data.lods[render_object_data.lod];
@@ -55,10 +62,10 @@ void main()
     bounding_sphere.radius = bounding_sphere.radius * max(max(transform.scale.x, transform.scale.y), transform.scale.z);
 
 	// Cull
-	if((dot(normalize(cone_apex - pc.camera_data.position), cone_axis) < cull_bounds.cone_cutoff) && FrustumTestBoundingSphere(pc.camera_data.frustum, bounding_sphere)) {
+	//if((dot(normalize(cone_apex - pc.camera_data.position), cone_axis) < cull_bounds.cone_cutoff) && FrustumTestBoundingSphere(pc.camera_data.frustum, bounding_sphere)) {
 		uint id_index = atomicAdd(s_actual_num_meshlets, 1);
 		task_payload.meshlet_ids[id_index] = uint8_t(gl_GlobalInvocationID.x & 0x1F);
-	}
+	//}
 
 	// Emit mesh work groups
 	if(lid == 0 && s_actual_num_meshlets != 0) {
@@ -162,6 +169,8 @@ void main()
 			gl_MeshPrimitivesEXT[gl_LocalInvocationIndex * index_processing_iterations + i].gl_PrimitiveID = int(pcg_hash(pcg_hash(meshlet_id)));
 		else if (pc.mode == 1)
 			gl_MeshPrimitivesEXT[gl_LocalInvocationIndex * index_processing_iterations + i].gl_PrimitiveID = int(pcg_hash(pcg_hash(gl_LocalInvocationIndex * index_processing_iterations + i)));
+		else if (pc.mode == 2)
+			gl_MeshPrimitivesEXT[gl_LocalInvocationIndex * index_processing_iterations + i].gl_PrimitiveID = int(pcg_hash(pcg_hash(meshlet_data.group)));
 
 	}
 
