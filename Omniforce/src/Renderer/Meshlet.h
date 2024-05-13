@@ -14,6 +14,7 @@ namespace Omni {
 		uint32 triangle_count;
 		uint32 bitrate;
 		uint32 group;
+		uint32 lod = 0;
 	};
 
 	struct OMNIFORCE_API MeshletCullBounds {

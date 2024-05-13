@@ -6,6 +6,8 @@
 #include <Asset/PrimitiveMeshGenerator.h>
 #include <Asset/MeshPreprocessor.h>
 
+#include <imgui.h>
+
 namespace Omni {
 
 	void DebugRenderer::Init()
@@ -177,19 +179,26 @@ namespace Omni {
 
 	void DebugRenderer::RenderSceneDebugView(Shared<DeviceBuffer> camera_data, Shared<DeviceBuffer> mesh_data, Shared<DeviceBuffer> render_queue, Shared<DeviceBuffer> indirect_params, DebugSceneView mode)
 	{
+
 		renderer->m_DebugRequests.push_back([=]() {
 
-			uint64* pc_data = new uint64[4];
-			memset(pc_data, 0u, sizeof uint64 * 4);
-			
+			uint64* pc_data = new uint64[5];
+			memset(pc_data, 0u, sizeof uint64 * 5);
+
+			static int32 lod = 0;
+			ImGui::Begin("lod selector");
+			ImGui::SliderInt("Lod", &lod, 0, 25);
+			ImGui::End();
+
 			pc_data[0] = camera_data->GetDeviceAddress() + camera_data->GetFrameOffset();
 			pc_data[1] = mesh_data->GetDeviceAddress();
 			pc_data[2] = render_queue->GetDeviceAddress();
 			pc_data[3] = uint64(mode);
+			pc_data[4] = lod;
 
 			MiscData pcs = {};
 			pcs.data = (byte*)pc_data;
-			pcs.size = sizeof uint64 * 4;
+			pcs.size = sizeof uint64 * 5;
 
 			Renderer::RenderMeshTasksIndirect(renderer->m_DebugViewPipeline, indirect_params, pcs);
 		});

@@ -36,6 +36,7 @@ layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer Mes
 	uint triangle_count;
 	uint bitrate;
     uint group;
+    uint lod;
 };
 
 layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer MeshMicroindices {

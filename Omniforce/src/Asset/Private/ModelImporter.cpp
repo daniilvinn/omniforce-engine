@@ -343,10 +343,14 @@ namespace Omni {
 			// Generate meshlets for mesh shading-based geometry processing.
 			Scope<ClusterizedMesh> generated_meshlets = mesh_preprocessor.GenerateMeshlets(&optimized_vertices, &optimized_indices, vertex_stride);
 		
-			if (i == 0 && generated_meshlets->meshlets.size() >= 8) {
+			if (i == 0) {
 				VirtualMeshBuilder vmesh_builder = {};
 
 				vmesh = vmesh_builder.BuildClusterGraph(optimized_vertices, optimized_indices, vertex_stride);
+
+				OMNIFORCE_ASSERT_TAGGED(vmesh.meshlets.size(), "No virtual mesh clusters generated");
+				OMNIFORCE_ASSERT_TAGGED(vmesh.indices.size() >= 3, "No virtual mesh indices generated");
+				OMNIFORCE_ASSERT_TAGGED(vmesh.local_indices.size() >= 3, "No virtual mesh local indices generated");
 			}
 
 			// Remap vertices to get rid of generated index buffer after generation of meshlets

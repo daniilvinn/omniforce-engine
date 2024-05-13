@@ -23,6 +23,7 @@ layout(push_constant, scalar) uniform pc_ {
     MeshData mesh_data;
     RenderObjectData render_objects_data;
 	uint64_t mode;
+	uint64_t lod;
 } pc;
 
 void main()
@@ -30,13 +31,6 @@ void main()
 	uint lid = gl_LocalInvocationIndex; // lid = lane id
 	
 	RenderObjectData render_object_data = pc.render_objects_data[gl_DrawID];
-
-	if(render_object_data.lod == 0)
-		if(gl_GlobalInvocationID.x >= 434)
-			return;
-	if(render_object_data.lod > 0)
-		if(gl_GlobalInvocationID.x < 434 && (lid != 0))
-			return;
 
 	Transform transform = render_object_data.transform;
 	MeshData root_mesh_data = pc.mesh_data[render_object_data.geometry_data_id];
@@ -51,7 +45,6 @@ void main()
 	}
 
 	MeshletCullBounds cull_bounds = mesh_data.meshlets_cull_bounds[gl_GlobalInvocationID.x];
-
 	vec4 rotation_quaternion = vec4(unpackSnorm2x16(transform.packed_rotation[0]), unpackSnorm2x16(transform.packed_rotation[1]));
 
 	vec3 cone_apex = RotateByQuat(cull_bounds.cone_apex * transform.scale, rotation_quaternion) + transform.translation;
@@ -63,8 +56,12 @@ void main()
 
 	// Cull
 	//if((dot(normalize(cone_apex - pc.camera_data.position), cone_axis) < cull_bounds.cone_cutoff) && FrustumTestBoundingSphere(pc.camera_data.frustum, bounding_sphere)) {
+
+	if(mesh_data.meshlets_data[gl_GlobalInvocationID.x].lod == pc.lod) {
 		uint id_index = atomicAdd(s_actual_num_meshlets, 1);
 		task_payload.meshlet_ids[id_index] = uint8_t(gl_GlobalInvocationID.x & 0x1F);
+	}
+
 	//}
 
 	// Emit mesh work groups
@@ -96,6 +93,7 @@ layout(push_constant, scalar) uniform pc_ {
     MeshData mesh_data;
     RenderObjectData render_objects_data;
 	uint64_t mode;
+	uint64_t lod;
 } pc;
 
 #include "task_payload.glslh"
@@ -194,6 +192,7 @@ layout(push_constant, scalar) uniform pc_ {
     MeshData mesh_data;
     RenderObjectData render_objects_data;
 	uint64_t mode;
+	uint64_t lod;
 } pc;
 
 layout(location = 0) out vec4 out_color;
