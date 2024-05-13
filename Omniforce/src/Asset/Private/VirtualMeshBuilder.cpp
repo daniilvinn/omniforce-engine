@@ -82,7 +82,7 @@ namespace Omni {
 
 		OMNIFORCE_ASSERT_TAGGED(unique_meshlet_ids.size() <= meshlets.size(), "Invalid grouping data");
 
-		// Generate a group with all groups if num groups is less than 8 (unable to partition)
+		// Generate a group with all meshlets if num meshlets is less than 8 (unable to partition)
 		if (meshlets.size() < 8) {
 			MeshClusterGroup cluster_group;
 			for (auto& unique_meshlet_id : unique_meshlet_ids)
@@ -99,13 +99,12 @@ namespace Omni {
 		OMNIFORCE_ASSERT_TAGGED(edges_groups_map.size(), "No connections between clusters detected");
 
 		for (auto& meshlet_edges : groups_edges_map)
-			OMNIFORCE_ASSERT_TAGGED(meshlet_edges.second.size(), "No edges detected cluster for a cluster, probably degenerate cluster");
+			OMNIFORCE_ASSERT_TAGGED(meshlet_edges.second.size(), "No edges detected for a cluster, probably degenerate cluster");
 
 		// Prepare data for METIS graph cut
 		idx_t cluster_graph_vertex_count = groups.size(); // Graph is built from groups, hence group = graph vertex
 		idx_t num_constaints = 1; // Default minimal value
-		//idx_t num_partitions = std::clamp(uint32(unique_meshlet_ids.size() / 4), 2u, uint32(groups.size())); // Make groups of 4 meshlets
-		idx_t num_partitions = std::clamp(uint32(groups.size() / 4), 2u, uint32(groups.size())); // Make groups of 4 meshlets
+		idx_t num_partitions = std::clamp(uint32(unique_meshlet_ids.size() / 4), 2u, uint32(groups.size())); // Make groups of 4 meshlets
 
 		OMNIFORCE_ASSERT_TAGGED(num_partitions >= 2, "Num partitions must be greater or equal to 2");
 		OMNIFORCE_ASSERT_TAGGED(num_partitions <= groups.size(), "Invalid partition count");
@@ -258,6 +257,8 @@ namespace Omni {
 				return value.size() == 0;
 			});
 
+			std::vector<MeshClusterGroup> new_groups;
+
 			for (auto& group : groups) {
 				std::vector<uint32> merged_indices;
 				uint32 num_merged_indices = 0;
@@ -280,7 +281,7 @@ namespace Omni {
 				float32 tlod = (float32)lod_idx / (float32)max_lod;
 				float32 target_error = 0.9f * tlod + 0.01f * (1 - tlod);
 
-				mesh_preprocessor.GenerateMeshLOD(&simplified_indices, &vertices, &merged_indices, vertex_stride, merged_indices.size() / 2, target_error, true);
+				mesh_preprocessor.GenerateMeshLOD(&simplified_indices, &vertices, &merged_indices, vertex_stride, merged_indices.size() / 2, target_error, false);
 
 				Scope<ClusterizedMesh> simplified_meshlets = mesh_preprocessor.GenerateMeshlets(&vertices, &simplified_indices, vertex_stride);
 
@@ -296,6 +297,7 @@ namespace Omni {
 				group.reserve(simplified_meshlets->meshlets.size());
 				for(uint32 meshlet_idx = 0; meshlet_idx < simplified_meshlets->meshlets.size(); meshlet_idx++) {
 					group.push_back(meshlet_idx + meshlets_data->meshlets.size());
+					new_groups.push_back({ meshlet_idx + (uint32)meshlets_data->meshlets.size() });
 				}
 
 				meshlets_data->meshlets.insert(meshlets_data->meshlets.end(), simplified_meshlets->meshlets.begin(), simplified_meshlets->meshlets.end());
@@ -303,10 +305,10 @@ namespace Omni {
 				meshlets_data->local_indices.insert(meshlets_data->local_indices.end(), simplified_meshlets->local_indices.begin(), simplified_meshlets->local_indices.end());
 				meshlets_data->cull_bounds.insert(meshlets_data->cull_bounds.end(), simplified_meshlets->cull_bounds.begin(), simplified_meshlets->cull_bounds.end());
 
-
 			}
 
-			mesh_cluster_groups.insert(mesh_cluster_groups.end(), groups.begin(), groups.end());
+			//mesh_cluster_groups.insert(mesh_cluster_groups.end(), groups.begin(), groups.end());
+			mesh_cluster_groups.insert(mesh_cluster_groups.end(), new_groups.begin(), new_groups.end());
 
 			if (groups.size() == 1 && groups[0].size() < 8)
 				break;
