@@ -13,7 +13,6 @@ namespace Omni {
 
 	std::vector<MeshClusterGroup> VirtualMeshBuilder::GroupMeshClusters(
 		const std::span<RenderableMeshlet>& meshlets,
-		const std::span<MeshClusterGroup>& groups,
 		std::vector<uint32>& indices,
 		std::vector<uint8>& local_indices,
 		const std::vector<byte>& vertices,
@@ -21,17 +20,24 @@ namespace Omni {
 	) {
 		OMNIFORCE_ASSERT_TAGGED(vertex_stride >= 12, "Vertex stride is less than 12: no vertex position data?");
 
-		MeshPreprocessor mesh_preprocessor;
+		if (meshlets.size() < 8) {
+			MeshClusterGroup group;
+			for (uint32 i = 0; i < meshlets.size(); i++) {
+				group.push_back(i);
+			}
+				
+			return { group };
+		}
 
-		std::unordered_map<MeshletEdge, std::vector<uint32>, MeshletEdgeHasher> edges_groups_map;
-		std::unordered_map<uint32, std::vector<MeshletEdge>> groups_edges_map;
-
+		// meshlets represented by their index into 'meshlets'
+		std::unordered_map<MeshletEdge, std::vector<std::size_t>, MeshletEdgeHasher> edges_meshlets_map;
+		std::unordered_map<std::size_t, std::vector<MeshletEdge>> meshlets_edges_map; // probably could be a vector
 		std::vector<uint32> geometry_only_indices;
 
 		// A hack to satisfity meshopt with `index_count % 3 == 0` requirement
 		uint32 ib_padding = 3 - (indices.size() % 3);
 		indices.resize(indices.size() + ib_padding);
-
+		MeshPreprocessor mesh_preprocessor = {};
 		mesh_preprocessor.GenerateShadowIndexBuffer(
 			&geometry_only_indices,
 			&indices,
@@ -41,148 +47,116 @@ namespace Omni {
 		);
 		indices.resize(indices.size() - ib_padding);
 
-		// Find edges between meshlets
+		// for each cluster
+		for (std::size_t meshlet_idx = 0; meshlet_idx < meshlets.size(); meshlet_idx++) {
+			const auto& meshlet = meshlets[meshlet_idx];
 
-		// Per group
-		rh::unordered_set<uint32> unique_meshlet_ids;
-		for (uint32 group_idx = 0; group_idx < groups.size(); group_idx++) {
-			const auto& group = groups[group_idx];
-			// per meshlet
-			for (uint32 meshlet_idx = 0; meshlet_idx < group.size(); meshlet_idx++) {
-				OMNIFORCE_ASSERT_TAGGED(unique_meshlet_ids.find(group[meshlet_idx]) == unique_meshlet_ids.end(), "Detected duplicate cluster. Invalid grouping");
-				unique_meshlet_ids.emplace(group[meshlet_idx]);
+			const std::size_t triangleCount = meshlet.triangle_count;
+			// for each triangle of the cluster
+			for (std::size_t triangleIndex = 0; triangleIndex < triangleCount; triangleIndex++) {
+				// for each edge of the triangle
+				for (std::size_t i = 0; i < 3; i++) {
+					MeshletEdge edge(
+						geometry_only_indices[local_indices[(i + triangleIndex * 3) + meshlet.triangle_offset] + meshlet.vertex_offset],
+						geometry_only_indices[local_indices[(((i + 1) % 3) + triangleIndex * 3) + meshlet.triangle_offset] + meshlet.vertex_offset]
+					);
 
-				auto& meshlet = meshlets[group[meshlet_idx]];
+					auto& edge_meshlets = edges_meshlets_map[edge];
+					auto& meshlet_edges = meshlets_edges_map[meshlet_idx];
 
-				// per triangle
-				for (uint32 triangle_idx = 0; triangle_idx < meshlet.triangle_count; triangle_idx++) {
-					// per edge
-					for (uint32 edge_idx = 0; edge_idx < 3; edge_idx++) {
-						MeshletEdge edge(
-							indices[local_indices[(edge_idx + triangle_idx * 3) + meshlet.triangle_offset] + meshlet.vertex_offset],
-							indices[local_indices[(((edge_idx + 1) % 3) + triangle_idx * 3) + meshlet.triangle_offset] + meshlet.vertex_offset]
-						);
+					if (edge.first != edge.second) {
+						// If meshlet has already been registered for this edge - skip it
+						if (std::find(edge_meshlets.begin(), edge_meshlets.end(), meshlet_idx) == edge_meshlets.end())
+							edge_meshlets.push_back(meshlet_idx);
 
-						auto& edge_meshlets = edges_groups_map[edge];
-						auto& meshlet_edges = groups_edges_map[group_idx];
-
-						if (edge.first != edge.second) {
-							// If edge-meshlets pair already contains current meshlet idx - don't register it
-							if (std::find(edge_meshlets.begin(), edge_meshlets.end(), group_idx) == edge_meshlets.end())
-								edge_meshlets.push_back(group_idx);
-
-							// If meshlet-edges pair already contains an edge - don't register it
-							if (std::find(meshlet_edges.begin(), meshlet_edges.end(), edge) == meshlet_edges.end())
-								meshlet_edges.emplace_back(edge);
-						}
+						// If meshlet-edges pair already contains an edge - don't register it
+						if (std::find(meshlet_edges.begin(), meshlet_edges.end(), edge) == meshlet_edges.end())
+							meshlet_edges.emplace_back(edge);
 					}
 				}
 			}
 		}
 
-		OMNIFORCE_ASSERT_TAGGED(unique_meshlet_ids.size() <= meshlets.size(), "Invalid grouping data");
-
-		// Generate a group with all meshlets if num meshlets is less than 8 (unable to partition)
-		if (meshlets.size() < 8) {
-			MeshClusterGroup cluster_group;
-			for (auto& unique_meshlet_id : unique_meshlet_ids)
-				cluster_group.push_back(unique_meshlet_id);
-
-			return { cluster_group };
-		}
-
-		// Remove non-shared edges
-		std::erase_if(edges_groups_map, [](const auto& pair) {
+		// Erase non-shared edges
+		std::erase_if(edges_meshlets_map, [&](const auto& pair) {
 			return pair.second.size() <= 1;
 		});
 
-		OMNIFORCE_ASSERT_TAGGED(edges_groups_map.size(), "No connections between clusters detected");
+		// If no connections between meshlets were detected, return a group with all meshlets
+		if (edges_meshlets_map.empty()) {
+			return groupWithAllMeshlets();
+		}
 
-		for (auto& meshlet_edges : groups_edges_map)
-			OMNIFORCE_ASSERT_TAGGED(meshlet_edges.second.size(), "No edges detected for a cluster, probably degenerate cluster");
+		idx_t graph_vertex_count = meshlets.size(); // graph is built from meshlets, hence graph vertex = meshlet
+		idx_t num_constrains = 1;
+		idx_t num_partitions = meshlets.size() / 4; // Group by 4 meshlets
 
-		// Prepare data for METIS graph cut
-		idx_t cluster_graph_vertex_count = groups.size(); // Graph is built from groups, hence group = graph vertex
-		idx_t num_constaints = 1; // Default minimal value
-		idx_t num_partitions = std::clamp(uint32(unique_meshlet_ids.size() / 4), 2u, uint32(groups.size())); // Make groups of 4 meshlets
+		OMNIFORCE_ASSERT_TAGGED(num_partitions > 1, "Invalid partition count");
 
-		OMNIFORCE_ASSERT_TAGGED(num_partitions >= 2, "Num partitions must be greater or equal to 2");
-		OMNIFORCE_ASSERT_TAGGED(num_partitions <= groups.size(), "Invalid partition count");
+		idx_t metis_options[METIS_NOPTIONS];
+		METIS_SetDefaultOptions(metis_options);
 
-		// Prepare xadj, adjncy and adjwgts
+		// edge-cut, ie minimum cost betweens groups.
+		metis_options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
+		metis_options[METIS_OPTION_CCORDER] = 1; // identify connected components first
+		metis_options[METIS_OPTION_NUMBERING] = 0;
+
+		// Initialize data for METIS
 		std::vector<idx_t> partition;
-		partition.resize(cluster_graph_vertex_count);
+		partition.resize(graph_vertex_count);
 
 		// xadj
 		std::vector<idx_t> x_adjacency;
-		x_adjacency.reserve(cluster_graph_vertex_count + 1);
+		x_adjacency.reserve(graph_vertex_count + 1);
 
 		// adjncy
 		std::vector<idx_t> edge_adjacency;
 
-		// weight of each edge. Weight of an edge = num shared edges between connected clusters
+		// edgwgts
 		std::vector<idx_t> edge_weights;
 
-		// Per group
-		for (uint32 group_idx = 0; group_idx < groups.size(); group_idx++) {
-			uint32 first_adj_index = edge_adjacency.size();
+		for (uint32 meshlet_idx = 0; meshlet_idx < meshlets.size(); meshlet_idx++) {
+			uint32 edge_adjacency_range_begin_iterator = edge_adjacency.size();
+			for (const auto& edge : meshlets_edges_map[meshlet_idx]) {
 
-			// Per edge
-			for (const auto& edge : groups_edges_map[group_idx]) {
-				auto connections_iterator = edges_groups_map.find(edge);
-
-				if (connections_iterator == edges_groups_map.end())
+				auto connections_iterator = edges_meshlets_map.find(edge);
+				if (connections_iterator == edges_meshlets_map.end()) {
 					continue;
+				}
 
 				const auto& connections = connections_iterator->second;
 
-				// Per connection
-				for (const auto& connected_cluster : connections) {
-					if (connected_cluster != group_idx) {
-						auto edge_iterator = std::find(edge_adjacency.begin() + first_adj_index, edge_adjacency.end(), connected_cluster);
-						if (edge_iterator == edge_adjacency.end()) {
-							// First encounter, register connection
-							edge_adjacency.emplace_back(connected_cluster);
+				for (const auto& meshlet : connections) {
+					if (meshlet != meshlet_idx) {
+						auto existingEdgeIter = std::find(edge_adjacency.begin() + edge_adjacency_range_begin_iterator, edge_adjacency.end(), meshlet);
+						if (existingEdgeIter == edge_adjacency.end()) {
+							// First encounter - register connection
+							edge_adjacency.emplace_back(meshlet);
 							edge_weights.emplace_back(1);
 						}
 						else {
-							// Not first encounter, increment num connections
-							std::ptrdiff_t pointer_difference = std::distance(edge_adjacency.begin(), edge_iterator);
+							// Increment connection count
+							std::ptrdiff_t pointer_distance = std::distance(edge_adjacency.begin(), existingEdgeIter);
 
-							OMNIFORCE_ASSERT_TAGGED(pointer_difference >= 0, "Pointer difference less than zero");
-							OMNIFORCE_ASSERT_TAGGED(pointer_difference < edge_weights.size(), "Edge weight and adjacency don't have the same size");
+							OMNIFORCE_ASSERT_TAGGED(pointer_distance >= 0, "Pointer distanceless than zero");
+							OMNIFORCE_ASSERT_TAGGED(pointer_distance < edge_weights.size(), "Edge weights and edge adjacency must have the same length");
 
-							edge_weights[pointer_difference]++;
+							edge_weights[pointer_distance]++;
 						}
 					}
 				}
 			}
-			x_adjacency.push_back(first_adj_index);
+			x_adjacency.push_back(edge_adjacency_range_begin_iterator);
 		}
 		x_adjacency.push_back(edge_adjacency.size());
 
-		OMNIFORCE_ASSERT_TAGGED(x_adjacency.size() == cluster_graph_vertex_count + 1, "Invalid METIS graph build");
+		OMNIFORCE_ASSERT_TAGGED(x_adjacency.size() == meshlets.size() + 1, "unexpected count of vertices for METIS graph: invalid xadj");
+		OMNIFORCE_ASSERT_TAGGED(edge_adjacency.size() == edge_weights.size(), "Failed during METIS CSR graph generation: invalid adjncy / edgwgts");
 
-		for (auto& edge_adjacency_index : x_adjacency)
-			OMNIFORCE_ASSERT_TAGGED(edge_adjacency_index <= edge_adjacency.size(), "Out of bounds inside x_adjacency");
-
-		for (auto& vertex_index : edge_adjacency)
-			OMNIFORCE_ASSERT_TAGGED(vertex_index <= cluster_graph_vertex_count, "Out of bounds inside edge_adjacency");
-
-		// Setup METIS options for graph edge-cut operations
-		idx_t options[METIS_NOPTIONS];
-		METIS_SetDefaultOptions(options);
-
-		options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
-		options[METIS_OPTION_CCORDER] = 1;
-		options[METIS_OPTION_NUMBERING] = 0;
-
-		// Start METIS graph partition
-		m_Mutex.lock();
-		idx_t edge_cut;
+		idx_t final_cut_cost; // final cost of the cut found by METIS
 		int result = METIS_PartGraphKway(
-			&cluster_graph_vertex_count,
-			&num_constaints,
+			&graph_vertex_count,
+			&num_constrains,
 			x_adjacency.data(),
 			edge_adjacency.data(),
 			nullptr, /* vertex weights */
@@ -191,32 +165,56 @@ namespace Omni {
 			&num_partitions,
 			nullptr,
 			nullptr,
-			options,
-			&edge_cut,
+			metis_options,
+			&final_cut_cost,
 			partition.data()
 		);
-		m_Mutex.unlock();
 
-		OMNIFORCE_ASSERT_TAGGED(result == METIS_OK, "Graph partition failed");
+		OMNIFORCE_ASSERT_TAGGED(result == METIS_OK, "Graph partitioning failed!");
 
-		// If assertion is not triggered, then we successfully performed the edge-cut and can register partitions
-		std::vector<MeshClusterGroup> partitions(num_partitions);
+		// ===== Group meshlets together
+		std::vector<MeshClusterGroup> groups;
+		groups.resize(num_partitions);
+		for (std::size_t i = 0; i < meshlets.size(); i++) {
+			idx_t partitionNumber = partition[i];
+			groups[partitionNumber].push_back(i);
+		}
+		return groups;
 
-		for (uint32 i = 0; i < cluster_graph_vertex_count; i++) {
-			uint32 partition_index = partition[i];
+	}
 
-			for (const auto& meshlet_idx : groups[i])
-				partitions[partition_index].push_back(meshlet_idx);
+	float32 VirtualMeshBuilder::ComputeVertexDensity(const std::vector<byte> vertices, uint32 vertex_stride)
+	{
+		// Not efficient *at all*. Should be rewritten to Kd-tree implementation
+		OMNIFORCE_ASSERT_TAGGED(vertices.size(), "No points provided");
+		OMNIFORCE_ASSERT_TAGGED(vertex_stride >= 12, "Invalid vertex stride");
 
+		float32 total_distance = 0.0f;
+		uint32 num_iterations = vertices.size() / vertex_stride;
+
+		for (uint32 i = 0; i < num_iterations; i++) {
+			glm::vec3 v1 = {};
+			memcpy(&v1, vertices.data() + (i * vertex_stride), sizeof glm::vec3);
+
+			for (uint32 j = i + 1; j < num_iterations; j++) {
+				glm::vec3 v2 = {};
+				memcpy(&v2, vertices.data() + (j * vertex_stride), sizeof glm::vec3);
+
+				total_distance += glm::distance(v1, v2);
+			}
 		}
 
-		return partitions;
+		float32 average_distance = total_distance / (num_iterations * (num_iterations - 1) / 2);
+		float32 density_per_unit = 1.0f / average_distance;
 
+		return density_per_unit;
 	}
 
 	VirtualMesh VirtualMeshBuilder::BuildClusterGraph(const std::vector<byte>& vertices, const std::vector<uint32>& indices, uint32 vertex_stride)
 	{
 		MeshPreprocessor mesh_preprocessor = {};
+
+		float32 vertex_density = ComputeVertexDensity(vertices, vertex_stride);
 
 		// Clusterize initial mesh, basically build LOD 0
 		Scope<ClusterizedMesh> meshlets_data = mesh_preprocessor.GenerateMeshlets(&vertices, &indices, vertex_stride);
@@ -227,39 +225,23 @@ namespace Omni {
 		for (uint32 i = 0; i < mesh_cluster_groups.size(); i++)
 			mesh_cluster_groups[i].push_back(i);
 
-		uint32 current_source_groups_offset = 0;
-		uint32 current_source_meshlets_offset = 0;
-
-		for (uint32 i = 0; i < meshlets_data->meshlets.size(); i++)
+		for (uint32 i = 0; i < meshlets_data->meshlets.size(); i++) {
 			meshlets_data->meshlets[i].group = i;
+		}
 
-		const uint32 max_lod = 25;
 		uint32 lod_idx = 1;
+		uint32 current_meshlets_offset = 0;
+		const uint32 max_lod = 10;
+
 		while (lod_idx < max_lod) {
-			OMNIFORCE_CORE_TRACE("Building LOD_{}", lod_idx);
+			std::span<RenderableMeshlet> meshlets_to_group(meshlets_data->meshlets.begin() + current_meshlets_offset, meshlets_data->meshlets.end());
+			auto groups = GroupMeshClusters(meshlets_to_group, meshlets_data->indices, meshlets_data->local_indices, vertices, vertex_stride);
 
-			std::span<MeshClusterGroup> previous_lod_groups(mesh_cluster_groups.begin() + current_source_groups_offset, mesh_cluster_groups.end());
-			std::span<RenderableMeshlet> previous_lod_meshlets(meshlets_data->meshlets.begin(), meshlets_data->meshlets.end());
+			float t_lod = float(lod_idx) / (float)max_lod;
 
-			std::vector<MeshClusterGroup> groups = GroupMeshClusters(
-				previous_lod_meshlets, 
-				previous_lod_groups,
-				meshlets_data->indices, 
-				meshlets_data->local_indices, 
-				vertices, 
-				vertex_stride
-			);
-
-			current_source_groups_offset = mesh_cluster_groups.size();
-			current_source_meshlets_offset = meshlets_data->meshlets.size();
-
-			std::erase_if(groups, [](const auto& value) {
-				return value.size() == 0;
-			});
-
-			std::vector<MeshClusterGroup> new_groups;
-
-			for (auto& group : groups) {
+			uint32 num_newly_created_meshlets = 0;
+			std::vector<RenderableMeshlet> new_meshlets;
+			for (const auto& group : groups) {
 				std::vector<uint32> merged_indices;
 				uint32 num_merged_indices = 0;
 
@@ -269,50 +251,50 @@ namespace Omni {
 				merged_indices.reserve(num_merged_indices);
 
 				for (auto& meshlet_idx : group) {
-					RenderableMeshlet& meshlet = meshlets_data->meshlets[meshlet_idx];
+					RenderableMeshlet& meshlet = meshlets_data->meshlets[meshlet_idx + current_meshlets_offset];
 
 					for (uint32 index_idx = 0; index_idx < meshlet.triangle_count * 3; index_idx++) {
 						merged_indices.push_back(meshlets_data->indices[meshlet.vertex_offset + meshlets_data->local_indices[meshlet.triangle_offset + index_idx]]);
 					}
 				}
 
+				float32 target_error = 1.0f * t_lod + 0.01f * (1 - t_lod);
+
 				std::vector<uint32> simplified_indices;
 
-				float32 tlod = (float32)lod_idx / (float32)max_lod;
-				float32 target_error = 0.9f * tlod + 0.01f * (1 - tlod);
+				if(simplified_indices.size())
+					mesh_preprocessor.GenerateMeshLOD(&simplified_indices, &vertices, &merged_indices, vertex_stride, merged_indices.size() / 2, target_error, true);
 
-				mesh_preprocessor.GenerateMeshLOD(&simplified_indices, &vertices, &merged_indices, vertex_stride, merged_indices.size() / 2, target_error, false);
+				OMNIFORCE_ASSERT_TAGGED(simplified_indices.size(), "Failed to generate LOD");
+
+				if (simplified_indices.size() == merged_indices.size())
+					continue;
 
 				Scope<ClusterizedMesh> simplified_meshlets = mesh_preprocessor.GenerateMeshlets(&vertices, &simplified_indices, vertex_stride);
 
-				uint32 group_id = UUID() % 482034808ull;
+				uint32 group_idx = UUID() % 3240234287;
+				num_newly_created_meshlets += simplified_meshlets->meshlets.size();
 				for (auto& meshlet : simplified_meshlets->meshlets) {
 					meshlet.vertex_offset += meshlets_data->indices.size();
 					meshlet.triangle_offset += meshlets_data->local_indices.size();
-					meshlet.group = group_id;
+					meshlet.group = group_idx;
 					meshlet.lod = lod_idx;
 				}
+				
+				new_meshlets.insert(new_meshlets.end(), simplified_meshlets->meshlets.begin(), simplified_meshlets->meshlets.end());
 
-				group.clear();
-				group.reserve(simplified_meshlets->meshlets.size());
-				for(uint32 meshlet_idx = 0; meshlet_idx < simplified_meshlets->meshlets.size(); meshlet_idx++) {
-					group.push_back(meshlet_idx + meshlets_data->meshlets.size());
-					new_groups.push_back({ meshlet_idx + (uint32)meshlets_data->meshlets.size() });
-				}
-
-				meshlets_data->meshlets.insert(meshlets_data->meshlets.end(), simplified_meshlets->meshlets.begin(), simplified_meshlets->meshlets.end());
 				meshlets_data->indices.insert(meshlets_data->indices.end(), simplified_meshlets->indices.begin(), simplified_meshlets->indices.end());
 				meshlets_data->local_indices.insert(meshlets_data->local_indices.end(), simplified_meshlets->local_indices.begin(), simplified_meshlets->local_indices.end());
 				meshlets_data->cull_bounds.insert(meshlets_data->cull_bounds.end(), simplified_meshlets->cull_bounds.begin(), simplified_meshlets->cull_bounds.end());
 
 			}
+			current_meshlets_offset = meshlets_data->meshlets.size();
+			meshlets_data->meshlets.insert(meshlets_data->meshlets.end(), new_meshlets.begin(), new_meshlets.end());
 
-			//mesh_cluster_groups.insert(mesh_cluster_groups.end(), groups.begin(), groups.end());
-			mesh_cluster_groups.insert(mesh_cluster_groups.end(), new_groups.begin(), new_groups.end());
-
-			if (groups.size() == 1 && groups[0].size() < 8)
+			if(num_newly_created_meshlets == 1)
 				break;
 
+			OMNIFORCE_CORE_TRACE("Generated LOD_{}", lod_idx);
 			lod_idx++;
 		}
 
@@ -328,5 +310,7 @@ namespace Omni {
 		return mesh;
 
 	}
+
+	
 
 }
