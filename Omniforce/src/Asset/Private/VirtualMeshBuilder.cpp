@@ -30,8 +30,8 @@ namespace Omni {
 		}
 
 		// meshlets represented by their index into 'meshlets'
-		std::unordered_map<MeshletEdge, std::vector<std::size_t>, MeshletEdgeHasher> edges_meshlets_map;
-		std::unordered_map<std::size_t, std::vector<MeshletEdge>> meshlets_edges_map; // probably could be a vector
+		std::unordered_map<MeshletEdge, std::vector<uint32>, MeshletEdgeHasher> edges_meshlets_map;
+		std::unordered_map<uint32, std::vector<MeshletEdge>> meshlets_edges_map; // probably could be a vector
 		std::vector<uint32> geometry_only_indices;
 
 		// A hack to satisfity meshopt with `index_count % 3 == 0` requirement
@@ -48,17 +48,17 @@ namespace Omni {
 		indices.resize(indices.size() - ib_padding);
 
 		// for each cluster
-		for (std::size_t meshlet_idx = 0; meshlet_idx < meshlets.size(); meshlet_idx++) {
+		for (uint32 meshlet_idx = 0; meshlet_idx < meshlets.size(); meshlet_idx++) {
 			const auto& meshlet = meshlets[meshlet_idx];
 
-			const std::size_t triangleCount = meshlet.triangle_count;
+			const uint32 triangle_count = meshlet.triangle_count;
 			// for each triangle of the cluster
-			for (std::size_t triangleIndex = 0; triangleIndex < triangleCount; triangleIndex++) {
+			for (uint32 triangle_idx = 0; triangle_idx < triangle_count; triangle_idx++) {
 				// for each edge of the triangle
-				for (std::size_t i = 0; i < 3; i++) {
+				for (uint32 i = 0; i < 3; i++) {
 					MeshletEdge edge(
-						geometry_only_indices[local_indices[(i + triangleIndex * 3) + meshlet.triangle_offset] + meshlet.vertex_offset],
-						geometry_only_indices[local_indices[(((i + 1) % 3) + triangleIndex * 3) + meshlet.triangle_offset] + meshlet.vertex_offset]
+						geometry_only_indices[local_indices[(i + triangle_idx * 3) + meshlet.triangle_offset] + meshlet.vertex_offset],
+						geometry_only_indices[local_indices[(((i + 1) % 3) + triangle_idx * 3) + meshlet.triangle_offset] + meshlet.vertex_offset]
 					);
 
 					auto& edge_meshlets = edges_meshlets_map[edge];
@@ -175,7 +175,7 @@ namespace Omni {
 		// ===== Group meshlets together
 		std::vector<MeshClusterGroup> groups;
 		groups.resize(num_partitions);
-		for (std::size_t i = 0; i < meshlets.size(); i++) {
+		for (uint32 i = 0; i < meshlets.size(); i++) {
 			idx_t partitionNumber = partition[i];
 			groups[partitionNumber].push_back(i);
 		}
