@@ -2,17 +2,21 @@
 #include "../MeshPreprocessor.h"
 #include <Log/Logger.h>
 #include <Asset/MeshPreprocessor.h>
+#include <Core/RandomNumberGenerator.h>
 
 #include <unordered_map>
 #include <fstream>
 #include <span>
 
 #include <metis.h>
+#include <glm/glm.hpp>
+#include <glm/gtx/norm.hpp>
 
 namespace Omni {
 
-	std::vector<MeshClusterGroup> VirtualMeshBuilder::GroupMeshClusters(
+	std::vector<Omni::MeshClusterGroup> VirtualMeshBuilder::GroupMeshClusters(
 		const std::span<RenderableMeshlet>& meshlets,
+		const std::vector<uint32>& welder_remap_table,
 		std::vector<uint32>& indices,
 		std::vector<uint8>& local_indices,
 		const std::vector<byte>& vertices,
@@ -30,7 +34,7 @@ namespace Omni {
 		}
 
 		// meshlets represented by their index into 'meshlets'
-		std::unordered_map<MeshletEdge, std::vector<uint32>, MeshletEdgeHasher> edges_meshlets_map;
+		std::unordered_map<MeshletEdge, std::vector<uint32>> edges_meshlets_map;
 		std::unordered_map<uint32, std::vector<MeshletEdge>> meshlets_edges_map; // probably could be a vector
 		std::vector<uint32> geometry_only_indices;
 
@@ -57,8 +61,8 @@ namespace Omni {
 				// for each edge of the triangle
 				for (uint32 i = 0; i < 3; i++) {
 					MeshletEdge edge(
-						geometry_only_indices[local_indices[(i + triangle_idx * 3) + meshlet.triangle_offset] + meshlet.vertex_offset],
-						geometry_only_indices[local_indices[(((i + 1) % 3) + triangle_idx * 3) + meshlet.triangle_offset] + meshlet.vertex_offset]
+						welder_remap_table[geometry_only_indices[local_indices[(i + triangle_idx * 3) + meshlet.triangle_offset] + meshlet.vertex_offset]],
+						welder_remap_table[geometry_only_indices[local_indices[(((i + 1) % 3) + triangle_idx * 3) + meshlet.triangle_offset] + meshlet.vertex_offset]]
 					);
 
 					auto& edge_meshlets = edges_meshlets_map[edge];
@@ -84,7 +88,12 @@ namespace Omni {
 
 		// If no connections between meshlets were detected, return a group with all meshlets
 		if (edges_meshlets_map.empty()) {
-			return groupWithAllMeshlets();
+			MeshClusterGroup group;
+			for (uint32 i = 0; i < meshlets.size(); i++) {
+				group.push_back(i);
+			}
+
+			return { group };
 		}
 
 		idx_t graph_vertex_count = meshlets.size(); // graph is built from meshlets, hence graph vertex = meshlet
@@ -96,7 +105,7 @@ namespace Omni {
 		idx_t metis_options[METIS_NOPTIONS];
 		METIS_SetDefaultOptions(metis_options);
 
-		// edge-cut, ie minimum cost betweens groups.
+		// edge-cut
 		metis_options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
 		metis_options[METIS_OPTION_CCORDER] = 1; // identify connected components first
 		metis_options[METIS_OPTION_NUMBERING] = 0;
@@ -154,6 +163,8 @@ namespace Omni {
 		OMNIFORCE_ASSERT_TAGGED(edge_adjacency.size() == edge_weights.size(), "Failed during METIS CSR graph generation: invalid adjncy / edgwgts");
 
 		idx_t final_cut_cost; // final cost of the cut found by METIS
+
+		m_Mutex.lock();
 		int result = METIS_PartGraphKway(
 			&graph_vertex_count,
 			&num_constrains,
@@ -169,6 +180,7 @@ namespace Omni {
 			&final_cut_cost,
 			partition.data()
 		);
+		m_Mutex.unlock();
 
 		OMNIFORCE_ASSERT_TAGGED(result == METIS_OK, "Graph partitioning failed!");
 
@@ -183,38 +195,45 @@ namespace Omni {
 
 	}
 
-	float32 VirtualMeshBuilder::ComputeVertexDensity(const std::vector<byte> vertices, uint32 vertex_stride)
+	float32 VirtualMeshBuilder::ComputeAverageVertexDistanceSquared(const std::vector<byte> vertices, const std::vector<uint32>& indices, uint32 vertex_stride)
 	{
-		// Not efficient *at all*. Should be rewritten to Kd-tree implementation
-		OMNIFORCE_ASSERT_TAGGED(vertices.size(), "No points provided");
-		OMNIFORCE_ASSERT_TAGGED(vertex_stride >= 12, "Invalid vertex stride");
+		// Law of large numbers:
+		// In probability theory, the law of large numbers (LLN) is a mathematical theorem that 
+		// states that the average of the results obtained from a large number of independent 
+		// and identical random samples converges to the true value, if it exists.
 
-		float32 total_distance = 0.0f;
-		uint32 num_iterations = vertices.size() / vertex_stride;
+		// Sample 1024 random triangles and compute distance between its vertices. Dramatically speeds up vertex density computation for high-fidelity meshes
+		// with large vertex and index counts
+		OMNIFORCE_ASSERT_TAGGED(indices.size(), "No indices was provided");
+		OMNIFORCE_ASSERT_TAGGED(vertices.size(), "No vertex data was provided");
 
-		for (uint32 i = 0; i < num_iterations; i++) {
-			glm::vec3 v1 = {};
-			memcpy(&v1, vertices.data() + (i * vertex_stride), sizeof glm::vec3);
+		const uint32 NUM_SAMPLES = 1024;
+		const uint32 triangle_count = indices.size() / 3;
+		
+		float64 average_distance_sq = 0.0f;
 
-			for (uint32 j = i + 1; j < num_iterations; j++) {
-				glm::vec3 v2 = {};
-				memcpy(&v2, vertices.data() + (j * vertex_stride), sizeof glm::vec3);
+		for (uint32 i = 0; i < NUM_SAMPLES; i++) {
+			uint32 triangle_sample_id = RandomEngine::Generate<uint32>(0, triangle_count - 1);
+			uint32 i0 = indices[triangle_sample_id + 0];
+			uint32 i1 = indices[triangle_sample_id + 1];
+			uint32 i2 = indices[triangle_sample_id + 2];
 
-				total_distance += glm::distance(v1, v2);
-			}
+			glm::vec3* v0, *v1, *v2;
+			v0 = (glm::vec3*)&vertices[i0 * vertex_stride];
+			v1 = (glm::vec3*)&vertices[i1 * vertex_stride];
+			v2 = (glm::vec3*)&vertices[i2 * vertex_stride];
+
+			average_distance_sq += glm::distance2(*v0, *v1);
+			average_distance_sq += glm::distance2(*v1, *v2);
+			average_distance_sq += glm::distance2(*v0, *v2);
 		}
 
-		float32 average_distance = total_distance / (num_iterations * (num_iterations - 1) / 2);
-		float32 density_per_unit = 1.0f / average_distance;
-
-		return density_per_unit;
+		return average_distance_sq / (NUM_SAMPLES * 3);
 	}
 
 	VirtualMesh VirtualMeshBuilder::BuildClusterGraph(const std::vector<byte>& vertices, const std::vector<uint32>& indices, uint32 vertex_stride)
 	{
 		MeshPreprocessor mesh_preprocessor = {};
-
-		float32 vertex_density = ComputeVertexDensity(vertices, vertex_stride);
 
 		// Clusterize initial mesh, basically build LOD 0
 		Scope<ClusterizedMesh> meshlets_data = mesh_preprocessor.GenerateMeshlets(&vertices, &indices, vertex_stride);
@@ -232,16 +251,27 @@ namespace Omni {
 		uint32 lod_idx = 1;
 		uint32 current_meshlets_offset = 0;
 		const uint32 max_lod = 10;
+		
+		std::vector<uint32> previous_lod_indices = indices;
 
 		while (lod_idx < max_lod) {
+			float32 average_vertex_distance_sq = ComputeAverageVertexDistanceSquared(vertices, meshlets_data->indices, vertex_stride);
+			std::vector<uint32> welder_remap_table = InitializeVertexWelderRemapTable(vertices, vertex_stride, average_vertex_distance_sq / 8);
+
 			std::span<RenderableMeshlet> meshlets_to_group(meshlets_data->meshlets.begin() + current_meshlets_offset, meshlets_data->meshlets.end());
-			auto groups = GroupMeshClusters(meshlets_to_group, meshlets_data->indices, meshlets_data->local_indices, vertices, vertex_stride);
+			auto groups = GroupMeshClusters(meshlets_to_group, welder_remap_table, meshlets_data->indices, meshlets_data->local_indices, vertices, vertex_stride);
 
-			float t_lod = float(lod_idx) / (float)max_lod;
+			// Remove empty groups
+			std::erase_if(groups, [](const auto& group) {
+				return group.size() == 0;
+			});
 
+			// Process groups
+			float32 t_lod = float32(lod_idx) / (float32)max_lod;
 			uint32 num_newly_created_meshlets = 0;
 			std::vector<RenderableMeshlet> new_meshlets;
 			for (const auto& group : groups) {
+				// Merge meshlets
 				std::vector<uint32> merged_indices;
 				uint32 num_merged_indices = 0;
 
@@ -254,25 +284,30 @@ namespace Omni {
 					RenderableMeshlet& meshlet = meshlets_data->meshlets[meshlet_idx + current_meshlets_offset];
 
 					for (uint32 index_idx = 0; index_idx < meshlet.triangle_count * 3; index_idx++) {
-						merged_indices.push_back(meshlets_data->indices[meshlet.vertex_offset + meshlets_data->local_indices[meshlet.triangle_offset + index_idx]]);
+						merged_indices.push_back(welder_remap_table[meshlets_data->indices[meshlet.vertex_offset + meshlets_data->local_indices[meshlet.triangle_offset + index_idx]]]);
+					}
+				}
+				OMNIFORCE_ASSERT_TAGGED(merged_indices.size(), "No indices in cluster group merged index buffer");
+
+				float32 target_error = 0.9f * t_lod + 0.01f * (1 - t_lod);
+				std::vector<uint32> simplified_indices;
+
+				// Generate LOD
+				while (!simplified_indices.size() || simplified_indices.size() == merged_indices.size()) {
+					mesh_preprocessor.GenerateMeshLOD(&simplified_indices, &vertices, &merged_indices, vertex_stride, merged_indices.size() / 2, target_error, true);
+					target_error += 0.05f;
+					if (target_error > 1.0f && simplified_indices.size() == merged_indices.size()) {
+						OMNIFORCE_CORE_WARNING("Failed to generate LOD, registering source clusters");
+						break;
 					}
 				}
 
-				float32 target_error = 1.0f * t_lod + 0.01f * (1 - t_lod);
-
-				std::vector<uint32> simplified_indices;
-
-				if(simplified_indices.size())
-					mesh_preprocessor.GenerateMeshLOD(&simplified_indices, &vertices, &merged_indices, vertex_stride, merged_indices.size() / 2, target_error, true);
-
 				OMNIFORCE_ASSERT_TAGGED(simplified_indices.size(), "Failed to generate LOD");
 
-				if (simplified_indices.size() == merged_indices.size())
-					continue;
-
+				// Split back
 				Scope<ClusterizedMesh> simplified_meshlets = mesh_preprocessor.GenerateMeshlets(&vertices, &simplified_indices, vertex_stride);
 
-				uint32 group_idx = UUID() % 3240234287;
+				uint32 group_idx = RandomEngine::Generate<uint32>();
 				num_newly_created_meshlets += simplified_meshlets->meshlets.size();
 				for (auto& meshlet : simplified_meshlets->meshlets) {
 					meshlet.vertex_offset += meshlets_data->indices.size();
@@ -311,6 +346,37 @@ namespace Omni {
 
 	}
 
-	
+	// TODO: take UVs into account
+	// Assumes that positions are encoded in first 12 bytes of vertices
+	std::vector<uint32> VirtualMeshBuilder::InitializeVertexWelderRemapTable(const std::vector<byte>& vertices, uint32 vertex_stride, float32 max_vertex_distance_sq)
+	{
+		std::vector<uint32> remap_table;
+
+		const uint32 vertex_count = vertices.size() / vertex_stride;
+		remap_table.resize(vertex_count, uint32(-1)); // overflow on purpose
+		
+		for (uint32 v = 0; v < vertex_count; v++) {
+			const glm::vec3* currentVertex = (glm::vec3*)&vertices[v * vertex_stride];
+			uint32 replacement = -1;
+
+			for (uint32 potentialReplacement = 0; potentialReplacement < v; potentialReplacement++) {
+				const glm::vec3* otherVertex = (glm::vec3*)&vertices[remap_table[potentialReplacement]];
+				const float32 vertex_distance_squared = glm::distance2(*currentVertex, *otherVertex);
+
+				if (vertex_distance_squared <= max_vertex_distance_sq) {
+					replacement = potentialReplacement;
+				}
+			}
+
+			if (replacement == -1) {
+				remap_table[v] = v;
+			}
+			else {
+				remap_table[v] = replacement;
+			}
+		}
+
+		return remap_table;
+	}
 
 }

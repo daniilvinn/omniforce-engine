@@ -37,10 +37,28 @@ namespace Omni {
 		const uint32 second;
 	};
 
-	struct MeshletEdgeHasher {
-		uint32 operator()(const MeshletEdge& edge) const {
-			uint32 h = edge.first;
-			Utils::CombineHashes(h, edge.second);
+}
+
+namespace robin_hood {
+
+	template<>
+	struct hash<Omni::MeshletEdge> {
+		size_t operator()(const Omni::MeshletEdge& edge) const {
+			uint32_t h = hash<uint32_t>()(edge.first);
+			Omni::Utils::CombineHashes(h, edge.second);
+			return h;
+		}
+	};
+
+}
+
+namespace std {
+
+	template<>
+	struct hash<Omni::MeshletEdge> {
+		size_t operator()(const Omni::MeshletEdge& edge) const {
+			uint32_t h = hash<uint32_t>()(edge.first);
+			Omni::Utils::CombineHashes(h, edge.second);
 			return h;
 		}
 	};

@@ -25,15 +25,18 @@ namespace Omni {
 		// Takes a list of meshlets and mesh data, outputs a list of groups of meshlets
 		std::vector<MeshClusterGroup> GroupMeshClusters(
 			const std::span<RenderableMeshlet>& meshlets,
+			const std::vector<uint32>& welder_remap_table
+		,
 			std::vector<uint32>& indices,
 			std::vector<uint8>& local_indices,
 			const std::vector<byte>& vertices,
 			uint32 vertex_stride
 		);
 
-		float32 ComputeVertexDensity(const std::vector<byte> vertices, uint32 vertex_stride);
+		float32 ComputeAverageVertexDistanceSquared(const std::vector<byte> vertices, const std::vector<uint32>& indices, uint32 vertex_stride);
 
 		VirtualMesh BuildClusterGraph(const std::vector<byte>& vertices, const std::vector<uint32>& indices, uint32 vertex_stride);
+		std::vector<uint32> InitializeVertexWelderRemapTable(const std::vector<byte>& vertices, uint32 vertex_stride, float32 max_vertex_distance_sq);
 
 	private:
 		inline static std::shared_mutex m_Mutex;

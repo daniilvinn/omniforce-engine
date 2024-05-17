@@ -178,13 +178,13 @@ namespace Omni {
 	bool ModelImporter::ValidateSubmesh(const ftf::Mesh* mesh, const ftf::Primitive* primitive, const ftf::Material* material)
 	{
 		// Check if material is PBR-compatible. Currently engine supports only PBR materials
-		if (!material->pbrData.baseColorTexture.has_value()) {
-			OMNIFORCE_CORE_WARNING("One of the submeshes \"{}\" has no PBR material. Skipping submesh", mesh->name);
-			OMNIFORCE_CUSTOM_LOGGER_WARN("OmniEditor", "One of the submeshes has no PBR material. Skipping submesh");
-			return true;
-		}
+		//if (!material->pbrData.baseColorTexture.has_value()) {
+		//	OMNIFORCE_CORE_WARNING("One of the submeshes \"{}\" has no PBR material. Skipping submesh", mesh->name);
+		//	OMNIFORCE_CUSTOM_LOGGER_WARN("OmniEditor", "One of the submeshes has no PBR material. Skipping submesh");
+		//	return true;
+		//}
 		// Check if mesh data is indexed
-		else if (!primitive->indicesAccessor.has_value()) {
+		if (!primitive->indicesAccessor.has_value()) {
 			OMNIFORCE_CORE_ERROR("One of the submeshes has no indices. Unindexed meshes are not supported. Skipping submesh");
 			OMNIFORCE_CUSTOM_LOGGER_ERROR("OmniEditor", "One of the submeshes has no indices. Unindexed meshes are not supported. Skipping submesh");
 			return true;
