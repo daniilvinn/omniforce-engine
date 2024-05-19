@@ -2,6 +2,7 @@
 
 #include <Foundation/Types.h>
 #include <Foundation/Macros.h>
+#include <Log/Logger.h>
 
 #include <random>
 #include <limits>
@@ -12,7 +13,7 @@ namespace Omni {
 	public:
 		template<typename T>
 		inline static T Generate(T min = std::numeric_limits<T>::min(), T max = std::numeric_limits<T>::max()) {
-			OMNIFORCE_ASSERT_TAGGED(std::is_integral<T>, "Non-integral template parameter");
+			static_assert(std::is_integral<T>()); // non-integral type
 			T value = (s_UniformDistribution(s_MersenneTwisterGenerator) % (max - min)) + min;
 			return value;
 		}

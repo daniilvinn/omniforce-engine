@@ -11,6 +11,7 @@
 #include <metis.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/norm.hpp>
+#include <meshoptimizer.h>
 
 namespace Omni {
 
@@ -248,17 +249,33 @@ namespace Omni {
 			meshlets_data->meshlets[i].group = i;
 		}
 
+		// Global data
 		uint32 lod_idx = 1;
 		uint32 current_meshlets_offset = 0;
-		const uint32 max_lod = 10;
-		
+		float32 simplify_scale = meshopt_simplifyScale((float32*)vertices.data(), vertices.size() / vertex_stride, vertex_stride);
+		// Compute max lod count. I expect each lod level to have 2 times less indices than
+		// previous level. Added 2 if some levels won't be able to half index count
+		const uint32 max_lod = glm::ceil(glm::log2(float32(indices.size()))); 
+		//const uint32 max_lod = 5;
+
 		std::vector<uint32> previous_lod_indices = indices;
 
 		while (lod_idx < max_lod) {
-			float32 average_vertex_distance_sq = ComputeAverageVertexDistanceSquared(vertices, meshlets_data->indices, vertex_stride);
-			std::vector<uint32> welder_remap_table = InitializeVertexWelderRemapTable(vertices, vertex_stride, average_vertex_distance_sq / 8);
-
+			// Create a span of meshlets which are currently used as source meshlets for simplification. Also setup t_lod variable
 			std::span<RenderableMeshlet> meshlets_to_group(meshlets_data->meshlets.begin() + current_meshlets_offset, meshlets_data->meshlets.end());
+			float32 t_lod = float32(lod_idx) / (float32)max_lod;
+			float32 min_vertex_distance = (t_lod * 0.1f + (1.0f - t_lod) * 0.01f) * simplify_scale;
+
+			// 1. Find edge vertices (not indices)
+			// 2. Compute average vertex distance for current source meshlets
+			// 3. Generate welded remap table
+			// 4. Clear index array of current meshlets, so next meshlets can properly fill new data
+			std::vector<bool> edge_vertices_map = GenerateEdgeMap(meshlets_to_group, meshlets_data->indices, meshlets_data->local_indices, vertices.size() / vertex_stride);
+			float32 average_vertex_distance_sq = ComputeAverageVertexDistanceSquared(vertices, previous_lod_indices, vertex_stride);
+			std::vector<uint32> welder_remap_table = GenerateVertexWelderRemapTable(vertices, vertex_stride, edge_vertices_map, min_vertex_distance);
+			previous_lod_indices.clear();
+
+			// Generate meshlet groups
 			auto groups = GroupMeshClusters(meshlets_to_group, welder_remap_table, meshlets_data->indices, meshlets_data->local_indices, vertices, vertex_stride);
 
 			// Remove empty groups
@@ -266,12 +283,12 @@ namespace Omni {
 				return group.size() == 0;
 			});
 
-			// Process groups
-			float32 t_lod = float32(lod_idx) / (float32)max_lod;
+			// Process groups, also detect edges for next LOD generation pass
 			uint32 num_newly_created_meshlets = 0;
 			std::vector<RenderableMeshlet> new_meshlets;
 			for (const auto& group : groups) {
 				// Merge meshlets
+				// Prepare storage
 				std::vector<uint32> merged_indices;
 				uint32 num_merged_indices = 0;
 
@@ -280,23 +297,42 @@ namespace Omni {
 
 				merged_indices.reserve(num_merged_indices);
 
+				// Merge
 				for (auto& meshlet_idx : group) {
 					RenderableMeshlet& meshlet = meshlets_data->meshlets[meshlet_idx + current_meshlets_offset];
-
+					uint32 triangle_indices[3] = {};
 					for (uint32 index_idx = 0; index_idx < meshlet.triangle_count * 3; index_idx++) {
-						merged_indices.push_back(welder_remap_table[meshlets_data->indices[meshlet.vertex_offset + meshlets_data->local_indices[meshlet.triangle_offset + index_idx]]]);
+						triangle_indices[index_idx % 3] = welder_remap_table[meshlets_data->indices[meshlet.vertex_offset + meshlets_data->local_indices[meshlet.triangle_offset + index_idx]]];
+
+						if (index_idx % 3 == 2) {// last index of triangle was registered
+							bool is_triangle_degenerate = (triangle_indices[0] == triangle_indices[1] || triangle_indices[0] == triangle_indices[2] || triangle_indices[1] == triangle_indices[2]);
+
+							// Check if triangle is degenerate
+							if (!is_triangle_degenerate) {
+								merged_indices.push_back(triangle_indices[0]);
+								merged_indices.push_back(triangle_indices[1]);
+								merged_indices.push_back(triangle_indices[2]);
+							}
+						}
 					}
 				}
+				// Skip if no indices after merging (maybe all triangles are degenerate?)
+				if(merged_indices.size() == 0)
+					continue;
 				OMNIFORCE_ASSERT_TAGGED(merged_indices.size(), "No indices in cluster group merged index buffer");
+				previous_lod_indices.insert(previous_lod_indices.end(), merged_indices.begin(), merged_indices.end());
 
 				float32 target_error = 0.9f * t_lod + 0.01f * (1 - t_lod);
+				float32 simplification_rate = 0.5f;
 				std::vector<uint32> simplified_indices;
 
 				// Generate LOD
 				while (!simplified_indices.size() || simplified_indices.size() == merged_indices.size()) {
-					mesh_preprocessor.GenerateMeshLOD(&simplified_indices, &vertices, &merged_indices, vertex_stride, merged_indices.size() / 2, target_error, true);
+					mesh_preprocessor.GenerateMeshLOD(&simplified_indices, &vertices, &merged_indices, vertex_stride, merged_indices.size() * simplification_rate, target_error, true);
 					target_error += 0.05f;
-					if (target_error > 1.0f && simplified_indices.size() == merged_indices.size()) {
+					simplification_rate += 0.05f;
+
+					if (simplification_rate >= 1.0f && (simplified_indices.size() == merged_indices.size())) {
 						OMNIFORCE_CORE_WARNING("Failed to generate LOD, registering source clusters");
 						break;
 					}
@@ -342,13 +378,15 @@ namespace Omni {
 		mesh.cull_bounds = meshlets_data->cull_bounds;
 		mesh.vertex_stride = vertex_stride;
 
+		OMNIFORCE_CORE_TRACE("Mesh building finished. Final triangle count (including all LOD levels): {}", mesh.local_indices.size() / 3);
+
 		return mesh;
 
 	}
 
 	// TODO: take UVs into account
 	// Assumes that positions are encoded in first 12 bytes of vertices
-	std::vector<uint32> VirtualMeshBuilder::InitializeVertexWelderRemapTable(const std::vector<byte>& vertices, uint32 vertex_stride, float32 max_vertex_distance_sq)
+	std::vector<Omni::uint32> VirtualMeshBuilder::GenerateVertexWelderRemapTable(const std::vector<byte>& vertices, uint32 vertex_stride, const std::vector<bool>& edge_vertex_map, float32 min_vertex_distance)
 	{
 		std::vector<uint32> remap_table;
 
@@ -356,15 +394,25 @@ namespace Omni {
 		remap_table.resize(vertex_count, uint32(-1)); // overflow on purpose
 		
 		for (uint32 v = 0; v < vertex_count; v++) {
-			const glm::vec3* currentVertex = (glm::vec3*)&vertices[v * vertex_stride];
+			// If it is edge vertex, we can't use it in welding process, therefore we just skip it
+			if (edge_vertex_map[v]) {
+				remap_table[v] = v;
+				continue;
+			}
+
+			float32 min_current_vertex_distance_sq = glm::pow(min_vertex_distance, 2);
+
+			const glm::vec3* vertex = (glm::vec3*)&vertices[v * vertex_stride];
 			uint32 replacement = -1;
 
-			for (uint32 potentialReplacement = 0; potentialReplacement < v; potentialReplacement++) {
-				const glm::vec3* otherVertex = (glm::vec3*)&vertices[remap_table[potentialReplacement]];
-				const float32 vertex_distance_squared = glm::distance2(*currentVertex, *otherVertex);
+			// due to the way we iterate, all indices starting from v will not be remapped yet
+			for (std::int64_t potential_replacement_index = 0; potential_replacement_index < v; potential_replacement_index++) {
+				const glm::vec3* potential_replacement_vertex = (glm::vec3*)&vertices[remap_table[potential_replacement_index] * vertex_stride];
+				const float32 vertex_distance_squared = glm::distance2(*vertex, *potential_replacement_vertex);
 
-				if (vertex_distance_squared <= max_vertex_distance_sq) {
-					replacement = potentialReplacement;
+				if (vertex_distance_squared <= min_current_vertex_distance_sq) {
+					//replacement = potentialReplacement;
+					min_current_vertex_distance_sq = vertex_distance_squared;
 				}
 			}
 
@@ -376,7 +424,54 @@ namespace Omni {
 			}
 		}
 
+		// Sanity check, debug only
+		if (OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG) {
+			float32 max_distance = 0.0f;
+
+			for (uint32 i = 0; i < vertex_count; i++) {
+				glm::vec3* original_vertex = (glm::vec3*)&vertices[i * vertex_stride];
+				glm::vec3* new_vertex = (glm::vec3*)&vertices[remap_table[i] * vertex_stride];
+
+				OMNIFORCE_ASSERT_TAGGED(glm::distance(*original_vertex, *new_vertex) <= min_vertex_distance, "Invalid welder remap table calculation");
+			}
+		}
+
 		return remap_table;
+	}
+
+	std::vector<bool> VirtualMeshBuilder::GenerateEdgeMap(const std::span<RenderableMeshlet>& meshlets, const std::vector<uint32>& indices, const std::vector<uint8>& local_indices, uint32 vertex_count)
+	{
+		std::vector<bool> result(vertex_count, false);
+		rh::unordered_map<MeshletEdge, uint32> edges;
+
+		// for each cluster
+		for (uint32 meshlet_idx = 0; meshlet_idx < meshlets.size(); meshlet_idx++) {
+			const auto& meshlet = meshlets[meshlet_idx];
+
+			const uint32 triangle_count = meshlet.triangle_count;
+			// for each triangle of the cluster
+			for (uint32 triangle_idx = 0; triangle_idx < triangle_count; triangle_idx++) {
+				// for each edge of the triangle
+				for (uint32 i = 0; i < 3; i++) {
+					MeshletEdge edge(
+						indices[local_indices[(i + triangle_idx * 3) + meshlet.triangle_offset] + meshlet.vertex_offset],
+						indices[local_indices[(((i + 1) % 3) + triangle_idx * 3) + meshlet.triangle_offset] + meshlet.vertex_offset]
+					);
+
+					edges[edge]++;
+
+				}
+			}
+		}
+
+		for (const auto& [edge, num_connections] : edges) {
+			if (num_connections == 1) {
+				result[edge.first] = true;
+				result[edge.second] = true;
+			}
+		}
+
+		return result;
 	}
 
 }
