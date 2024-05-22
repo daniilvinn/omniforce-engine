@@ -3,6 +3,7 @@
 #include <Foundation/Macros.h>
 #include <Foundation/Types.h>
 #include <Renderer/Meshlet.h>
+#include <Core/KDTree.h>
 
 #include <span>
 #include <shared_mutex>
@@ -42,7 +43,7 @@ namespace Omni {
 		// Finds edge vertices so they are not involved in welding
 		std::vector<bool> GenerateEdgeMap(const std::span<RenderableMeshlet>& meshlets, const std::vector<uint32>& indices, const std::vector<uint8>& local_indices, uint32 vertex_count);
 		// Performs vertex welding
-		std::vector<uint32> GenerateVertexWelderRemapTable(const std::vector<byte>& vertices, uint32 vertex_stride, const std::vector<bool>& edge_vertex_map, float32 min_vertex_distance_sq);
+		std::vector<uint32> GenerateVertexWelderRemapTable(const std::vector<byte>& vertices, const KDTree& kd_tree, uint32 vertex_stride, std::vector<uint32> lod_indices, const std::vector<bool>& edge_vertex_map, float32 min_vertex_distance_sq);
 
 	private:
 		inline static std::shared_mutex m_Mutex;

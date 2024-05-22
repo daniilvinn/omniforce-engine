@@ -12,8 +12,8 @@ namespace Omni {
 	class OMNIFORCE_API RandomEngine {
 	public:
 		template<typename T>
-		inline static T Generate(T min = std::numeric_limits<T>::min(), T max = std::numeric_limits<T>::max()) {
-			static_assert(std::is_integral<T>()); // non-integral type
+		inline static T Generate(const T& min = std::numeric_limits<T>::min(), const T& max = std::numeric_limits<T>::max()) {
+			static_assert(std::is_integral<T>()); // check for non-integral type
 			T value = (s_UniformDistribution(s_MersenneTwisterGenerator) % (max - min)) + min;
 			return value;
 		}

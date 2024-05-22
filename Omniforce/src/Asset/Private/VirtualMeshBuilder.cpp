@@ -3,6 +3,7 @@
 #include <Log/Logger.h>
 #include <Asset/MeshPreprocessor.h>
 #include <Core/RandomNumberGenerator.h>
+#include <Core/KDTree.h>
 
 #include <unordered_map>
 #include <fstream>
@@ -272,7 +273,13 @@ namespace Omni {
 			// 4. Clear index array of current meshlets, so next meshlets can properly fill new data
 			std::vector<bool> edge_vertices_map = GenerateEdgeMap(meshlets_to_group, meshlets_data->indices, meshlets_data->local_indices, vertices.size() / vertex_stride);
 			float32 average_vertex_distance_sq = ComputeAverageVertexDistanceSquared(vertices, previous_lod_indices, vertex_stride);
-			std::vector<uint32> welder_remap_table = GenerateVertexWelderRemapTable(vertices, vertex_stride, edge_vertices_map, min_vertex_distance);
+
+			// Build kd-tree
+			KDTree current_lod_kd_tree = {};
+			for (auto& index : previous_lod_indices)
+				current_lod_kd_tree.AddPoint(*(glm::vec3*)&vertices[index * vertex_stride], index);
+
+			std::vector<uint32> welder_remap_table = GenerateVertexWelderRemapTable(vertices, current_lod_kd_tree, vertex_stride, previous_lod_indices, edge_vertices_map, min_vertex_distance);
 			previous_lod_indices.clear();
 
 			// Generate meshlet groups
@@ -286,6 +293,8 @@ namespace Omni {
 			// Process groups, also detect edges for next LOD generation pass
 			uint32 num_newly_created_meshlets = 0;
 			std::vector<RenderableMeshlet> new_meshlets;
+
+
 			for (const auto& group : groups) {
 				// Merge meshlets
 				// Prepare storage
@@ -316,12 +325,16 @@ namespace Omni {
 						}
 					}
 				}
+
+				if (lod_idx == max_lod - 2)
+					int bp = 5;
+
 				// Skip if no indices after merging (maybe all triangles are degenerate?)
 				if(merged_indices.size() == 0)
 					continue;
-				OMNIFORCE_ASSERT_TAGGED(merged_indices.size(), "No indices in cluster group merged index buffer");
 				previous_lod_indices.insert(previous_lod_indices.end(), merged_indices.begin(), merged_indices.end());
 
+				// Setup simplification parameters
 				float32 target_error = 0.9f * t_lod + 0.01f * (1 - t_lod);
 				float32 simplification_rate = 0.5f;
 				std::vector<uint32> simplified_indices;
@@ -332,13 +345,13 @@ namespace Omni {
 					target_error += 0.05f;
 					simplification_rate += 0.05f;
 
+					OMNIFORCE_ASSERT(simplified_indices.size());
+
 					if (simplification_rate >= 1.0f && (simplified_indices.size() == merged_indices.size())) {
 						OMNIFORCE_CORE_WARNING("Failed to generate LOD, registering source clusters");
 						break;
 					}
 				}
-
-				OMNIFORCE_ASSERT_TAGGED(simplified_indices.size(), "Failed to generate LOD");
 
 				// Split back
 				Scope<ClusterizedMesh> simplified_meshlets = mesh_preprocessor.GenerateMeshlets(&vertices, &simplified_indices, vertex_stride);
@@ -386,42 +399,44 @@ namespace Omni {
 
 	// TODO: take UVs into account
 	// Assumes that positions are encoded in first 12 bytes of vertices
-	std::vector<Omni::uint32> VirtualMeshBuilder::GenerateVertexWelderRemapTable(const std::vector<byte>& vertices, uint32 vertex_stride, const std::vector<bool>& edge_vertex_map, float32 min_vertex_distance)
+	std::vector<uint32> VirtualMeshBuilder::GenerateVertexWelderRemapTable(const std::vector<byte>& vertices, const KDTree& kd_tree, uint32 vertex_stride, std::vector<uint32> lod_indices, const std::vector<bool>& edge_vertex_map, float32 min_vertex_distance_sq)
 	{
-		std::vector<uint32> remap_table;
+		std::vector<uint32> remap_table(vertices.size() / vertex_stride);
+
+		// Init remap table
+		for (uint32 i = 0; i < remap_table.size(); i++)
+			remap_table[i] = i;
 
 		const uint32 vertex_count = vertices.size() / vertex_stride;
-		remap_table.resize(vertex_count, uint32(-1)); // overflow on purpose
-		
-		for (uint32 v = 0; v < vertex_count; v++) {
+		remap_table.resize(vertex_count, uint32(-1)); // underflow on purpose
+
+		for(auto& index : lod_indices) {
 			// If it is edge vertex, we can't use it in welding process, therefore we just skip it
-			if (edge_vertex_map[v]) {
-				remap_table[v] = v;
+			if (edge_vertex_map[index])
 				continue;
-			}
 
-			float32 min_current_vertex_distance_sq = glm::pow(min_vertex_distance, 2);
+			float32 min_current_vertex_distance = min_vertex_distance_sq;
 
-			const glm::vec3* vertex = (glm::vec3*)&vertices[v * vertex_stride];
+			const glm::vec3* vertex = (glm::vec3*)&vertices[index * vertex_stride];
 			uint32 replacement = -1;
 
-			// due to the way we iterate, all indices starting from v will not be remapped yet
-			for (std::int64_t potential_replacement_index = 0; potential_replacement_index < v; potential_replacement_index++) {
-				const glm::vec3* potential_replacement_vertex = (glm::vec3*)&vertices[remap_table[potential_replacement_index] * vertex_stride];
-				const float32 vertex_distance_squared = glm::distance2(*vertex, *potential_replacement_vertex);
+			// find neighbor here
+			auto potential_replacements = kd_tree.FindNearestPoints(*vertex, min_current_vertex_distance, index);
+			float32 distance_to_potential_vertex_squared = min_vertex_distance_sq * min_vertex_distance_sq;
 
-				if (vertex_distance_squared <= min_current_vertex_distance_sq) {
-					//replacement = potentialReplacement;
-					min_current_vertex_distance_sq = vertex_distance_squared;
+			for (auto& potential_replacement : potential_replacements) {
+				glm::vec3* potential_vertex_data = (glm::vec3*)&vertices[remap_table[potential_replacement] * vertex_stride];
+				float32 dist_squared = glm::distance2(*vertex, *potential_vertex_data);
+
+				if (distance_to_potential_vertex_squared > dist_squared) {
+  					//replacement = potential_replacement;
+					distance_to_potential_vertex_squared = dist_squared;
 				}
 			}
 
-			if (replacement == -1) {
-				remap_table[v] = v;
-			}
-			else {
-				remap_table[v] = replacement;
-			}
+			if(replacement != -1)
+				remap_table[index] = replacement;
+			
 		}
 
 		// Sanity check, debug only
@@ -432,7 +447,7 @@ namespace Omni {
 				glm::vec3* original_vertex = (glm::vec3*)&vertices[i * vertex_stride];
 				glm::vec3* new_vertex = (glm::vec3*)&vertices[remap_table[i] * vertex_stride];
 
-				OMNIFORCE_ASSERT_TAGGED(glm::distance(*original_vertex, *new_vertex) <= min_vertex_distance, "Invalid welder remap table calculation");
+				OMNIFORCE_ASSERT_TAGGED(glm::distance(*original_vertex, *new_vertex) <= min_vertex_distance_sq, "Invalid welder remap table calculation");
 			}
 		}
 
