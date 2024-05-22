@@ -302,46 +302,11 @@ namespace Omni {
 		for (uint32 i = 0; i < Mesh::OMNI_MAX_MESH_LOD_COUNT; i++) {
 			MeshPreprocessor mesh_preprocessor = {};
 
-#if 0
-			// Generate LOD. If i == 0, we basically generate a lod which is completely equal to source mesh
-			std::vector<uint32> lod_indices;
-
-			if (i != 0) {
-				uint32 target_index_count = index_data->size() / (1 * glm::pow(4, i)) + (index_data->size() % 3);
-				float target_error = 0.1f;
-
-				// If simplifier was unable to generate LOD (returned index count is 0), try to generate with higher error until lod is generated
-				while (lod_indices.size() == 0)
-				{
-					mesh_preprocessor.GenerateMeshLOD(
-						&lod_indices,
-						vertex_data,
-						index_data,
-						vertex_stride,
-						target_index_count < 6 ? 6 : target_index_count, // clamp index count to 6 (plane)
-						target_error, false
-					);
-
-					// HACK: Multiply target index count by 20% so we can generate generate something;
-					// Best solution would be to stop generation of LODs and use amount of lods we were able to generate, instead of fixed amount of 4
-					target_index_count *= std::clamp(6u, (uint32)(target_index_count * 1.2f), (uint32)index_data->size());
-				}
-			}
-			else {
-				lod_indices = *index_data;
-			}
-
-			OMNIFORCE_ASSERT_TAGGED(lod_indices.size(), "Mesh LOD generation failed. How did we return from loop above though?");
-#endif
-
 			// Optimize mesh (remove redundant vertices, optimize for vertex cache etc.)
 			std::vector<byte> optimized_vertices;
 			std::vector<uint32> optimized_indices;
 			
 			mesh_preprocessor.OptimizeMesh(&optimized_vertices, &optimized_indices, vertex_data, index_data, vertex_stride);
-
-			// Generate meshlets for mesh shading-based geometry processing.
-			Scope<ClusterizedMesh> generated_meshlets = mesh_preprocessor.GenerateMeshlets(&optimized_vertices, &optimized_indices, vertex_stride);
 		
 			if (i == 0) {
 				VirtualMeshBuilder vmesh_builder = {};
