@@ -32,7 +32,8 @@ namespace Omni {
 		// === Helper methods ===
 		// Takes a list of meshlets and mesh data, outputs a list of groups of meshlets
 		std::vector<MeshClusterGroup> GroupMeshClusters(
-			const std::span<RenderableMeshlet>& meshlets,
+			std::span<RenderableMeshlet> meshlets,
+			std::span<uint32> meshlet_indices,
 			const std::vector<uint32>& welder_remap_table,
 			std::vector<uint32>& indices,
 			std::vector<uint8>& local_indices,
@@ -43,7 +44,7 @@ namespace Omni {
 		// Average squared vertex distance, used for vertex welding
 		float32 ComputeAverageVertexDistanceSquared(const std::vector<byte> vertices, const std::vector<uint32>& indices, uint32 vertex_stride);
 		// Finds edge vertices so they are not involved in welding
-		std::vector<bool> GenerateEdgeMap(const std::span<RenderableMeshlet>& meshlets, const std::vector<byte>& vertices, std::vector<uint32>& indices, const std::vector<uint8>& local_indices, uint32 vertex_stride);
+		std::vector<bool> GenerateEdgeMap(std::span<RenderableMeshlet> meshlets, const std::span<uint32> current_meshlets, const std::vector<byte>& vertices, std::vector<uint32>& indices, const std::vector<uint8>& local_indices, uint32 vertex_stride);
 		// Performs vertex welding
 		std::vector<uint32> GenerateVertexWelderRemapTable(const std::vector<byte>& vertices, uint32 vertex_stride, const KDTree& kd_tree, const rh::unordered_flat_set<uint32>& lod_indices, const std::vector<bool>& edge_vertex_map, float32 min_vertex_distance);
 

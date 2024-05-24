@@ -17,7 +17,8 @@
 namespace Omni {
 
 	std::vector<Omni::MeshClusterGroup> VirtualMeshBuilder::GroupMeshClusters(
-		const std::span<RenderableMeshlet>& meshlets,
+		std::span<RenderableMeshlet> meshlets,
+		std::span<uint32> meshlet_indices,
 		const std::vector<uint32>& welder_remap_table,
 		std::vector<uint32>& indices,
 		std::vector<uint8>& local_indices,
@@ -26,14 +27,9 @@ namespace Omni {
 	) {
 		OMNIFORCE_ASSERT_TAGGED(vertex_stride >= 12, "Vertex stride is less than 12: no vertex position data?");
 
-		if (meshlets.size() < 8) {
-			MeshClusterGroup group;
-			for (uint32 i = 0; i < meshlets.size(); i++) {
-				group.push_back(i);
-			}
-				
-			return { group };
-		}
+		// Early out if there is less than 8 meshlets (unable to partition)
+		if (meshlet_indices.size() < 8)
+			return { {meshlet_indices.begin(), meshlet_indices.end() } };
 
 		// meshlets represented by their index into 'meshlets'
 		std::unordered_map<MeshletEdge, std::vector<uint32>> edges_meshlets_map;
@@ -54,8 +50,8 @@ namespace Omni {
 		indices.resize(indices.size() - ib_padding);
 
 		// for each cluster
-		for (uint32 meshlet_idx = 0; meshlet_idx < meshlets.size(); meshlet_idx++) {
-			const auto& meshlet = meshlets[meshlet_idx];
+		for (uint32 meshlet_idx = 0; meshlet_idx < meshlet_indices.size(); meshlet_idx++) {
+			const auto& meshlet = meshlets[meshlet_indices[meshlet_idx]];
 
 			const uint32 triangle_count = meshlet.metadata.triangle_count;
 			// for each triangle of the cluster
@@ -91,16 +87,16 @@ namespace Omni {
 		// If no connections between meshlets were detected, return a group with all meshlets
 		if (edges_meshlets_map.empty()) {
 			MeshClusterGroup group;
-			for (uint32 i = 0; i < meshlets.size(); i++) {
+			for (uint32 i = 0; i < meshlet_indices.size(); i++) {
 				group.push_back(i);
 			}
 
 			return { group };
 		}
 
-		idx_t graph_vertex_count = meshlets.size(); // graph is built from meshlets, hence graph vertex = meshlet
+		idx_t graph_vertex_count = meshlet_indices.size(); // graph is built from meshlets, hence graph vertex = meshlet
 		idx_t num_constrains = 1;
-		idx_t num_partitions = meshlets.size() / 4; // Group by 4 meshlets
+		idx_t num_partitions = meshlet_indices.size() / 4; // Group by 4 meshlets
 
 		OMNIFORCE_ASSERT_TAGGED(num_partitions > 1, "Invalid partition count");
 
@@ -126,7 +122,7 @@ namespace Omni {
 		// edgwgts
 		std::vector<idx_t> edge_weights;
 
-		for (uint32 meshlet_idx = 0; meshlet_idx < meshlets.size(); meshlet_idx++) {
+		for (uint32 meshlet_idx = 0; meshlet_idx < meshlet_indices.size(); meshlet_idx++) {
 			uint32 edge_adjacency_range_begin_iterator = edge_adjacency.size();
 			for (const auto& edge : meshlets_edges_map[meshlet_idx]) {
 
@@ -161,7 +157,7 @@ namespace Omni {
 		}
 		x_adjacency.push_back(edge_adjacency.size());
 
-		OMNIFORCE_ASSERT_TAGGED(x_adjacency.size() == meshlets.size() + 1, "unexpected count of vertices for METIS graph: invalid xadj");
+		OMNIFORCE_ASSERT_TAGGED(x_adjacency.size() == meshlet_indices.size() + 1, "unexpected count of vertices for METIS graph: invalid xadj");
 		OMNIFORCE_ASSERT_TAGGED(edge_adjacency.size() == edge_weights.size(), "Failed during METIS CSR graph generation: invalid adjncy / edgwgts");
 
 		idx_t final_cut_cost; // final cost of the cut found by METIS
@@ -189,9 +185,9 @@ namespace Omni {
 		// ===== Group meshlets together
 		std::vector<MeshClusterGroup> groups;
 		groups.resize(num_partitions);
-		for (uint32 i = 0; i < meshlets.size(); i++) {
+		for (uint32 i = 0; i < meshlet_indices.size(); i++) {
 			idx_t partitionNumber = partition[i];
-			groups[partitionNumber].push_back(i);
+			groups[partitionNumber].push_back(meshlet_indices[i]);
 		}
 		return groups;
 
@@ -260,6 +256,9 @@ namespace Omni {
 		//const uint32 max_lod = 5;
 
 		std::vector<uint32> previous_lod_indices = indices;
+		std::vector<uint32> current_meshlets(meshlets_data->meshlets.size());
+		for (uint32 i = 0; i < current_meshlets.size(); i++)
+			current_meshlets[i] = i;
 
 		while (lod_idx < max_lod) {
 			// Create a span of meshlets which are currently used as source meshlets for simplification. Also setup t_lod variable
@@ -271,7 +270,7 @@ namespace Omni {
 			// 2. Compute average vertex distance for current source meshlets
 			// 3. Generate welded remap table
 			// 4. Clear index array of current meshlets, so next meshlets can properly fill new data
-			std::vector<bool> edge_vertices_map = GenerateEdgeMap(meshlets_to_group, vertices, meshlets_data->indices, meshlets_data->local_indices, vertex_stride);
+			std::vector<bool> edge_vertices_map = GenerateEdgeMap(meshlets_data->meshlets, current_meshlets, vertices, meshlets_data->indices, meshlets_data->local_indices, vertex_stride);
 			float32 average_vertex_distance_sq = ComputeAverageVertexDistanceSquared(vertices, previous_lod_indices, vertex_stride);
 
 			// Evaluate unique indices to be welded
@@ -293,16 +292,18 @@ namespace Omni {
 			previous_lod_indices.clear();
 
 			// Generate meshlet groups
-			auto groups = GroupMeshClusters(meshlets_to_group, welder_remap_table, meshlets_data->indices, meshlets_data->local_indices, vertices, vertex_stride);
+			auto groups = GroupMeshClusters(meshlets_data->meshlets, current_meshlets, welder_remap_table, meshlets_data->indices, meshlets_data->local_indices, vertices, vertex_stride);
 
 			// Remove empty groups
 			std::erase_if(groups, [](const auto& group) {
 				return group.size() == 0;
 			});
 
+			// Clear current meshlets indices, so we can register new ones
+			current_meshlets.clear();
+
 			// Process groups, also detect edges for next LOD generation pass
 			uint32 num_newly_created_meshlets = 0;
-			std::vector<RenderableMeshlet> new_meshlets;
 
 			for (const auto& group : groups) {
 				// Merge meshlets
@@ -317,7 +318,7 @@ namespace Omni {
 
 				// Merge
 				for (auto& meshlet_idx : group) {
-					RenderableMeshlet& meshlet = meshlets_data->meshlets[meshlet_idx + current_meshlets_offset];
+					RenderableMeshlet& meshlet = meshlets_data->meshlets[meshlet_idx];
 					uint32 triangle_indices[3] = {};
 					for (uint32 index_idx = 0; index_idx < meshlet.metadata.triangle_count * 3; index_idx++) {
 						triangle_indices[index_idx % 3] = welder_remap_table[meshlets_data->indices[meshlet.vertex_offset + meshlets_data->local_indices[meshlet.triangle_offset + index_idx]]];
@@ -370,16 +371,16 @@ namespace Omni {
 					meshlet.group = group_idx;
 					meshlet.lod = lod_idx;
 				}
-				
-				new_meshlets.insert(new_meshlets.end(), simplified_meshlets->meshlets.begin(), simplified_meshlets->meshlets.end());
+				for (uint32 i = 0; i < simplified_meshlets->meshlets.size(); i++)
+					current_meshlets.push_back(meshlets_data->meshlets.size() + i);
 
+				meshlets_data->meshlets.insert(meshlets_data->meshlets.end(), simplified_meshlets->meshlets.begin(), simplified_meshlets->meshlets.end());
 				meshlets_data->indices.insert(meshlets_data->indices.end(), simplified_meshlets->indices.begin(), simplified_meshlets->indices.end());
 				meshlets_data->local_indices.insert(meshlets_data->local_indices.end(), simplified_meshlets->local_indices.begin(), simplified_meshlets->local_indices.end());
 				meshlets_data->cull_bounds.insert(meshlets_data->cull_bounds.end(), simplified_meshlets->cull_bounds.begin(), simplified_meshlets->cull_bounds.end());
 
 			}
-			current_meshlets_offset = meshlets_data->meshlets.size();
-			meshlets_data->meshlets.insert(meshlets_data->meshlets.end(), new_meshlets.begin(), new_meshlets.end());
+			current_meshlets_offset = meshlets_data->meshlets.size() - num_newly_created_meshlets;
 
 			if(num_newly_created_meshlets == 1)
 				break;
@@ -439,13 +440,20 @@ namespace Omni {
 		return remap_table;
 	}
 
-	std::vector<bool> VirtualMeshBuilder::GenerateEdgeMap(const std::span<RenderableMeshlet>& meshlets, const std::vector<byte>& vertices, std::vector<uint32>& indices, const std::vector<uint8>& local_indices, uint32 vertex_stride)
+	std::vector<bool> VirtualMeshBuilder::GenerateEdgeMap(
+		std::span<RenderableMeshlet> meshlets, 
+		const std::span<uint32> current_meshlets, 
+		const std::vector<byte>& vertices, 
+		std::vector<uint32>& indices, 
+		const std::vector<uint8>& local_indices, 
+		uint32 vertex_stride
+	)
 	{
 		std::vector<bool> result(vertices.size() / vertex_stride, false);
 		rh::unordered_map<MeshletEdge, rh::unordered_set<uint32>> edges;
 
 		// for each meshlet
-		for (uint32 meshletIndex = 0; meshletIndex < meshlets.size(); meshletIndex++) {
+		for (const auto& meshletIndex : current_meshlets) {
 			const auto& meshlet = meshlets[meshletIndex];
 
 			const uint32 triangleCount = meshlet.metadata.triangle_count / 3;
