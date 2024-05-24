@@ -42,15 +42,15 @@ namespace Omni {
 		uint32 idx = 0;
 		for (auto& meshlet : meshlets_data->meshlets) {
 			meshlet.vertex_offset = meshopt_meshlets[idx].vertex_offset;
-			meshlet.vertex_count = meshopt_meshlets[idx].vertex_count;
+			meshlet.metadata.vertex_count = meshopt_meshlets[idx].vertex_count;
 			meshlet.triangle_offset = meshopt_meshlets[idx].triangle_offset;
-			meshlet.triangle_count = meshopt_meshlets[idx].triangle_count;
+			meshlet.metadata.triangle_count = meshopt_meshlets[idx].triangle_count;
 			meshlet.vertex_bit_offset = 0;
 
 			meshopt_Bounds bounds = meshopt_computeMeshletBounds(
 				&meshlets_data->indices[meshlet.vertex_offset],
 				&meshlets_data->local_indices[meshlet.triangle_offset],
-				meshlet.triangle_count, 
+				meshlet.metadata.triangle_count,
 				(float32*)vertices->data(), 
 				vertices->size() / vertex_stride,
 				vertex_stride
@@ -61,8 +61,8 @@ namespace Omni {
 			idx++;
 		}
 
-		meshlets_data->indices.resize(meshlets_data->meshlets[meshlets_data->meshlets.size() - 1].vertex_offset + meshlets_data->meshlets[meshlets_data->meshlets.size() - 1].vertex_count);
-		meshlets_data->local_indices.resize(meshlets_data->meshlets[meshlets_data->meshlets.size() - 1].triangle_offset + meshlets_data->meshlets[meshlets_data->meshlets.size() - 1].triangle_count * 3);
+		meshlets_data->indices.resize(meshlets_data->meshlets[meshlets_data->meshlets.size() - 1].vertex_offset + meshlets_data->meshlets[meshlets_data->meshlets.size() - 1].metadata.vertex_count);
+		meshlets_data->local_indices.resize(meshlets_data->meshlets[meshlets_data->meshlets.size() - 1].triangle_offset + meshlets_data->meshlets[meshlets_data->meshlets.size() - 1].metadata.triangle_count * 3);
 
 		delete[] meshopt_meshlets;
 

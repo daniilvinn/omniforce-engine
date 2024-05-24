@@ -10,9 +10,11 @@ namespace Omni {
 		uint32 vertex_bit_offset;
 		uint32 vertex_offset;
 		uint32 triangle_offset;
-		uint32 vertex_count;
-		uint32 triangle_count;
-		uint32 bitrate;
+		struct {
+			uint32 vertex_count : 7;
+			uint32 triangle_count : 8;
+			uint32 bitrate : 6;
+		} metadata;
 		uint32 group;
 		uint32 lod = 0;
 	};

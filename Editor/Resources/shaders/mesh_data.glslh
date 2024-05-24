@@ -12,6 +12,19 @@
 #extension GL_EXT_buffer_reference2                         : require
 #extension GL_EXT_scalar_block_layout                       : require
 
+const int MESHLET_DATA_VERTEX_COUNT_BIT_OFFSET = 0;
+const int MESHLET_DATA_VERTEX_COUNT_BIT_COUNT = 7;
+
+const int MESHLET_DATA_TRIANGLE_COUNT_BIT_OFFSET = 7;
+const int MESHLET_DATA_TRIANGLE_COUNT_BIT_COUNT = 8;
+
+const int MESHLET_DATA_BITRATE_BIT_OFFSET = 15;
+const int MESHLET_DATA_BITRATE_BIT_COUNT = 6;
+
+#define ExtractMeshletVertexCount(meshlet_metadata)     bitfieldExtract(meshlet_metadata, MESHLET_DATA_VERTEX_COUNT_BIT_OFFSET, MESHLET_DATA_VERTEX_COUNT_BIT_COUNT)
+#define ExtractMeshletTriangleCount(meshlet_metadata)   bitfieldExtract(meshlet_metadata, MESHLET_DATA_TRIANGLE_COUNT_BIT_OFFSET, MESHLET_DATA_TRIANGLE_COUNT_BIT_COUNT)
+#define ExtractMeshletBitrate(meshlet_metadata)         bitfieldExtract(meshlet_metadata, MESHLET_DATA_BITRATE_BIT_OFFSET, MESHLET_DATA_BITRATE_BIT_COUNT)
+
 layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer MeshAttributesData {
     #if !defined(__OMNI_HAS_VERTEX_NORMAL) && !defined(__OMNI_HAS_VERTEX_TANGENT) && !defined(__OMNI_HAS_VERTEX_TEXCOORDS) // using a trick so it compiles for other non-3D passes
         float unused;
@@ -29,12 +42,10 @@ layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Mes
 };
 
 layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer MeshMeshletsData {
-    uint vertex_bit_offset;
-	uint vertex_offset;
+    uint vertex_bit_offset; // offset within a bitstream of vertex geometry data
+	uint vertex_offset;     // offset within an array of vertex attribute data
 	uint triangle_offset;
-	uint vertex_count;
-	uint triangle_count;
-	uint bitrate;
+	uint metadata;          // 7 bits are vertex count, then 8 bits of triangle count and then 6 bits of bitrate
     uint group;
     uint lod;
 };

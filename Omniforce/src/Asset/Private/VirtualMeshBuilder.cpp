@@ -57,7 +57,7 @@ namespace Omni {
 		for (uint32 meshlet_idx = 0; meshlet_idx < meshlets.size(); meshlet_idx++) {
 			const auto& meshlet = meshlets[meshlet_idx];
 
-			const uint32 triangle_count = meshlet.triangle_count;
+			const uint32 triangle_count = meshlet.metadata.triangle_count;
 			// for each triangle of the cluster
 			for (uint32 triangle_idx = 0; triangle_idx < triangle_count; triangle_idx++) {
 				// for each edge of the triangle
@@ -311,7 +311,7 @@ namespace Omni {
 				uint32 num_merged_indices = 0;
 
 				for (auto& meshlet_idx : group)
-					num_merged_indices += meshlets_data->meshlets[meshlet_idx].triangle_count * 3;
+					num_merged_indices += meshlets_data->meshlets[meshlet_idx].metadata.triangle_count * 3;
 
 				merged_indices.reserve(num_merged_indices);
 
@@ -319,7 +319,7 @@ namespace Omni {
 				for (auto& meshlet_idx : group) {
 					RenderableMeshlet& meshlet = meshlets_data->meshlets[meshlet_idx + current_meshlets_offset];
 					uint32 triangle_indices[3] = {};
-					for (uint32 index_idx = 0; index_idx < meshlet.triangle_count * 3; index_idx++) {
+					for (uint32 index_idx = 0; index_idx < meshlet.metadata.triangle_count * 3; index_idx++) {
 						triangle_indices[index_idx % 3] = welder_remap_table[meshlets_data->indices[meshlet.vertex_offset + meshlets_data->local_indices[meshlet.triangle_offset + index_idx]]];
 
 						if (index_idx % 3 == 2) {// last index of triangle was registered
@@ -448,7 +448,7 @@ namespace Omni {
 		for (uint32 meshletIndex = 0; meshletIndex < meshlets.size(); meshletIndex++) {
 			const auto& meshlet = meshlets[meshletIndex];
 
-			const uint32 triangleCount = meshlet.triangle_count / 3;
+			const uint32 triangleCount = meshlet.metadata.triangle_count / 3;
 			// for each triangle of the meshlet
 			for (uint32 triangleIndex = 0; triangleIndex < triangleCount; triangleIndex++) {
 				// for each edge of the triangle
