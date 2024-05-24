@@ -4,6 +4,8 @@
 #include <Foundation/Types.h>
 #include <Core/Utils.h>
 
+#include <glm/gtc/type_precision.hpp>
+
 namespace Omni {
 
 	struct OMNIFORCE_API RenderableMeshlet {
@@ -20,12 +22,15 @@ namespace Omni {
 	};
 
 	struct OMNIFORCE_API MeshletCullBounds {
-		glm::vec3 bounding_sphere_center;
-		float32 radius;
+		Sphere vis_culling_sphere;
+		Sphere lod_culling_sphere;
 
-		fvec3 cone_apex;
-		fvec3 cone_axis;
-		float32 cone_cutoff;
+		float32 error;
+		float32 parent_error;
+
+		glm::vec3 cone_apex;
+		glm::i8vec3 cone_axis;
+		int8 cone_cutoff;
 	};
 
 	using MeshClusterGroup = std::vector<uint32>;

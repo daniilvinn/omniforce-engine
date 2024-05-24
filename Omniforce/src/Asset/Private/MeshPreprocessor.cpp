@@ -56,7 +56,10 @@ namespace Omni {
 				vertex_stride
 			);
 
-			memcpy(&meshlets_data->cull_bounds[idx], &bounds, sizeof MeshletCullBounds);
+			meshlets_data->cull_bounds[idx].vis_culling_sphere = { glm::vec3(bounds.center[0], bounds.center[1], bounds.center[2]), bounds.radius}; // copy bounding sphere
+			meshlets_data->cull_bounds[idx].cone_apex = glm::vec3(bounds.cone_apex[0], bounds.cone_apex[1], bounds.cone_apex[2]);					// copy cone apex
+			meshlets_data->cull_bounds[idx].cone_axis = glm::i8vec3(bounds.cone_axis_s8[0], bounds.cone_axis_s8[1], bounds.cone_axis_s8[2]);		// copy s8 cone axis
+			meshlets_data->cull_bounds[idx].cone_cutoff = bounds.cone_cutoff_s8;																	// copy s8 cone cutoff
 
 			idx++;
 		}

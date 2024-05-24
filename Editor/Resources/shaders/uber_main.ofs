@@ -47,15 +47,17 @@ void main()
 
 	vec4 rotation_quaternion = vec4(unpackSnorm2x16(transform.packed_rotation[0]), unpackSnorm2x16(transform.packed_rotation[1]));
 
+	const float CONE_DECODE_CONSTANT = 1.0f / 127.0f;
+
 	vec3 cone_apex = RotateByQuat(cull_bounds.cone_apex * transform.scale, rotation_quaternion) + transform.translation;
-	vec3 cone_axis = RotateByQuat(cull_bounds.cone_axis, rotation_quaternion); 
+	vec3 cone_axis = RotateByQuat(vec3(cull_bounds.cone_axis) * CONE_DECODE_CONSTANT, rotation_quaternion); 
 
 	Sphere bounding_sphere = cull_bounds.bounding_sphere;
 	bounding_sphere.center = RotateByQuat(bounding_sphere.center * transform.scale, rotation_quaternion) + transform.translation;
     bounding_sphere.radius = bounding_sphere.radius * max(max(transform.scale.x, transform.scale.y), transform.scale.z);
 
 	// Cull
-	//if((dot(normalize(cone_apex - pc.camera_data.position), cone_axis) < cull_bounds.cone_cutoff) && FrustumTestBoundingSphere(pc.camera_data.frustum, bounding_sphere)) {
+	//if((dot(normalize(cone_apex - pc.camera_data.position), cone_axis) < float(cull_bounds.cone_cutoff) * CONE_DECODE_CONSTANT) && FrustumTestBoundingSphere(pc.camera_data.frustum, bounding_sphere)) {
 	if(render_object_data.lod == meshlet_data.lod) {
 		uint id_index = atomicAdd(s_actual_num_meshlets, 1);
 		task_payload.meshlet_ids[id_index] = uint8_t(gl_GlobalInvocationID.x & 0x1F);
