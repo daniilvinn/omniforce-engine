@@ -48,7 +48,7 @@ void main() {
     Sphere bounding_sphere = root_mesh_data.lods[0].bounding_sphere;
 	bounding_sphere.center = RotateByQuat(bounding_sphere.center * transform.scale, rotation_quaternion) + transform.translation;
 
-    uint32_t selected_lod = 0;
+    uint selected_lod = 0;
     for(int i = 0; i < OMNI_MAX_MESH_LOD_COUNT; i++) {
         if(length(pc.camera_data.position - bounding_sphere.center) < OMNI_LOD_DISTANCES[i] * root_mesh_data.lod_distance_multiplier) {
             selected_lod = i;

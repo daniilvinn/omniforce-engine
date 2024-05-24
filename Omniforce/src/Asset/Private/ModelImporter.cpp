@@ -373,20 +373,20 @@ namespace Omni {
 			float32 max_error = FLT_MIN;
 
 			for (auto& meshlet_bounds : mesh_lods[i].cull_data) {
-				uint32 meshlet_bitrate = std::clamp((uint32)std::ceil(std::log2(meshlet_bounds.radius * 2 * grid_size)), 1u, 32u); // we need diameter of a sphere, not radius
+				uint32 meshlet_bitrate = std::clamp((uint32)std::ceil(std::log2(meshlet_bounds.vis_culling_sphere.radius * 2 * grid_size)), 1u, 32u); // we need diameter of a sphere, not radius
 
 				RenderableMeshlet& meshlet = mesh_lods[i].meshlets[meshlet_idx];
 
 				meshlet.vertex_bit_offset = vertex_stream->GetNumBitsUsed();
 				meshlet.metadata.bitrate = meshlet_bitrate;
 
-				meshlet_bounds.bounding_sphere_center = glm::round(meshlet_bounds.bounding_sphere_center * float32(grid_size)) / float32(grid_size);
+				meshlet_bounds.vis_culling_sphere.center = glm::round(meshlet_bounds.vis_culling_sphere.center * float32(grid_size)) / float32(grid_size);
 
 				uint32 base_vertex_offset = mesh_lods[i].meshlets[meshlet_idx].vertex_offset;
 				for (uint32 vertex_idx = 0; vertex_idx < meshlet.metadata.vertex_count; vertex_idx++) {
 					for(uint32 vertex_channel = 0; vertex_channel < 3; vertex_channel++) {
 						float32 original_vertex = deinterleaved_vertex_data[base_vertex_offset + vertex_idx][vertex_channel];
-						float32 meshlet_space_value = original_vertex - meshlet_bounds.bounding_sphere_center[vertex_channel];
+						float32 meshlet_space_value = original_vertex - meshlet_bounds.vis_culling_sphere.center[vertex_channel];
 
 
 						uint32 value = quantizer.QuantizeVertexChannel(

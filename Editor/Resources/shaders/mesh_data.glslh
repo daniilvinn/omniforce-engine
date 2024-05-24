@@ -55,14 +55,10 @@ layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer Mes
 
 layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer MeshletCullBounds {
     Sphere bounding_sphere;
-    Sphere lod_culling_sphere;
-
-	float error;
-	float parent_error;
 
     vec3 cone_apex;
     i8vec3 cone_axis;
-    int8 cone_cutoff;
+    int8_t cone_cutoff;
 };
 
 struct MeshLOD {

@@ -23,10 +23,6 @@ namespace Omni {
 
 	struct OMNIFORCE_API MeshletCullBounds {
 		Sphere vis_culling_sphere;
-		Sphere lod_culling_sphere;
-
-		float32 error;
-		float32 parent_error;
 
 		glm::vec3 cone_apex;
 		glm::i8vec3 cone_axis;
