@@ -6,125 +6,107 @@
 #include <vector>
 #include <algorithm>
 #include <limits>
+#include <span>
 
 #include <glm/glm.hpp>
 
 namespace Omni {
-
-	// Currently, only 3-dimensional tree
-	// TODO: fix memory leak
 	struct KDTreeNode {
 		glm::vec3 point;
-		uint32 index;
-		KDTreeNode* left;
-		KDTreeNode* right;
+		uint32_t index;
+		Scope<KDTreeNode> left;
+		Scope<KDTreeNode> right;
 
-		KDTreeNode(const glm::vec3& pt, uint32 idx) : point(pt), index(idx), left(nullptr), right(nullptr) {}
+		KDTreeNode(const glm::vec3& pt, uint32_t idx) : point(pt), index(idx), left(nullptr), right(nullptr) {}
 	};
 
 	class KDTree {
 	public:
-		KDTree() : m_RootNode(nullptr) {}
+		KDTree() : root(nullptr) {}
 
-		void AddPoint(const glm::vec3& point, uint32_t index) {
-			if (!SearchPoint(point, index)) {
-				m_RootNode = insertRec(m_RootNode, point, index, 0);
-			}
+		void BuildFromPointSet(const std::vector<std::pair<glm::vec3, uint32_t>>& points) {
+			std::vector<std::pair<glm::vec3, uint32_t>> pointsCopy = points;
+			root = BuildFromPointSetRecursive(pointsCopy, 0);
 		}
 
-		uint32_t FindNearestPoint(const glm::vec3& target, uint32_t target_index) const {
-			return FindNearestPointRecursive(m_RootNode, target, target_index, 0, std::numeric_limits<float32>::max(), 0);
+		uint32_t ClosestPoint(const glm::vec3& target, uint32_t targetIndex) const {
+			return nearestNeighborRec(root.get(), target, targetIndex, 0, std::numeric_limits<float>::max(), 0);
 		}
 
-		std::vector<uint32_t> FindNearestPoints(const glm::vec3& target, float32 maxDistance, uint32_t targetIndex) const {
+		std::vector<uint32_t> ClosestPointSet(const glm::vec3& target, float maxDistance, uint32_t targetIndex) const {
 			std::vector<uint32_t> result;
-			FindNearestPointsRecursive(m_RootNode, target, maxDistance, targetIndex, 0, result);
+			findPointsWithinDistanceRec(root.get(), target, maxDistance, targetIndex, 0, result);
 			return result;
 		}
 
 	private:
-		KDTreeNode* insertRec(KDTreeNode* node, const glm::vec3& point, uint32_t index, uint32 depth) {
-			if (node == nullptr) {
-				return new KDTreeNode(point, index);
+		Scope<KDTreeNode> root;
+
+		Scope<KDTreeNode> BuildFromPointSetRecursive(std::vector<std::pair<glm::vec3, uint32_t>>& points, int depth) {
+			if (points.empty()) {
+				return nullptr;
 			}
 
-			uint32 axis = depth % 3;
-			if (point[axis] < node->point[axis]) {
-				node->left = insertRec(node->left, point, index, depth + 1);
-			}
-			else {
-				node->right = insertRec(node->right, point, index, depth + 1);
-			}
+			int axis = depth % 3;
+			std::nth_element(points.begin(), points.begin() + points.size() / 2, points.end(),
+				[axis](const std::pair<glm::vec3, uint32_t>& a, const std::pair<glm::vec3, uint32_t>& b) {
+					return a.first[axis] < b.first[axis];
+				});
+
+			size_t medianIndex = points.size() / 2;
+			Scope<KDTreeNode> node = std::make_unique<KDTreeNode>(points[medianIndex].first, points[medianIndex].second);
+
+			std::vector<std::pair<glm::vec3, uint32_t>> leftPoints(points.begin(), points.begin() + medianIndex);
+			std::vector<std::pair<glm::vec3, uint32_t>> rightPoints(points.begin() + medianIndex + 1, points.end());
+
+			node->left = BuildFromPointSetRecursive(leftPoints, depth + 1);
+			node->right = BuildFromPointSetRecursive(rightPoints, depth + 1);
 
 			return node;
 		}
 
-		bool SearchPoint(const glm::vec3& point, uint32_t index) {
-			return SearchPointRecursive(m_RootNode, point, index, 0);
-		}
-
-		bool SearchPointRecursive(KDTreeNode* node, const glm::vec3& point, uint32_t index, uint32 depth) {
+		uint32_t nearestNeighborRec(KDTreeNode* node, const glm::vec3& target, uint32_t targetIndex, int depth, float bestDist, uint32_t bestIndex) const {
 			if (node == nullptr) {
-				return false;
-			}
-			if (node->point == point && node->index == index) {
-				return true;
+				return bestIndex;
 			}
 
-			uint32 axis = depth % 3;
-			if (point[axis] < node->point[axis]) {
-				return SearchPointRecursive(node->left, point, index, depth + 1);
+			float dist = glm::distance(node->point, target);
+			if (dist < bestDist && node->index != targetIndex) {
+				bestDist = dist;
+				bestIndex = node->index;
 			}
-			else {
-				return SearchPointRecursive(node->right, point, index, depth + 1);
+
+			int axis = depth % 3;
+			KDTreeNode* nextNode = (target[axis] < node->point[axis]) ? node->left.get() : node->right.get();
+			KDTreeNode* otherNode = (target[axis] < node->point[axis]) ? node->right.get() : node->left.get();
+
+			bestIndex = nearestNeighborRec(nextNode, target, targetIndex, depth + 1, bestDist, bestIndex);
+			if (std::fabs(target[axis] - node->point[axis]) < bestDist) {
+				bestIndex = nearestNeighborRec(otherNode, target, targetIndex, depth + 1, bestDist, bestIndex);
 			}
+
+			return bestIndex;
 		}
 
-		uint32_t FindNearestPointRecursive(KDTreeNode* node, const glm::vec3& target, uint32_t targetIndex, uint32 depth, float32 best_distance, uint32_t best_index) const {
-			if (node == nullptr) {
-				return best_index;
-			}
-
-			float32 dist = glm::distance(node->point, target);
-			if (dist < best_distance && node->index != targetIndex) {
-				best_distance = dist;
-				best_index = node->index;
-			}
-
-			uint32 axis = depth % 3;
-			KDTreeNode* nextNode = (target[axis] < node->point[axis]) ? node->left : node->right;
-			KDTreeNode* otherNode = (target[axis] < node->point[axis]) ? node->right : node->left;
-
-			best_index = FindNearestPointRecursive(nextNode, target, targetIndex, depth + 1, best_distance, best_index);
-			if (std::fabs(target[axis] - node->point[axis]) < best_distance) {
-				best_index = FindNearestPointRecursive(otherNode, target, targetIndex, depth + 1, best_distance, best_index);
-			}
-
-			return best_index;
-		}
-
-		void FindNearestPointsRecursive(KDTreeNode* node, const glm::vec3& target, float32 max_distance, uint32_t target_index, uint32 depth, std::vector<uint32_t>& result) const {
+		void findPointsWithinDistanceRec(KDTreeNode* node, const glm::vec3& target, float maxDistance, uint32_t targetIndex, int depth, std::vector<uint32_t>& result) const {
 			if (node == nullptr) {
 				return;
 			}
 
-			float32 dist = glm::distance(node->point, target);
-			if (dist <= max_distance && node->index != target_index) {
+			float dist = glm::distance(node->point, target);
+			if (dist <= maxDistance && node->index != targetIndex) {
 				result.push_back(node->index);
 			}
 
-			uint32 axis = depth % 3;
+			int axis = depth % 3;
+			KDTreeNode* nextNode = (target[axis] < node->point[axis]) ? node->left.get() : node->right.get();
+			KDTreeNode* otherNode = (target[axis] < node->point[axis]) ? node->right.get() : node->left.get();
 
-			KDTreeNode* nextNode = (target[axis] < node->point[axis]) ? node->left : node->right;
-			KDTreeNode* otherNode = (target[axis] < node->point[axis]) ? node->right : node->left;
-
-			FindNearestPointsRecursive(nextNode, target, max_distance, target_index, depth + 1, result);
-			if (glm::abs(target[axis] - node->point[axis]) < max_distance) {
-				FindNearestPointsRecursive(otherNode, target, max_distance, target_index, depth + 1, result);
+			findPointsWithinDistanceRec(nextNode, target, maxDistance, targetIndex, depth + 1, result);
+			if (std::fabs(target[axis] - node->point[axis]) < maxDistance) {
+				findPointsWithinDistanceRec(otherNode, target, maxDistance, targetIndex, depth + 1, result);
 			}
 		}
-
-		KDTreeNode* m_RootNode;
 	};
 
 }
