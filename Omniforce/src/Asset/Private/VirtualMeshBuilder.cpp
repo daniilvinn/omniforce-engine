@@ -248,6 +248,7 @@ namespace Omni {
 
 		// Global data
 		uint32 lod_idx = 1;
+		uint32 current_meshlets_offset = 0;
 		float32 simplify_scale = meshopt_simplifyScale((float32*)vertices.data(), vertices.size() / vertex_stride, vertex_stride);
 		// Compute max lod count. I expect each lod level to have 2 times less indices than
 		// previous level. Added 2 if some levels won't be able to half index count
@@ -260,7 +261,8 @@ namespace Omni {
 			current_meshlets[i] = i;
 
 		while (lod_idx < max_lod) {
-			// per-pass Data
+			// Create a span of meshlets which are currently used as source meshlets for simplification. Also setup t_lod variable
+			std::span<RenderableMeshlet> meshlets_to_group(meshlets_data->meshlets.begin() + current_meshlets_offset, meshlets_data->meshlets.end());
 			float32 t_lod = float32(lod_idx) / (float32)max_lod;
 			float32 min_vertex_distance = (t_lod * 0.1f + (1.0f - t_lod) * 0.01f) * simplify_scale;
 
@@ -344,8 +346,6 @@ namespace Omni {
 				float32 simplification_rate = 0.5f;
 				std::vector<uint32> simplified_indices;
 
-				bool lod_generation_failed = false;
-
 				// Generate LOD
 				while (!simplified_indices.size() || simplified_indices.size() == merged_indices.size()) {
 					mesh_preprocessor.GenerateMeshLOD(&simplified_indices, &vertices, &merged_indices, vertex_stride, merged_indices.size() * simplification_rate, target_error, true);
@@ -354,19 +354,11 @@ namespace Omni {
 
 					OMNIFORCE_ASSERT(simplified_indices.size());
 
-					// Failed to generate LOD for a given group. Reregister meshlets and skip the group
 					if (simplification_rate >= 1.0f && (simplified_indices.size() == merged_indices.size())) {
 						OMNIFORCE_CORE_WARNING("Failed to generate LOD, registering source clusters");
-						lod_generation_failed = true;
-						for (const auto& meshlet_idx : group)
-							current_meshlets.push_back(meshlet_idx);
-
 						break;
 					}
 				}
-
-				if(lod_generation_failed)
-					continue;
 
 				// Split back
 				Scope<ClusterizedMesh> simplified_meshlets = mesh_preprocessor.GenerateMeshlets(&vertices, &simplified_indices, vertex_stride);
@@ -388,6 +380,7 @@ namespace Omni {
 				meshlets_data->cull_bounds.insert(meshlets_data->cull_bounds.end(), simplified_meshlets->cull_bounds.begin(), simplified_meshlets->cull_bounds.end());
 
 			}
+			current_meshlets_offset = meshlets_data->meshlets.size() - num_newly_created_meshlets;
 
 			if(num_newly_created_meshlets == 1)
 				break;
