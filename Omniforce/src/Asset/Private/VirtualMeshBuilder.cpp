@@ -248,7 +248,6 @@ namespace Omni {
 
 		// Global data
 		uint32 lod_idx = 1;
-		uint32 current_meshlets_offset = 0;
 		float32 simplify_scale = meshopt_simplifyScale((float32*)vertices.data(), vertices.size() / vertex_stride, vertex_stride);
 		// Compute max lod count. I expect each lod level to have 2 times less indices than
 		// previous level. Added 2 if some levels won't be able to half index count
@@ -262,7 +261,6 @@ namespace Omni {
 
 		while (lod_idx < max_lod) {
 			// Create a span of meshlets which are currently used as source meshlets for simplification. Also setup t_lod variable
-			std::span<RenderableMeshlet> meshlets_to_group(meshlets_data->meshlets.begin() + current_meshlets_offset, meshlets_data->meshlets.end());
 			float32 t_lod = float32(lod_idx) / (float32)max_lod;
 			float32 min_vertex_distance = (t_lod * 0.1f + (1.0f - t_lod) * 0.01f) * simplify_scale;
 
@@ -271,7 +269,6 @@ namespace Omni {
 			// 3. Generate welded remap table
 			// 4. Clear index array of current meshlets, so next meshlets can properly fill new data
 			std::vector<bool> edge_vertices_map = GenerateEdgeMap(meshlets_data->meshlets, current_meshlets, vertices, meshlets_data->indices, meshlets_data->local_indices, vertex_stride);
-			float32 average_vertex_distance_sq = ComputeAverageVertexDistanceSquared(vertices, previous_lod_indices, vertex_stride);
 
 			// Evaluate unique indices to be welded
 			rh::unordered_flat_set<uint32> unique_indices;
@@ -339,13 +336,13 @@ namespace Omni {
 				// Skip if no indices after merging (maybe all triangles are degenerate?)
 				if(merged_indices.size() == 0)
 					continue;
-				previous_lod_indices.insert(previous_lod_indices.end(), merged_indices.begin(), merged_indices.end());
 
 				// Setup simplification parameters
 				float32 target_error = 0.9f * t_lod + 0.01f * (1 - t_lod);
 				float32 simplification_rate = 0.5f;
 				std::vector<uint32> simplified_indices;
 
+				bool simplification_failed = false;
 				// Generate LOD
 				while (!simplified_indices.size() || simplified_indices.size() == merged_indices.size()) {
 					mesh_preprocessor.GenerateMeshLOD(&simplified_indices, &vertices, &merged_indices, vertex_stride, merged_indices.size() * simplification_rate, target_error, true);
@@ -356,9 +353,14 @@ namespace Omni {
 
 					if (simplification_rate >= 1.0f && (simplified_indices.size() == merged_indices.size())) {
 						OMNIFORCE_CORE_WARNING("Failed to generate LOD, registering source clusters");
+						previous_lod_indices.insert(previous_lod_indices.end(), merged_indices.begin(), merged_indices.end());
+						simplification_failed = true;
 						break;
 					}
 				}
+
+				if(!simplification_failed)
+					previous_lod_indices.insert(previous_lod_indices.end(), simplified_indices.begin(), simplified_indices.end());
 
 				// Split back
 				Scope<ClusterizedMesh> simplified_meshlets = mesh_preprocessor.GenerateMeshlets(&vertices, &simplified_indices, vertex_stride);
@@ -380,7 +382,6 @@ namespace Omni {
 				meshlets_data->cull_bounds.insert(meshlets_data->cull_bounds.end(), simplified_meshlets->cull_bounds.begin(), simplified_meshlets->cull_bounds.end());
 
 			}
-			current_meshlets_offset = meshlets_data->meshlets.size() - num_newly_created_meshlets;
 
 			if(num_newly_created_meshlets == 1)
 				break;
