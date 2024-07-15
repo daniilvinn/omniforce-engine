@@ -31,3 +31,6 @@
 [submodule "Omniforce/vendor/miniball"]
 	path = Omniforce/vendor/miniball
 	url = https://github.com/daniilvinn/miniball.git
+[submodule "Omniforce/vendor/libMETIS"]
+	path = Omniforce/vendor/libMETIS
+	url = https://github.com/daniilvinn/METIS.git

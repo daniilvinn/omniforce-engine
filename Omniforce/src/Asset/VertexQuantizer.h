@@ -30,7 +30,7 @@ namespace Omni {
 			return result;
 		}
 
-		// Quantize by addition of AABB's channel min value to remove sign and multiplying by unit grid size (`1u << bitrate`)
+		// Quantize by transforming vertex to a meshlet space, with further multiplication by pow(2, local_bitrate) and rounding
 		uint32 QuantizeVertexChannel(float32 f, uint32 local_bitrate, uint32 meshlet_bitrate) {
 			int32 v = std::round(f * (1u << local_bitrate));
 			uint32 result = v < 0 ? (1u << meshlet_bitrate) + v : v;

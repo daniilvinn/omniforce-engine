@@ -11,6 +11,7 @@
 #include <Asset/Model.h>
 #include <Asset/Importers/MaterialImporter.h>
 #include <Asset/Importers/ImageImporter.h>
+#include <Asset/VirtualMeshBuilder.h>
 #include <Renderer/Mesh.h>
 #include <Renderer/Image.h>
 #include <Threading/JobSystem.h>
@@ -28,6 +29,7 @@
 #include <fastgltf/tools.hpp>
 #include <fmt/format.h>
 #include <taskflow/taskflow.hpp>
+#include <metis.h>
 
 namespace Omni {
 
@@ -176,13 +178,13 @@ namespace Omni {
 	bool ModelImporter::ValidateSubmesh(const ftf::Mesh* mesh, const ftf::Primitive* primitive, const ftf::Material* material)
 	{
 		// Check if material is PBR-compatible. Currently engine supports only PBR materials
-		if (!material->pbrData.baseColorTexture.has_value()) {
-			OMNIFORCE_CORE_WARNING("One of the submeshes \"{}\" has no PBR material. Skipping submesh", mesh->name);
-			OMNIFORCE_CUSTOM_LOGGER_WARN("OmniEditor", "One of the submeshes has no PBR material. Skipping submesh");
-			return true;
-		}
+		//if (!material->pbrData.baseColorTexture.has_value()) {
+		//	OMNIFORCE_CORE_WARNING("One of the submeshes \"{}\" has no PBR material. Skipping submesh", mesh->name);
+		//	OMNIFORCE_CUSTOM_LOGGER_WARN("OmniEditor", "One of the submeshes has no PBR material. Skipping submesh");
+		//	return true;
+		//}
 		// Check if mesh data is indexed
-		else if (!primitive->indicesAccessor.has_value()) {
+		if (!primitive->indicesAccessor.has_value()) {
 			OMNIFORCE_CORE_ERROR("One of the submeshes has no indices. Unindexed meshes are not supported. Skipping submesh");
 			OMNIFORCE_CUSTOM_LOGGER_ERROR("OmniEditor", "One of the submeshes has no indices. Unindexed meshes are not supported. Skipping submesh");
 			return true;
@@ -201,7 +203,7 @@ namespace Omni {
 		uint32 attribute_stride = 12;
 
 		// Iterate through attributes and add them to map, effectively sorting them
-		for (auto& attribute : primitive->attributes) {
+		for (auto attribute : primitive->attributes) {
 			// If on "POSIIION" attribute - skip iteration, since geometry is not considered as vertex attribute and is always at 0 offset
 			if (attribute.first == "POSITION")
 				continue;
@@ -294,54 +296,31 @@ namespace Omni {
 		// Init crucial data
 		std::array<MeshData, Mesh::OMNI_MAX_MESH_LOD_COUNT> mesh_lods = {};
 		AABB lod0_aabb = {};
-		
+		VirtualMesh vmesh = {};
+
 		// Process mesh data on per-LOD basis. It involves generating LOD index buffer, optimizing mesh, generating meshlets and remapping data
 		for (uint32 i = 0; i < Mesh::OMNI_MAX_MESH_LOD_COUNT; i++) {
 			MeshPreprocessor mesh_preprocessor = {};
 
-			// Generate LOD. If i == 0, we basically generate a lod which is completely equal to source mesh
-			std::vector<uint32> lod_indices;
-
-			if (i != 0) {
-				uint32 target_index_count = index_data->size() / (1 * glm::pow(4, i)) + (index_data->size() % 3);
-				float target_error = 0.1f;
-
-				// If simplifier was unable to generate LOD (returned index count is 0), try to generate with higher error until lod is generated
-				while (lod_indices.size() == 0)
-				{
-					mesh_preprocessor.GenerateMeshLOD(
-						&lod_indices,
-						vertex_data,
-						index_data,
-						vertex_stride,
-						target_index_count < 6 ? 6 : target_index_count, // clamp index count to 6 (plane)
-						target_error
-					);
-
-					// HACK: Multiply target index count by 20% so we can generate generate something;
-					// Best solution would be to stop generation of LODs and use amount of lods we were able to generate, instead of fixed amount of 4
-					target_index_count *= std::clamp(6u, (uint32)(target_index_count * 1.2f), (uint32)index_data->size());
-				}
-			}
-			else {
-				lod_indices = *index_data;
-			}
-
-			OMNIFORCE_ASSERT_TAGGED(lod_indices.size(), "Mesh LOD generation failed. How did we return from loop above though?");
-
 			// Optimize mesh (remove redundant vertices, optimize for vertex cache etc.)
 			std::vector<byte> optimized_vertices;
 			std::vector<uint32> optimized_indices;
+			
+			mesh_preprocessor.OptimizeMesh(&optimized_vertices, &optimized_indices, vertex_data, index_data, vertex_stride);
+		
+			if (i == 0) {
+				VirtualMeshBuilder vmesh_builder = {};
 
-			// Passing nullptr as index data to index vertices
-			mesh_preprocessor.OptimizeMesh(&optimized_vertices, &optimized_indices, vertex_data, &lod_indices, vertex_stride);
+				vmesh = vmesh_builder.BuildClusterGraph(optimized_vertices, optimized_indices, vertex_stride);
 
-			// Generate meshlets for mesh shading-based geometry processing.
-			GeneratedMeshlets* generated_meshlets = mesh_preprocessor.GenerateMeshlets(&optimized_vertices, &optimized_indices, vertex_stride);
+				OMNIFORCE_ASSERT_TAGGED(vmesh.meshlets.size(), "No virtual mesh clusters generated");
+				OMNIFORCE_ASSERT_TAGGED(vmesh.indices.size() >= 3, "No virtual mesh indices generated");
+				OMNIFORCE_ASSERT_TAGGED(vmesh.local_indices.size() >= 3, "No virtual mesh local indices generated");
+			}
 
 			// Remap vertices to get rid of generated index buffer after generation of meshlets
-			std::vector<byte> remapped_vertices(generated_meshlets->indices.size() * vertex_stride);
-			mesh_preprocessor.RemapVertices(&remapped_vertices, &optimized_vertices, vertex_stride, &generated_meshlets->indices);
+			std::vector<byte> remapped_vertices(vmesh.indices.size() * vertex_stride);
+			mesh_preprocessor.RemapVertices(&remapped_vertices, &optimized_vertices, vertex_stride, &vmesh.indices);
 
 			// Split vertex data into two data streams: geometry and attributes.
 			// It is an optimization used for depth-prepass and shadow maps rendering to speed up data reads.
@@ -353,12 +332,23 @@ namespace Omni {
 			Bounds mesh_bounds = mesh_preprocessor.GenerateMeshBounds(&deinterleaved_vertex_data);
 
 			// Copy data
-			mesh_lods[i].meshlets			= std::move(generated_meshlets->meshlets);
-			mesh_lods[i].local_indices		= std::move(generated_meshlets->local_indices);
-			mesh_lods[i].cull_data			= std::move(generated_meshlets->cull_bounds);
+			mesh_lods[i].meshlets			= vmesh.meshlets;
+			mesh_lods[i].local_indices		= vmesh.local_indices;
+			mesh_lods[i].cull_data			= vmesh.cull_bounds;
 			mesh_lods[i].bounding_sphere	= mesh_bounds.sphere;
 
-			delete generated_meshlets;
+			// test on OOB
+			for (auto& meshlet : vmesh.meshlets) {
+				OMNIFORCE_ASSERT_TAGGED(meshlet.vertex_offset + meshlet.metadata.vertex_count <= deinterleaved_vertex_data.size(), "OOB");
+
+				OMNIFORCE_ASSERT_TAGGED(meshlet.triangle_offset + meshlet.metadata.triangle_count <= vmesh.local_indices.size(), "OOB");
+
+				for (uint32 local_index_idx = 0; local_index_idx < meshlet.metadata.triangle_count * 3; local_index_idx++) {
+					OMNIFORCE_ASSERT_TAGGED(meshlet.triangle_offset + local_index_idx < vmesh.local_indices.size(), "OOB");
+					uint32 local_index = vmesh.local_indices[meshlet.triangle_offset + local_index_idx];
+					OMNIFORCE_ASSERT_TAGGED(local_index < meshlet.metadata.vertex_count, "OOB");
+				}
+			}
 
 			// If i == 0, save generated mesh AABB, which will be used for LOD selection on runtime
 			if (i == 0)
@@ -366,7 +356,7 @@ namespace Omni {
 
 			// Quantize vertex positions
 			VertexDataQuantizer quantizer;
-			const uint32 vertex_bitrate = 8;
+			const uint32 vertex_bitrate = 24;
 			mesh_lods[i].quantization_grid_size = vertex_bitrate;
 			uint32 mesh_bitrate = quantizer.ComputeMeshBitrate(vertex_bitrate, lod0_aabb);
 			uint32 vertex_bitstream_bit_size = deinterleaved_vertex_data.size() * mesh_bitrate * 3;
@@ -383,20 +373,20 @@ namespace Omni {
 			float32 max_error = FLT_MIN;
 
 			for (auto& meshlet_bounds : mesh_lods[i].cull_data) {
-				uint32 meshlet_bitrate = std::clamp((uint32)std::ceil(std::log2(meshlet_bounds.radius * 2 * grid_size)), 1u, 32u); // we need diameter of a sphere, not radius
+				uint32 meshlet_bitrate = std::clamp((uint32)std::ceil(std::log2(meshlet_bounds.vis_culling_sphere.radius * 2 * grid_size)), 1u, 32u); // we need diameter of a sphere, not radius
 
 				RenderableMeshlet& meshlet = mesh_lods[i].meshlets[meshlet_idx];
 
 				meshlet.vertex_bit_offset = vertex_stream->GetNumBitsUsed();
-				meshlet.bitrate = meshlet_bitrate;
+				meshlet.metadata.bitrate = meshlet_bitrate;
 
-				meshlet_bounds.bounding_sphere_center = glm::round(meshlet_bounds.bounding_sphere_center * float32(grid_size)) / float32(grid_size);
+				meshlet_bounds.vis_culling_sphere.center = glm::round(meshlet_bounds.vis_culling_sphere.center * float32(grid_size)) / float32(grid_size);
 
 				uint32 base_vertex_offset = mesh_lods[i].meshlets[meshlet_idx].vertex_offset;
-				for (uint32 vertex_idx = 0; vertex_idx < meshlet.vertex_count; vertex_idx++) {
+				for (uint32 vertex_idx = 0; vertex_idx < meshlet.metadata.vertex_count; vertex_idx++) {
 					for(uint32 vertex_channel = 0; vertex_channel < 3; vertex_channel++) {
 						float32 original_vertex = deinterleaved_vertex_data[base_vertex_offset + vertex_idx][vertex_channel];
-						float32 meshlet_space_value = original_vertex - meshlet_bounds.bounding_sphere_center[vertex_channel];
+						float32 meshlet_space_value = original_vertex - meshlet_bounds.vis_culling_sphere.center[vertex_channel];
 
 
 						uint32 value = quantizer.QuantizeVertexChannel(
