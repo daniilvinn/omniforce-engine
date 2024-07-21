@@ -11,7 +11,7 @@
 * BC7 encoding for images (BC6 and BC5 are planned)
 
 ## How to build
-Build instructions can be found in `BUILD.md` (WIP)
+Build instructions can be found in `BUILD.md` (WIP)<br/>
 The main requirements for Omniforce engine:
 * The engine was only tested with MSVC compiler under Windows 11
 * Vulkan SDK 1.3
