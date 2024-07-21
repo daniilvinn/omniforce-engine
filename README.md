@@ -29,9 +29,9 @@ The main requirements for Omniforce engine:
 * spdlog
 * shaderc
 * spirv-reflect
-* fmt
 * tinyfiledialogs
 * imgui
+* ImGuizmo
 * stb-image
 * EnTT
 * nlohmann_json
@@ -39,3 +39,6 @@ The main requirements for Omniforce engine:
 * bc7enc-rdo
 * NVIDIA libdeflate
 * volk
+* meshoptimizer
+* metis
+* fmt (pulled from spdlog)
