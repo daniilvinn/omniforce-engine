@@ -10,10 +10,12 @@
 * C# scripting based on Mono Runtime - full physics control from C# side, collision callbacks and logging.
 * BC7 encoding for images (BC6 and BC5 are planned)
 
-## Requirements
+## How to build
+Build instructions can be found in `BUILD.md` (WIP)
+The main requirements for Omniforce engine:
 * The engine was only tested with MSVC compiler under Windows 11
 * Vulkan SDK 1.3
-* A GPU which supports Mesh Shaders - NVIDIA Turing and newer or AMD RDNA2 or newer
+* A GPU which supports Mesh Shaders - NVIDIA Turing / AMD RDNA2 or newer.
 
 ## Goals
 * Skeletal animations
