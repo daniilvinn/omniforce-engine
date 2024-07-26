@@ -7,7 +7,7 @@
 #include <shared_mutex>
 
 #include <fastgltf/types.hpp>
-#include <fmt/format.h>
+#include <spdlog/fmt/fmt.h>
 #include <taskflow/taskflow.hpp>
 
 namespace Omni {

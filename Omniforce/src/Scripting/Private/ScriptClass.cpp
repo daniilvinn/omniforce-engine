@@ -2,7 +2,7 @@
 #include "../ScriptEngine.h"
 
 #include <mono/jit/jit.h>
-#include <fmt/format.h>
+#include <spdlog/fmt/fmt.h>
 
 namespace Omni {
 

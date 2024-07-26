@@ -10,7 +10,7 @@
 #include <filesystem>
 #include <fstream>
 
-#include <tinyfiledialogs/tinyfiledialogs.h>
+#include <tinyfiledialogs.h>
 #include <ImGuizmo.h>
 
 using namespace Omni;

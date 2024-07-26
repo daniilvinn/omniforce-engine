@@ -26,6 +26,7 @@ add_library(${ENGINE_TARGET} ${ENGINE_FILES})
 target_include_directories(${ENGINE_TARGET} 
     PUBLIC 
         "src/"
+    SYSTEM PUBLIC
         "vendor/imgui"
         "vendor/ImGuizmo"
         "vendor/taskflow"
@@ -34,7 +35,7 @@ target_include_directories(${ENGINE_TARGET}
         "vendor/EnTT/src"
         "vendor/nlohmann-json/single_include"
         "vendor/robin-hood-hashing/src/include"
-    PRIVATE 
+    SYSTEM PRIVATE
         "${Vulkan_SDK}\\Include" 
         "${Vulkan_SDK}\\Source" 
         "vendor/stb"

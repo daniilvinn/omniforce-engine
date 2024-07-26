@@ -2,7 +2,7 @@
 
 #include "../VulkanCommon.h"
 
-#include <vulkan-memory-allocator-hpp/vk_mem_alloc.h>
+#include <vk_mem_alloc.h>
 #include <shared_mutex>
 
 namespace Omni {

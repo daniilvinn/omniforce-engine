@@ -5,6 +5,8 @@ cmake_minimum_required (VERSION 3.23)
 
 project ("Omniforce Engine")
 
+set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/installation")
+
 find_package(OpenMP REQUIRED)
 
 if(MSVC)

@@ -36,7 +36,7 @@ target_include_directories(${OMNI_IMGUI_TARGET} PUBLIC ${IMGUI_INCLUDE_PATH}
 	"imgui"
 )
 
-target_compile_definitions(${OMNI_IMGUI_TARGET} PRIVATE VK_NO_PROTOTYPES IMGUI_IMPL_VULKAN_HAS_DYNAMIC_RENDERING IMGUI_IMPL_VULKAN_NO_PROTOTYPES)
+target_compile_definitions(${OMNI_IMGUI_TARGET} PRIVATE VK_NO_PROTOTYPES IMGUI_IMPL_VULKAN_NO_PROTOTYPES)
 
 target_link_libraries(
 	${OMNI_IMGUI_TARGET}
@@ -61,17 +61,17 @@ add_library(nv_libdeflate ${NV_LIBDEFLATE_FILES})
 
 target_include_directories(nv_libdeflate PRIVATE "nv-libdeflate")
 
-### bc7enc_rdo
-add_subdirectory("bc7enc_rdo")
-
 ### Jolt Physics
 add_subdirectory("Jolt/Build")
 
-### Volk
-add_subdirectory("volk")
-
 ### meshoptimizer
 add_subdirectory("meshoptimizer")
+
+### bc7enc_rdo
+add_subdirectory("bc7enc_rdo")
+
+### Volk
+add_subdirectory("volk")
 
 ### fastgltf
 add_subdirectory("fastgltf")
@@ -84,3 +84,10 @@ add_subdirectory("spdlog")
 
 ### GLFW
 add_subdirectory("GLFW")
+
+
+### Disable warnings for METIS and GKlib
+if(MSVC)
+	target_compile_options(metis PRIVATE /W0)
+	target_compile_options(GKlib PRIVATE /W0)
+endif()
