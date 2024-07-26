@@ -34,3 +34,21 @@
 [submodule "Omniforce/vendor/libMETIS"]
 	path = Omniforce/vendor/libMETIS
 	url = https://github.com/daniilvinn/METIS.git
+[submodule "Omniforce/vendor/spdlog"]
+	path = Omniforce/vendor/spdlog
+	url = https://github.com/gabime/spdlog.git
+[submodule "Omniforce/vendor/GLFW"]
+	path = Omniforce/vendor/GLFW
+	url = https://github.com/glfw/glfw.git
+[submodule "Omniforce/vendor/EnTT"]
+	path = Omniforce/vendor/EnTT
+	url = https://github.com/skypjack/entt.git
+[submodule "Omniforce/vendor/nlohmann-json"]
+	path = Omniforce/vendor/nlohmann-json
+	url = https://github.com/nlohmann/json.git
+[submodule "Omniforce/vendor/robin-hood-hashing"]
+	path = Omniforce/vendor/robin-hood-hashing
+	url = https://github.com/martinus/robin-hood-hashing.git
+[submodule "Omniforce/vendor/VulkanMemoryAllocator"]
+	path = Omniforce/vendor/VulkanMemoryAllocator
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git

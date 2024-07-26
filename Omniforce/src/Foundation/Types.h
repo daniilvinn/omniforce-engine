@@ -37,7 +37,7 @@ namespace Omni {
 	template<typename T = float32>
 	struct vec2 {
 		union {
-			T values[2];
+			T values[2] = {};
 			struct {
 				union {
 					T x, r;
@@ -81,13 +81,18 @@ namespace Omni {
 	template<typename T = float32>
 	struct vec3 {
 		union {
-			T x, r;
-		};
-		union {
-			T y, g;
-		};
-		union {
-			T z, b;
+			T values[3] = {};
+			struct {
+				union {
+					T x, r;
+				};
+				union {
+					T y, g;
+				};
+				union {
+					T z, b;
+				};
+			};
 		};
 
 		vec3() = default;
@@ -125,16 +130,21 @@ namespace Omni {
 	template<typename T = float32>
 	struct vec4 {
 		union {
-			T x, r;
-		};
-		union {
-			T y, g;
-		};
-		union {
-			T z, b;
-		};
-		union {
-			T w, a;
+			T values[4] = {};
+			struct {
+				union {
+					T x, r;
+				};
+				union {
+					T y, g;
+				};
+				union {
+					T z, b;
+				};
+				union {
+					T w, a;
+				};
+			};
 		};
 
 		vec4() = default;
@@ -195,26 +205,26 @@ namespace Omni {
 	using RGBA32 = glm::u8vec4;
 
 	struct Sphere {
-		glm::vec3 center;
-		float32 radius;
+		glm::vec3 center = {};
+		float32 radius = {};
 	};
 
 	struct AABB {
-		glm::vec3 min, max;
+		glm::vec3 min = {}, max = {};
 	};
 
 	struct AABB_2D {
-		glm::vec2 min, max;
+		glm::vec2 min = {}, max = {};
 	};
 
 	struct Bounds {
-		Sphere sphere;
-		AABB aabb;
+		Sphere sphere = {};
+		AABB aabb = {};
 	};
 
 	struct Plane {
-		glm::vec3 normal;
-		float32 distance;
+		glm::vec3 normal = {};
+		float32 distance = {};
 
 		Plane() {
 			normal = { 0.0f, 1.0f, 0.0f };

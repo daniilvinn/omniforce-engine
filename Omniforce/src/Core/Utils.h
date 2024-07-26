@@ -8,7 +8,7 @@
 #include <type_traits>
 #include <vector>
 
-#include <fmt/format.h>
+#include <spdlog/fmt/fmt.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtc/matrix_transform.hpp>

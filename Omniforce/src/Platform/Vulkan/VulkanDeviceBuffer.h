@@ -4,7 +4,7 @@
 
 #include <Renderer/DeviceBuffer.h>
 #include <Renderer/Renderer.h>
-#include <vulkan-memory-allocator-hpp/vk_mem_alloc.h>
+#include <vk_mem_alloc.h>
 
 namespace Omni {
 

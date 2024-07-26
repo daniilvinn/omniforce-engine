@@ -20,6 +20,7 @@ namespace Omni {
 		{
 		case Omni::LogSource::CORE:			return "Engine";
 		case Omni::LogSource::CLIENT:		return "Game";
+		default:							std::unreachable();
 		}
 	}
 

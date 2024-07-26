@@ -1,6 +1,3 @@
-// NOTE:
-// All material texture importing must be rewritten pretty much entirely, except of loading individual properties
-
 #include "../Importers/MaterialImporter.h">
 
 #include <Asset/AssetManager.h>

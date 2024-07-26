@@ -1,5 +1,4 @@
 #include "../Filesystem.h"
-#include "Log/Logger.h"
 
 #include <fstream>
 

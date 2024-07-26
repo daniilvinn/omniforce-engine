@@ -14,7 +14,7 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${EDITOR_FILES})
 add_executable(${EDITOR_TARGET} ${EDITOR_FILES})
 
 target_link_libraries(${EDITOR_TARGET} PUBLIC OmniforceEngine ${OMNI_IMGUI_TARGET} OpenMP::OpenMP_CXX)
-target_include_directories(${EDITOR_TARGET} PUBLIC ${IMGUI_INCLUDE_PATH} "src")
+target_include_directories(${EDITOR_TARGET} SYSTEM PUBLIC ${IMGUI_INCLUDE_PATH} PUBLIC "src")
 
 set_target_properties(${EDITOR_TARGET} PROPERTIES
     VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/Editor"
@@ -31,3 +31,8 @@ set_target_properties(${EDITOR_TARGET} PROPERTIES
 endif()
 
 omni_set_project_ide_folder(${EDITOR_TARGET} ${CMAKE_CURRENT_SOURCE_DIR})
+
+install(TARGETS Editor DESTINATION "${CMAKE_SOURCE_DIR}/installation/${CMAKE_BUILD_TYPE}")
+
+install(DIRECTORY Resources DESTINATION "${CMAKE_INSTALL_PREFIX}")
+install(FILES imgui.ini DESTINATION "${CMAKE_INSTALL_PREFIX}")
