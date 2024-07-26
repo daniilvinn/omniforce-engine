@@ -12,6 +12,7 @@
 #include <Renderer/Mesh.h>
 #include <Core/CallbackRHUMap.h>
 #include <Memory/VirtualMemoryBlock.h>
+#include <DebugUtils/DebugRenderer.h>
 
 #include <vector>
 #include <shared_mutex>
@@ -45,6 +46,11 @@ namespace Omni {
 
 		void BeginScene(Shared<Camera> camera);
 		void EndScene();
+
+		void EnterDebugMode(DebugSceneView mode) { m_CurrentDebugMode = mode; };
+		void ExitDebugMode() { m_CurrentDebugMode = DebugSceneView::NONE; };
+		bool IsInDebugMode() const { return m_CurrentDebugMode != DebugSceneView::NONE; }
+		DebugSceneView GetCurrentDebugMode() const { return m_CurrentDebugMode; }
 
 		Shared<Image> GetFinalImage();
 		static Shared<ImageSampler> GetSamplerNearest() { return s_SamplerNearest; }
@@ -121,6 +127,8 @@ namespace Omni {
 		std::vector<PointLight> m_HostPointLights;
 		Shared<DeviceBuffer> m_DevicePointLights;
 		std::shared_mutex m_Mutex;
+
+		DebugSceneView m_CurrentDebugMode = DebugSceneView::NONE;
 
 	};
 

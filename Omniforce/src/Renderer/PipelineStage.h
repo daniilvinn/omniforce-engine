@@ -2,7 +2,7 @@
 
 namespace Omni {
 
-	enum class PipelineStage {
+	enum class PipelineStage : uint64 {
 		VK_PIPELINE_STAGE_2_NONE = 0ULL,
 		NONE_KHR = 0ULL,
 		TOP_OF_PIPE = 0x00000001ULL,
@@ -80,7 +80,7 @@ namespace Omni {
 		OPTICAL_FLOW_NV = 0x20000000ULL,
 	};
 
-	enum class PipelineAccess {
+	enum class PipelineAccess : uint64 {
 		NONE = 0ULL,
 		NONE_KHR = 0ULL,
 		INDIRECT_COMMAND_READ = 0x00000001ULL,

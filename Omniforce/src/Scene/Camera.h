@@ -27,8 +27,8 @@ namespace Omni {
 		glm::vec3 GetPosition() const { return m_Position; }
 
 		void SetType(CameraProjectionType type) { m_Type = type; }
-		void SetNearClip(float32 near) { m_ZNear = near; }
-		void SetFarClip(float32 far) { m_ZFar = far; }
+		void SetNearClip(float32 near_clip_distance) { m_ZNear = near_clip_distance; }
+		void SetFarClip(float32 far_clip_distance) { m_ZFar = far_clip_distance; }
 		void SetPosition(glm::vec3 position) { m_Position = position; }
 		virtual void SetAspectRatio(float32 ratio) = 0;
 

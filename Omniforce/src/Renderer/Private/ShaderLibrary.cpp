@@ -79,6 +79,8 @@ namespace Omni {
 			m_Library.emplace(shader_filename, permutations);
 		}
 		m_Mutex.unlock();
+		
+		return true;
 	}
 
 	bool ShaderLibrary::UnloadShader(std::string name, const ShaderMacroTable& macros)
@@ -121,7 +123,7 @@ namespace Omni {
 		if (!m_Library.contains(key))
 			return false;
 
-		auto permutation_list = m_Library.at(key);
+		auto& permutation_list = m_Library.at(key);
 
 		for (auto& permutation : permutation_list) {
 			if (permutation.second == macros)
@@ -136,7 +138,7 @@ namespace Omni {
 		if (!m_Library.contains(key))
 			return nullptr;
 
-		auto permutation_list = m_Library.at(key);
+		auto& permutation_list = m_Library.at(key);
 
 		for (auto& permutation : permutation_list) {
 			if (permutation.second == macros)

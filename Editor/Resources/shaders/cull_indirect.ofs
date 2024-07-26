@@ -48,13 +48,14 @@ void main() {
     Sphere bounding_sphere = root_mesh_data.lods[0].bounding_sphere;
 	bounding_sphere.center = RotateByQuat(bounding_sphere.center * transform.scale, rotation_quaternion) + transform.translation;
 
-    uint32_t selected_lod = 0;
+    uint selected_lod = 0;
     for(int i = 0; i < OMNI_MAX_MESH_LOD_COUNT; i++) {
         if(length(pc.camera_data.position - bounding_sphere.center) < OMNI_LOD_DISTANCES[i] * root_mesh_data.lod_distance_multiplier) {
             selected_lod = i;
             break;
         }
     }
+    //selected_lod = 0;
 
     // Take corresponding bounding sphere and test it against frustum
     MeshLOD mesh_data = root_mesh_data.lods[selected_lod];
@@ -64,7 +65,7 @@ void main() {
     bounding_sphere.radius = bounding_sphere.radius * max(max(transform.scale.x, transform.scale.y), transform.scale.z);
     
 
-    if(FrustumTestBoundingSphere(pc.camera_data.frustum, bounding_sphere)) {
+    //if(FrustumTestBoundingSphere(pc.camera_data.frustum, bounding_sphere)) {
         // If test is passed, fill in the data
         uint index = atomicAdd(pc.output_buffer.count, 1);
 
@@ -75,5 +76,5 @@ void main() {
 
         uint meshlet_count = (mesh_data.meshlet_count + 31) / 32;
         pc.output_buffer.draw_params[index] = uvec3(meshlet_count, 1, 1);
-    }
+    //}
 }

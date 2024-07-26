@@ -12,7 +12,7 @@
 
 #include <imgui.h>
 #include <misc/cpp/imgui_stdlib.h>
-#include <tinyfiledialogs/tinyfiledialogs.h>
+#include <tinyfiledialogs.h>
 
 namespace Omni {
 
@@ -26,6 +26,7 @@ namespace Omni {
 		case AssetType::OMNI_IMAGE:		return "image-gallery.png";
 		case AssetType::OMNI_MESH:		return "3d_modeling.png";
 		case AssetType::UNKNOWN:		return "document.png";
+		default:						std::unreachable();
 		}
 	}
 

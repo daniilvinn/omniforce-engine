@@ -32,7 +32,7 @@ namespace Omni {
 			return spdlog::level::off;
 			break;
 		default:
-			break;
+			std::unreachable();
 		}
 	}
 
@@ -66,7 +66,7 @@ namespace Omni {
 		delete s_Instance;
 	}
 
-	void Logger::WriteLogFile()
+	void Logger::WriteLogFile() const
 	{
 		std::string filename = std::string("logs/crash_log_") + Utils::EvaluateDatetime() + ".txt";
 		auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(filename);
