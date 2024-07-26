@@ -23,23 +23,22 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ENGINE_FILES})
 
 add_library(${ENGINE_TARGET} ${ENGINE_FILES})
 
-find_package(spdlog CONFIG REQUIRED)
-find_package(glfw3 CONFIG REQUIRED)
-find_package(Stb REQUIRED)
-find_package(EnTT CONFIG REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
-
 target_include_directories(${ENGINE_TARGET} 
     PUBLIC 
         "src/"
+    SYSTEM PUBLIC
         "vendor/imgui"
         "vendor/ImGuizmo"
         "vendor/taskflow"
         "vendor/glm"
-    PRIVATE 
+        "vendor/spdlog/include"
+        "vendor/EnTT/src"
+        "vendor/nlohmann-json/single_include"
+        "vendor/robin-hood-hashing/src/include"
+    SYSTEM PRIVATE
         "${Vulkan_SDK}\\Include" 
         "${Vulkan_SDK}\\Source" 
-        ${Stb_INCLUDE_DIR}
+        "vendor/stb"
         "vendor/Jolt"
         "vendor/mono/include/mono-2.0"
         "vendor/bc7enc_rdo/include"
@@ -49,6 +48,8 @@ target_include_directories(${ENGINE_TARGET}
         "vendor/NVAftermath/include"
         "vendor/miniball/cpp/main"
         "vendor/libMETIS/include"
+        "vendor/GLFW/include"
+        "vendor/VulkanMemoryAllocator/include"
 )
 target_link_directories(${ENGINE_TARGET} PUBLIC 
     "${Vulkan_SDK}\\Lib" 
@@ -69,18 +70,16 @@ target_compile_definitions(${ENGINE_TARGET} PUBLIC
     "$<$<CONFIG:Release>:OMNIFORCE_RELEASE>"
     IDXTYPEWIDTH=64
     REALTYPEWIDTH=64
+    WIN32_LEAN_AND_MEAN
 )
 
 target_link_libraries(
     ${ENGINE_TARGET} 
-    PUBLIC 
-        spdlog::spdlog 
-        spdlog::spdlog_header_only
-        EnTT::EnTT
-	    nlohmann_json::nlohmann_json
+    PUBLIC
         ${OMNI_IMGUI_TARGET}
         volk_headers
         metis
+        spdlog
 )
 
 target_link_libraries(

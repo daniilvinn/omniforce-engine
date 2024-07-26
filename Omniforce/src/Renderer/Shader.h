@@ -73,7 +73,9 @@ namespace Omni {
 			case ShaderStage::TASK:			return "task";
 			case ShaderStage::MESH:			return "mesh";
 			case ShaderStage::UNKNOWN:		return "unknown";
+			default:						std::unreachable();
 			}
+			return "unknown";
 		}
 
 	}

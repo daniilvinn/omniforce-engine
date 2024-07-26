@@ -1,5 +1,5 @@
 #define VMA_IMPLEMENTATION
-#include <vulkan-memory-allocator-hpp/vk_mem_alloc.h>
+#include <vk_mem_alloc.h>
 
 #include <Core/Utils.h>
 #include "VulkanMemoryAllocator.h"
