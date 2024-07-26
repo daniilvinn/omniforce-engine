@@ -2,7 +2,7 @@
 ## Requirements
 To build the engine, Vulkan SDK, preferrably the newest version, is required to be installed on the machine. It can be downloaded on https://www.lunarg.com/vulkan-sdk/ page.
 <br><br>
-To run the engine, a GPU with support of Mesh Shader technology is required: NVIDIA Turing (and newer) or AMD RDNA2 (and newer) or any other GPU which supports Mesh Shaders.
+To run the engine, **a GPU with support of Mesh Shader technology is required**: NVIDIA Turing (and newer) or AMD RDNA2 (and newer) or any other GPU which supports Mesh Shaders.
 
 ## Generating projects
 Go to `{root}/Scripts` directory and run `BuildProjects.bat`. After building, project files can be found in `{root}/build` directory.
