@@ -1,9 +1,9 @@
 #pragma once
 
+#include "Core/UUID.h"
+#include "Asset/AssetBase.h"
 #include "RendererCommon.h"
 #include "PipelineStage.h"
-
-#include "Core/UUID.h"
 
 #include <filesystem>
 
@@ -42,7 +42,13 @@ namespace Omni {
 		RGB32_HDR,
 		RGBA64_HDR,
 		RGBA128_HDR,
-		D32
+		D32,
+		BC1,
+		BC5,
+		BC6h,
+		BC7,
+		RGBA64_SFLOAT,
+		RGB24_UNORM
 	};
 
 	enum class OMNIFORCE_API ImageType : uint8 {
@@ -52,18 +58,19 @@ namespace Omni {
 	};
 
 	struct OMNIFORCE_API ImageSpecification {
-		uvec3 extent;
+		uvec3 extent = { 0,0 ,0 };
+		std::vector<byte> pixels;
 		std::filesystem::path path;
-		ImageFormat format;
-		ImageUsage usage;
-		ImageType type;
-		uint8 array_layers;
-		uint8 mip_levels;
+		ImageFormat format = ImageFormat::RGBA32_SRGB;
+		ImageUsage usage = ImageUsage::TEXTURE;
+		ImageType type = ImageType::TYPE_2D;
+		uint8 array_layers = 1;
+		uint8 mip_levels = 1;
+		OMNI_DEBUG_ONLY_FIELD(std::string debug_name);
 
 		static ImageSpecification Default() {
 			ImageSpecification spec;
 			spec.extent = { 0, 0, 0 };
-			spec.path = "";
 			spec.format = ImageFormat::RGBA32_SRGB;
 			spec.usage = ImageUsage::TEXTURE;
 			spec.type = ImageType::TYPE_2D;
@@ -74,10 +81,11 @@ namespace Omni {
 		};
 	};
 
-	class OMNIFORCE_API Image 
+	class OMNIFORCE_API Image : public AssetBase
 	{
 	public:
-		static Shared<Image> Create(const ImageSpecification& spec, const UUID& id = UUID());
+		static Shared<Image> Create(const ImageSpecification& spec, const AssetHandle& id = AssetHandle());
+		static Shared<Image> Create(const ImageSpecification& spec, const std::vector<RGBA32> data, const AssetHandle& id = AssetHandle());
 
 		virtual ~Image() {}
 
@@ -89,10 +97,15 @@ namespace Omni {
 			ImageLayout new_layout,
 			PipelineStage src_stage,
 			PipelineStage dst_stage,
-			PipelineAccess src_access = PipelineAccess::NONE,
-			PipelineAccess dst_access = PipelineAccess::NONE
+			BitMask src_access = 0,
+			BitMask dst_access = 0
  		) = 0;
-		virtual UUID GetId() const = 0;
+
+	protected:
+		Image(AssetHandle handle) {
+			Handle = handle;
+			Type = AssetType::OMNI_IMAGE;
+		};
 	};
 
 

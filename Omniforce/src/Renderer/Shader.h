@@ -10,6 +10,8 @@ namespace Omni {
 	
 	enum class OMNIFORCE_API ShaderStage : uint32 {
 		VERTEX,
+		TASK,
+		MESH,
 		FRAGMENT,
 		COMPUTE,
 		UNKNOWN
@@ -46,19 +48,30 @@ namespace Omni {
 		virtual ~Shader() {};
 		virtual void Destroy() = 0;
 
-		virtual bool Dirty() const = 0;
-		virtual void SetDirty(bool dirty) = 0;
+		UUID GetID() const { return m_ID; }
+
+		bool Dirty() const { return m_Dirty; };
+		void SetDirty(bool dirty) { m_Dirty = dirty; };
+		void Unload() { Destroy(); m_Dirty = true; };
 
 		virtual void RestoreShaderModule(std::filesystem::path path) = 0;
+
+		bool operator==(Shared<Shader> other) { return m_ID == other->m_ID; }
+
+	protected:
+		UUID m_ID;
+		bool m_Dirty;
 	};
 
 	namespace Utils {
-		inline constexpr std::string StageToString(const ShaderStage& stage) {
+		inline constexpr std::string ShaderStageToString(const ShaderStage& stage) {
 			switch (stage)
 			{
 			case ShaderStage::VERTEX:		return "vertex";
 			case ShaderStage::FRAGMENT:		return "fragment";
 			case ShaderStage::COMPUTE:		return "compute";
+			case ShaderStage::TASK:			return "task";
+			case ShaderStage::MESH:			return "mesh";
 			case ShaderStage::UNKNOWN:		return "unknown";
 			}
 		}

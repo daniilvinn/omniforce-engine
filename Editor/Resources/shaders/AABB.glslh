@@ -1,0 +1,22 @@
+#ifndef AABB_GLSLH
+#define AABB_GLSLH
+
+struct AABB {
+	vec3 min;
+	vec3 max;
+};
+
+float AABBGetVolume(AABB aabb) {
+	float width = aabb.max.x - aabb.min.x;
+	float height = aabb.max.y - aabb.min.y;
+	float depth = aabb.max.z - aabb.min.z;
+
+	return width * height * depth;
+}
+
+float AABBGetDiagonalLengthSquared(AABB aabb) {
+	vec3 diff = aabb.max - aabb.min;
+	return pow(diff.x, 2) + pow(diff.y, 2) + pow(diff.z, 2);
+}
+
+#endif

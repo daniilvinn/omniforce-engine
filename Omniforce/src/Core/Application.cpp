@@ -1,17 +1,18 @@
 #include "Application.h"
 
-#include <Log/Logger.h>
 #include <Core/Events/ApplicationEvents.h>
-#include <Threading/JobSystem.h>
 #include <Core/Input/Input.h>
+#include <Core/Input/Input.h>
+#include <Log/Logger.h>
 #include <Renderer/Renderer.h>
 #include <Renderer/ShaderLibrary.h>
 #include <Asset/AssetManager.h>
 #include <Physics/PhysicsEngine.h>
-#include <Core/Input/Input.h>
 #include <Scripting/ScriptEngine.h>
+#include <Audio/AudioEngine.h>
+#include <Threading/JobSystem.h>
+#include <DebugUtils/DebugRenderer.h>
 
-#include <cassert>
 #include <chrono>
 
 namespace Omni 
@@ -26,12 +27,8 @@ namespace Omni
 
 	void Application::Launch(Options& options)
 	{
-		assert(s_Instance == nullptr);
 		s_Instance = this;
 		m_RootSystem = options.root_system;
-
-		JobSystem::Init(JobSystemShutdownPolicy::WAIT);
-		JobSystem* js = JobSystem::Get();
 
 		OMNIFORCE_INITIALIZE_LOG_SYSTEM(Logger::Level::LEVEL_TRACE);
 
@@ -41,33 +38,39 @@ namespace Omni
 		main_window_config.event_callback = OMNIFORCE_BIND_EVENT_FUNCTION(Application::OnEvent);
 		main_window_config.tag = "main";
 		main_window_config.title = "Omniforce Game Engine";
-		main_window_config.width = 1600;
-		main_window_config.height = 900;
+		main_window_config.width = 1920;
+		main_window_config.height = 1080;
 		main_window_config.fs_exclusive = false;
 
 		m_WindowSystem->AddWindow(main_window_config);
+
+		// Init on main thread
+		ScriptEngine::Init();
 
 		RendererConfig renderer_config = {};
 		renderer_config.main_window = m_WindowSystem->GetWindow("main").get();
 		renderer_config.frames_in_flight = 2;
 		renderer_config.vsync = false;
 
-		js->Execute([renderer_config]() {
-			Renderer::Init(renderer_config);
-		});
-		
-		ScriptEngine::Init();
+		auto task_executor = JobSystem::GetExecutor();
 
-		js->Execute(Input::Init);
-		js->Execute(PhysicsEngine::Init);
+		tf::Taskflow taskflow;
+		auto [renderer_task, input_task, physics_task, audio_task] = taskflow.emplace(
+			[renderer_config]() { Renderer::Init(renderer_config); }, 
+			Input::Init, 
+			PhysicsEngine::Init, 
+			AudioEngine::Init
+		);
 
-		js->Wait();
+		auto asset_manager_task = taskflow.emplace(AssetManager::Init);
 
-		js->Execute(Renderer::LoadShaderPack);
-		js->Execute(AssetManager::Init);
+		asset_manager_task.succeed(renderer_task);
+
+		task_executor->run(taskflow).wait();
 
 		m_ImGuiRenderer = ImGuiRenderer::Create();
 		m_ImGuiRenderer->Launch(m_WindowSystem->GetWindow("main")->Raw());
+		DebugRenderer::Init();
 	}
 
 	void Application::Run()
@@ -75,7 +78,8 @@ namespace Omni
 		m_RootSystem->Launch();
 		while (m_Running) {
 			PreFrame();
-			m_RootSystem->OnUpdate(m_DeltaTimeData.delta_time);
+			if (!m_WindowSystem->GetWindow("main")->Minimized())
+				m_RootSystem->OnUpdate(m_DeltaTimeData.delta_time);
 			PostFrame();
 		}
 		m_RootSystem->Destroy();
@@ -85,8 +89,9 @@ namespace Omni
 	{
 		m_ImGuiRenderer->Destroy();
 		AssetManager::Shutdown();
+		DebugRenderer::Shutdown();
 		Renderer::Shutdown();
-		
+
 		OMNIFORCE_CORE_INFO("Engine shutdown success");
 	}
 
@@ -101,19 +106,25 @@ namespace Omni
 
 	void Application::PreFrame()
 	{
-		m_DeltaTimeData.delta_time = (m_DeltaTimeData.current_frame_time - m_DeltaTimeData.last_frame_time);
-		m_DeltaTimeData.last_frame_time = m_DeltaTimeData.current_frame_time;
+		if (!m_WindowSystem->GetWindow("main")->Minimized()) {
+			m_DeltaTimeData.delta_time = (m_DeltaTimeData.current_frame_time - m_DeltaTimeData.last_frame_time);
+			m_DeltaTimeData.last_frame_time = m_DeltaTimeData.current_frame_time;
 
-		m_WindowSystem->PollEvents();
-		Renderer::BeginFrame();
-		m_ImGuiRenderer->BeginFrame();
+			Renderer::BeginFrame();
+
+			m_ImGuiRenderer->BeginFrame();
+		}
 	}
 
 	void Application::PostFrame()
 	{
-		m_ImGuiRenderer->EndFrame();
-		Renderer::Render();
-		Renderer::EndFrame();
+		if (!m_WindowSystem->GetWindow("main")->Minimized()) {
+			m_ImGuiRenderer->EndFrame();
+			Renderer::Render();
+			Renderer::EndFrame();
+		}
+
+		m_WindowSystem->PollEvents();
 		m_WindowSystem->ProcessEvents();
 
 		m_DeltaTimeData.current_frame_time = Input::Time();

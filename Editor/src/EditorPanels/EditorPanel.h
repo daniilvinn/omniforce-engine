@@ -11,7 +11,7 @@ namespace Omni {
 
 		void Open(bool open) { m_IsOpen = open; }
 		virtual void SetContext(Scene* ctx) { m_Context = ctx; }
-		virtual void Render() = 0;
+		virtual void Update() = 0;
 	
 		Scene* m_Context;
 		bool m_IsOpen;

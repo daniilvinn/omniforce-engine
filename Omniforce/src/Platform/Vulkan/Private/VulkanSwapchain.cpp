@@ -2,6 +2,7 @@
 #include "../VulkanGraphicsContext.h"
 #include "../VulkanDevice.h"
 #include "../VulkanImage.h"
+#include "../VulkanDeviceCmdBuffer.h"
 
 #include <GLFW/glfw3.h>
 
@@ -112,7 +113,7 @@ namespace Omni {
 
 		VK_CHECK_RESULT(vkGetSwapchainImagesKHR(device->Raw(), m_Swapchain, (uint32*)&m_SwachainImageCount, pure_swapchain_images.data()));
 
-		VkCommandBuffer image_layout_transition_command_buffer = device->AllocateTransientCmdBuffer();
+		VulkanDeviceCmdBuffer image_layout_transition_command_buffer = device->AllocateTransientCmdBuffer();
 
 		for (auto& image : m_Images) {
 			vkDestroyImageView(device->Raw(), image->RawView(), nullptr);
@@ -175,7 +176,7 @@ namespace Omni {
 			);
 		}
 
-		device->ExecuteTransientCmdBuffer(image_layout_transition_command_buffer);
+		device->ExecuteTransientCmdBuffer(image_layout_transition_command_buffer, true);
 
 		for (auto& image : m_Images) {
 			image->SetCurrentLayout(ImageLayout::PRESENT_SRC);
@@ -277,8 +278,8 @@ namespace Omni {
 	{
 		auto device = VulkanGraphicsContext::Get()->GetDevice();
 
-		vkWaitForFences(device->Raw(), 1, &m_Fences[m_CurrentFrameIndex], VK_TRUE, UINT64_MAX);
-		vkResetFences(device->Raw(), 1, &m_Fences[m_CurrentFrameIndex]);
+		VK_CHECK_RESULT(vkWaitForFences(device->Raw(), 1, &m_Fences[m_CurrentFrameIndex], VK_TRUE, UINT64_MAX));
+		VK_CHECK_RESULT(vkResetFences(device->Raw(), 1, &m_Fences[m_CurrentFrameIndex]));
 
 		VkResult acquisition_result = vkAcquireNextImageKHR(
 			device->Raw(),
@@ -317,6 +318,8 @@ namespace Omni {
 		present_info.pWaitSemaphores = &m_Semaphores[m_CurrentFrameIndex].render_complete;
 		present_info.pResults = nullptr;
 
+		
+
 		VkResult present_result = vkQueuePresentKHR(device->GetGeneralQueue(), &present_info);
 
 		if (present_result == VK_ERROR_OUT_OF_DATE_KHR || present_result == VK_SUBOPTIMAL_KHR)
@@ -331,7 +334,6 @@ namespace Omni {
 
 			CreateSwapchain(new_spec);
 		}
-		
 		
 		m_CurrentFrameIndex = (m_CurrentImageIndex + 1) % m_Specification.frames_in_flight;
 	}

@@ -6,7 +6,11 @@
 
 #include <string>
 
+#include <robin_hood.h>
+
 namespace Omni {
+
+#pragma region Pipeline params
 
 	enum class OMNIFORCE_API PipelineType : uint8 {
 		GRAPHICS,
@@ -35,6 +39,7 @@ namespace Omni {
 		FILL,
 		EDGE_ONLY
 	};
+#pragma endregion
 
 	struct OMNIFORCE_API PipelineSpecification {
 		std::string debug_name;
@@ -68,19 +73,54 @@ namespace Omni {
 			spec.output_attachments_formats = {};
 			spec.primitive_restart_enable = false;
 			spec.color_blending_enable = true;
-			spec.depth_test_enable = false;
+			spec.depth_test_enable = true;
 			spec.multisampling_enable = false;
 			spec.sample_count = 1;
 
 			return spec;
 		}
+
+		bool operator== (const PipelineSpecification& other) const {
+			bool result = true;
+			result &= shader == other.shader;
+			result &= line_width == other.line_width;
+			result &= type == other.type;
+			result &= culling_mode == other.culling_mode;
+			result &= front_face == other.front_face;
+			result &= topology == other.topology;
+			result &= fill_mode == other.fill_mode;
+			result &= color_blending_enable == other.color_blending_enable;
+			result &= depth_test_enable == other.depth_test_enable;
+			result &= sample_count == other.sample_count;
+			result &= input_layout.GetElements() == other.input_layout.GetElements();
+
+			return result;
+		}
 	};
 
 	class OMNIFORCE_API Pipeline {
 	public:
+		// NOTE: automatically(!!!) adds pipeline to pipeline library
 		static Shared<Pipeline> Create(const PipelineSpecification& spec);
 		virtual void Destroy() = 0;
-		virtual PipelineSpecification GetSpecification() const = 0;
+
+		virtual const PipelineSpecification& GetSpecification() const = 0;
+		UUID GetID() const { return m_ID; }
+
+	protected:
+		UUID m_ID;
+
+	};
+
+}
+
+namespace robin_hood {
+
+	template<>
+	struct hash<Omni::Shared<Omni::Pipeline>> {
+		size_t operator()(const Omni::Shared<Omni::Pipeline>& pipeline) const {
+			return hash<Omni::uint64>()(pipeline->GetID().Get());
+		}
 	};
 
 }

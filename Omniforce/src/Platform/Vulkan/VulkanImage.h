@@ -22,6 +22,12 @@ namespace Omni {
 		case ImageFormat::RGBA64_HDR:					return VK_FORMAT_R16G16B16A16_SFLOAT;
 		case ImageFormat::RGBA128_HDR:					return VK_FORMAT_R32G32B32A32_SFLOAT;
 		case ImageFormat::D32:							return VK_FORMAT_D32_SFLOAT;
+		case ImageFormat::BC7:							return VK_FORMAT_BC7_UNORM_BLOCK;
+		case ImageFormat::BC1:							return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+		case ImageFormat::BC5:							return VK_FORMAT_BC5_UNORM_BLOCK;
+		case ImageFormat::BC6h:							return VK_FORMAT_BC6H_UFLOAT_BLOCK;
+		case ImageFormat::RGBA64_SFLOAT:				return VK_FORMAT_R16G16B16A16_SFLOAT;
+		case ImageFormat::RGB24_UNORM:					return VK_FORMAT_R8G8B8_UNORM;
 		default:
 			std::unreachable();
 			break;
@@ -40,6 +46,8 @@ namespace Omni {
 		case VK_FORMAT_R16G16B16A16_SFLOAT:				return ImageFormat::RGBA64_HDR;
 		case VK_FORMAT_R32G32B32A32_SFLOAT:				return ImageFormat::RGBA128_HDR;
 		case VK_FORMAT_D32_SFLOAT:						return ImageFormat::D32;
+		case VK_FORMAT_R16G16B16_SFLOAT: 				return ImageFormat::RGBA64_SFLOAT;
+		case VK_FORMAT_R8G8B8_UNORM: 					return ImageFormat::RGB24_UNORM;
 		default:										std::unreachable(); break;;
 		}
 	}
@@ -99,7 +107,8 @@ namespace Omni {
 	public:
 		VulkanImage();
 		VulkanImage(const ImageSpecification& spec, VkImage image, VkImageView view);
-		VulkanImage(const ImageSpecification& spec, UUID id);
+		VulkanImage(const ImageSpecification& spec, AssetHandle id);
+		VulkanImage(const ImageSpecification& spec, const std::vector<RGBA32> data, const AssetHandle& id);
 		VulkanImage(std::filesystem::path path);
 		~VulkanImage();
 
@@ -109,22 +118,21 @@ namespace Omni {
 		VkImage Raw() const { return m_Image; }
 		VkImageView RawView() const { return m_ImageView; };
 		ImageSpecification GetSpecification() const override { return m_Specification; }
-		UUID GetId() const override { return m_Id; }
 
 		ImageLayout GetCurrentLayout() const { return m_CurrentLayout; }
 
 		// It is supposed that image has actually already been transitioned into layout.
 		void SetCurrentLayout(ImageLayout layout) { m_CurrentLayout = layout; } 
-		void SetLayout(Shared<DeviceCmdBuffer> cmd_buffer, ImageLayout new_layout, PipelineStage src_stage, PipelineStage dst_stage, PipelineAccess src_access, PipelineAccess dst_access) override;
+		void SetLayout(Shared<DeviceCmdBuffer> cmd_buffer, ImageLayout new_layout, PipelineStage src_stage, PipelineStage dst_stage, BitMask src_access = 0, BitMask dst_access = 0) override;
 
 	private:
 		void CreateTexture();
 		void CreateRenderTarget();
+		void CreateDepthBuffer();
 
 	private:
 
 		ImageSpecification m_Specification;
-		UUID m_Id;
 
 		VkImage m_Image;
 		VmaAllocation m_Allocation;

@@ -1,33 +1,4 @@
 {
-    "Entities": {
-        "8668298054683409189": {
-            "CameraComponent": {
-                "FOV": 90.0,
-                "FarClip": 100.0,
-                "NearClip": 0.0,
-                "OrthographicScale": 1.0,
-                "Primary": true,
-                "ProjectionType": 0
-            },
-            "TRSComponent": {
-                "Rotation": [
-                    0.0,
-                    -90.0,
-                    0.0
-                ],
-                "Scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "Translation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            },
-            "TagComponent": "Main camera"
-        }
-    },
+    "GameObjects": {},
     "Textures": {}
 }

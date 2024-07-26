@@ -6,30 +6,50 @@
 
 #include <Renderer/Renderer.h>
 
-#define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
+
+#include <bc7enc.h>
 
 namespace Omni {
 
 	VulkanImage::VulkanImage()
-		: m_Specification(), m_Image(VK_NULL_HANDLE), m_ImageView(VK_NULL_HANDLE), 
+		: Image(0), m_Specification(), m_Image(VK_NULL_HANDLE), m_ImageView(VK_NULL_HANDLE),
 		m_Allocation(VK_NULL_HANDLE), m_CurrentLayout(ImageLayout::UNDEFINED), m_CreatedFromRaw(false) 
 	{
 	}
 
-	VulkanImage::VulkanImage(const ImageSpecification& spec, UUID id)
+	VulkanImage::VulkanImage(const ImageSpecification& spec, AssetHandle id)
 		: VulkanImage()
 	{
+		Handle = id;
  		m_Specification = spec;
-		m_Id = id;
 
 		switch (m_Specification.usage)
 		{
 		case ImageUsage::TEXTURE:			this->CreateTexture();			break;
 		case ImageUsage::RENDER_TARGET:		this->CreateRenderTarget();		break;
-		case ImageUsage::DEPTH_BUFFER:		OMNIFORCE_ASSERT(false);		break;
+		case ImageUsage::DEPTH_BUFFER:		this->CreateDepthBuffer();		break;
 		default:							std::unreachable();				break;
 		}
+
+		OMNI_DEBUG_ONLY_CODE(
+			VkDebugUtilsObjectNameInfoEXT name_info = {};
+			name_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+			name_info.objectType = VK_OBJECT_TYPE_IMAGE;
+			name_info.objectHandle = (uint64)m_Image;
+			name_info.pObjectName = spec.debug_name.c_str();
+
+			vkSetDebugUtilsObjectNameEXT(VulkanGraphicsContext::Get()->GetDevice()->Raw(), &name_info);
+
+			VkDebugUtilsObjectNameInfoEXT view_name_info = {};
+			view_name_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+			view_name_info.objectType = VK_OBJECT_TYPE_IMAGE_VIEW;
+			view_name_info.objectHandle = (uint64)m_ImageView;
+			view_name_info.pObjectName = fmt::format("{} view", spec.debug_name.c_str()).c_str();
+
+			vkSetDebugUtilsObjectNameEXT(VulkanGraphicsContext::Get()->GetDevice()->Raw(), &view_name_info);
+		);
+		
 	}
 
 	VulkanImage::VulkanImage(const ImageSpecification& spec, VkImage image, VkImageView view)
@@ -43,6 +63,12 @@ namespace Omni {
 		: VulkanImage()
 	{
 		
+	}
+
+	VulkanImage::VulkanImage(const ImageSpecification& spec, const std::vector<RGBA32> data, const AssetHandle& id)
+		: VulkanImage()
+	{
+
 	}
 
 	VulkanImage::~VulkanImage()
@@ -64,35 +90,34 @@ namespace Omni {
 		m_ImageView = VK_NULL_HANDLE;
 	}
 
-	void VulkanImage::SetLayout(Shared<DeviceCmdBuffer> cmd_buffer, ImageLayout new_layout, PipelineStage src_stage, PipelineStage dst_stage, PipelineAccess src_access, PipelineAccess dst_access)
+	void VulkanImage::SetLayout(Shared<DeviceCmdBuffer> cmd_buffer, ImageLayout new_layout, PipelineStage src_stage, PipelineStage dst_stage, BitMask src_access, BitMask dst_access)
 	{
 		Shared<VulkanDeviceCmdBuffer> vk_cmd_buffer = ShareAs<VulkanDeviceCmdBuffer>(cmd_buffer);
 
-		VkImageMemoryBarrier image_memory_barrier = {};
-		image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		VkImageMemoryBarrier2 image_memory_barrier = {};
+		image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 		image_memory_barrier.image = m_Image;
 		image_memory_barrier.oldLayout = (VkImageLayout)m_CurrentLayout;
 		image_memory_barrier.newLayout = (VkImageLayout)new_layout;
-		image_memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		image_memory_barrier.srcStageMask = (BitMask)src_stage;
+		image_memory_barrier.dstStageMask = (BitMask)dst_stage;
 		image_memory_barrier.srcAccessMask = (VkAccessFlags)src_access;
 		image_memory_barrier.dstAccessMask = (VkAccessFlags)dst_access;
-		image_memory_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		image_memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		image_memory_barrier.subresourceRange.aspectMask = m_Specification.usage == ImageUsage::DEPTH_BUFFER ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
 		image_memory_barrier.subresourceRange.baseArrayLayer = 0;
 		image_memory_barrier.subresourceRange.layerCount = 1;
 		image_memory_barrier.subresourceRange.baseMipLevel = 0;
 		image_memory_barrier.subresourceRange.levelCount = 1;
 
-		vkCmdPipelineBarrier(vk_cmd_buffer->Raw(),
-			(VkPipelineStageFlags)src_stage,
-			(VkPipelineStageFlags)dst_stage,
-			0,
-			0,
-			nullptr,
-			0,
-			nullptr,
-			1,
-			&image_memory_barrier
+		VkDependencyInfo dep_info = {};
+		dep_info.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+		dep_info.imageMemoryBarrierCount = 1;
+		dep_info.pImageMemoryBarriers = &image_memory_barrier;
+
+		vkCmdPipelineBarrier2(vk_cmd_buffer->Raw(),
+			&dep_info
 		);
 
 		m_CurrentLayout = new_layout;
@@ -100,15 +125,9 @@ namespace Omni {
 
 	void VulkanImage::CreateTexture()
 	{
-		stbi_set_flip_vertically_on_load(true);
-
-		int image_width, image_height, channel_count;
-		byte* image_data = stbi_load(m_Specification.path.string().c_str(), &image_width, &image_height, &channel_count, STBI_rgb_alpha);
-		m_Specification.extent = { (uint32)image_width, (uint32)image_height };
-
 		VkImageCreateInfo texture_create_info = {};
 		texture_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-		texture_create_info.format = VK_FORMAT_R8G8B8A8_UNORM;
+		texture_create_info.format = convert(m_Specification.format);
 		texture_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
 		texture_create_info.imageType = VK_IMAGE_TYPE_2D;
 		texture_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -116,33 +135,22 @@ namespace Omni {
 		texture_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		texture_create_info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 		texture_create_info.arrayLayers = 1;
-		texture_create_info.mipLevels = log2(std::max(image_width, image_height)) + 1;
-		texture_create_info.extent = { (uint32)image_width, (uint32)image_height, 1 };
+		texture_create_info.mipLevels = m_Specification.mip_levels;
+		texture_create_info.extent = { m_Specification.extent.x, m_Specification.extent.y, 1 };
 
 		auto allocator = VulkanMemoryAllocator::Get();
 		m_Allocation = allocator->AllocateImage(&texture_create_info, 0, &m_Image);
 
 		DeviceBufferSpecification staging_buffer_spec = {};
-		staging_buffer_spec.size = image_width * image_height * STBI_rgb_alpha;
+		staging_buffer_spec.size = m_Specification.pixels.size();
 		staging_buffer_spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
 		staging_buffer_spec.buffer_usage = DeviceBufferUsage::STAGING_BUFFER;
 
-		VulkanDeviceBuffer staging_buffer(staging_buffer_spec, image_data, image_width * image_height * STBI_rgb_alpha);
-		
-		VkBufferImageCopy buffer_image_copy = {};
-		buffer_image_copy.imageExtent = { (uint32)image_width, (uint32)image_height, 1 };
-		buffer_image_copy.bufferOffset = 0;
-		buffer_image_copy.imageOffset = { 0, 0, 0 };
-		buffer_image_copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		buffer_image_copy.imageSubresource.baseArrayLayer = 0;
-		buffer_image_copy.imageSubresource.layerCount = 1;
-		buffer_image_copy.imageSubresource.mipLevel = 0;
-		buffer_image_copy.bufferRowLength = 0;
-		buffer_image_copy.bufferImageHeight = 0;
+		VulkanDeviceBuffer staging_buffer(staging_buffer_spec, m_Specification.pixels.data(), m_Specification.pixels.size());
 
 		auto device = VulkanGraphicsContext::Get()->GetDevice();
-		VkCommandBuffer cmd_buffer = device->AllocateTransientCmdBuffer();
-		
+		VulkanDeviceCmdBuffer cmd_buffer = device->AllocateTransientCmdBuffer();
+
 		// So here we need to load and transition layout of all mip-levels of a texture
 		// Firstly we transition all of them into transfer destination layout
 		VkImageMemoryBarrier barrier = {};
@@ -150,6 +158,7 @@ namespace Omni {
 		barrier.image = m_Image;
 		barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		barrier.subresourceRange.baseArrayLayer = 0;
@@ -158,7 +167,7 @@ namespace Omni {
 		barrier.subresourceRange.levelCount = texture_create_info.mipLevels;
 
 		vkCmdPipelineBarrier(cmd_buffer,
-			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+			VK_PIPELINE_STAGE_TRANSFER_BIT,
 			VK_PIPELINE_STAGE_TRANSFER_BIT,
 			0,
 			0,
@@ -169,73 +178,37 @@ namespace Omni {
 			&barrier
 		);
 
-		vkCmdCopyBufferToImage(cmd_buffer, staging_buffer.Raw(), m_Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &buffer_image_copy);
-		for (int i = 0; i < texture_create_info.mipLevels - 1; i++) 
-		{
-			// Transition previous mip to transfer source layout
-			barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-			barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-			barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-			barrier.subresourceRange.levelCount = 1;
-			barrier.subresourceRange.baseMipLevel = i;
+		// Compute transfer regions
+		std::vector<VkBufferImageCopy> copy_regions(m_Specification.mip_levels);
+		uint32 buffer_offset = 0;
 
-			vkCmdPipelineBarrier(cmd_buffer,
-				VK_PIPELINE_STAGE_TRANSFER_BIT,
-				VK_PIPELINE_STAGE_TRANSFER_BIT,
-				0,
-				0,
-				nullptr,
-				0,
-				nullptr,
-				1,
-				&barrier
-			);
+		for (int i = 0; i < copy_regions.size(); i++) {
+			uvec2 mip_size = { m_Specification.extent.x / (uint32)(std::pow(2, i)), m_Specification.extent.y / (uint32)(std::pow(2, i)) };
 
-			if (i >= texture_create_info.mipLevels) break;
-			
-			VkImageBlit image_blit_params = {};
-			image_blit_params.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			image_blit_params.srcSubresource.baseArrayLayer = 0;
-			image_blit_params.srcSubresource.layerCount = 1;
-			image_blit_params.srcSubresource.mipLevel = i;
-			image_blit_params.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			image_blit_params.dstSubresource.baseArrayLayer = 0;
-			image_blit_params.dstSubresource.layerCount = 1;
-			image_blit_params.dstSubresource.mipLevel = i + 1;
-			image_blit_params.srcOffsets[0] = { 0, 0, 0 };
-			image_blit_params.srcOffsets[1] = { image_width, image_height, 1 };
-			image_blit_params.dstOffsets[0] = { 0, 0, 0 };
-			image_blit_params.dstOffsets[1] = { image_width / 2, image_height / 2, 1 };
+			VkBufferImageCopy& buffer_image_copy = copy_regions[i];
+			buffer_image_copy.imageExtent = { mip_size.x, mip_size.y, 1 };
+			buffer_image_copy.bufferOffset = buffer_offset;
+			buffer_image_copy.imageOffset = { 0, 0, 0 };
+			buffer_image_copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			buffer_image_copy.imageSubresource.baseArrayLayer = 0;
+			buffer_image_copy.imageSubresource.layerCount = 1;
+			buffer_image_copy.imageSubresource.mipLevel = i;
+			buffer_image_copy.bufferRowLength = 0;
+			buffer_image_copy.bufferImageHeight = 0;
 
-			vkCmdBlitImage(cmd_buffer, m_Image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, m_Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &image_blit_params, VK_FILTER_LINEAR);
-
-			image_width /= 2;
-			image_height /= 2;
+			buffer_offset += buffer_image_copy.imageExtent.width * buffer_image_copy.imageExtent.height * (m_Specification.format == ImageFormat::BC7 ? 1 : 4);
 		}
 
-		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		// Submit copy command
+		vkCmdCopyBufferToImage(cmd_buffer, staging_buffer.Raw(), m_Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, copy_regions.size(), copy_regions.data());
+		
+		// Transition layout to shader read only
+		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 		barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 		barrier.subresourceRange.baseMipLevel = 0;
-		barrier.subresourceRange.levelCount = texture_create_info.mipLevels - 1;
-
-		// last image is TRANSFER_DST_OPTIMAL, so need to transition it separately
-		VkImageMemoryBarrier last_mip_level_barrier = {};
-		last_mip_level_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		last_mip_level_barrier.image = m_Image;
-		last_mip_level_barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		last_mip_level_barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		last_mip_level_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		last_mip_level_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-		last_mip_level_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		last_mip_level_barrier.subresourceRange.baseArrayLayer = 0;
-		last_mip_level_barrier.subresourceRange.layerCount = 1;
-		last_mip_level_barrier.subresourceRange.baseMipLevel = texture_create_info.mipLevels - 1;
-		last_mip_level_barrier.subresourceRange.levelCount = 1;
-
-		VkImageMemoryBarrier final_barriers[2] = { barrier, last_mip_level_barrier };
+		barrier.subresourceRange.levelCount = texture_create_info.mipLevels;
 
 		vkCmdPipelineBarrier(cmd_buffer,
 			VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -245,21 +218,24 @@ namespace Omni {
 			nullptr,
 			0,
 			nullptr,
-			2,
-			final_barriers
+			1,
+			&barrier
 		);
 
+		// Execute commands
 		device->ExecuteTransientCmdBuffer(cmd_buffer);
 
 		m_CurrentLayout = ImageLayout::SHADER_READ_ONLY;
 
-		stbi_image_free(image_data);
+		// Clear image data
+		m_Specification.pixels.clear();
 
+		// Create image view
 		VkImageViewCreateInfo image_view_create_info = {};
 		image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
 		image_view_create_info.image = m_Image;
-		image_view_create_info.format = VK_FORMAT_R8G8B8A8_UNORM;
+		image_view_create_info.format = convert(m_Specification.format);
 		image_view_create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		image_view_create_info.subresourceRange.baseArrayLayer = 0;
 		image_view_create_info.subresourceRange.layerCount = 1;
@@ -276,7 +252,6 @@ namespace Omni {
 		m_Specification.mip_levels = texture_create_info.mipLevels;
 		m_Specification.type = ImageType::TYPE_2D;
 		m_Specification.usage = ImageUsage::TEXTURE;
-		m_Specification.format = ImageFormat::RGBA32_UNORM;
 
 		staging_buffer.Destroy();
 	}
@@ -330,8 +305,65 @@ namespace Omni {
 			ImageLayout::COLOR_ATTACHMENT,
 			PipelineStage::TOP_OF_PIPE,
 			PipelineStage::COLOR_ATTACHMENT_OUTPUT,
-			PipelineAccess::NONE,
-			PipelineAccess::COLOR_ATTACHMENT_WRITE
+			(BitMask)PipelineAccess::NONE,
+			(BitMask)PipelineAccess::COLOR_ATTACHMENT_WRITE
+		);
+		cmd_buffer->End();
+		cmd_buffer->Execute(true);
+		cmd_buffer->Destroy();
+	}
+
+	void VulkanImage::CreateDepthBuffer()
+	{
+		auto device = VulkanGraphicsContext::Get()->GetDevice();
+
+		VkImageCreateInfo depth_buffer_create_info = {};
+		depth_buffer_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+		depth_buffer_create_info.extent = { m_Specification.extent.x, m_Specification.extent.y, 1 };
+		depth_buffer_create_info.imageType = VK_IMAGE_TYPE_2D;
+		depth_buffer_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		depth_buffer_create_info.mipLevels = 1;
+		depth_buffer_create_info.arrayLayers = 1;
+		depth_buffer_create_info.format = convert(m_Specification.format);
+		depth_buffer_create_info.samples = VK_SAMPLE_COUNT_1_BIT; // HACK
+		depth_buffer_create_info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+		depth_buffer_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+		depth_buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		auto allocator = VulkanMemoryAllocator::Get();
+		m_Allocation = allocator->AllocateImage(&depth_buffer_create_info, 0, &m_Image);
+
+		VkImageViewCreateInfo image_view_create_info = {};
+		image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		image_view_create_info.image = m_Image;
+		image_view_create_info.format = convert(m_Specification.format);
+		image_view_create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+		image_view_create_info.subresourceRange.baseArrayLayer = 0;
+		image_view_create_info.subresourceRange.layerCount = 1;
+		image_view_create_info.subresourceRange.baseMipLevel = 0;
+		image_view_create_info.subresourceRange.levelCount = 1;
+		image_view_create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+		image_view_create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+		image_view_create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+		image_view_create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+		VK_CHECK_RESULT(vkCreateImageView(device->Raw(), &image_view_create_info, nullptr, &m_ImageView));
+
+		Shared<DeviceCmdBuffer> cmd_buffer = DeviceCmdBuffer::Create(
+			DeviceCmdBufferLevel::PRIMARY,
+			DeviceCmdBufferType::TRANSIENT,
+			DeviceCmdType::GENERAL
+		);
+
+		cmd_buffer->Begin();
+		SetLayout(
+			cmd_buffer,
+			ImageLayout::DEPTH_STENCIL_ATTACHMENT,
+			PipelineStage::TOP_OF_PIPE,
+			PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+			(BitMask)PipelineAccess::NONE,
+			(BitMask)PipelineAccess::COLOR_ATTACHMENT_WRITE
 		);
 		cmd_buffer->End();
 		cmd_buffer->Execute(true);

@@ -13,12 +13,9 @@ namespace Omni {
 		PropertiesPanel(Scene* ctx) : EditorPanel(ctx) { m_IsOpen = true; };
 
 		// If no entities selected, then nothing to show
-		void Render() override;
+		void Update() override;
 
-		void SetEntity(Entity entity, bool selected);;
-
-	private:
-		void RecalculateTransform();
+		void SetEntity(Entity entity, bool selected);
 
 	private:
 		Entity m_Entity;

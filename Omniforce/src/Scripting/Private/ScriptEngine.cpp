@@ -185,7 +185,7 @@ namespace Omni {
 			script_component.script_object = mAvailableClassesList[script_component.class_name].AllocateObject(uuid_component.id);
 		}
 
-		auto group = registry->group<RigidBody2DComponent, ScriptComponent>();
+		auto group = registry->group<RigidBodyComponent, ScriptComponent>();
 		m_PendingCallbacks.reserve(group.size());
 	}
 
@@ -220,7 +220,7 @@ namespace Omni {
 		char* buffer = new char[assembly_size];
 		input_stream.read(buffer, assembly_size);
 		input_stream.close();
-
+		 
 		MonoImageOpenStatus image_open_status;
 
 		MonoImage* image = mono_image_open_from_data_full(buffer, assembly_size, 1, &image_open_status, 0);

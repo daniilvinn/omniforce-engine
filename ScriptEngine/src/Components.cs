@@ -1,7 +1,23 @@
 namespace Omni
 {
 
-    public class TransformComponent
+    public abstract class GameObjectComponent
+    {
+        public GameObject Owner { get; internal set; }
+    }
+
+    public class TagComponent : GameObjectComponent
+    {
+        public string Tag { 
+            get 
+            { 
+                return EngineAPI.TagComponent_GetTag(Owner.GameObjectID); 
+            }
+            private set { } 
+        }
+    }
+
+    public class TransformComponent : GameObjectComponent
     {
         public TransformComponent(GameObject owner)
         {
@@ -24,24 +40,6 @@ namespace Omni
         {
             get { return EngineAPI.TransformComponent_GetScale(Owner.GameObjectID); }
             set { EngineAPI.TransformComponent_SetScale(Owner.GameObjectID, value); }
-        }
-
-        private readonly GameObject Owner;
-    }
-
-    public abstract class GameObjectComponent
-    {
-        public GameObject Owner { get; internal set; }
-    }
-
-    public class TagComponent : GameObjectComponent
-    {
-        public string Tag { 
-            get 
-            { 
-                return EngineAPI.TagComponent_GetTag(Owner.GameObjectID); 
-            }
-            private set { } 
         }
     }
 
@@ -103,6 +101,15 @@ namespace Omni
             {
                 EngineAPI.SpriteComponent_SetTint(Owner.GameObjectID, ref value);
             }
+        }
+
+    }
+
+    public class AudioSourceComponent : GameObjectComponent
+    {
+        public void PlayInlined(string path)
+        {
+            EngineAPI.AudioComponent_PlayInlined(path);
         }
     }
 

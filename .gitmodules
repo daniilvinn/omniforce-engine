@@ -1,9 +1,33 @@
-[submodule "Omniforce/vendor/imgui"]
-	path = Omniforce/vendor/imgui
-	url = https://github.com/Darianopolis/imgui-dynamic.git
 [submodule "Omniforce/vendor/Jolt"]
 	path = Omniforce/vendor/Jolt
 	url = https://github.com/jrouwe/JoltPhysics.git
 [submodule "Omniforce/vendor/ImGuizmo"]
 	path = Omniforce/vendor/ImGuizmo
 	url = https://github.com/CedricGuillemet/ImGuizmo.git
+[submodule "Omniforce/vendor/Assimp"]
+	path = Omniforce/vendor/Assimp
+	url = https://github.com/assimp/assimp.git
+[submodule "Omniforce/vendor/nv-libdeflate"]
+	path = Omniforce/vendor/nv-libdeflate
+	url = https://github.com/daniilvinn/libdeflate.git
+[submodule "Omniforce/vendor/meshoptimizer"]
+	path = Omniforce/vendor/meshoptimizer
+	url = https://github.com/zeux/meshoptimizer.git
+[submodule "Omniforce/vendor/fastgltf"]
+	path = Omniforce/vendor/fastgltf
+	url = https://github.com/spnda/fastgltf.git
+[submodule "Omniforce/vendor/volk"]
+	path = Omniforce/vendor/volk
+	url = https://github.com/zeux/volk.git
+[submodule "Omniforce/vendor/imgui"]
+	path = Omniforce/vendor/imgui
+	url = https://github.com/ocornut/imgui.git
+[submodule "Omniforce/vendor/taskflow"]
+	path = Omniforce/vendor/taskflow
+	url = https://github.com/taskflow/taskflow.git
+[submodule "Omniforce/vendor/glm"]
+	path = Omniforce/vendor/glm
+	url = https://github.com/g-truc/glm.git
+[submodule "Omniforce/vendor/miniball"]
+	path = Omniforce/vendor/miniball
+	url = https://github.com/daniilvinn/miniball.git

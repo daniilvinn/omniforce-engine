@@ -4,8 +4,11 @@
 #include <Scene/SceneRenderer.h>
 #include <Asset/AssetManager.h>
 #include <Core/Utils.h>
-
 #include <Filesystem/Filesystem.h>
+#include <Renderer/UI/ImGuiRenderer.h>
+#include <DebugUtils/DebugRenderer.h>
+
+#include "../../EditorUtils.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
@@ -16,7 +19,7 @@
 
 namespace Omni {
 
-	void PropertiesPanel::Render()
+	void PropertiesPanel::Update()
 	{
 		if (m_IsOpen)
 		{
@@ -48,19 +51,29 @@ namespace Omni {
 						}
 						ImGui::EndDisabled();
 
+						ImGui::BeginDisabled(m_Entity.HasComponent<MeshComponent>());
+						if (ImGui::MenuItem("Mesh component")) {
+							MeshComponent& mesh_component = m_Entity.AddComponent<MeshComponent>();
+							mesh_component.mesh_handle = 0;
+							ImGui::CloseCurrentPopup();
+						}
+						ImGui::EndDisabled();
+
 						ImGui::BeginDisabled(m_Entity.HasComponent<CameraComponent>());
 						if (ImGui::MenuItem("Camera component")) {
 							CameraComponent& camera_component = m_Entity.AddComponent<CameraComponent>();
 							Shared<Camera3D> camera = std::make_shared<Camera3D>();
-							camera->SetProjection(glm::radians(80.0f), 16.0 / 9.0f, 0.1f, 100.0f);
 							camera_component.camera = camera;
 							camera_component.primary = false;
 						}
 						ImGui::EndDisabled();
 
-						ImGui::BeginDisabled(m_Entity.HasComponent<RigidBody2DComponent>());
-						if (ImGui::MenuItem("Rigid body 2D component"))
-							m_Entity.AddComponent<RigidBody2DComponent>();
+						ImGui::BeginDisabled(m_Entity.HasComponent<RigidBodyComponent>());
+						if (ImGui::MenuItem("Rigid body component")) {
+							m_Entity.AddComponent<RigidBodyComponent>();
+							if (m_Entity.GetParent().Valid())
+								OMNIFORCE_CUSTOM_LOGGER_WARN("OmniEditor", "Added RigidBody component for game object \"{}\", which has parent. Rigid body is disabled if game object has parent.", tag.c_str());
+						}
 						ImGui::EndDisabled();
 
 						ImGui::BeginDisabled(m_Entity.HasComponent<BoxColliderComponent>() || m_Entity.HasComponent<SphereColliderComponent>());
@@ -78,6 +91,11 @@ namespace Omni {
 							m_Entity.AddComponent<ScriptComponent>();
 						ImGui::EndDisabled();
 
+						ImGui::BeginDisabled(m_Entity.HasComponent<PointLightComponent>());
+						if (ImGui::MenuItem("Point light component"))
+							m_Entity.AddComponent<PointLightComponent>();
+						ImGui::EndDisabled();
+
 						ImGui::EndPopup();
 					}
 
@@ -87,7 +105,7 @@ namespace Omni {
 				auto& trs_component = m_Entity.GetComponent<TRSComponent>();
 
 				ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, { 5.0f, 5.0f });
-				if(ImGui::BeginTable("Properties", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH))
+				if(ImGui::BeginTable("TRS properties", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH))
 				{
 					ImGui::TableNextRow();
 					ImGui::TableNextColumn();
@@ -145,44 +163,50 @@ namespace Omni {
 
 							ImGui::Separator();
 
-							if(ImGui::BeginTable("properties_entity_name", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV));
+							if(ImGui::BeginTable("##sprite_component_properties_table", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV));
 							{
 								ImGui::TableNextRow();
 								ImGui::TableNextColumn();
 								ImGui::Text("Material");
 
 								ImGui::TableNextColumn();
+								if (sc.texture) {
+									AssetManager* am = AssetManager::Get();
 
-								
-
-								ImGui::SameLine();
-								if (ImGui::Button("Browse", { -FLT_MIN, 0.0f })) {
-									const char* filters[] = { "*.png", "*.jpg", "*.jpeg" };
-
-									char* filepath = tinyfd_openFileDialog(
-										"Open file",
-										std::filesystem::absolute("assets/textures/").string().c_str(),
-										3,
-										filters,
-										NULL,
-										false
-									);
-
-									if (filepath != NULL) {
-										std::filesystem::path full_texture_path(filepath);
-										std::filesystem::path texture_path = FileSystem::GetWorkingDirectory().append("assets/textures").append(full_texture_path.filename().string());
-
-										std::filesystem::copy_file(filepath,
-											texture_path,
-											std::filesystem::copy_options::overwrite_existing
-										);
-										
-										sc.texture = AssetManager::Get()->LoadTexture(texture_path);
-										m_Context->GetRenderer()->AcquireTextureIndex(AssetManager::Get()->GetTexture(sc.texture), SamplerFilteringMode::NEAREST);
-										uvec3 texture_resolution = AssetManager::Get()->GetTexture(sc.texture)->GetSpecification().extent;
-										sc.aspect_ratio = { (float32)texture_resolution.x / (float32)texture_resolution.y };
+									if (sc.texture) {
+										Shared<Image> img = am->GetAsset<Image>(sc.texture);
+										UI::RenderImage(img, m_Context->GetRenderer()->GetSamplerLinear(), { 50.0f, 50.0f / sc.aspect_ratio});
 									}
-								};
+									else {
+										ImGui::Text("Drag texture here");
+									}
+								}
+								else {
+									ImGui::Text("Drag OFR texture here");
+								}
+
+								ImGui::EndTable();
+							}
+							ImGui::TreePop();
+						}
+					}
+				}
+				if (m_Entity.HasComponent<MeshComponent>()) {
+					if (ImGui::Button(" - ##mesh_component")) {
+						m_Entity.RemoveComponent<MeshComponent>();
+					}
+					else {
+						ImGui::SameLine();
+						if (ImGui::TreeNode("Mesh component")) {
+							MeshComponent& mc = m_Entity.GetComponent<MeshComponent>();
+							if (ImGui::BeginTable("##mesh_component_table", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV));
+							{
+								ImGui::TableNextRow();
+								ImGui::TableNextColumn();
+								ImGui::Text("Level of Detail");
+
+								ImGui::TableNextColumn();
+								ImGui::Text("WIP"); //ImGui::SliderInt("##mesh_component_lod_slider", &mc.lod, 0, 3);
 
 								ImGui::EndTable();
 							}
@@ -235,8 +259,6 @@ namespace Omni {
 											case (int32)CameraProjectionType::PROJECTION_3D: {
 												Shared<Camera>& camera = camera_component.camera;
 												Shared<Camera3D> camera_3D = std::make_shared<Camera3D>();
-												camera_3D->SetProjection(glm::radians(90.0f), 16.0 / 9.0, 0.0f, 100.0f);
-												camera_3D->Move({ 0.0f, 0.0f, -50.0f });
 
 												camera->SetType(CameraProjectionType::PROJECTION_3D);
 												camera = ShareAs<Camera>(camera_3D);
@@ -298,16 +320,14 @@ namespace Omni {
 						}
 					}
 				}
-
-				// Rigid body 2D
-				if (m_Entity.HasComponent<RigidBody2DComponent>()) {
+				if (m_Entity.HasComponent<RigidBodyComponent>()) {
 					if (ImGui::Button(" - ##rb2d_component")) {
-						m_Entity.RemoveComponent<RigidBody2DComponent>();
+						m_Entity.RemoveComponent<RigidBodyComponent>();
 					}
 					else {
 						ImGui::SameLine();
-						if (ImGui::TreeNode("Rigid body 2D component")) {
-							RigidBody2DComponent& rb2d_component = m_Entity.GetComponent<RigidBody2DComponent>();
+						if (ImGui::TreeNode("Rigid body component")) {
+							RigidBodyComponent& rb2d_component = m_Entity.GetComponent<RigidBodyComponent>();
 
 							ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, { 5.0f, 5.0f });
 							if(ImGui::BeginTable("##rb2d_properties_table", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH))
@@ -322,7 +342,7 @@ namespace Omni {
 									for (int32 i = 0; i < IM_ARRAYSIZE(motion_type_strings); i++) {
 										bool selected = i == (int32)rb2d_component.type;
 										if (ImGui::Selectable(motion_type_strings[i], &selected))
-											rb2d_component.type = (RigidBody2DComponent::Type)i;
+											rb2d_component.type = (RigidBodyComponent::Type)i;
 									}
 									ImGui::EndCombo();
 								}
@@ -401,6 +421,12 @@ namespace Omni {
 									if (box_collider_component.size.y < 0.0f) box_collider_component.size.y = 0.01f;
 									if (box_collider_component.size.z < 0.0f) box_collider_component.size.z = 0.01f;
 								};
+								
+								if (ImGui::IsItemActive()) {
+									TRSComponent trs_component = m_Entity.GetWorldTransform();
+									// Multiply box collider size by 2 for rendering because Jolt takes half-size, and so in order to render it correctly we need to get full size (2x)
+									DebugRenderer::RenderWireframeBox(trs_component.translation, trs_component.rotation, box_collider_component.size * 2.0f, { 0.28f, 0.27f, 1.0f });
+								}
 
 								// convex radius
 								ImGui::TableNextRow();
@@ -453,6 +479,11 @@ namespace Omni {
 								if (ImGui::DragFloat("##sphere_collider_size_property", (float32*)&sphere_collider_component.radius, 0.01f, 0.01f, FLT_MAX))
 									if (sphere_collider_component.radius < 0.0f) sphere_collider_component.radius = 0.01f;
 
+								if (ImGui::IsItemActive()) {
+									TRSComponent trs_component = m_Entity.GetWorldTransform();
+									DebugRenderer::RenderWireframeSphere(trs_component.translation, sphere_collider_component.radius, { 0.28f, 0.27f, 1.0f });
+								}
+
 								// Friction
 								ImGui::TableNextRow();
 								ImGui::TableNextColumn();
@@ -496,6 +527,63 @@ namespace Omni {
 								ImGui::EndTable();
 							}
 
+							ImGui::PopStyleVar();
+							ImGui::TreePop();
+						}
+					}
+				}
+				if (m_Entity.HasComponent<PointLightComponent>()) {
+					if (ImGui::Button(" - ##point_light_component")) {
+						m_Entity.RemoveComponent<PointLightComponent>();
+					}
+					else {
+						ImGui::SameLine();
+						if (ImGui::TreeNode("Point light component")) {
+							PointLightComponent& point_light_component = m_Entity.GetComponent<PointLightComponent>();
+							ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, { 20.0f, 10.0f });
+							if (ImGui::BeginTable("##point_light_component_properties", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH))
+							{
+								ImGui::TableNextRow();
+								ImGui::TableNextColumn();
+								ImGui::Text("Intensity");
+								ImGui::TableNextColumn();
+								ImGui::DragFloat("##plc_props_intensity_drag", &point_light_component.intensity, 0.01f);
+
+								ImGui::TableNextRow();
+								ImGui::TableNextColumn();
+								ImGui::Text("Min. radius");
+								ImGui::TableNextColumn();
+								ImGui::DragFloat("##plc_props_minrad_drag", &point_light_component.min_radius, 0.05f);
+								if (ImGui::IsItemActive()) {
+									DebugRenderer::RenderWireframeSphere(m_Entity.GetWorldTransform().translation, point_light_component.radius, { 0.28f, 0.27f, 1.0f });
+									DebugRenderer::RenderWireframeSphere(m_Entity.GetWorldTransform().translation, point_light_component.min_radius, { 1.0f, 0.6f, 1.0f });
+								}
+								
+								ImGui::TableNextRow();
+								ImGui::TableNextColumn();
+								ImGui::Text("Max. radius");
+								ImGui::TableNextColumn();
+								ImGui::DragFloat("##plc_props_maxrad_drag", &point_light_component.radius, 0.05f);
+								if (ImGui::IsItemActive()) {
+									DebugRenderer::RenderWireframeSphere(m_Entity.GetWorldTransform().translation, point_light_component.radius, { 0.28f, 0.27f, 1.0f });
+									DebugRenderer::RenderWireframeSphere(m_Entity.GetWorldTransform().translation, point_light_component.min_radius, { 1.0f, 0.6f, 1.0f });
+								}
+
+								ImGui::TableNextRow();
+								ImGui::TableNextColumn();
+								ImGui::Text("Color");
+								ImGui::SameLine();
+								ImGui::TableNextColumn();
+								ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+
+								ImGui::ColorPicker4("", (float*)&point_light_component.color,
+									ImGuiColorEditFlags_PickerHueWheel |
+									ImGuiColorEditFlags_DisplayRGB | 
+									ImGuiColorEditFlags_NoAlpha
+								);
+
+								ImGui::EndTable();
+							}
 							ImGui::PopStyleVar();
 							ImGui::TreePop();
 						}

@@ -63,9 +63,6 @@ public:
 
 	void Launch() override
 	{
-
-		JobSystem::Get()->Wait();
-
 		SceneRendererSpecification renderer_spec = {};
 		renderer_spec.anisotropic_filtering = 16;
 
@@ -75,7 +72,6 @@ public:
 		m_Camera->SetProjection( glm::radians(90.0f), 16.0 / 9.0, 0.0f, 100.0f );
 
 		m_Scene = new Scene(SceneType::SCENE_TYPE_2D);
-
 	}
 
 	/*

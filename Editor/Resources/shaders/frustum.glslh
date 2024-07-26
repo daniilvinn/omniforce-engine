@@ -1,0 +1,21 @@
+#ifndef FRUSTUM_GLSLH
+#define FRUSTUM_GLSLH
+
+#include "plane.glslh"
+#include "sphere.glslh"
+
+struct Frustum {
+	Plane planes[6];
+};
+
+bool FrustumTestBoundingSphere(Frustum frustum, Sphere sphere) {
+	bool result = true;
+
+	for(int i = 0; i < 6; i++) {
+		Plane plane = frustum.planes[i];
+		result = result && ((dot(plane.normal, sphere.center) - plane.distance) > -sphere.radius);
+	}
+	return result;
+}
+
+#endif

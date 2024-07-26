@@ -7,6 +7,7 @@
 #include <Scene/Component.h>
 #include <Scripting/ScriptEngine.h>
 #include <Physics/PhysicsEngine.h>
+#include <Audio/AudioEngine.h>
 
 #include <mono/jit/jit.h>
 
@@ -69,13 +70,13 @@ namespace Omni {
 		char* msg = mono_string_to_utf8(message);
 		switch (severity)
 		{
-		case Logger::Level::LEVEL_TRACE:			OMNIFORCE_CLIENT_TRACE("[Script] {}", msg);		break;
-		case Logger::Level::LEVEL_INFO:				OMNIFORCE_CLIENT_INFO("[Script] {}", msg);		break;
-		case Logger::Level::LEVEL_WARN:				OMNIFORCE_CLIENT_WARNING("[Script] {}", msg);	break;
-		case Logger::Level::LEVEL_ERROR:			OMNIFORCE_CLIENT_ERROR("[Script] {}", msg);		break;
-		case Logger::Level::LEVEL_CRITICAL:			OMNIFORCE_CLIENT_CRITICAL("[Script] {}", msg);	break;
-		case Logger::Level::LEVEL_NONE:																break;
-		default:									std::unreachable();								break;
+		case Logger::Level::LEVEL_TRACE:			OMNIFORCE_CUSTOM_LOGGER_TRACE("Game", msg);			break;
+		case Logger::Level::LEVEL_INFO:				OMNIFORCE_CUSTOM_LOGGER_INFO("Game", msg);			break;
+		case Logger::Level::LEVEL_WARN:				OMNIFORCE_CUSTOM_LOGGER_WARN("Game", msg);			break;
+		case Logger::Level::LEVEL_ERROR:			OMNIFORCE_CUSTOM_LOGGER_ERROR("Game", msg);			break;
+		case Logger::Level::LEVEL_CRITICAL:			OMNIFORCE_CUSTOM_LOGGER_CRITICAL("Game", msg);		break;
+		case Logger::Level::LEVEL_NONE:																	break;
+		default:									std::unreachable();									break;
 		}
 		mono_free(msg);
 	}
@@ -223,6 +224,13 @@ namespace Omni {
 		return glm::inverse(quat);
 	}
 
+	void AudioComponent_PlayInlined(MonoString* path) {
+		char* data = mono_string_to_utf8(path);
+		AudioEngine* audio_engine = AudioEngine::Get();
+		audio_engine->StartPlaybackInlined(data);
+		mono_free(data);
+	}
+
 	void ScriptAPI::AddInternalCalls()
 	{
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(Input_KeyPressed);
@@ -259,6 +267,7 @@ namespace Omni {
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(QuatSlerp);
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(QuatNormalize);
 		OMNI_REGISTER_SCRIPT_API_FUNCTION(QuatInverse);
+		OMNI_REGISTER_SCRIPT_API_FUNCTION(AudioComponent_PlayInlined);
 	}
 
 }

@@ -13,7 +13,11 @@ namespace Omni {
 		case ShaderStage::VERTEX:		return VK_SHADER_STAGE_VERTEX_BIT;
 		case ShaderStage::FRAGMENT:		return VK_SHADER_STAGE_FRAGMENT_BIT;
 		case ShaderStage::COMPUTE:		return VK_SHADER_STAGE_COMPUTE_BIT;
+		case ShaderStage::TASK:			return VK_SHADER_STAGE_TASK_BIT_EXT;
+		case ShaderStage::MESH:			return VK_SHADER_STAGE_MESH_BIT_EXT;
 		}
+
+		return (VkShaderStageFlagBits)0;
 	}
 
 	constexpr VkDescriptorType convert(SpvReflectDescriptorType type) {
@@ -97,7 +101,7 @@ namespace Omni {
 			spvReflectEnumerateDescriptorSets(&reflect_module, &set_count, reflect_descriptor_sets.data());
 
 			for (auto& reflect_set : reflect_descriptor_sets) {
-				if (bindings.find(reflect_set->set) != bindings.end()) {
+				if (!bindings.contains(reflect_set->set)) {
 					bindings.emplace(reflect_set->set, std::vector<VkDescriptorSetLayoutBinding>());
 				}
 
@@ -108,28 +112,45 @@ namespace Omni {
 					layout_binding.binding = reflect_binding->binding;
 					layout_binding.descriptorType = convert(reflect_binding->descriptor_type);
 					layout_binding.descriptorCount = reflect_binding->count;
-					layout_binding.stageFlags = VK_SHADER_STAGE_ALL;
+					layout_binding.stageFlags = stage_data.first == ShaderStage::COMPUTE ? VK_SHADER_STAGE_COMPUTE_BIT : VK_SHADER_STAGE_ALL;
+
+					bool skip_binding = false;
 
 					for (auto& set_binding : bindings[reflect_set->set]) {
 						if (set_binding.binding == layout_binding.binding) {
-							continue;
+							skip_binding = true;
+							break;
 						}
 					}
 					
-					bindings[reflect_set->set].push_back(layout_binding);
+					if(!skip_binding)
+						bindings[reflect_set->set].push_back(layout_binding);
 				}
 			}
 
 			uint32 push_constant_range_count = 0;
-			spvReflectEnumeratePushConstants(&reflect_module, &push_constant_range_count, nullptr);
+			spvReflectEnumeratePushConstantBlocks(&reflect_module, &push_constant_range_count, nullptr);
 
 			std::vector<SpvReflectBlockVariable*> reflect_push_constant_ranges(push_constant_range_count);
-			spvReflectEnumeratePushConstants(&reflect_module, &push_constant_range_count, reflect_push_constant_ranges.data());
+			spvReflectEnumeratePushConstantBlocks(&reflect_module, &push_constant_range_count, reflect_push_constant_ranges.data());
+
+			if (push_constant_range_count) {
+
+				for (int i = 0; i < reflect_push_constant_ranges[0]->member_count; i++) {
+					auto& member = reflect_push_constant_ranges[0]->members[i];
+				}
+			}
 
 			for (auto& reflect_range : reflect_push_constant_ranges) {
-				push_constant_range.size = reflect_range->size; // TODO: some dodgy stuff here
+				push_constant_range.size += reflect_range->size;
 				push_constant_range.offset = 0;
 				push_constant_range.stageFlags = VK_SHADER_STAGE_ALL;
+
+				// HACK: giga hack because for someone reason SPIRV-Reflect evaluates BDA size as 16 instead of 8.
+				//for (int i = 0; i < reflect_range->member_count; i++) {
+				//	if (reflect_range->members[i].type_description->op == SpvOpTypePointer)
+				//		push_constant_range.size -= 8;
+				//}
 			}
 
 			spvReflectDestroyShaderModule(&reflect_module);
@@ -191,7 +212,7 @@ namespace Omni {
 		for (auto& stage : m_StageCreateInfos)
 			if (stage.module != VK_NULL_HANDLE)
 				vkDestroyShaderModule(device->Raw(), stage.module, nullptr);
-
+		
 		for (auto& layout : m_SetLayouts)
 			vkDestroyDescriptorSetLayout(device->Raw(), layout, nullptr);
 

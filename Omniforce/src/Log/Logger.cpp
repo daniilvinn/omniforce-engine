@@ -37,22 +37,18 @@ namespace Omni {
 	}
 
 	Logger::Logger(Level level)
-	{
-		auto ring_buffer_sink = std::make_shared<spdlog::sinks::ringbuffer_sink_mt>(128);
+	{;
 		auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-		auto distribute_sink = std::make_shared<spdlog::sinks::dist_sink_mt>();
 
-		spdlog::sinks_init_list sink_list = { ring_buffer_sink, console_sink };
+		spdlog::sinks_init_list sink_list = { console_sink };
 
 		m_CoreLogger = std::make_shared<spdlog::logger>("Omniforce", sink_list);
 		m_ClientLogger = std::make_shared<spdlog::logger>("Client", sink_list);
-		m_FileLogger = std::make_shared<spdlog::logger>("Crash log", distribute_sink);
 		
 		m_CoreLogger->set_pattern("%^[%T][%n][%l]: %v%$");
 		m_ClientLogger->set_pattern("%^[%T][%n][%l]: %v%$");
 
 		m_CoreLogger->set_level(OmniToSpdlogLevel(level));
-		m_ClientLogger->set_level(OmniToSpdlogLevel(level));
 	}
 
 	Logger::~Logger()

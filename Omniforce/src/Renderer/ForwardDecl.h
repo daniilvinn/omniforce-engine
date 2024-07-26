@@ -12,6 +12,7 @@ namespace Omni
 	class Shader;
 	class ShaderProgram;
 	class Pipeline;
+	struct PipelineBarrierInfo;
 	class DeviceBufferLayout;
 	struct DeviceBufferLayoutElement;
 	class DescriptorSet;

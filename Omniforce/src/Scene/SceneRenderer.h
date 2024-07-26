@@ -3,10 +3,18 @@
 #include "SceneCommon.h"
 #include "Sprite.h"
 #include "Camera.h"
+#include "DeviceMaterialPool.h"
+#include "SceneRendererPrimitives.h"
+#include "DeviceIndexedResourceBuffer.h"
+#include "Lights.h"
 #include <Renderer/Renderer.h>
 #include <Renderer/Image.h>
+#include <Renderer/Mesh.h>
+#include <Core/CallbackRHUMap.h>
+#include <Memory/VirtualMemoryBlock.h>
 
 #include <vector>
+#include <shared_mutex>
 
 #include <robin_hood.h>
 #include <glm/glm.hpp>
@@ -23,7 +31,7 @@ namespace Omni {
 	struct OMNIFORCE_API SceneRendererSpecification {
 		uint8 anisotropic_filtering = 16;
 		// How much sprites will be stored in a device buffer. Actual size will be sprite_buffer_size * sizeof(Sprite) * fif
-		uint32 sprite_buffer_size = 2500; 
+		uint32 sprite_buffer_size = 2500;
 	};
 
 	class OMNIFORCE_API SceneRenderer {
@@ -37,50 +45,82 @@ namespace Omni {
 
 		void BeginScene(Shared<Camera> camera);
 		void EndScene();
-		
+
 		Shared<Image> GetFinalImage();
 		static Shared<ImageSampler> GetSamplerNearest() { return s_SamplerNearest; }
 		static Shared<ImageSampler> GetSamplerLinear() { return s_SamplerLinear; }
-		UUID GetDummyWhiteTexture() const { return m_DummyWhiteTexture->GetId(); }
+		AssetHandle GetDummyWhiteTexture() const { return m_DummyWhiteTexture->Handle; }
 		/*
-		* @brief Adds texture to a global renderer data
-		* @return returns an index the texture can be accessed with
+		* @brief Adds resource to a global renderer data
+		* @return returns an index the resource can be accessed with
 		*/
-		uint16 AcquireTextureIndex(Shared<Image> image, SamplerFilteringMode filtering_mode);
+		uint32 AcquireResourceIndex(Shared<Image> image, SamplerFilteringMode filtering_mode);
+		uint32 AcquireResourceIndex(Shared<Mesh> mesh);
+		uint32 AcquireResourceIndex(Shared<Material> material); // WARNING: this returns offset in material pool, not index
+
 		/*
-		* @brief Removes texture to a global renderer data
-		* @return true if successful, false if no texture found
+		* @brief Removes resource to a global renderer data
+		* @return true if successful, false if no resource found
 		*/
-		bool ReleaseTextureIndex(Shared<Image> image);
-		uint32 GetTextureIndex(const UUID& uuid) const { return s_GlobalSceneData.textures.at(uuid); };
+		bool ReleaseResourceIndex(Shared<Image> image);
+		uint32 GetTextureIndex(const AssetHandle& uuid) const { return m_TextureIndices.at(uuid); }
+		uint64 GetMaterialBDA(const AssetHandle& id) const { return m_MaterialDataPool.GetStorageBufferAddress() + m_MaterialDataPool.GetOffset(id); }
+		uint32 GetMeshIndex(const AssetHandle& uuid) const { return m_MeshResourcesBuffer.GetIndex(uuid); }
 
 		void RenderSprite(const Sprite& sprite);
-		void RenderLine(const fvec2& p1, const fvec2& p2, const fvec4& color);
+		void RenderObject(Shared<Pipeline> pipeline, const DeviceRenderableObject& render_data);
+
+		// Lighting
+		void AddPointLight(const PointLight& point_light) { m_HostPointLights.push_back(point_light); }
 
 	private:
 		Shared<Camera> m_Camera;
 		SceneRendererSpecification m_Specification;
 
 		std::vector<Shared<Image>> m_RendererOutputs;
+		std::vector<Shared<Image>> m_DepthAttachments;
 		Shared<Image> m_CurrectMainRenderTarget;
+		Shared<Image> m_CurrentDepthAttachment;
 
+		std::vector<Shared<DescriptorSet>> m_SceneDescriptorSet;
 		inline static Shared<ImageSampler> s_SamplerNearest;
 		inline static Shared<ImageSampler> s_SamplerLinear;
 		Shared<Image> m_DummyWhiteTexture;
-		Shared<DeviceBuffer> m_MainCameraDataBuffer;
-		Shared<DeviceBuffer> m_SpriteDataBuffer;
 		uint32 m_SpriteBufferSize; // size in bytes per frame in flight, not overall size
 		std::vector<Sprite> m_SpriteQueue;
 
 		Shared<Pipeline> m_SpritePass;
 		Shared<Pipeline> m_LinePass;
+		Shared<Pipeline> m_ClearPass;
 
-		struct GlobalSceneRenderData {
-			const uint32 max_textures = UINT16_MAX + 1;
-			robin_hood::unordered_map<UUID, uint32> textures;
-			std::vector<uint32> available_texture_indices;
-			std::vector<Shared<DescriptorSet>> scene_descriptor_set; // per frame in flight
-		} s_GlobalSceneData;
+		// ~ Omni 2024 ~
+		Shared<DeviceBuffer> m_CameraDataBuffer;
+
+		Scope<VirtualMemoryBlock> m_TextureIndexAllocator;
+		rhumap<UUID, uint32> m_TextureIndices;
+		Shared<DeviceBuffer> m_SpriteDataBuffer;
+
+		DeviceIndexedResourceBuffer<DeviceMeshData> m_MeshResourcesBuffer;
+		DeviceMaterialPool m_MaterialDataPool;
+
+		rhumap<Shared<Pipeline>, std::vector<DeviceRenderableObject>> m_HostRenderQueue;
+		CallbackRHUMap<Shared<Pipeline>, Shared<DeviceBuffer>> m_DeviceRenderQueue;
+		rhumap<Shared<Pipeline>, Shared<DeviceBuffer>> m_CulledDeviceRenderQueue;
+		rhumap<Shared<Pipeline>, Shared<DeviceBuffer>> m_DeviceIndirectDrawParams;
+
+		Shared<Pipeline> m_IndirectFrustumCullPipeline;
+
+		struct GBuffer {
+			Shared<Image> positions;
+			Shared<Image> normals;
+			Shared<Image> base_color;
+			Shared<Image> metallic_roughness_occlusion;
+		} m_GBuffer;
+		Shared<Pipeline> m_PBRFullscreenPipeline;
+
+		std::vector<PointLight> m_HostPointLights;
+		Shared<DeviceBuffer> m_DevicePointLights;
+		std::shared_mutex m_Mutex;
 
 	};
 

@@ -46,8 +46,9 @@ namespace Omni {
 
 		virtual uint32 GetNumBroadPhaseLayers() const override;
 		virtual JPH::BroadPhaseLayer GetBroadPhaseLayer(JPH::ObjectLayer layer) const override;
+#ifdef JPH_PROFILE_ENABLED
 		virtual const char* GetBroadPhaseLayerName(JPH::BroadPhaseLayer layer) const override;
-
+#endif
 	private:
 		JPH::BroadPhaseLayer m_ObjectToBroadPhase[BodyLayers::NUM_LAYERS];
 	};
@@ -64,21 +65,21 @@ namespace Omni {
 		BodyContantListener();
 
 		virtual JPH::ValidateResult	OnContactValidate(
-			const JPH::Body& inBody1, 
-			const JPH::Body& inBody2, 
-			JPH::RVec3Arg inBaseOffset, 
+			const JPH::Body& inBody1,
+			const JPH::Body& inBody2,
+			JPH::RVec3Arg inBaseOffset,
 			const JPH::CollideShapeResult& inCollisionResult) override;
 
 		virtual void OnContactAdded(
-			const JPH::Body& body1, 
-			const JPH::Body& body2, 
-			const JPH::ContactManifold& manifold, 
+			const JPH::Body& body1,
+			const JPH::Body& body2,
+			const JPH::ContactManifold& manifold,
 			JPH::ContactSettings& settings) override;
 
 		virtual void OnContactPersisted(
-			const JPH::Body& body1, 
-			const JPH::Body& body2, 
-			const JPH::ContactManifold& manifold, 
+			const JPH::Body& body1,
+			const JPH::Body& body2,
+			const JPH::ContactManifold& manifold,
 			JPH::ContactSettings& settings) override;
 
 		virtual void OnContactRemoved(const JPH::SubShapeIDPair& subshape_pair) override;

@@ -1,6 +1,7 @@
 #include "../VulkanDevice.h"
 
 #include "../VulkanGraphicsContext.h"
+#include "../VulkanDeviceCmdBuffer.h"
 
 namespace Omni {
 
@@ -146,13 +147,22 @@ namespace Omni {
 		VkDeviceQueueCreateInfo queue_create_infos[2] = { general_queue_create_info, async_compute_queue_create_info };
 		std::vector<const char*> enabled_extensions = GetRequiredExtensions();
 
+		VkPhysicalDeviceMeshShaderFeaturesEXT mesh_shading_enable_struct = {};
+		mesh_shading_enable_struct.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
+		mesh_shading_enable_struct.meshShader = true;
+		mesh_shading_enable_struct.taskShader = true;
+		mesh_shading_enable_struct.meshShaderQueries = true;
+
 		VkPhysicalDeviceIndexTypeUint8FeaturesEXT uint8_index_feature_enable_struct = {};
 		uint8_index_feature_enable_struct.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT;
-		uint8_index_feature_enable_struct.indexTypeUint8 = VK_TRUE;
+		uint8_index_feature_enable_struct.pNext = &mesh_shading_enable_struct;
+		uint8_index_feature_enable_struct.indexTypeUint8 = true;
 
 		VkPhysicalDeviceVulkan11Features vulkan_1_1_features = {};
 		vulkan_1_1_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
 		vulkan_1_1_features.pNext = &uint8_index_feature_enable_struct;
+		vulkan_1_1_features.shaderDrawParameters = true;
+		vulkan_1_1_features.storageBuffer16BitAccess = true;
 
 		VkPhysicalDeviceVulkan12Features vulkan_1_2_features = {};
 		vulkan_1_2_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
@@ -162,11 +172,20 @@ namespace Omni {
 		vulkan_1_2_features.descriptorBindingPartiallyBound = true;
 		vulkan_1_2_features.runtimeDescriptorArray = true;
 		vulkan_1_2_features.scalarBlockLayout = true;
+		vulkan_1_2_features.bufferDeviceAddress = true;
+		vulkan_1_2_features.bufferDeviceAddressCaptureReplay = OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG;
+		vulkan_1_2_features.drawIndirectCount = true;
+		vulkan_1_2_features.storageBuffer8BitAccess = true;
+		vulkan_1_2_features.shaderInt8 = true;
+		vulkan_1_2_features.storagePushConstant8 = true;
+		vulkan_1_2_features.shaderFloat16 = true;
 
 		VkPhysicalDeviceVulkan13Features vulkan_1_3_features = {};
 		vulkan_1_3_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
 		vulkan_1_3_features.pNext = &vulkan_1_2_features;
-		vulkan_1_3_features.dynamicRendering = VK_TRUE;
+		vulkan_1_3_features.dynamicRendering = true;
+		vulkan_1_3_features.maintenance4 = true;
+		vulkan_1_3_features.synchronization2 = true;
 
 		VkPhysicalDeviceFeatures2 device_features2 = {};
 		device_features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
@@ -207,48 +226,19 @@ namespace Omni {
 		m_Device = VK_NULL_HANDLE;
 	}
 
-	VkCommandBuffer VulkanDevice::AllocateTransientCmdBuffer() const
+	VulkanDeviceCmdBuffer VulkanDevice::AllocateTransientCmdBuffer()
 	{
-		VkCommandBufferAllocateInfo cmd_buffer_allocate_info = {};
-		cmd_buffer_allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		cmd_buffer_allocate_info.commandPool = m_CmdPool;
-		cmd_buffer_allocate_info.commandBufferCount = 1;
-		cmd_buffer_allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-
-		VkCommandBuffer cmd_buffer;
-		vkAllocateCommandBuffers(m_Device, &cmd_buffer_allocate_info, &cmd_buffer);
-
-		VkCommandBufferBeginInfo begin_info = {};
-		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-		vkBeginCommandBuffer(cmd_buffer, &begin_info);
+		VulkanDeviceCmdBuffer cmd_buffer(DeviceCmdBufferLevel::PRIMARY, DeviceCmdBufferType::TRANSIENT, DeviceCmdType::GENERAL);
+		cmd_buffer.Begin();
 
 		return cmd_buffer;
 	}
 
-	void VulkanDevice::ExecuteTransientCmdBuffer(VkCommandBuffer cmd_buffer, bool wait) const
+	void VulkanDevice::ExecuteTransientCmdBuffer(VulkanDeviceCmdBuffer cmd_buffer, bool wait /*= false*/) const
 	{
-		vkEndCommandBuffer(cmd_buffer);
-
-		VkSubmitInfo submit_info = {};
-		submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submit_info.pCommandBuffers = &cmd_buffer;
-		submit_info.commandBufferCount = 1;
-
-		VkFence fence;
-		VkFenceCreateInfo fence_create_info = {};
-		fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-
-		vkCreateFence(m_Device, &fence_create_info, nullptr, &fence);
-
-		vkQueueSubmit(m_GeneralQueue, 1, &submit_info, fence);
-		vkWaitForFences(m_Device, 1, &fence, VK_TRUE, UINT64_MAX);
-
-		vkResetCommandPool(m_Device, m_CmdPool, 0);
-		vkFreeCommandBuffers(m_Device, m_CmdPool, 1, &cmd_buffer);
-
-		vkDestroyFence(m_Device, fence, nullptr);
+		cmd_buffer.End();
+		cmd_buffer.Execute(true); // TODO: make such feature that cmd buffer can be launched asynchronously and will be self-destroyed on work finished
+		cmd_buffer.Destroy();
 	}
 
 	std::vector<const char*> VulkanDevice::GetRequiredExtensions()
@@ -260,6 +250,16 @@ namespace Omni {
 		}
 		if (m_PhysicalDevice->IsExtensionSupported(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME)) {
 			extensions.push_back(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME);
+		}
+		OMNIFORCE_ASSERT_TAGGED(m_PhysicalDevice->IsExtensionSupported(VK_EXT_MESH_SHADER_EXTENSION_NAME), "Mesh shading is not supported, aborting execution");
+		extensions.push_back(VK_EXT_MESH_SHADER_EXTENSION_NAME);
+
+		if (m_PhysicalDevice->IsExtensionSupported(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME) && OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG) {
+			extensions.push_back(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME);
+		}
+
+		if (m_PhysicalDevice->IsExtensionSupported(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME)) {
+			extensions.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
 		}
 
 		OMNIFORCE_CORE_TRACE("Enabled Vulkan device extensions:");

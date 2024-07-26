@@ -154,14 +154,13 @@ namespace Omni {
 
 		VkDynamicState dynamic_states[] = {
 			VK_DYNAMIC_STATE_VIEWPORT,
-			VK_DYNAMIC_STATE_SCISSOR,
-			VK_DYNAMIC_STATE_LINE_WIDTH
+			VK_DYNAMIC_STATE_SCISSOR
 		};
 
 		VkPipelineDynamicStateCreateInfo dynamic_state = {};
 		dynamic_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
 		dynamic_state.pDynamicStates = dynamic_states;
-		dynamic_state.dynamicStateCount = 3;
+		dynamic_state.dynamicStateCount = 2;
 
 		VkPipelineRasterizationStateCreateInfo rasterization_state = {};
 		rasterization_state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -187,20 +186,22 @@ namespace Omni {
 		viewport_state.scissorCount = 1;
 		viewport_state.pScissors = &scissor;
 
-		VkPipelineColorBlendAttachmentState color_blend_attachment = {};
-		color_blend_attachment.blendEnable = m_Specification.color_blending_enable;
-		color_blend_attachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-		color_blend_attachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-		color_blend_attachment.colorBlendOp = VK_BLEND_OP_ADD;
-		color_blend_attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-		color_blend_attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-		color_blend_attachment.alphaBlendOp = VK_BLEND_OP_ADD;
-		color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_FLAG_BITS_MAX_ENUM;
+		std::vector<VkPipelineColorBlendAttachmentState> blend_states(m_Specification.output_attachments_formats.size());
+		for (auto& state : blend_states) {
+			state.blendEnable = m_Specification.color_blending_enable;
+			state.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+			state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+			state.colorBlendOp = VK_BLEND_OP_ADD;
+			state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+			state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+			state.alphaBlendOp = VK_BLEND_OP_ADD;
+			state.colorWriteMask = VK_COLOR_COMPONENT_FLAG_BITS_MAX_ENUM;
+		}
 
 		VkPipelineColorBlendStateCreateInfo color_blend_state = {};
 		color_blend_state.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-		color_blend_state.attachmentCount = 1;
-		color_blend_state.pAttachments = &color_blend_attachment;
+		color_blend_state.attachmentCount = blend_states.size();
+		color_blend_state.pAttachments = blend_states.data();
 		color_blend_state.logicOpEnable = VK_FALSE;
 		color_blend_state.logicOp = VK_LOGIC_OP_COPY;
 
@@ -209,7 +210,7 @@ namespace Omni {
 		depth_stencil_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 		depth_stencil_state.depthTestEnable = m_Specification.depth_test_enable;
 		depth_stencil_state.depthWriteEnable = m_Specification.depth_test_enable;
-		depth_stencil_state.depthCompareOp = VK_COMPARE_OP_LESS;
+		depth_stencil_state.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;
 		depth_stencil_state.depthBoundsTestEnable = VK_FALSE;
 		depth_stencil_state.stencilTestEnable = VK_FALSE;
 
@@ -254,7 +255,8 @@ namespace Omni {
 		pipeline_rendering.colorAttachmentCount = formats.size();
 		pipeline_rendering.pColorAttachmentFormats = formats.data();
 		// HACK: I assume that D32_SFLOAT is chosen format. More proper way to do it is to request depth image format from pipeline spec or swapchain
-		pipeline_rendering.depthAttachmentFormat = VK_FORMAT_D32_SFLOAT; 
+		pipeline_rendering.depthAttachmentFormat = VK_FORMAT_D32_SFLOAT;
+
 
 		std::vector<VkPipelineShaderStageCreateInfo> stage_infos = vk_shader->GetCreateInfos();
 
@@ -274,7 +276,8 @@ namespace Omni {
 		graphics_pipeline_create_info.pViewportState = &viewport_state;
 		graphics_pipeline_create_info.renderPass = VK_NULL_HANDLE;
 
-		if (vkCreateGraphicsPipelines(device->Raw(), VK_NULL_HANDLE, 1, &graphics_pipeline_create_info, nullptr, &m_Pipeline) != VK_SUCCESS) 
+		VkResult result = vkCreateGraphicsPipelines(device->Raw(), VK_NULL_HANDLE, 1, &graphics_pipeline_create_info, nullptr, &m_Pipeline);
+		if(result != VK_SUCCESS)
 		{
 			OMNIFORCE_CORE_ERROR("Failed to create pipeline \"{0}\".", m_Specification.debug_name);
 			return;
@@ -299,14 +302,23 @@ namespace Omni {
 		pipeline_layout_create_info.pushConstantRangeCount = push_constant_ranges.size();
 		pipeline_layout_create_info.pPushConstantRanges = push_constant_ranges.data();
 
+		VK_CHECK_RESULT(vkCreatePipelineLayout(device->Raw(), &pipeline_layout_create_info, nullptr, &m_PipelineLayout));
+
 		std::vector<VkPipelineShaderStageCreateInfo> stage_create_info = vk_shader->GetCreateInfos();
 
 		VkComputePipelineCreateInfo compute_pipeline_create_info = {};
 		compute_pipeline_create_info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
 		compute_pipeline_create_info.layout = m_PipelineLayout;
 		compute_pipeline_create_info.stage = stage_create_info[0];
-		
-		VK_CHECK_RESULT(vkCreateComputePipelines(device->Raw(), VK_NULL_HANDLE, 1, &compute_pipeline_create_info, nullptr, &m_Pipeline));
+
+		VkResult result = vkCreateComputePipelines(device->Raw(), VK_NULL_HANDLE, 1, &compute_pipeline_create_info, nullptr, &m_Pipeline);
+		if (result != VK_SUCCESS)
+		{
+			OMNIFORCE_CORE_ERROR("Failed to create pipeline \"{0}\".", m_Specification.debug_name);
+			return;
+		}
+
+		OMNIFORCE_CORE_TRACE("Pipeline \"{0}\" created successfully", m_Specification.debug_name);
 
 	}
 

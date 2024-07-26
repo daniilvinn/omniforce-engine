@@ -3,31 +3,54 @@
 #include <iostream>
 
 #include <Foundation/Macros.h>
-#include <Memory/Pointers.hpp>
+#include <Foundation/Types.h>
 
 #include <spdlog/spdlog.h>
+#include <spdlog/sinks/base_sink.h>
 
 namespace Omni {
+
+	enum class LogSource : uint8 {
+		CORE = BIT(0),
+		CLIENT = BIT(1)
+	};
 
 	class OMNIFORCE_API Logger 
 	{
 	public:
 		enum class Level : uint8_t 
 		{
-			LEVEL_TRACE = 0,
-			LEVEL_INFO,
-			LEVEL_WARN,
-			LEVEL_ERROR,
-			LEVEL_CRITICAL,
-			LEVEL_NONE
+			LEVEL_TRACE			= BIT(0),
+			LEVEL_INFO			= BIT(1),
+			LEVEL_WARN			= BIT(2),
+			LEVEL_ERROR			= BIT(3),
+			LEVEL_CRITICAL		= BIT(4),
+			LEVEL_NONE			= BIT(5),
+			MAX_ENUM			= BIT(6)
 		};
+
+		static constexpr std::string_view LogLevelToString(Level level) {
+			switch (level)
+			{
+			case Omni::Logger::Level::LEVEL_TRACE:			return "Trace";
+			case Omni::Logger::Level::LEVEL_INFO:			return "Info";
+			case Omni::Logger::Level::LEVEL_WARN:			return "Warning";
+			case Omni::Logger::Level::LEVEL_ERROR:			return "Error";
+			case Omni::Logger::Level::LEVEL_CRITICAL:		return "Critical";
+			case Omni::Logger::Level::LEVEL_NONE:			return "Null";
+			}
+		}
 
 		static void Init(Level level);
 		static void Shutdown();
 		static Logger* Get() { return s_Instance; }
-		static Shared<spdlog::logger> GetCoreLooger() { return s_Instance->m_CoreLogger; };
-		static Shared<spdlog::logger> GetClientLooger() { return s_Instance->m_ClientLogger; };
-
+		static Shared<spdlog::logger> GetCoreLogger() { return s_Instance->m_CoreLogger; };
+		static Shared<spdlog::logger> GetClientLogger() { return s_Instance->m_ClientLogger; };
+		static Shared<spdlog::logger> GetLoggerByName(std::string_view name) { return spdlog::get(name.data()); }
+		//static Shared<spdlog::logger> GetLoggerByName(std::string_view name) { return s_Instance->m_AdditionalLoggers.at(name.data()); }
+		static void AddLogger(Shared<spdlog::logger> logger) { spdlog::register_logger(logger); }
+		static void SetClientLoggerSink(Shared<spdlog::sinks::base_sink<std::mutex>> sink) { s_Instance->m_ClientLogger->sinks().push_back(sink); }
+		
 		// Core logging API
 		template<typename... Args>
 		void Trace(Args... args)			{ m_CoreLogger->trace(args...); }
@@ -77,21 +100,21 @@ namespace Omni {
 		std::string m_LogBuffer;
 	};
 
-#ifdef OMNIFORCE_DEBUG
+#ifndef OMNIFORCE_RELEASE
 	#define OMNIFORCE_INITIALIZE_LOG_SYSTEM(log_level) Omni::Logger::Init(log_level);
 	#define OMNIFORCE_WRITE_LOGS_TO_FILE()		Omni::Logger::Get()->WriteLogFile();
 
-	#define OMNIFORCE_CORE_TRACE(...)			Omni::Logger::GetCoreLooger()->trace(__VA_ARGS__)
-	#define OMNIFORCE_CORE_INFO(...)			Omni::Logger::GetCoreLooger()->info(__VA_ARGS__)
-	#define OMNIFORCE_CORE_WARNING(...)			Omni::Logger::GetCoreLooger()->warn(__VA_ARGS__)
-	#define OMNIFORCE_CORE_ERROR(...)			Omni::Logger::GetCoreLooger()->error(__VA_ARGS__)
-	#define OMNIFORCE_CORE_CRITICAL(...)		Omni::Logger::GetCoreLooger()->critical(__VA_ARGS__)
+	#define OMNIFORCE_CORE_TRACE(...)			Omni::Logger::GetCoreLogger()->trace(__VA_ARGS__)
+	#define OMNIFORCE_CORE_INFO(...)			Omni::Logger::GetCoreLogger()->info(__VA_ARGS__)
+	#define OMNIFORCE_CORE_WARNING(...)			Omni::Logger::GetCoreLogger()->warn(__VA_ARGS__)
+	#define OMNIFORCE_CORE_ERROR(...)			Omni::Logger::GetCoreLogger()->error(__VA_ARGS__)
+	#define OMNIFORCE_CORE_CRITICAL(...)		Omni::Logger::GetCoreLogger()->critical(__VA_ARGS__)
 
-	#define OMNIFORCE_CLIENT_TRACE(...)			Omni::Logger::GetClientLooger()->trace(__VA_ARGS__)
-	#define OMNIFORCE_CLIENT_INFO(...)			Omni::Logger::GetClientLooger()->info(__VA_ARGS__)
-	#define OMNIFORCE_CLIENT_WARNING(...)		Omni::Logger::GetClientLooger()->warn(__VA_ARGS__)
-	#define OMNIFORCE_CLIENT_ERROR(...)			Omni::Logger::GetClientLooger()->error(__VA_ARGS__)
-	#define OMNIFORCE_CLIENT_CRITICAL(...)		Omni::Logger::GetClientLooger()->critical(__VA_ARGS__)
+	#define OMNIFORCE_CLIENT_TRACE(...)			Omni::Logger::GetClientLogger()->trace(__VA_ARGS__)
+	#define OMNIFORCE_CLIENT_INFO(...)			Omni::Logger::GetClientLogger()->info(__VA_ARGS__)
+	#define OMNIFORCE_CLIENT_WARNING(...)		Omni::Logger::GetClientLogger()->warn(__VA_ARGS__)
+	#define OMNIFORCE_CLIENT_ERROR(...)			Omni::Logger::GetClientLogger()->error(__VA_ARGS__)
+	#define OMNIFORCE_CLIENT_CRITICAL(...)		Omni::Logger::GetClientLogger()->critical(__VA_ARGS__)
 #else
 	#define OMNIFORCE_INITIALIZE_LOG_SYSTEM(log_level) Omni::Logger::Init(log_level);
 	#define OMNIFORCE_WRITE_LOGS_TO_FILE()			   Omni::Logger::Get()->WriteLogFile();
@@ -108,5 +131,11 @@ namespace Omni {
 	#define OMNIFORCE_CLIENT_ERROR(...)
 	#define OMNIFORCE_CLIENT_CRITICAL(...)
 #endif
+
+#define OMNIFORCE_CUSTOM_LOGGER_TRACE(logger_name, ...)		Omni::Logger::GetLoggerByName(logger_name)->trace(__VA_ARGS__)
+#define OMNIFORCE_CUSTOM_LOGGER_INFO(logger_name, ...)		Omni::Logger::GetLoggerByName(logger_name)->info(__VA_ARGS__)
+#define OMNIFORCE_CUSTOM_LOGGER_WARN(logger_name, ...)		Omni::Logger::GetLoggerByName(logger_name)->warn(__VA_ARGS__)
+#define OMNIFORCE_CUSTOM_LOGGER_ERROR(logger_name, ...)		Omni::Logger::GetLoggerByName(logger_name)->error(__VA_ARGS__)
+#define OMNIFORCE_CUSTOM_LOGGER_CRITICAL(logger_name, ...)	Omni::Logger::GetLoggerByName(logger_name)->critical(__VA_ARGS__)
 
 }

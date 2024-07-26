@@ -16,6 +16,11 @@ namespace Omni {
 		bool vsync;
 	};
 
+	struct RendererCapabilities {
+		bool mesh_shading;
+		bool ray_tracing;
+	};
+
 	class OMNIFORCE_API Renderer {
 	public:
 
@@ -28,6 +33,7 @@ namespace Omni {
 		static uint32 GetCurrentFrameIndex();
 		static uint32 GetDeviceMinimalUniformBufferOffsetAlignment();
 		static uint32 GetDeviceMinimalStorageBufferOffsetAlignment();
+		static uint32 GetDeviceOptimalComputeWorkGroupSize();
 		static Shared<ImageSampler> GetNearestSampler();
 		static Shared<ImageSampler> GetLinearSampler();
 		static Shared<Image> GetSwapchainImage();
@@ -38,18 +44,20 @@ namespace Omni {
 
 		static void BeginFrame();
 		static void EndFrame();
-		static void BeginRender(Shared<Image> target, uvec3 render_area, ivec2 offset, fvec4 clear_value);
+		static void BeginRender(const std::vector<Shared<Image>> attachments, uvec3 render_area, ivec2 offset, fvec4 clear_value);
 		static void EndRender(Shared<Image> target);
 		static void WaitDevice(); // to be used ONLY while shutting down the engine.
 		static void BindSet(Shared<DescriptorSet> set, Shared<Pipeline> pipeline, uint8 index);
 		static void CopyToSwapchain(Shared<Image> image);
+		static void InsertBarrier(const PipelineBarrierInfo& barrier_info);
 
 		static void ClearImage(Shared<Image> image, const fvec4& value);
-		static void InsertBarrier(Shared<Image> image);
-		static void RenderMesh(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo, MiscData data);
+		static void RenderMeshTasks(Shared<Pipeline> pipeline, const glm::uvec3 dimensions, MiscData data);
+		static void RenderMeshTasksIndirect(Shared<Pipeline> pipeline, Shared<DeviceBuffer> params, MiscData data);
 		static void RenderQuads(Shared<Pipeline> pipeline, MiscData data);
 		static void RenderQuads(Shared<Pipeline> pipeline, uint32 amount, MiscData data);
-		static void RenderLines(Shared<Pipeline> pipeline, uint32 amount, MiscData data);
+		static void DispatchCompute(Shared<Pipeline> pipeline, const glm::uvec3& dimensions, MiscData data);
+		static void RenderUnindexed(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vertex_buffer, MiscData data);
 
 		static void Render();
 		static void RenderImGui();

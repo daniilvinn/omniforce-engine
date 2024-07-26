@@ -9,7 +9,7 @@
 
 namespace Omni {
 
-	enum class OMNIFORCE_API FileReadingFlags : uint32 {
+	enum class OMNIFORCE_API FileReadingFlags : BitMask {
 		READ_BINARY = BIT(0)
 	};
 
@@ -25,6 +25,10 @@ namespace Omni {
 
 		static void SetWorkingDirectory(std::filesystem::path path);
 		static std::filesystem::path GetWorkingDirectory();
+
+		static std::filesystem::path GetTextureDirectory();
+		static std::filesystem::path GetAudioDirectory();
+		static std::filesystem::path GetScriptDirectory();
 
 	};
 

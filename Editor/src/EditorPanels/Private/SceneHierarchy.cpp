@@ -13,7 +13,7 @@ namespace Omni {
 
 	}
 
-	void SceneHierarchyPanel::Render()
+	void SceneHierarchyPanel::Update()
 	{
 		if (m_IsOpen) {
 			ImGui::Begin("Scene Hierarchy", &m_IsOpen);
@@ -42,7 +42,7 @@ namespace Omni {
 	void SceneHierarchyPanel::SetContext(Scene* ctx)
 	{
 		m_Context = ctx;
-		m_SelectedNode = { (entt::entity)0, ctx };
+		m_SelectedNode = { entt::null, ctx };
 	}
 
 	void SceneHierarchyPanel::RenderHierarchyNode(Entity entity)
@@ -81,7 +81,7 @@ namespace Omni {
 		}
 
 		ImGuiDragDropFlags drag_and_drop_flags = ImGuiDragDropFlags_None;
-		drag_and_drop_flags |= ImGuiDragDropFlags_AcceptNoDrawDefaultRect;
+		drag_and_drop_flags |= ImGuiDragDropFlags_AcceptNoDrawDefaultRect | ImGuiDragDropFlags_SourceNoPreviewTooltip;
 
 		if (ImGui::BeginDragDropSource(drag_and_drop_flags))
 		{

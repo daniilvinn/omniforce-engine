@@ -1,0 +1,79 @@
+#pragma lang : glsl
+#pragma stage : compute
+#version 460 core
+
+#extension GL_EXT_buffer_reference2     : require
+#extension GL_EXT_scalar_block_layout   : require
+
+#include "camera_data.glslh"
+#include "render_object.glslh"
+#include "mesh_data.glslh"
+#include "constants.glslh"
+
+layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+
+layout(buffer_reference, scalar, buffer_reference_align = 4) buffer OutputBuffer {
+    uint count;
+    uvec3 draw_params[];
+};
+
+layout(push_constant, scalar) uniform PushContants {
+    CameraData camera_data;
+    MeshData mesh_data;
+    RenderObjectData render_objects_queue;
+    uint original_object_count;
+    RenderObjectData culled_objects;
+    OutputBuffer output_buffer;
+} pc;
+
+vec3 RotateByQuat(vec3 vertex, vec4 quat) {
+	vec3 uv = cross(quat.xyz, vertex);
+	vec3 uuv = cross(quat.xyz, uv);
+	return vertex + ((uv * quat.w) + uuv) * 2.0;
+};
+
+void main() {
+    // Check if we are out of queue bounds
+    if(gl_GlobalInvocationID.x >= pc.original_object_count)
+        return;
+
+    // Declare data
+    RenderObjectData object = pc.render_objects_queue[gl_GlobalInvocationID.x];
+    Transform transform = object.transform;
+    MeshData root_mesh_data = pc.mesh_data[object.geometry_data_id];
+
+    vec4 rotation_quaternion = vec4(unpackSnorm2x16(transform.packed_rotation[0]), unpackSnorm2x16(transform.packed_rotation[1]));
+
+    // Select lod based on distance to LOD_0's bounding sphere position and multiplier
+    Sphere bounding_sphere = root_mesh_data.lods[0].bounding_sphere;
+	bounding_sphere.center = RotateByQuat(bounding_sphere.center * transform.scale, rotation_quaternion) + transform.translation;
+
+    uint32_t selected_lod = 0;
+    for(int i = 0; i < OMNI_MAX_MESH_LOD_COUNT; i++) {
+        if(length(pc.camera_data.position - bounding_sphere.center) < OMNI_LOD_DISTANCES[i] * root_mesh_data.lod_distance_multiplier) {
+            selected_lod = i;
+            break;
+        }
+    }
+
+    // Take corresponding bounding sphere and test it against frustum
+    MeshLOD mesh_data = root_mesh_data.lods[selected_lod];
+
+    bounding_sphere = mesh_data.bounding_sphere;
+	bounding_sphere.center = RotateByQuat(bounding_sphere.center * transform.scale, rotation_quaternion) + transform.translation;
+    bounding_sphere.radius = bounding_sphere.radius * max(max(transform.scale.x, transform.scale.y), transform.scale.z);
+    
+
+    if(FrustumTestBoundingSphere(pc.camera_data.frustum, bounding_sphere)) {
+        // If test is passed, fill in the data
+        uint index = atomicAdd(pc.output_buffer.count, 1);
+
+        pc.culled_objects[index].transform = object.transform;
+        pc.culled_objects[index].geometry_data_id = object.geometry_data_id;
+        pc.culled_objects[index].material_bda = object.material_bda;
+        pc.culled_objects[index].lod = selected_lod;
+
+        uint meshlet_count = (mesh_data.meshlet_count + 31) / 32;
+        pc.output_buffer.draw_params[index] = uvec3(meshlet_count, 1, 1);
+    }
+}

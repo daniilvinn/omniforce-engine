@@ -2,6 +2,7 @@
 
 #include <Filesystem/Filesystem.h>
 #include <Log/Logger.h>
+#include "ShaderSourceIncluder.h"
 
 #include <shaderc/shaderc.hpp>
 
@@ -15,6 +16,8 @@ namespace Omni {
 		case ShaderStage::VERTEX:		return shaderc_vertex_shader;
 		case ShaderStage::FRAGMENT:		return shaderc_fragment_shader;
 		case ShaderStage::COMPUTE:		return shaderc_compute_shader;
+		case ShaderStage::TASK:			return shaderc_task_shader;
+		case ShaderStage::MESH:			return shaderc_mesh_shader;
 		default:						std::unreachable();
 		}
 	}
@@ -22,9 +25,14 @@ namespace Omni {
 	ShaderCompiler::ShaderCompiler()
 	{
 		if(OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG)
-			m_GlobalOptions.SetOptimizationLevel(shaderc_optimization_level_zero);
+			m_GlobalOptions.SetOptimizationLevel(shaderc_optimization_level_performance);
 		else
 			m_GlobalOptions.SetOptimizationLevel(shaderc_optimization_level_performance);
+
+		m_GlobalOptions.SetIncluder(std::make_unique<ShaderSourceIncluder>());
+		m_GlobalOptions.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
+		m_GlobalOptions.SetTargetSpirv(shaderc_spirv_version_1_6);
+		m_GlobalOptions.SetPreserveBindings(true);
 	}
 
 	bool ShaderCompiler::ReadShaderFile(std::filesystem::path path, std::stringstream* out)
@@ -45,10 +53,17 @@ namespace Omni {
 		m_GlobalOptions.AddMacroDefinition(key, value);
 	}
 
-	ShaderCompilationResult ShaderCompiler::Compile(std::string& source, const std::string& filename)
+	ShaderCompilationResult ShaderCompiler::Compile(std::string& source, const std::string& filename, const ShaderMacroTable& macros)
 	{
 		ShaderCompilationResult compilation_result = { .valid = true };
 		shaderc::CompileOptions local_options = m_GlobalOptions;
+		if (OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG) {
+			local_options.SetGenerateDebugInfo();
+			//local_options.SetOptimizationLevel(shaderc_optimization_level_zero);
+		}
+
+		for (auto& macro : macros)
+			local_options.AddMacroDefinition(macro.first, macro.second);
 
 		std::map<ShaderStage, std::string> separated_sources;
 		std::map<ShaderStage, std::vector<uint32>> binaries;
@@ -76,16 +91,18 @@ namespace Omni {
 				else if (current_parsing_line.find("stage") != std::string::npos) {
 					if (current_parsing_line.find("vertex") != std::string::npos) {
 						current_parsing_stage = ShaderStage::VERTEX;
-						// \n to ensure line similarity between shader file and actual parsed source
-						separated_sources.emplace(ShaderStage::VERTEX, "\n"); 
 					}
 					else if (current_parsing_line.find("fragment") != std::string::npos) {
 						current_parsing_stage = ShaderStage::FRAGMENT;
-						separated_sources.emplace(ShaderStage::FRAGMENT, "\n");
 					}
 					else if (current_parsing_line.find("compute") != std::string::npos) {
 						current_parsing_stage = ShaderStage::COMPUTE;
-						separated_sources.emplace(ShaderStage::COMPUTE, "\n");
+					}
+					else if (current_parsing_line.find("task") != std::string::npos) {
+						current_parsing_stage = ShaderStage::TASK;
+					}
+					else if (current_parsing_line.find("mesh") != std::string::npos) {
+						current_parsing_stage = ShaderStage::MESH;
 					}
 					else {
 						compilation_result.valid = false;
@@ -100,7 +117,8 @@ namespace Omni {
 				}
 			}
 			else {
-				separated_sources[current_parsing_stage].append(current_parsing_line + '\n');
+				if(current_parsing_line != "\n" || current_parsing_line != "")
+					separated_sources[current_parsing_stage].append(current_parsing_line + '\n');
 				current_line_number++;
 			}
 		};
@@ -113,9 +131,24 @@ namespace Omni {
 
 		// Compilation stage
 		for (auto& stage_source : separated_sources) {
+			shaderc::PreprocessedSourceCompilationResult preprocessing_result = m_Compiler.PreprocessGlsl(
+				stage_source.second,
+				convert(stage_source.first),
+				filename.c_str(),
+				local_options
+			);
+
+			if (preprocessing_result.GetCompilationStatus() != shaderc_compilation_status::shaderc_compilation_status_success) {
+				OMNIFORCE_CORE_ERROR("Failed to preprocess shader {0}.{1}: {2}", filename, Utils::ShaderStageToString(stage_source.first), preprocessing_result.GetErrorMessage());
+				compilation_result.valid = false;
+				continue;
+			}
+
+			stage_source.second = std::string(preprocessing_result.begin());
+
 			shaderc::CompilationResult result = m_Compiler.CompileGlslToSpv(stage_source.second, convert(stage_source.first), filename.c_str(), local_options);
 			if (result.GetCompilationStatus() != shaderc_compilation_status_success) {
-				OMNIFORCE_CORE_ERROR("Failed to compile shader {0}.{1}:\n{2}", filename, Utils::StageToString(stage_source.first), result.GetErrorMessage());
+				OMNIFORCE_CORE_ERROR("Failed to compile shader {0}.{1}:\n{2}", filename, Utils::ShaderStageToString(stage_source.first), result.GetErrorMessage());
 				compilation_result.valid = false;
 			}
 
@@ -124,7 +157,8 @@ namespace Omni {
 		}
 
 		compilation_result.bytecode = std::move(binaries);
-			
+		OMNIFORCE_ASSERT_TAGGED(compilation_result.valid, "Shader compilation failed");
+
 		return compilation_result;
 	}
 }

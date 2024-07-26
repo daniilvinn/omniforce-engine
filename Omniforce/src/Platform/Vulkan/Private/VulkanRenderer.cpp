@@ -7,11 +7,13 @@
 #include "../VulkanImage.h"
 #include "../VulkanDescriptorSet.h"
 
+#include <Renderer/PipelineBarrier.h>
 #include <Renderer/ShaderLibrary.h>
 #include <Threading/JobSystem.h>
 
 #include <imgui.h>
-#include <backends/imgui_impl_vulkan.h>
+
+#include "backends/imgui_impl_vulkan.h"
 
 namespace Omni {
 
@@ -156,6 +158,36 @@ namespace Omni {
 		});
 	}
 
+	void VulkanRenderer::RenderMeshTasks(Shared<Pipeline> pipeline, const glm::uvec3& dimensions, MiscData data)
+	{
+		Renderer::Submit([=]() mutable {
+			Shared<VulkanPipeline> vk_pipeline = ShareAs<VulkanPipeline>(pipeline);
+
+			if (data.size) {
+				vkCmdPushConstants(m_CurrentCmdBuffer->Raw(), vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
+				delete[] data.data;
+			}
+			vkCmdBindPipeline(m_CurrentCmdBuffer->Raw(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
+			vkCmdDrawMeshTasksEXT(m_CurrentCmdBuffer->Raw(), dimensions.x, dimensions.y, dimensions.z);
+		});
+	}
+
+	void VulkanRenderer::RenderMeshTasksIndirect(Shared<Pipeline> pipeline, Shared<DeviceBuffer> params, MiscData data)
+	{
+		Renderer::Submit([=]() mutable {
+			Shared<VulkanPipeline> vk_pipeline = ShareAs<VulkanPipeline>(pipeline);
+			Shared<VulkanDeviceBuffer> vk_buffer = ShareAs<VulkanDeviceBuffer>(params);
+
+			vkCmdBindPipeline(m_CurrentCmdBuffer->Raw(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
+			if (data.size) {
+				vkCmdPushConstants(m_CurrentCmdBuffer->Raw(), vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
+				delete[] data.data;
+			}
+			uint32 max_draws = (vk_buffer->GetSpecification().size - 4) / sizeof glm::uvec3;
+			vkCmdDrawMeshTasksIndirectCountEXT(m_CurrentCmdBuffer->Raw(), vk_buffer->Raw(), 4, vk_buffer->Raw(), 0, max_draws, sizeof VkDrawMeshTasksIndirectCommandEXT);
+		});
+	}
+
 	std::vector<VkDescriptorSet> VulkanRenderer::AllocateDescriptorSets(VkDescriptorSetLayout layout, uint32 count)
 	{
 		auto device = VulkanGraphicsContext::Get()->GetDevice();
@@ -195,30 +227,9 @@ namespace Omni {
 		return m_Device->GetPhysicalDevice()->GetProps().limits.minStorageBufferOffsetAlignment;
 	}
 
-	void VulkanRenderer::RenderMesh(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo, MiscData misc_data)
+	uint32 VulkanRenderer::GetDeviceOptimalComputeWorkGroupSize() const
 	{
-		Renderer::Submit([=]() mutable {
-			Shared<VulkanPipeline> vk_pipeline = ShareAs<VulkanPipeline>(pipeline);
-			Shared<VulkanDeviceBuffer> vk_vbo = ShareAs<VulkanDeviceBuffer>(vbo);
-			Shared<VulkanDeviceBuffer> vk_ibo = ShareAs<VulkanDeviceBuffer>(ibo);
-
-			IndexBufferData* ibo_data = (IndexBufferData*)vk_ibo->GetAdditionalData();
-
-			VkDeviceSize offset = 0;
-
-			VkBuffer raw_vbo = vk_vbo->Raw();
-
-			vkCmdBindPipeline(m_CurrentCmdBuffer->Raw(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
-			vkCmdBindVertexBuffers(m_CurrentCmdBuffer->Raw(), 0, 1, &raw_vbo, &offset);
-			vkCmdBindIndexBuffer(m_CurrentCmdBuffer->Raw(), vk_ibo->Raw(), 0, ibo_data->index_type);
-
-			if(misc_data.size)
-				vkCmdPushConstants(m_CurrentCmdBuffer->Raw(), vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, misc_data.size, misc_data.data);
-
-			vkCmdDrawIndexed(m_CurrentCmdBuffer->Raw(), ibo_data->index_count, 1, 0, 0, 0);
-
-			delete[] misc_data.data;
-		});
+		return 0;
 	}
 
 	void VulkanRenderer::RenderQuad(Shared<Pipeline> pipeline, MiscData data)
@@ -250,41 +261,52 @@ namespace Omni {
 		});
 	}
 
-	void VulkanRenderer::RenderLines(Shared<Pipeline> pipeline, uint32 amount, MiscData data)
+	void VulkanRenderer::DispatchCompute(Shared<Pipeline> pipeline, const glm::uvec3& dimensions, MiscData data)
 	{
-		Renderer::Submit([=]()mutable {
+		Renderer::Submit([=]() mutable {
 			Shared<VulkanPipeline> vk_pipeline = ShareAs<VulkanPipeline>(pipeline);
-
-			if (data.size)
-			{
+			
+			if (data.size) {
 				vkCmdPushConstants(m_CurrentCmdBuffer->Raw(), vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
 				delete[] data.data;
 			}
+			vkCmdBindPipeline(m_CurrentCmdBuffer->Raw(), VK_PIPELINE_BIND_POINT_COMPUTE, vk_pipeline->Raw());
+			vkCmdDispatch(m_CurrentCmdBuffer->Raw(), dimensions.x, dimensions.y, dimensions.z);
+		});
+	}
+
+	void VulkanRenderer::RenderUnindexed(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vertex_buffer, MiscData data)
+	{
+		Renderer::Submit([=]() mutable {
+			Shared<VulkanPipeline> vk_pipeline = ShareAs<VulkanPipeline>(pipeline);
+
+			if (data.size) {
+				vkCmdPushConstants(m_CurrentCmdBuffer->Raw(), vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
+				delete[] data.data;
+			}
+
+			Shared<VulkanDeviceBuffer> vk_buffer = ShareAs<VulkanDeviceBuffer>(vertex_buffer);
+			VkBuffer vb = vk_buffer->Raw();
+			VkDeviceSize offset = 0;
+
+			uint32 vertex_count = ((VertexBufferData*)vk_buffer->GetAdditionalData())->vertex_count;
+
+			vkCmdBindVertexBuffers(m_CurrentCmdBuffer->Raw(), 0, 1, &vb, &offset);
+
 			vkCmdBindPipeline(m_CurrentCmdBuffer->Raw(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
-			vkCmdDraw(m_CurrentCmdBuffer->Raw(), 6, amount, 0, 0);
+			vkCmdDraw(m_CurrentCmdBuffer->Raw(), vertex_count, 1, 0, 0);
 		});
 	}
 
 	void VulkanRenderer::RenderImGui()
 	{
 		auto image = m_Swapchain->GetCurrentImage();
-		
-		Renderer::Submit([=]() mutable {
-			image->SetLayout(
-				m_CurrentCmdBuffer,
-				ImageLayout::COLOR_ATTACHMENT,
-				PipelineStage::COLOR_ATTACHMENT_OUTPUT,
-				PipelineStage::BOTTOM_OF_PIPE,
-				PipelineAccess::COLOR_ATTACHMENT_WRITE,
-				PipelineAccess::NONE
-			);
-		});
 
 		BeginRender(
-			image,
+			{ image },
 			image->GetSpecification().extent,
 			{ 0,0 },
-			{ 0.0f, 0.0f, 0.0f, 0.0f }
+			{ 0.0f, 0.0f, 0.0f, 1.0f }
 		);
 
 		Renderer::Submit([=]() mutable {
@@ -322,8 +344,8 @@ namespace Omni {
 				ImageLayout::TRANSFER_DST,
 				PipelineStage::COLOR_ATTACHMENT_OUTPUT,
 				PipelineStage::TRANSFER,
-				PipelineAccess::COLOR_ATTACHMENT_WRITE,
-				PipelineAccess::TRANSFER_READ
+				(BitMask)PipelineAccess::COLOR_ATTACHMENT_WRITE,
+				(BitMask)PipelineAccess::TRANSFER_READ
 			);
 
 			vkCmdBlitImage(
@@ -339,42 +361,146 @@ namespace Omni {
 		});
 	}
 
-	void VulkanRenderer::BeginRender(Shared<Image> target, uvec3 render_area, ivec2 render_offset, fvec4 clear_color)
+	void VulkanRenderer::InsertBarrier(const PipelineBarrierInfo& barrier)
+	{
+		Renderer::Submit([=]()mutable {
+			std::vector<VkMemoryBarrier2> memory_barriers;
+			std::vector<VkImageMemoryBarrier2> image_barriers;
+
+			VkDependencyInfo dependency = {};
+			dependency.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+
+			for (auto& buffer_barrier : barrier.buffer_barriers) {
+
+				VkMemoryBarrier2 vk_barrier = {};
+				vk_barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+				vk_barrier.srcStageMask = (BitMask)buffer_barrier.second.src_stages;
+				vk_barrier.dstStageMask = (BitMask)buffer_barrier.second.dst_stages;
+				vk_barrier.srcAccessMask = buffer_barrier.second.src_access_mask;
+				vk_barrier.dstAccessMask = buffer_barrier.second.dst_access_mask;
+
+				memory_barriers.push_back(vk_barrier);
+			}
+
+			for (auto& image_barrier : barrier.image_barriers) {
+				Shared<Image> image = image_barrier.first;
+				Shared<VulkanImage> vk_image = ShareAs<VulkanImage>(image);
+
+				VkImageMemoryBarrier2 vk_barrier = {};
+				vk_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+				vk_barrier.srcStageMask = (BitMask)image_barrier.second.src_stages;
+				vk_barrier.dstStageMask = (BitMask)image_barrier.second.dst_stages;
+				vk_barrier.srcAccessMask = image_barrier.second.src_access_mask;
+				vk_barrier.dstAccessMask = image_barrier.second.dst_access_mask;
+				vk_barrier.image = vk_image->Raw();
+				vk_barrier.oldLayout = (VkImageLayout)vk_image->GetCurrentLayout();
+				vk_barrier.newLayout = (VkImageLayout)image_barrier.second.new_image_layout;
+				vk_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				vk_barrier.subresourceRange.baseArrayLayer = 0;
+				vk_barrier.subresourceRange.layerCount = image->GetSpecification().array_layers;
+				vk_barrier.subresourceRange.baseMipLevel = 0;
+				vk_barrier.subresourceRange.levelCount = image->GetSpecification().mip_levels;
+
+				vk_image->SetCurrentLayout(image_barrier.second.new_image_layout);
+
+				image_barriers.push_back(vk_barrier);
+			}	
+
+			dependency.memoryBarrierCount = memory_barriers.size();
+			dependency.pMemoryBarriers = memory_barriers.data();
+			dependency.imageMemoryBarrierCount = image_barriers.size();
+			dependency.pImageMemoryBarriers = image_barriers.data();
+
+			vkCmdPipelineBarrier2(
+				m_CurrentCmdBuffer->Raw(),
+				&dependency
+			);
+		});
+	}
+
+	void VulkanRenderer::BeginRender(const std::vector<Shared<Image>> attachments, uvec3 render_area, ivec2 render_offset, fvec4 clear_color)
 	{
 		Renderer::Submit([=]() mutable {
-			Shared<VulkanImage> vk_target = ShareAs<VulkanImage>(target);
-			ImageSpecification target_spec = vk_target->GetSpecification();
 
-			target->SetLayout(m_CurrentCmdBuffer,
-				ImageLayout::COLOR_ATTACHMENT,
-				PipelineStage::BOTTOM_OF_PIPE,
-				PipelineStage::COLOR_ATTACHMENT_OUTPUT,
-				PipelineAccess::NONE,
-				PipelineAccess::COLOR_ATTACHMENT_WRITE
-			);
+			VkRenderingAttachmentInfo depth_attachment = {};
 
-			VkRenderingAttachmentInfo color_attachment = {};
-			color_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-			color_attachment.imageView = vk_target->RawView();
-			color_attachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-			if(clear_color.a != 0.0f)
-				color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-			else
-				color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-			color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-			color_attachment.clearValue = { clear_color.r, clear_color.g, clear_color.b, clear_color.a };
+			std::vector<VkRenderingAttachmentInfo> color_attachments = {};
+
+			for (auto attachment : attachments) {
+				Shared<VulkanImage> vk_target = ShareAs<VulkanImage>(attachment);
+				ImageSpecification target_spec = vk_target->GetSpecification();
+
+				if (target_spec.usage == ImageUsage::RENDER_TARGET) {
+
+					VkImageMemoryBarrier target_barrier = {};
+					target_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+					target_barrier.image = vk_target->Raw();
+					target_barrier.oldLayout = (VkImageLayout)vk_target->GetCurrentLayout();
+					target_barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+					target_barrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+					target_barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+					target_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+					target_barrier.subresourceRange.baseArrayLayer = 0;
+					target_barrier.subresourceRange.baseMipLevel = 0;
+					target_barrier.subresourceRange.layerCount = 1;
+					target_barrier.subresourceRange.levelCount = 1;
+
+					vkCmdPipelineBarrier(m_CurrentCmdBuffer->Raw(),
+						VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+						VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+						0,
+						0,
+						nullptr,
+						0,
+						nullptr,
+						1, 
+						&target_barrier
+					);
+
+					vk_target->SetCurrentLayout(ImageLayout::COLOR_ATTACHMENT);
+
+					VkRenderingAttachmentInfo color_attachment = {};
+					color_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+					color_attachment.imageView = vk_target->RawView();
+					color_attachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+					if (clear_color.a != 0.0f)
+						color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+					else
+						color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+					color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+					color_attachment.clearValue = { clear_color.r, clear_color.g, clear_color.b, clear_color.a };
+
+					color_attachments.push_back(color_attachment);
+				}
+				else {
+					depth_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+					depth_attachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+					depth_attachment.imageView = vk_target->RawView();
+					depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+					depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+					depth_attachment.clearValue.color = { 0,0,0,1 };
+					if (clear_color.a != 0.0f)
+						depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+					else
+						depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+					depth_attachment.clearValue.depthStencil = { 0.0f, 0 };
+				}
+			}
+			
 
 			VkRenderingInfo rendering_info = {};
 			rendering_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
 			rendering_info.renderArea = { { render_offset.x, render_offset.y }, { render_area.x, render_area.y } };
 			rendering_info.layerCount = 1;
-			rendering_info.colorAttachmentCount = 1;
-			rendering_info.pColorAttachments = &color_attachment;
-			rendering_info.pDepthAttachment = nullptr;
+			rendering_info.colorAttachmentCount = color_attachments.size();
+			rendering_info.pColorAttachments = color_attachments.data();
+			rendering_info.pDepthAttachment = depth_attachment.imageView ? &depth_attachment : nullptr;
 			rendering_info.pStencilAttachment = nullptr;
 
-			VkRect2D scissor = { {0,0}, {target_spec.extent.x, target_spec.extent.y} };
-			VkViewport viewport = { 0, (float32)target_spec.extent.y, (float32)target_spec.extent.x, -(float32)target_spec.extent.y, 0.0f, 1.0f};
+
+
+			VkRect2D scissor = { {0,0}, {render_area.x, render_area.y} };
+			VkViewport viewport = { 0, (float32)render_area.y, (float32)render_area.x, -(float32)render_area.y, 0.0f, 1.0f};
 			vkCmdSetScissor(m_CurrentCmdBuffer->Raw(), 0, 1, &scissor);
 			vkCmdSetViewport(m_CurrentCmdBuffer->Raw(), 0, 1, &viewport);
 			vkCmdBeginRendering(m_CurrentCmdBuffer->Raw(), &rendering_info);

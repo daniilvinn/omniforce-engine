@@ -3,6 +3,7 @@
 #include "EditorPanels/SceneHierarchy.h"
 #include "EditorPanels/Properties.h"
 #include "EditorPanels/ContentBrowser.h"
+#include "EditorPanels/Logs.h"
 
 #include "EditorCamera.h"
 
@@ -62,7 +63,7 @@ public:
 
 		//Render and process scene hierarchy panel
 		ImGui::BeginDisabled(m_InRuntime);
-		m_HierarchyPanel->Render();
+		m_HierarchyPanel->Update();
 		if (m_EntitySelected = m_HierarchyPanel->IsNodeSelected()) 
 		{
 			m_SelectedEntity = m_HierarchyPanel->GetSelectedNode();
@@ -70,10 +71,13 @@ public:
 
 		// Properties panel
 		m_PropertiesPanel->SetEntity(m_SelectedEntity, m_HierarchyPanel->IsNodeSelected());
-		m_PropertiesPanel->Render();
+		m_PropertiesPanel->Update();
 
 		// Asset panel
-		m_AssetsPanel->Render();
+		m_AssetsPanel->Update();
+
+		// Logs panel
+		m_LogsPanel->Update();
 
 		// Debug
 		ImGui::Begin("Debug");
@@ -95,6 +99,65 @@ public:
 
 			if (ImGui::Button("Reload script assemblies"))
 				ScriptEngine::Get()->ReloadAssemblies();
+
+			ImGui::Checkbox("Visualize physics colliders", &m_VisualizeColliders);
+			ImGui::Checkbox("Visualize mesh cull bounds", &m_VisualizeCullBounds);
+
+			if (m_VisualizeColliders) {
+				auto box_colliders_view = m_EditorScene->GetRegistry()->view<BoxColliderComponent>();
+				for (auto& e : box_colliders_view) {
+					Entity entity(e, m_CurrentScene);
+					// Not world transform, since entities with rigid body must be not a child of another entity
+					const TRSComponent& trs = entity.GetComponent<TRSComponent>();
+					const BoxColliderComponent& bc_component = entity.GetComponent<BoxColliderComponent>();
+
+					DebugRenderer::RenderWireframeBox(trs.translation, trs.rotation, bc_component.size * 2.0f, { 0.28f, 0.27f, 1.0f });
+				}
+
+				auto sphere_colliders_view = m_EditorScene->GetRegistry()->view<SphereColliderComponent>();
+				for (auto& e : sphere_colliders_view) {
+					Entity entity(e, m_CurrentScene);
+					// Not world transform, since entities with rigid body must be not a child of another entity
+					const TRSComponent& trs = entity.GetComponent<TRSComponent>();
+					const SphereColliderComponent& sc_component = entity.GetComponent<SphereColliderComponent>();
+
+					DebugRenderer::RenderWireframeSphere(trs.translation, sc_component.radius, { 0.28f, 0.27f, 1.0f });
+				}
+			}
+			if (m_VisualizeCullBounds) {
+				auto mesh_view = m_CurrentScene->GetRegistry()->view<MeshComponent>();
+				for (auto& e : mesh_view) {
+					Entity entity(e, m_CurrentScene);
+
+					const TRSComponent trs = entity.GetWorldTransform();
+					const MeshComponent& mesh_component = entity.GetComponent<MeshComponent>();
+
+					Shared<Mesh> mesh = AssetManager::Get()->GetAsset<Mesh>(mesh_component.mesh_handle);
+					Sphere bounding_sphere = mesh->GetBoundingSphere(0);
+					AABB aabb = mesh->GetAABB();
+
+					float32 max_scale = glm::max(glm::max(trs.scale.x, trs.scale.y), trs.scale.z);
+
+					DebugRenderer::RenderWireframeSphere(
+						trs.translation + bounding_sphere.center * trs.scale,
+						bounding_sphere.radius * max_scale,
+						{ 0.28f, 0.27f, 1.0f }
+					);
+
+					glm::vec3 aabb_scale = glm::vec3{
+						(aabb.max.x - aabb.min.x),
+						(aabb.max.y - aabb.min.y),
+						(aabb.max.z - aabb.min.z)
+					};
+					glm::vec3 aabb_translation = glm::vec3{
+						(aabb.min.x + aabb.max.x) * 0.5f + trs.translation.x,
+						(aabb.min.y + aabb.max.y) * 0.5f + trs.translation.y,
+						(aabb.min.z + aabb.max.z) * 0.5f + trs.translation.z
+					};
+
+					DebugRenderer::RenderWireframeBox(aabb_translation, trs.rotation, aabb_scale, { 0.28f, 0.27f, 1.0f });
+				}
+			}
 		}
 		ImGui::End();
 		ImGui::EndDisabled();
@@ -114,15 +177,16 @@ public:
 				selected_node = m_SelectedEntity.GetComponent<UUIDComponent>();
 
 			if (m_InRuntime) {
-				if (m_RuntimeScene)
-					delete m_RuntimeScene;
 				m_RuntimeScene = new Scene(m_EditorScene); 
 				m_RuntimeScene->LaunchRuntime();
 				m_CurrentScene = m_RuntimeScene;
 			}
-			else { 
+			else {
 				m_RuntimeScene->ShutdownRuntime();
+				if (m_RuntimeScene)
+					delete m_RuntimeScene;
 				m_CurrentScene = m_EditorScene;
+				m_CurrentScene->EditorSetCamera(m_EditorCamera);
 			};
 
 			if (m_EntitySelected) {
@@ -148,11 +212,42 @@ public:
 			m_ViewportFocused = ImGui::IsWindowFocused();
 			ImVec2 viewport_frame_size = ImGui::GetContentRegionAvail();
 			UI::RenderImage(m_EditorScene->GetFinalImage(), SceneRenderer::GetSamplerLinear(), viewport_frame_size, 0, true);
-			m_EditorCamera->SetAspectRatio(viewport_frame_size.x / viewport_frame_size.y);
+
+			if(auto camera = m_CurrentScene->GetCamera(); camera != nullptr)
+				camera->SetAspectRatio(viewport_frame_size.x / viewport_frame_size.y);
 			
+			if (ImGui::BeginDragDropTarget()) {
+				ImGuiDragDropFlags target_flags = 0;
+				const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("content_browser_item", target_flags);
+
+				if (payload) {
+					std::filesystem::path filename(std::string((char*)payload->Data, payload->DataSize));
+					if (filename.extension() == ".gltf" || filename.extension() == ".glb") {
+						AssetManager* asset_manager = AssetManager::Get();
+						ModelImporter importer;
+						Shared<Model> model = AssetManager::Get()->GetAsset<Model>(importer.Import(filename));
+
+						Entity root_entity = m_CurrentScene->CreateEntity();
+
+						auto& children_map = model->GetMap();
+						for (auto& entry : children_map) {
+							Entity child = m_CurrentScene->CreateChildEntity(root_entity);
+							child.GetComponent<TagComponent>().tag = asset_manager->GetAsset<Material>(entry.second)->GetName();
+							MeshComponent& mesh_component = child.AddComponent<MeshComponent>();
+							mesh_component.mesh_handle = entry.first;
+							mesh_component.material_handle = entry.second;
+
+							// TODO: definitely need to move it from here to somewhere else into engine core
+							m_EditorScene->GetRenderer()->AcquireResourceIndex(asset_manager->GetAsset<Mesh>(mesh_component.mesh_handle));
+							m_EditorScene->GetRenderer()->AcquireResourceIndex(asset_manager->GetAsset<Material>(mesh_component.material_handle));
+						}
+					}
+				}
+				
+				ImGui::EndDragDropTarget();
+			}
+
 			if (m_InRuntime) {
-				if(m_RuntimeScene->GetCamera() != nullptr)
-					m_RuntimeScene->GetCamera()->SetAspectRatio(viewport_frame_size.x / viewport_frame_size.y);
 				m_CurrentOperation = (ImGuizmo::OPERATION)0;
 			}
 			else {
@@ -162,31 +257,28 @@ public:
 		ImGui::End();
 		ImGui::PopStyleVar();
 
-		
-
 		// Update editor camera and scene
 		m_CurrentScene->OnUpdate(step);
 		if(m_ViewportFocused && !m_InRuntime)
-			m_EditorCamera->OnUpdate();
+			m_EditorCamera->OnUpdate(step);
 	}
 
 	void Launch() override
 	{
-		JobSystem::Get()->Wait();
-
 		m_EditorScene = new Scene(SceneType::SCENE_TYPE_3D);
 
 		m_HierarchyPanel = new SceneHierarchyPanel(m_EditorScene);
 		m_PropertiesPanel = new PropertiesPanel(m_EditorScene);
 		m_AssetsPanel = new ContentBrowser(m_EditorScene);
+		m_LogsPanel = new LogsPanel(m_EditorScene);
 
 		m_ProjectPath = "";
 
-		m_EditorCamera = std::make_shared<EditorCamera>(16.0 / 9.0, 20.0f);
+		m_EditorCamera = std::make_shared<EditorCamera>(16.0 / 9.0);
 		m_EditorScene->EditorSetCamera(ShareAs<Camera>(m_EditorCamera));
 		m_CurrentScene = m_EditorScene;
 
-		ImGuizmo::SetOrthographic(true);
+		ImGuizmo::SetOrthographic(false);
 		
 		m_ProjectPath = "resources/SandboxProject";
 		m_ProjectFilename = "Sandbox.omni";
@@ -225,9 +317,9 @@ public:
 				if (Input::KeyPressed(KeyCode::KEY_Q))
 					m_CurrentOperation = (ImGuizmo::OPERATION)0;
 				if (Input::KeyPressed(KeyCode::KEY_W))
-					m_CurrentOperation = ImGuizmo::OPERATION::TRANSLATE_X | ImGuizmo::OPERATION::TRANSLATE_Y;
+					m_CurrentOperation = ImGuizmo::OPERATION::TRANSLATE;
 				if (Input::KeyPressed(KeyCode::KEY_E))
-					m_CurrentOperation = ImGuizmo::OPERATION::ROTATE_Z;
+					m_CurrentOperation = ImGuizmo::OPERATION(ImGuizmo::OPERATION::ROTATE & ~(ImGuizmo::OPERATION::ROTATE_SCREEN));
 				if (Input::KeyPressed(KeyCode::KEY_R))
 					m_CurrentOperation = ImGuizmo::OPERATION::SCALE;
 			}
@@ -290,10 +382,11 @@ public:
 		// unloading textures from memory and releasing their indices
 		AssetManager* asset_manager = AssetManager::Get();
 		Shared<SceneRenderer> renderer = m_EditorScene->GetRenderer();
-		auto texture_registry = *asset_manager->GetTextureRegistry();
-		for (auto& [id, texture] : texture_registry) {
-			renderer->ReleaseTextureIndex(texture);
-			texture->Destroy();
+		auto& texture_registry = *asset_manager->GetAssetRegistry();
+		for (auto [id, asset] : texture_registry) {
+			if(asset->Type != AssetType::OMNI_IMAGE)
+				continue;
+			renderer->ReleaseResourceIndex(ShareAs<Image>(asset));
 		}
 		asset_manager->FullUnload();
 
@@ -329,16 +422,18 @@ public:
 
 		FileSystem::SetWorkingDirectory(m_ProjectPath);
 
-		auto textures_dir = m_ProjectPath.string() + "/assets/textures";
-		auto scripts_dir = m_ProjectPath.string() + "/assets/scripts";
-		auto audio_dir = m_ProjectPath.string() + "/assets/audio";
+		auto textures_dir = m_ProjectPath.string() + "assets/textures";
+		auto scripts_dir = m_ProjectPath.string() +  "assets/scripts";
+		auto audio_dir = m_ProjectPath.string() + "assets/audio";
+		auto mesh_dir = m_ProjectPath.string() + "assets/meshes";
 
 		std::filesystem::create_directories(textures_dir);
 		std::filesystem::create_directories(scripts_dir);
 		std::filesystem::create_directories(audio_dir);
+		std::filesystem::create_directories(mesh_dir);
 
 		std::filesystem::copy("resources/scripting/ScriptsProject", m_ProjectPath.string() + "/assets/scripts", std::filesystem::copy_options::recursive);
-		std::filesystem::copy("resources/scripting/bin/ScriptEngine.dll", m_ProjectPath.string() + "/assets/scripts/assemblies/ScriptEngine.dll");
+		std::filesystem::copy("resources/scripting/bin/ScriptEngine.dll", m_ProjectPath / "assets/scripts/assemblies/ScriptEngine.dll");
 
 		if(m_ProjectPath.string().length())
 			SaveProject();
@@ -350,9 +445,9 @@ public:
 
 			glm::mat4 model = Utils::ComposeMatrix(trs.translation, trs.rotation, trs.scale);
 			glm::mat4 view = m_EditorCamera->GetViewMatrix();
-			glm::mat4 proj = m_EditorCamera->GetProjectionMatrix();
+			glm::mat4 proj = m_EditorCamera->BuildNonReversedProjection();
 
-			ImGuizmo::SetOrthographic(true);
+			ImGuizmo::SetOrthographic(false);
 			ImGuizmo::SetDrawlist();
 			ImGuizmo::SetRect(
 				m_ViewportBounds[0].x,
@@ -417,10 +512,13 @@ public:
 	bool m_EntitySelected = false;
 	bool m_ViewportFocused = false;
 	bool m_InRuntime = false;
+	bool m_VisualizeColliders = false;
+	bool m_VisualizeCullBounds = false;
 
 	SceneHierarchyPanel* m_HierarchyPanel;
 	PropertiesPanel* m_PropertiesPanel;
 	ContentBrowser* m_AssetsPanel;
+	LogsPanel* m_LogsPanel;
 
 	std::filesystem::path m_ProjectPath;
 	std::string m_ProjectFilename;

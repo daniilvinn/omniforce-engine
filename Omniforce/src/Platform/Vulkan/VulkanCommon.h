@@ -4,13 +4,13 @@
 #include <Renderer/RendererCommon.h>
 #include "ForwardDecl.h"
 
-#include <vulkan/vulkan.h>
+#include <volk.h>
 
-#ifdef CURSED_DEBUG
+#ifndef OMNIFORCE_RELEASE
 	#define VK_CHECK_RESULT(fn)																								\
 			{ VkResult res = fn;																							\
 			if(res != VK_SUCCESS) {																							\
-				CURSED_CORE_ERROR("Vulkan call failed ({0}): {1} ({2})", VkResultToString(res), __FILE__, __LINE__); 		\
+				OMNIFORCE_CORE_CRITICAL("Vulkan call failed ({0}): {1} ({2})", VkResultToString(res), __FILE__, __LINE__); 	\
 				std::unreachable();																							\
 			}}
 #else
@@ -26,7 +26,7 @@ constexpr std::string VkResultToString(VkResult result)
 		break;
 	case VK_NOT_READY:
 		return "VK_NOT_READY";
-		break;
+		break;	
 	case VK_TIMEOUT:
 		return "VK_TIMEOUT";
 		break;

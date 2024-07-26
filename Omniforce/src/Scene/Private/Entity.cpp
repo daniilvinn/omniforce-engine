@@ -1,6 +1,8 @@
 #include "../Entity.h"
 #include "../Component.h"
 
+#include <stdfloat>
+
 #include <array>
 
 #include <glm/gtc/quaternion.hpp>
@@ -103,8 +105,8 @@ namespace Omni {
 
 			node.emplace(camera_component.GetSerializableKey(), camera_component_node);
 		}
-		if (HasComponent<RigidBody2DComponent>()) {
-			RigidBody2DComponent& rb2d_component = GetComponent<RigidBody2DComponent>();
+		if (HasComponent<RigidBodyComponent>()) {
+			RigidBodyComponent& rb2d_component = GetComponent<RigidBodyComponent>();
 			nlohmann::json rb2d_component_node = nlohmann::json::object();
 			rb2d_component_node.emplace("MotionType", (uint32)rb2d_component.type);
 			rb2d_component_node.emplace("Mass", rb2d_component.mass);
@@ -220,15 +222,15 @@ namespace Omni {
 			camera_component.primary = node[CameraComponent::GetSerializableKey()]["Primary"];
 		}
 
-		if (node.contains(RigidBody2DComponent::GetSerializableKey())) {
-			RigidBody2DComponent& rb2d_component = AddComponent<RigidBody2DComponent>();
-			rb2d_component.type = (RigidBody2DComponent::Type)node[RigidBody2DComponent::GetSerializableKey()]["MotionType"];
-			rb2d_component.mass = node[RigidBody2DComponent::GetSerializableKey()]["Mass"];
-			rb2d_component.linear_drag = node[RigidBody2DComponent::GetSerializableKey()]["LinearDrag"];
-			rb2d_component.angular_drag = node[RigidBody2DComponent::GetSerializableKey()]["AngularDrag"];
-			rb2d_component.disable_gravity = node[RigidBody2DComponent::GetSerializableKey()]["DisableGravity"];
-			rb2d_component.sensor_mode = node[RigidBody2DComponent::GetSerializableKey()]["SensorMode"];
-			rb2d_component.lock_z_axis = node[RigidBody2DComponent::GetSerializableKey()]["ZLock"];
+		if (node.contains(RigidBodyComponent::GetSerializableKey())) {
+			RigidBodyComponent& rb2d_component = AddComponent<RigidBodyComponent>();
+			rb2d_component.type = (RigidBodyComponent::Type)node[RigidBodyComponent::GetSerializableKey()]["MotionType"];
+			rb2d_component.mass = node[RigidBodyComponent::GetSerializableKey()]["Mass"];
+			rb2d_component.linear_drag = node[RigidBodyComponent::GetSerializableKey()]["LinearDrag"];
+			rb2d_component.angular_drag = node[RigidBodyComponent::GetSerializableKey()]["AngularDrag"];
+			rb2d_component.disable_gravity = node[RigidBodyComponent::GetSerializableKey()]["DisableGravity"];
+			rb2d_component.sensor_mode = node[RigidBodyComponent::GetSerializableKey()]["SensorMode"];
+			rb2d_component.lock_z_axis = node[RigidBodyComponent::GetSerializableKey()]["ZLock"];
 		}
 
 		if (node.contains(BoxColliderComponent::GetSerializableKey())) {
@@ -263,6 +265,8 @@ namespace Omni {
 
 		trs.rotation *= parent_trs.rotation;
 		trs.translation += parent_trs.translation;
+		trs.rotation = glm::normalize(trs.rotation);
+		trs.scale *= parent_trs.scale;
 
 		trs.translation = parent_trs.translation + parent_trs.rotation * (trs.translation - parent_trs.translation);
 

@@ -13,7 +13,7 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${EDITOR_FILES})
 
 add_executable(${EDITOR_TARGET} ${EDITOR_FILES})
 
-target_link_libraries(${EDITOR_TARGET} PUBLIC OmniforceEngine ${OMNI_IMGUI_TARGET})
+target_link_libraries(${EDITOR_TARGET} PUBLIC OmniforceEngine ${OMNI_IMGUI_TARGET} OpenMP::OpenMP_CXX)
 target_include_directories(${EDITOR_TARGET} PUBLIC ${IMGUI_INCLUDE_PATH} "src")
 
 set_target_properties(${EDITOR_TARGET} PROPERTIES

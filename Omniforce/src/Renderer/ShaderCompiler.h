@@ -27,10 +27,9 @@ namespace Omni {
 		*  @param [out] std::stringstream* out - a pointer to stringstream to write source code to.
 		*/
 		bool ReadShaderFile(std::filesystem::path path, std::stringstream* out);
-		bool Compile(const std::stringstream& source, const ShaderStage& stage, std::string_view filename, std::vector<uint32>* out);
 		void AddGlobalMacro(const std::string& key, const std::string& value);
 
-		ShaderCompilationResult Compile(std::string& source, const std::string& filename);
+		ShaderCompilationResult Compile(std::string& source, const std::string& filename, const ShaderMacroTable& macros = {});
 
 	private:
 		shaderc::Compiler m_Compiler;

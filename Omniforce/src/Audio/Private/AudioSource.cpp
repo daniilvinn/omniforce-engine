@@ -7,10 +7,10 @@ namespace Omni {
 	AudioSource::AudioSource(const AudioSourceConfig& config)
 	{
 		AudioEngine* audio_engine = AudioEngine::Get();
-		ma_engine& engine = audio_engine->GetEngine();
+		ma_engine* engine = audio_engine->GetEngine();
 
 		ma_fence fence;
-		ma_sound_init_from_file(&engine, config.path.string().c_str(), (uint32)config.flags, nullptr, &fence, &m_Sound);
+		ma_sound_init_from_file(engine, config.path.string().c_str(), (uint32)config.flags, nullptr, &fence, &m_Sound);
 		if (config.wait_on_load)
 			ma_fence_wait(&fence);
 		ma_sound_set_volume(&m_Sound, config.volume * 0.1f);

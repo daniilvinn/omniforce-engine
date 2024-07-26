@@ -6,7 +6,11 @@
 #include <Core/UUID.h>
 #include <Scripting/RuntimeScriptInstance.h>
 
+#include <filesystem>
+
 namespace Omni {
+
+	using AssetHandle = UUID;
 
 	struct OMNIFORCE_API UUIDComponent {
 		UUID id;
@@ -50,7 +54,7 @@ namespace Omni {
 
 	struct OMNIFORCE_API SpriteComponent {
 		fvec4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
-		UUID texture = 0;
+		AssetHandle texture = 0;
 		int32 layer = 0;
 		float32 aspect_ratio = 1.0f; // of a texture
 
@@ -71,7 +75,7 @@ namespace Omni {
 		static const char* GetSerializableKey() { return "CameraComponent"; }
 	};
 
-	struct OMNIFORCE_API RigidBody2DComponent {
+	struct OMNIFORCE_API RigidBodyComponent {
 		enum class Type { STATIC, DYNAMIC, KINEMATIC } type = Type::STATIC;
 		float32 mass = 10.0f;
 		float32 linear_drag = 0.1f;
@@ -85,7 +89,7 @@ namespace Omni {
 	};
 
 	struct OMNIFORCE_API BoxColliderComponent {
-		fvec3 size = { 1.0f, 1.0f, 1.0f };
+		glm::vec3 size = { 1.0f, 1.0f, 1.0f };
 		float32 convex_radius = 0.1f;
 		float32 restitution = 1.0f;
 		float32 friction = 1.0f;
@@ -123,5 +127,19 @@ namespace Omni {
 		static const char* GetSerializableKey() { return "Children"; }
 	};
 
+	struct OMNIFORCE_API MeshComponent {
+		AssetHandle mesh_handle;
+		AssetHandle material_handle;
+	};
+
+	struct OMNIFORCE_API PointLightComponent {
+		glm::vec3 color = glm::vec3(1.0f);
+		float32 intensity = 1.0f;
+		float32 min_radius = 15.0f;
+		float32 radius = 150.0f;
+
+		PointLightComponent() = default;
+		static const char* GetSerializableKey() { return "PointLightComponent"; }
+	};
 
 }

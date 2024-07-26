@@ -15,7 +15,7 @@ namespace Omni {
 
 		VkPipeline Raw() const { return m_Pipeline; }
 		VkPipelineLayout RawLayout() const { return m_PipelineLayout; }
-		PipelineSpecification GetSpecification() const override { return m_Specification; }
+		const PipelineSpecification& GetSpecification() const override { return m_Specification; }
 
 	private:
 		void CreateGraphics();

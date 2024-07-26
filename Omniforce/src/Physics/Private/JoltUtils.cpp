@@ -7,7 +7,6 @@
 #include <Scene/Scene.h>
 #include <Scene/Component.h>
 #include "../PhysicsMaterial.h"
-#include "../PhysicsEngine.h"
 
 #include <cstdarg>
 
@@ -31,14 +30,14 @@ namespace Omni {
 		va_end(list);
 
 		OMNIFORCE_CORE_TRACE("[Physics engine internal]: {}", buffer);
-		
+
 	}
 
 	bool PhysicsEngineAssertFailedImpl(const char* expression, const char* message, const char* file, uint32 line) {
 		OMNIFORCE_CORE_CRITICAL("[Physics engine internal]: Assertion failed with expression {0} ({2}, line {3}): {1}",
 			expression, message, file, line
 		);
-		
+
 		return true;
 	}
 
@@ -83,6 +82,7 @@ namespace Omni {
 		return m_ObjectToBroadPhase[layer];
 	}
 
+#ifdef JPH_PROFILE_ENABLED
 	const char* BroadPhaseLayerInterface::GetBroadPhaseLayerName(JPH::BroadPhaseLayer layer) const
 	{
 		switch ((JPH::BroadPhaseLayer::Type)layer)
@@ -92,6 +92,7 @@ namespace Omni {
 		default:														std::unreachable();
 		}
 	}
+#endif
 
 	bool ObjectBroadPhaseLayerFilter::ShouldCollide(JPH::ObjectLayer inLayer1, JPH::BroadPhaseLayer inLayer2) const
 	{
@@ -109,9 +110,9 @@ namespace Omni {
 	}
 
 	JPH::ValidateResult BodyContantListener::OnContactValidate(
-		const JPH::Body& inBody1, 
-		const JPH::Body& inBody2, 
-		JPH::RVec3Arg inBaseOffset, 
+		const JPH::Body& inBody1,
+		const JPH::Body& inBody2,
+		JPH::RVec3Arg inBaseOffset,
 		const JPH::CollideShapeResult& inCollisionResult
 	)
 	{
@@ -119,9 +120,9 @@ namespace Omni {
 	}
 
 	void BodyContantListener::OnContactAdded(
-		const JPH::Body& body1, 
-		const JPH::Body& body2, 
-		const JPH::ContactManifold& manifold, 
+		const JPH::Body& body1,
+		const JPH::Body& body2,
+		const JPH::ContactManifold& manifold,
 		JPH::ContactSettings& settings
 	)
 	{
@@ -163,9 +164,9 @@ namespace Omni {
 	}
 
 	void BodyContantListener::OnContactPersisted(
-		const JPH::Body& body1, 
-		const JPH::Body& body2, 
-		const JPH::ContactManifold& manifold, 
+		const JPH::Body& body1,
+		const JPH::Body& body2,
+		const JPH::ContactManifold& manifold,
 		JPH::ContactSettings& settings
 	)
 	{
@@ -208,38 +209,7 @@ namespace Omni {
 
 	void BodyContantListener::OnContactRemoved(const JPH::SubShapeIDPair& subshape_pair)
 	{
-		// we are already in PhysicsEngine::Update(), which means that lock has already been taken,
-		// so we acquire body interface without lock to avoid deadlock
-		JPH::BodyInterface& body_interface = PhysicsEngine::Get()->GetBodyInterfaceNoLock();
-		
-		Scene* scene_context = m_ScriptEngine->Get()->GetContext();
-		auto& entities = scene_context->GetEntities();
-		Entity entity1(entities[body_interface.GetUserData(subshape_pair.GetBody1ID())], scene_context);
-		Entity entity2(entities[body_interface.GetUserData(subshape_pair.GetBody2ID())], scene_context);
 
-		if (entity1.HasComponent<ScriptComponent>()) {
-			TransientAllocator<false>& args_allocator = m_ScriptEngine->GetCallbackArgsAllocator();
-			UUID* uuid = args_allocator.Allocate<UUID>(body_interface.GetUserData(subshape_pair.GetBody2ID()));
-
-			PendingCallbackInfo callback_info = {};
-			callback_info.entity = entity1;
-			callback_info.args = { uuid };
-			callback_info.method = "OnContactRemoved";
-
-			m_ScriptEngine->AddPendingCallback(callback_info);
-		}
-
-		if (entity2.HasComponent<ScriptComponent>()) {
-			TransientAllocator<false>& args_allocator = m_ScriptEngine->GetCallbackArgsAllocator();
-			UUID* uuid = args_allocator.Allocate<UUID>(body_interface.GetUserData(subshape_pair.GetBody1ID()));
-
-			PendingCallbackInfo callback_info = {};
-			callback_info.entity = entity2;
-			callback_info.args = { uuid };
-			callback_info.method = "OnContactRemoved";
-
-			m_ScriptEngine->AddPendingCallback(callback_info);
-		}
 	}
 
 }

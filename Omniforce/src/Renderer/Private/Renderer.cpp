@@ -11,7 +11,7 @@ namespace Omni {
 	RendererAPI* Renderer::s_RendererAPI;
 
 	struct RendererInternalData {
-		std::list<Renderer::RenderFunction> cmd_generation_function_list;
+		std::vector<Renderer::RenderFunction> cmd_generation_function_list;
 		Shared<ImageSampler> m_LinearSampler;
 		Shared<ImageSampler> m_NearestSampler;
 	} s_InternalData;
@@ -49,9 +49,9 @@ namespace Omni {
 		s_RendererAPI->EndFrame();
 	}
 
-	void Renderer::BeginRender(Shared<Image> target, uvec3 render_area, ivec2 offset, fvec4 clear_value)
+	void Renderer::BeginRender(const std::vector<Shared<Image>> attachments, uvec3 render_area, ivec2 offset, fvec4 clear_value)
 	{
-		s_RendererAPI->BeginRender(target, render_area, offset, clear_value);
+		s_RendererAPI->BeginRender(attachments, render_area, offset, clear_value);
 	}
 
 	void Renderer::EndRender(Shared<Image> target) 
@@ -79,14 +79,24 @@ namespace Omni {
 		return s_RendererAPI->GetCmdBuffer();
 	}
 
+	void Renderer::InsertBarrier(const PipelineBarrierInfo& barrier_info)
+	{
+		s_RendererAPI->InsertBarrier(barrier_info);
+	}
+
 	void Renderer::ClearImage(Shared<Image> image, const fvec4& value)
 	{
 		s_RendererAPI->ClearImage(image, value);
 	}
 
-	void Renderer::RenderMesh(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vbo, Shared<DeviceBuffer> ibo, MiscData data)
+	void Renderer::RenderMeshTasks(Shared<Pipeline> pipeline, const glm::uvec3 dimensions, MiscData data)
 	{
-		s_RendererAPI->RenderMesh(pipeline, vbo, ibo, data);
+		s_RendererAPI->RenderMeshTasks(pipeline, dimensions, data);
+	}
+
+	void Renderer::RenderMeshTasksIndirect(Shared<Pipeline> pipeline, Shared<DeviceBuffer> params, MiscData data)
+	{
+		s_RendererAPI->RenderMeshTasksIndirect(pipeline, params, data);
 	}
 
 	void Renderer::RenderQuads(Shared<Pipeline> pipeline, MiscData data)
@@ -97,6 +107,16 @@ namespace Omni {
 	void Renderer::RenderQuads(Shared<Pipeline> pipeline, uint32 amount, MiscData data)
 	{
 		s_RendererAPI->RenderQuad(pipeline, amount, data);
+	}
+
+	void Renderer::DispatchCompute(Shared<Pipeline> pipeline, const glm::uvec3& dimensions, MiscData data)
+	{
+		s_RendererAPI->DispatchCompute(pipeline, dimensions, data);
+	}
+
+	void Renderer::RenderUnindexed(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vertex_buffer, MiscData data)
+	{
+		s_RendererAPI->RenderUnindexed(pipeline, vertex_buffer, data);
 	}
 
 	uint32 Renderer::GetCurrentFrameIndex()
@@ -114,6 +134,11 @@ namespace Omni {
 		return s_RendererAPI->GetDeviceMinimalStorageBufferAlignment();
 	}
 
+	uint32 Renderer::GetDeviceOptimalComputeWorkGroupSize()
+	{
+		return s_RendererAPI->GetDeviceOptimalComputeWorkGroupSize();
+	}
+
 	Shared<ImageSampler> Renderer::GetNearestSampler()
 	{
 		return s_InternalData.m_NearestSampler;
@@ -126,7 +151,7 @@ namespace Omni {
 
 	void Renderer::LoadShaderPack()
 	{
-		ShaderLibrary::Get()->Load("Resources/shaders/sprite.ofs");
+		
 	}
 
 	void Renderer::Render()
@@ -137,15 +162,17 @@ namespace Omni {
 			swapchain_image->SetLayout(
 				GetCmdBuffer(),
 				ImageLayout::PRESENT_SRC,
-				PipelineStage::TRANSFER,
-				PipelineStage::BOTTOM_OF_PIPE,
-				PipelineAccess::TRANSFER_WRITE
+				PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+				PipelineStage::ALL_COMMANDS,
+				(BitMask)PipelineAccess::COLOR_ATTACHMENT_WRITE,
+				(BitMask)PipelineAccess::MEMORY_READ
 			);
 		});
 		s_RendererAPI->EndCommandRecord();
 		s_RendererAPI->ExecuteCurrentCommands();
 
 		auto function_list = std::move(s_InternalData.cmd_generation_function_list);
+
 
 		//JobSystem* js = JobSystem::Get();
 		//js->Execute([function_list = std::move(s_InternalData.cmd_generation_function_list)]() {

@@ -23,7 +23,7 @@ namespace Omni {
 		m_ZFar = zFar;
 		m_AspectRatio = (std::abs(left) + std::abs(right)) / (std::abs(bottom) + std::abs(top));
 
-		m_ProjectionMatrix = glm::ortho(left, right, bottom, top, zNear, zFar);
+		m_ProjectionMatrix = glm::ortho(left, right, bottom, top, zFar, zNear);
 		m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
 	}
 
@@ -49,6 +49,11 @@ namespace Omni {
 		SetProjection(-m_AspectRatio * m_Scale, m_AspectRatio * m_Scale, -m_Scale, m_Scale, m_ZNear, m_ZFar);
 	}
 
+	glm::mat4 Camera2D::BuildNonReversedProjection() const
+	{
+		return glm::ortho(-m_AspectRatio * m_Scale, m_AspectRatio * m_Scale, m_Scale, m_Scale, m_ZNear, m_ZFar);
+	}
+
 	void Camera2D::CalculateMatrices()
 	{
 		m_ViewMatrix = glm::inverse(glm::translate(glm::mat4(1.0f), m_Position) * glm::rotate(glm::mat4(1.0f), m_Rotation, glm::vec3(0.0f, 0.0f, 1.0f)));
@@ -63,13 +68,18 @@ namespace Omni {
 		m_ViewProjectionMatrix = glm::mat4(1.0f);
 		m_ProjectionMatrix = glm::mat4(1.0f);
 		m_ViewMatrix = glm::mat4(1.0f);
-		m_Position = glm::vec3(0.0f);
-		m_FrontVector = glm::normalize(glm::vec3(0.0f, 0.0f, -1.0f));
-		m_Yaw = 0.0f;
+		m_Position = glm::vec3(0.0f, 0.0f, 5.0f);
+		m_Yaw = -90.0f;
 		m_Pitch = 0.0f;
 		m_Roll = 0.0f;
+		m_ZNear = cMinNearPlaneDistance;
+		m_ZFar = cMaxFarPlaneDistance;
+		m_AspectRatio = 16.0f / 9.0f;
+		m_FieldOfView = glm::radians(60.0f);
 
 		CalculateVectors();
+		SetProjection(m_FieldOfView, m_AspectRatio, m_ZNear, m_ZFar);
+		CalculateMatrices();
 	}
 
 	void Camera3D::SetProjection(float fov, float ratio, float zNear, float zFar)
@@ -79,7 +89,7 @@ namespace Omni {
 		m_ZNear = zNear;
 		m_ZFar = zFar;
 
-		m_ProjectionMatrix = glm::perspective(fov, ratio, zNear, zFar);
+		m_ProjectionMatrix = glm::perspective(fov, ratio, zFar, zNear);
 		m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
 	}
 
@@ -94,6 +104,7 @@ namespace Omni {
 		m_Pitch = pitch;
 
 		CalculateVectors();
+		CalculateMatrices();
 	}
 
 	void Camera3D::SetFOV(float32 fov)
@@ -106,11 +117,6 @@ namespace Omni {
 	{
 		m_AspectRatio = ratio;
 		SetProjection(m_FieldOfView, m_AspectRatio, m_ZNear, m_ZFar);
-	}
-
-	glm::mat4 Camera3D::GetRotationMatrix() const
-	{
-		return glm::lookAt(m_Position, m_Position + m_FrontVector, glm::vec3(0, 1, 0));
 	}
 
 	void Camera3D::LookAt(glm::vec3 at)
@@ -151,8 +157,7 @@ namespace Omni {
 		m_Position += m_UpVector * direction.y;
 		m_Position += m_FrontVector * direction.z;
 
-		m_ViewMatrix = glm::lookAt(m_Position, m_Position + m_FrontVector, m_UpVector);
-		m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
+		CalculateMatrices();
 	}
 
 	void Camera3D::CalculateMatrices()
@@ -161,16 +166,41 @@ namespace Omni {
 		m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
 	}
 
+	Frustum Camera3D::GenerateFrustum()
+	{
+		Frustum     frustum;
+		const float half_v_side = m_ZFar * tanf(m_FieldOfView * 0.5f);
+		const float half_h_side = half_v_side * m_AspectRatio;
+		const glm::vec3 front_mult_far = m_ZFar * m_FrontVector;
+
+		frustum.planes[0] = { m_Position + m_ZNear * m_FrontVector, m_FrontVector };
+		frustum.planes[1] = { m_Position + front_mult_far, -m_FrontVector };
+		frustum.planes[2] = { m_Position, glm::cross(front_mult_far - m_RightVector * half_h_side, m_UpVector) };
+		frustum.planes[3] = { m_Position, glm::cross(m_UpVector, front_mult_far + m_RightVector * half_h_side) };
+		frustum.planes[4] = { m_Position, glm::cross(m_RightVector, front_mult_far - m_UpVector * half_v_side) };
+		frustum.planes[5] = { m_Position, glm::cross(front_mult_far + m_UpVector * half_v_side, m_RightVector) };
+
+		for (auto& plane : frustum.planes)
+			plane.normal = glm::normalize(plane.normal);
+
+		return frustum;
+	}
+
+	glm::mat4 Camera3D::BuildNonReversedProjection() const
+	{
+		return glm::perspective(m_FieldOfView, m_AspectRatio, m_ZNear, m_ZFar);
+	}
+
 	void Camera3D::CalculateVectors()
 	{
 		// TODO: apply Roll rotation
-		glm::vec3 frontDirection;
+		glm::vec3 front_direction;
 
-		frontDirection.x = cos(2 * 3.14 * (m_Yaw / 360)) * cos(2 * 3.14 * (m_Pitch / 360));
-		frontDirection.y = sin(2 * 3.14 * (m_Pitch / 360));
-		frontDirection.z = sin(2 * 3.14 * (m_Yaw / 360)) * cos(2 * 3.14 * (m_Pitch / 360));
+		front_direction.x = cos(2 * 3.14 * (m_Yaw / 360)) * cos(2 * 3.14 * (m_Pitch / 360));
+		front_direction.y = sin(2 * 3.14 * (m_Pitch / 360));
+		front_direction.z = sin(2 * 3.14 * (m_Yaw / 360)) * cos(2 * 3.14 * (m_Pitch / 360));
 
-		m_FrontVector = glm::normalize(frontDirection);
+		m_FrontVector = glm::normalize(front_direction);
 		m_RightVector = glm::normalize(glm::cross(m_FrontVector, glm::vec3(0.0f, 1.0f, 0.0f)));
 		m_UpVector = glm::normalize(glm::cross(m_RightVector, m_FrontVector));
 	}
