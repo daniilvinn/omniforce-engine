@@ -38,6 +38,7 @@ namespace Omni {
 			case Omni::Logger::Level::LEVEL_ERROR:			return "Error";
 			case Omni::Logger::Level::LEVEL_CRITICAL:		return "Critical";
 			case Omni::Logger::Level::LEVEL_NONE:			return "Null";
+			default:										std::unreachable();
 			}
 		}
 
@@ -86,7 +87,7 @@ namespace Omni {
 
 		// Flushing logs into a file could be not efficient enough, 
 		// since I recreate file sink every time engine initiates logging into a file
-		void WriteLogFile();
+		void WriteLogFile() const;
 
 	
 		Logger(Level level);

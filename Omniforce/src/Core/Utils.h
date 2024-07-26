@@ -8,7 +8,7 @@
 #include <type_traits>
 #include <vector>
 
-#include <fmt/format.h>
+#include <spdlog/fmt/fmt.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -125,6 +125,13 @@ namespace Omni {
 			}
 
 			return storage_req;
+		}
+
+		template <class T>
+		inline void CombineHashes(T& seed, const T& v)
+		{
+			rh::hash<T> hasher;
+			seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 		}
 
 	}

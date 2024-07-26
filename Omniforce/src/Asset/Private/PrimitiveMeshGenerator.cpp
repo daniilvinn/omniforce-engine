@@ -19,7 +19,7 @@ namespace Omni {
 		if (key.first > key.second)
 			std::swap(key.first, key.second);
 
-		auto inserted = lookup.insert({ key, vertices.size() });
+		auto inserted = lookup.insert({ key, (uint32)vertices.size() });
 		if (inserted.second)
 		{
 			auto& edge0 = vertices[first];

@@ -420,6 +420,7 @@ namespace Omni {
 		Renderer::InsertBarrier(culling_barrier_info);
 
 		// Render 3D
+		if (!IsInDebugMode()) {
 		std::vector<std::pair<Shared<DeviceBuffer>, PipelineResourceBarrierInfo>> render_barriers;
 		Renderer::BeginRender(
 			{ m_GBuffer.positions, m_GBuffer.base_color, m_GBuffer.normals, m_GBuffer.metallic_roughness_occlusion, m_CurrentDepthAttachment },
@@ -516,8 +517,13 @@ namespace Omni {
 			Renderer::RenderQuads(m_SpritePass, m_SpriteQueue.size(), pc);
 			Renderer::EndRender({ m_CurrectMainRenderTarget });
 		}
+		}
+		else {
+			for (auto& device_render_queue : m_DeviceRenderQueue)
+				DebugRenderer::RenderSceneDebugView(m_CameraDataBuffer, m_MeshResourcesBuffer.GetStorage(), m_CulledDeviceRenderQueue[device_render_queue.first], m_DeviceIndirectDrawParams[device_render_queue.first], m_CurrentDebugMode);
+		}
 
-		DebugRenderer::Render(m_CurrectMainRenderTarget, m_CurrentDepthAttachment);
+		DebugRenderer::Render(m_CurrectMainRenderTarget, m_CurrentDepthAttachment, IsInDebugMode() ? fvec4{0.0f, 0.0f, 0.0f, 1.0f} : fvec4{0.0f, 0.0f, 0.0f, 0.0f});
 
 		Renderer::Submit([=]() {
 			m_CurrectMainRenderTarget->SetLayout(

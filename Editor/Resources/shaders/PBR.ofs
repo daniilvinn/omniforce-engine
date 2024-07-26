@@ -94,6 +94,6 @@ void main() {
 	color = color / (color + vec3(1.0));
 	color = pow(color, vec3(1.0/2.2)); 
 
-	out_color = vec4(color, 1.0f);
+	out_color = vec4(base_color, 1.0f);
 
 }

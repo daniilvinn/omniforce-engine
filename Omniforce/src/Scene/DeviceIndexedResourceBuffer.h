@@ -57,6 +57,7 @@ namespace Omni {
 		uint32 GetIndex(const AssetHandle& id) const { return m_Indices.at(id); }
 
 		uint64 GetStorageBDA() const { return m_DeviceBuffer->GetDeviceAddress(); }
+		Shared<DeviceBuffer> GetStorage() const { return m_DeviceBuffer; }
 
 	private:
 		Scope<VirtualMemoryBlock> m_IndexAllocator;

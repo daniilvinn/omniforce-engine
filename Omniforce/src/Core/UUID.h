@@ -5,6 +5,7 @@
 #include <atomic>
 #include <unordered_map>
 
+#include <spdlog/fmt/fmt.h>
 #include <robin_hood.h>
 
 namespace Omni {
@@ -39,3 +40,16 @@ namespace robin_hood {
 	};
 
 }
+
+template<>
+struct fmt::formatter<Omni::UUID>
+{
+	template<typename ParseContext>
+	constexpr auto parse(ParseContext& ctx) { return ctx.begin(); };
+
+	template<typename FormatContext>
+	auto format(Omni::UUID const& number, FormatContext& ctx) {
+		return fmt::format_to(ctx.out(), "{}", number.Get());
+	};
+
+};
