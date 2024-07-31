@@ -62,7 +62,23 @@ add_library(nv_libdeflate ${NV_LIBDEFLATE_FILES})
 target_include_directories(nv_libdeflate PRIVATE "nv-libdeflate")
 
 ### Jolt Physics
-add_subdirectory("Jolt/Build")
+project(Jolt)
+
+file(GLOB_RECURSE JOLT_FILES
+	"Jolt/Jolt/*.h"
+	"Jolt/Jolt/*.cpp"
+	"Jolt/Jolt/*.hpp"
+)
+
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${JOLT_FILES})
+
+add_library(Jolt ${JOLT_FILES})
+
+target_include_directories(Jolt PRIVATE "Jolt")
+
+target_compile_options(Jolt PRIVATE /MP)
+
+set_property(TARGET Jolt PROPERTY CXX_STANDARD 23)
 
 ### meshoptimizer
 add_subdirectory("meshoptimizer")
@@ -84,7 +100,6 @@ add_subdirectory("spdlog")
 
 ### GLFW
 add_subdirectory("GLFW")
-
 
 ### Disable warnings for METIS and GKlib
 if(MSVC)
