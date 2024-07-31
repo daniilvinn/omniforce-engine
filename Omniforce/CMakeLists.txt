@@ -102,6 +102,15 @@ target_link_libraries(
         fastgltf
 )
 
+target_compile_options(
+    ${ENGINE_TARGET}
+    PUBLIC
+        /MP
+        /W1
+)
+
 set_property(TARGET ${ENGINE_TARGET} PROPERTY CXX_STANDARD 23)
 
 omni_set_project_ide_folder(${ENGINE_TARGET} ${CMAKE_CURRENT_SOURCE_DIR})
+
+INSTALL(FILES "${Vulkan_SDK}\\Bin\\shaderc_shared.dll" DESTINATION "${CMAKE_INSTALL_PREFIX}")
