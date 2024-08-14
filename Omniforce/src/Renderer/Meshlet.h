@@ -9,15 +9,20 @@
 namespace Omni {
 
 	struct OMNIFORCE_API RenderableMeshlet {
-		uint32 vertex_bit_offset;
-		uint32 vertex_offset;
-		uint32 triangle_offset;
+		uint32 vertex_bit_offset = 0;
+		uint32 vertex_offset = 0;
+		uint32 triangle_offset = 0;
 		struct {
 			uint32 vertex_count : 7;
 			uint32 triangle_count : 8;
 			uint32 bitrate : 6;
 		} metadata;
-		uint32 group;
+
+		// Debug data
+		// TODO: remove this data after virtual geometry development is finished. 
+		// DO NOT forget to remove it from GLSL meshlet declaration!
+		// TODO: add shared source files so I can't forget to remove something when a structure is shared between C++ and GLSL
+		uint32 group = 0;
 		uint32 lod = 0;
 	};
 

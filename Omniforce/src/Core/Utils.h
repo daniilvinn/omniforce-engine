@@ -134,5 +134,10 @@ namespace Omni {
 			seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 		}
 
+		// Assumes that vertex position is encoded in first 12 bytes of a given vertex's data
+		inline glm::vec3 FetchVertexFromBuffer(const std::vector<byte>& vertex_data, uint32 index, uint32 vertex_stride) {
+			return *(glm::vec3*)(vertex_data.data() + (vertex_stride * index));
+		}
+
 	}
 }

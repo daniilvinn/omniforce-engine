@@ -145,12 +145,6 @@ namespace Omni {
 				push_constant_range.size += reflect_range->size;
 				push_constant_range.offset = 0;
 				push_constant_range.stageFlags = VK_SHADER_STAGE_ALL;
-
-				// HACK: giga hack because for someone reason SPIRV-Reflect evaluates BDA size as 16 instead of 8.
-				//for (int i = 0; i < reflect_range->member_count; i++) {
-				//	if (reflect_range->members[i].type_description->op == SpvOpTypePointer)
-				//		push_constant_range.size -= 8;
-				//}
 			}
 
 			spvReflectDestroyShaderModule(&reflect_module);
