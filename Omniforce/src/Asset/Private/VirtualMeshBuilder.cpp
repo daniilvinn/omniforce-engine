@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <fstream>
 #include <span>
+#include <ranges>
 
 #include <metis.h>
 #include <glm/glm.hpp>
@@ -15,6 +16,187 @@
 #include <meshoptimizer.h>
 
 namespace Omni {
+
+	VirtualMesh VirtualMeshBuilder::BuildClusterGraph(const std::vector<byte>& vertices, const std::vector<uint32>& indices, uint32 vertex_stride)
+	{
+		MeshPreprocessor mesh_preprocessor = {};
+
+		// Clusterize initial mesh, basically build LOD 0
+		Scope<ClusterizedMesh> meshlets_data = mesh_preprocessor.GenerateMeshlets(&vertices, &indices, vertex_stride);
+
+		// All mesh's meshlet groups
+		// Init with source meshlets, 1 meshlet per group
+		std::vector<MeshClusterGroup> mesh_cluster_groups(meshlets_data->meshlets.size());
+		for (uint32 i = 0; i < mesh_cluster_groups.size(); i++)
+			mesh_cluster_groups[i].push_back(i);
+
+		for (uint32 i = 0; i < meshlets_data->meshlets.size(); i++) {
+			meshlets_data->meshlets[i].group = i;
+		}
+
+		// Global data
+		uint32 lod_idx = 1; // initialized with 1 because we already have LOD 0 (source mesh)
+		float32 simplify_scale = meshopt_simplifyScale((float32*)vertices.data(), vertices.size() / vertex_stride, vertex_stride);
+		// Compute max lod count. I expect each lod level to have 2 times less indices than
+		// previous level. Added 2 if some levels won't be able to half index count
+		const uint32 max_lod = glm::ceil(glm::log2(float32(indices.size())));
+		//const uint32 max_lod = 5;
+
+		std::vector<uint32> previous_lod_indices = indices;
+		std::vector<uint32> current_meshlets(meshlets_data->meshlets.size());
+		for (uint32 i = 0; i < current_meshlets.size(); i++)
+			current_meshlets[i] = i;
+
+		while (lod_idx < max_lod) {
+			float32 t_lod = float32(lod_idx) / (float32)max_lod;
+			float32 min_vertex_distance = (t_lod * 0.1f + (1.0f - t_lod) * 0.01f) * simplify_scale;
+
+			// 1. Find edge vertices (not indices)
+			// 2. Compute average vertex distance for current source meshlets
+			// 3. Generate welded remap table
+			// 4. Clear index array of current meshlets, so next meshlets can properly fill new data
+			std::vector<bool> edge_vertices_map = GenerateEdgeMap(meshlets_data->meshlets, current_meshlets, vertices, meshlets_data->indices, meshlets_data->local_indices, vertex_stride);
+			float32 average_vertex_distance_sq = ComputeAverageVertexDistanceSquared(vertices, previous_lod_indices, vertex_stride);
+
+			// Evaluate unique indices to be welded
+			rh::unordered_flat_set<uint32> unique_indices;
+			for (auto& index : previous_lod_indices)
+				unique_indices.emplace(index);
+
+			std::vector<std::pair<glm::vec3, uint32>> vertices_to_weld;
+			vertices_to_weld.reserve(unique_indices.size());
+
+			for (auto& index : unique_indices)
+				vertices_to_weld.push_back({ *(glm::vec3*)&vertices[index * vertex_stride], index });
+
+			KDTree kd_tree;
+			kd_tree.BuildFromPointSet(vertices_to_weld);
+
+			// Weld close enough vertices together
+			std::vector<uint32> welder_remap_table = GenerateVertexWelderRemapTable(vertices, vertex_stride, kd_tree, unique_indices, edge_vertices_map, min_vertex_distance);
+			previous_lod_indices.clear();
+
+			// Generate meshlet groups
+			auto groups = GroupMeshClusters(meshlets_data->meshlets, current_meshlets, welder_remap_table, meshlets_data->indices, meshlets_data->local_indices, vertices, vertex_stride);
+
+			// Remove empty groups
+			std::erase_if(groups, [](const auto& group) {
+				return group.size() == 0;
+			});
+
+			// Clear current meshlets indices, so we can register new ones
+			current_meshlets.clear();
+
+			// Process groups, also detect edges for next LOD generation pass
+			uint32 num_newly_created_meshlets = 0;
+
+			for (const auto& group : groups) {
+				// Merge meshlets
+				// Prepare storage
+				std::vector<uint32> merged_indices;
+				uint32 num_merged_indices = 0;
+
+				for (auto& meshlet_idx : group)
+					num_merged_indices += meshlets_data->meshlets[meshlet_idx].metadata.triangle_count * 3;
+
+				merged_indices.reserve(num_merged_indices);
+
+				// Merge
+				for (auto& meshlet_idx : group) {
+					RenderableMeshlet& meshlet = meshlets_data->meshlets[meshlet_idx];
+					uint32 triangle_indices[3] = {};
+					for (uint32 index_idx = 0; index_idx < meshlet.metadata.triangle_count * 3; index_idx++) {
+						triangle_indices[index_idx % 3] = welder_remap_table[meshlets_data->indices[meshlet.vertex_offset + meshlets_data->local_indices[meshlet.triangle_offset + index_idx]]];
+
+						if (index_idx % 3 == 2) {// last index of triangle was registered
+							bool is_triangle_degenerate = (triangle_indices[0] == triangle_indices[1] || triangle_indices[0] == triangle_indices[2] || triangle_indices[1] == triangle_indices[2]);
+
+							// Check if triangle is degenerate
+							if (!is_triangle_degenerate) {
+								merged_indices.push_back(triangle_indices[0]);
+								merged_indices.push_back(triangle_indices[1]);
+								merged_indices.push_back(triangle_indices[2]);
+							}
+						}
+					}
+				}
+
+				// Skip if no indices after merging (maybe all triangles are degenerate?)
+				if (merged_indices.size() == 0)
+					continue;
+				previous_lod_indices.insert(previous_lod_indices.end(), merged_indices.begin(), merged_indices.end());
+
+				// Setup simplification parameters
+				float32 target_error = 0.9f * t_lod + 0.01f * (1 - t_lod);
+				float32 simplification_rate = 0.5f;
+				std::vector<uint32> simplified_indices;
+
+				// Generate LOD
+				bool lod_generation_failed = false;
+				while (!simplified_indices.size() || simplified_indices.size() == merged_indices.size()) {
+					mesh_preprocessor.GenerateMeshLOD(&simplified_indices, &vertices, &merged_indices, vertex_stride, merged_indices.size() * simplification_rate, target_error, true);
+					target_error += 0.05f;
+					simplification_rate += 0.05f;
+
+					OMNIFORCE_ASSERT(simplified_indices.size());
+
+					// Failed to generate LOD for a given group. Reregister meshlets and skip the group
+					if (simplification_rate >= 1.0f && (simplified_indices.size() == merged_indices.size())) {
+						OMNIFORCE_CORE_WARNING("Failed to generate LOD, registering source clusters");
+
+						lod_generation_failed = true;
+						for (const auto& meshlet_idx : group)
+							current_meshlets.push_back(meshlet_idx);
+
+						break;
+					}
+				}
+
+				if (lod_generation_failed)
+					continue;
+
+				// Split back
+				Scope<ClusterizedMesh> simplified_meshlets = mesh_preprocessor.GenerateMeshlets(&vertices, &simplified_indices, vertex_stride);
+
+				uint32 group_idx = RandomEngine::Generate<uint32>();
+				num_newly_created_meshlets += simplified_meshlets->meshlets.size();
+				for (auto& meshlet : simplified_meshlets->meshlets) {
+					meshlet.vertex_offset += meshlets_data->indices.size();
+					meshlet.triangle_offset += meshlets_data->local_indices.size();
+					meshlet.group = group_idx;
+					meshlet.lod = lod_idx;
+				}
+				for (uint32 i = 0; i < simplified_meshlets->meshlets.size(); i++)
+					current_meshlets.push_back(meshlets_data->meshlets.size() + i);
+
+				meshlets_data->meshlets.insert(meshlets_data->meshlets.end(), simplified_meshlets->meshlets.begin(), simplified_meshlets->meshlets.end());
+				meshlets_data->indices.insert(meshlets_data->indices.end(), simplified_meshlets->indices.begin(), simplified_meshlets->indices.end());
+				meshlets_data->local_indices.insert(meshlets_data->local_indices.end(), simplified_meshlets->local_indices.begin(), simplified_meshlets->local_indices.end());
+				meshlets_data->cull_bounds.insert(meshlets_data->cull_bounds.end(), simplified_meshlets->cull_bounds.begin(), simplified_meshlets->cull_bounds.end());
+
+			}
+
+			if (num_newly_created_meshlets == 1)
+				break;
+
+			OMNIFORCE_CORE_TRACE("Generated LOD_{}", lod_idx);
+			lod_idx++;
+		}
+
+		VirtualMesh mesh = {};
+		mesh.vertices = vertices;
+		mesh.indices = meshlets_data->indices;
+		mesh.local_indices = meshlets_data->local_indices;
+		mesh.meshlets = meshlets_data->meshlets;
+		mesh.meshlet_groups = mesh_cluster_groups;
+		mesh.cull_bounds = meshlets_data->cull_bounds;
+		mesh.vertex_stride = vertex_stride;
+
+		OMNIFORCE_CORE_TRACE("Mesh building finished. Final triangle count (including all LOD levels): {}", mesh.local_indices.size() / 3);
+
+		return mesh;
+
+	}
 
 	std::vector<Omni::MeshClusterGroup> VirtualMeshBuilder::GroupMeshClusters(
 		std::span<RenderableMeshlet> meshlets,
@@ -161,24 +343,27 @@ namespace Omni {
 		OMNIFORCE_ASSERT_TAGGED(edge_adjacency.size() == edge_weights.size(), "Failed during METIS CSR graph generation: invalid adjncy / edgwgts");
 
 		idx_t final_cut_cost; // final cost of the cut found by METIS
-
-		m_Mutex.lock();
-		int result = METIS_PartGraphKway(
-			&graph_vertex_count,
-			&num_constrains,
-			x_adjacency.data(),
-			edge_adjacency.data(),
-			nullptr, /* vertex weights */
-			nullptr, /* vertex size */
-			edge_weights.data(),
-			&num_partitions,
-			nullptr,
-			nullptr,
-			metis_options,
-			&final_cut_cost,
-			partition.data()
-		);
-		m_Mutex.unlock();
+		int result = -1;
+		{
+#ifndef BLABLA
+			std::lock_guard lock(m_Mutex);
+#endif
+			result = METIS_PartGraphKway(
+				&graph_vertex_count,
+				&num_constrains,
+				x_adjacency.data(),
+				edge_adjacency.data(),
+				nullptr, /* vertex weights */
+				nullptr, /* vertex size */
+				edge_weights.data(),
+				&num_partitions,
+				nullptr,
+				nullptr,
+				metis_options,
+				&final_cut_cost,
+				partition.data()
+			);
+		}
 
 		OMNIFORCE_ASSERT_TAGGED(result == METIS_OK, "Graph partitioning failed!");
 
@@ -207,7 +392,7 @@ namespace Omni {
 
 		const uint32 NUM_SAMPLES = 1024;
 		const uint32 triangle_count = indices.size() / 3;
-		
+
 		float64 average_distance_sq = 0.0f;
 
 		for (uint32 i = 0; i < NUM_SAMPLES; i++) {
@@ -216,7 +401,7 @@ namespace Omni {
 			uint32 i1 = indices[triangle_sample_id + 1];
 			uint32 i2 = indices[triangle_sample_id + 2];
 
-			glm::vec3* v0, *v1, *v2;
+			glm::vec3* v0, * v1, * v2;
 			v0 = (glm::vec3*)&vertices[i0 * vertex_stride];
 			v1 = (glm::vec3*)&vertices[i1 * vertex_stride];
 			v2 = (glm::vec3*)&vertices[i2 * vertex_stride];
@@ -229,182 +414,6 @@ namespace Omni {
 		return average_distance_sq / (NUM_SAMPLES * 3);
 	}
 
-	VirtualMesh VirtualMeshBuilder::BuildClusterGraph(const std::vector<byte>& vertices, const std::vector<uint32>& indices, uint32 vertex_stride)
-	{
-		MeshPreprocessor mesh_preprocessor = {};
-
-		// Clusterize initial mesh, basically build LOD 0
-		Scope<ClusterizedMesh> meshlets_data = mesh_preprocessor.GenerateMeshlets(&vertices, &indices, vertex_stride);
-
-		// All mesh's meshlet groups
-		// Init with source meshlets, 1 meshlet per group
-		std::vector<MeshClusterGroup> mesh_cluster_groups(meshlets_data->meshlets.size());
-		for (uint32 i = 0; i < mesh_cluster_groups.size(); i++)
-			mesh_cluster_groups[i].push_back(i);
-
-		for (uint32 i = 0; i < meshlets_data->meshlets.size(); i++) {
-			meshlets_data->meshlets[i].group = i;
-		}
-
-		// Global data
-		uint32 lod_idx = 1;
-		float32 simplify_scale = meshopt_simplifyScale((float32*)vertices.data(), vertices.size() / vertex_stride, vertex_stride);
-		// Compute max lod count. I expect each lod level to have 2 times less indices than
-		// previous level. Added 2 if some levels won't be able to half index count
-		const uint32 max_lod = glm::ceil(glm::log2(float32(indices.size()))); 
-		//const uint32 max_lod = 5;
-
-		std::vector<uint32> previous_lod_indices = indices;
-		std::vector<uint32> current_meshlets(meshlets_data->meshlets.size());
-		for (uint32 i = 0; i < current_meshlets.size(); i++)
-			current_meshlets[i] = i;
-
-		while (lod_idx < max_lod) {
-			// Create a span of meshlets which are currently used as source meshlets for simplification. Also setup t_lod variable
-			float32 t_lod = float32(lod_idx) / (float32)max_lod;
-			float32 min_vertex_distance = (t_lod * 0.1f + (1.0f - t_lod) * 0.01f) * simplify_scale;
-
-			// 1. Find edge vertices (not indices)
-			// 2. Compute average vertex distance for current source meshlets
-			// 3. Generate welded remap table
-			// 4. Clear index array of current meshlets, so next meshlets can properly fill new data
-			std::vector<bool> edge_vertices_map = GenerateEdgeMap(meshlets_data->meshlets, current_meshlets, vertices, meshlets_data->indices, meshlets_data->local_indices, vertex_stride);
-
-			// Evaluate unique indices to be welded
-			rh::unordered_flat_set<uint32> unique_indices;
-			for (auto& index : previous_lod_indices)
-				unique_indices.emplace(index);
-
-			std::vector<std::pair<glm::vec3, uint32>> vertices_to_weld;
-			vertices_to_weld.reserve(unique_indices.size());
-
-			for (auto& index : unique_indices)
-				vertices_to_weld.push_back({ *(glm::vec3*)&vertices[index * vertex_stride], index });
-
-			KDTree kd_tree;
-			kd_tree.BuildFromPointSet(vertices_to_weld);
-
-			// for some magical reason it works better when I multiply distance by 1.2
-			std::vector<uint32> welder_remap_table = GenerateVertexWelderRemapTable(vertices, vertex_stride, kd_tree, unique_indices, edge_vertices_map, min_vertex_distance * 1.1f); 
-			previous_lod_indices.clear();
-
-			// Generate meshlet groups
-			auto groups = GroupMeshClusters(meshlets_data->meshlets, current_meshlets, welder_remap_table, meshlets_data->indices, meshlets_data->local_indices, vertices, vertex_stride);
-
-			// Remove empty groups
-			std::erase_if(groups, [](const auto& group) {
-				return group.size() == 0;
-			});
-
-			// Clear current meshlets indices, so we can register new ones
-			current_meshlets.clear();
-
-			// Process groups, also detect edges for next LOD generation pass
-			uint32 num_newly_created_meshlets = 0;
-
-			for (const auto& group : groups) {
-				// Merge meshlets
-				// Prepare storage
-				std::vector<uint32> merged_indices;
-				uint32 num_merged_indices = 0;
-
-				for (auto& meshlet_idx : group)
-					num_merged_indices += meshlets_data->meshlets[meshlet_idx].metadata.triangle_count * 3;
-
-				merged_indices.reserve(num_merged_indices);
-
-				// Merge
-				for (auto& meshlet_idx : group) {
-					RenderableMeshlet& meshlet = meshlets_data->meshlets[meshlet_idx];
-					uint32 triangle_indices[3] = {};
-					for (uint32 index_idx = 0; index_idx < meshlet.metadata.triangle_count * 3; index_idx++) {
-						triangle_indices[index_idx % 3] = welder_remap_table[meshlets_data->indices[meshlet.vertex_offset + meshlets_data->local_indices[meshlet.triangle_offset + index_idx]]];
-
-						if (index_idx % 3 == 2) {// last index of triangle was registered
-							bool is_triangle_degenerate = (triangle_indices[0] == triangle_indices[1] || triangle_indices[0] == triangle_indices[2] || triangle_indices[1] == triangle_indices[2]);
-
-							// Check if triangle is degenerate
-							if (!is_triangle_degenerate) {
-								merged_indices.push_back(triangle_indices[0]);
-								merged_indices.push_back(triangle_indices[1]);
-								merged_indices.push_back(triangle_indices[2]);
-							}
-						}
-					}
-				}
-
-				// Skip if no indices after merging (maybe all triangles are degenerate?)
-				if(merged_indices.size() == 0)
-					continue;
-
-				// Setup simplification parameters
-				float32 target_error = 0.9f * t_lod + 0.01f * (1 - t_lod);
-				float32 simplification_rate = 0.5f;
-				std::vector<uint32> simplified_indices;
-
-				bool simplification_failed = false;
-				// Generate LOD
-				while (!simplified_indices.size() || simplified_indices.size() == merged_indices.size()) {
-					mesh_preprocessor.GenerateMeshLOD(&simplified_indices, &vertices, &merged_indices, vertex_stride, merged_indices.size() * simplification_rate, target_error, true);
-					target_error += 0.05f;
-					simplification_rate += 0.05f;
-
-					OMNIFORCE_ASSERT(simplified_indices.size());
-
-					if (simplification_rate >= 1.0f && (simplified_indices.size() == merged_indices.size())) {
-						OMNIFORCE_CORE_WARNING("Failed to generate LOD, registering source clusters");
-						previous_lod_indices.insert(previous_lod_indices.end(), merged_indices.begin(), merged_indices.end());
-						simplification_failed = true;
-						break;
-					}
-				}
-
-				if(!simplification_failed)
-					previous_lod_indices.insert(previous_lod_indices.end(), simplified_indices.begin(), simplified_indices.end());
-
-				// Split back
-				Scope<ClusterizedMesh> simplified_meshlets = mesh_preprocessor.GenerateMeshlets(&vertices, &simplified_indices, vertex_stride);
-
-				uint32 group_idx = RandomEngine::Generate<uint32>();
-				num_newly_created_meshlets += simplified_meshlets->meshlets.size();
-				for (auto& meshlet : simplified_meshlets->meshlets) {
-					meshlet.vertex_offset += meshlets_data->indices.size();
-					meshlet.triangle_offset += meshlets_data->local_indices.size();
-					meshlet.group = group_idx;
-					meshlet.lod = lod_idx;
-				}
-				for (uint32 i = 0; i < simplified_meshlets->meshlets.size(); i++)
-					current_meshlets.push_back(meshlets_data->meshlets.size() + i);
-
-				meshlets_data->meshlets.insert(meshlets_data->meshlets.end(), simplified_meshlets->meshlets.begin(), simplified_meshlets->meshlets.end());
-				meshlets_data->indices.insert(meshlets_data->indices.end(), simplified_meshlets->indices.begin(), simplified_meshlets->indices.end());
-				meshlets_data->local_indices.insert(meshlets_data->local_indices.end(), simplified_meshlets->local_indices.begin(), simplified_meshlets->local_indices.end());
-				meshlets_data->cull_bounds.insert(meshlets_data->cull_bounds.end(), simplified_meshlets->cull_bounds.begin(), simplified_meshlets->cull_bounds.end());
-
-			}
-
-			if(num_newly_created_meshlets == 1)
-				break;
-
-			OMNIFORCE_CORE_TRACE("Generated LOD_{}", lod_idx);
-			lod_idx++;
-		}
-
-		VirtualMesh mesh = {};
-		mesh.vertices = vertices;
-		mesh.indices = meshlets_data->indices;
-		mesh.local_indices = meshlets_data->local_indices;
-		mesh.meshlets = meshlets_data->meshlets;
-		mesh.meshlet_groups = mesh_cluster_groups;
-		mesh.cull_bounds = meshlets_data->cull_bounds;
-		mesh.vertex_stride = vertex_stride;
-
-		OMNIFORCE_CORE_TRACE("Mesh building finished. Final triangle count (including all LOD levels): {}", mesh.local_indices.size() / 3);
-
-		return mesh;
-
-	}
-
 	// TODO: take UVs into account
 	// Assumes that positions are encoded in first 12 bytes of vertices
 	std::vector<Omni::uint32> VirtualMeshBuilder::GenerateVertexWelderRemapTable(const std::vector<byte>& vertices, uint32 vertex_stride, const KDTree& kd_tree, const rh::unordered_flat_set<uint32>& lod_indices, const std::vector<bool>& edge_vertex_map, float32 min_vertex_distance)
@@ -415,25 +424,26 @@ namespace Omni {
 		for (uint32 i = 0; i < remap_table.size(); i++)
 			remap_table[i] = i;
 
-		for (auto& index : lod_indices) {
-			if(edge_vertex_map[index])
+		for (const auto& index : lod_indices) {
+			if (edge_vertex_map[index])
 				continue;
 
 			float32 min_distance_sq = min_vertex_distance * min_vertex_distance;
-			glm::vec3 current_vertex = *(glm::vec3*)&vertices[index * vertex_stride];
+			const glm::vec3 current_vertex = Utils::FetchVertexFromBuffer(vertices, index, vertex_stride);
 
-			std::vector<uint32> neighbour_indices = kd_tree.ClosestPointSet(current_vertex, min_vertex_distance, index);
+			const std::vector<uint32> neighbour_indices = kd_tree.ClosestPointSet(current_vertex, min_vertex_distance, index);
 
 			uint32 replacement = index;
-			for (auto& neighbour : neighbour_indices) {
-				glm::vec3 neighbour_vertex = *(glm::vec3*)&vertices[remap_table[neighbour] * vertex_stride];
+			for (const auto& neighbour : neighbour_indices) {
+				const glm::vec3 neighbour_vertex = Utils::FetchVertexFromBuffer(vertices, neighbour, vertex_stride);
 
-				float32 vertex_distance_squared = glm::distance2(current_vertex, neighbour_vertex);
+				const float32 vertex_distance_squared = glm::distance2(current_vertex, neighbour_vertex);
 				if (vertex_distance_squared < min_distance_sq) {
 					replacement = neighbour;
 					min_distance_sq = vertex_distance_squared;
 				}
 			}
+
 			OMNIFORCE_ASSERT(lod_indices.contains(remap_table[replacement]));
 			remap_table[index] = remap_table[replacement];
 		}
@@ -442,11 +452,11 @@ namespace Omni {
 	}
 
 	std::vector<bool> VirtualMeshBuilder::GenerateEdgeMap(
-		std::span<RenderableMeshlet> meshlets, 
-		const std::span<uint32> current_meshlets, 
-		const std::vector<byte>& vertices, 
-		std::vector<uint32>& indices, 
-		const std::vector<uint8>& local_indices, 
+		std::span<RenderableMeshlet> meshlets,
+		const std::span<uint32> current_meshlets,
+		const std::vector<byte>& vertices,
+		std::vector<uint32>& indices,
+		const std::vector<uint8>& local_indices,
 		uint32 vertex_stride
 	)
 	{

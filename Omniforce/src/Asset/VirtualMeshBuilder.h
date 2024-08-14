@@ -25,7 +25,7 @@ namespace Omni {
 	// Utility function for building virtual clusterized mesh
 	class VirtualMeshBuilder {
 	public:
-		// Generates a Virtual mesh - a hiearchy of meshlets, representing variable level of detail between each LOD level.
+		// Generates a Virtual mesh - a hierarchy of meshlets, representing variable level of detail between each LOD level.
 		VirtualMesh BuildClusterGraph(const std::vector<byte>& vertices, const std::vector<uint32>& indices, uint32 vertex_stride);
 
 
@@ -49,8 +49,9 @@ namespace Omni {
 		std::vector<uint32> GenerateVertexWelderRemapTable(const std::vector<byte>& vertices, uint32 vertex_stride, const KDTree& kd_tree, const rh::unordered_flat_set<uint32>& lod_indices, const std::vector<bool>& edge_vertex_map, float32 min_vertex_distance);
 
 	private:
+#ifndef BLABLA
 		inline static std::shared_mutex m_Mutex;
-
+#endif
 	};
 
 }
