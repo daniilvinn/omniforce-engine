@@ -39,7 +39,7 @@ namespace Omni {
 	inline constexpr float64 FP64_MAX = std::numeric_limits<float64>::max();
 
 	inline constexpr float32 FP32_MIN = std::numeric_limits<float32>::min();
-	inline constexpr float32 FP64_MIN = std::numeric_limits<float64>::min();
+	inline constexpr float64 FP64_MIN = std::numeric_limits<float64>::min();
 
 	template<typename T = float32>
 	struct vec2 {
