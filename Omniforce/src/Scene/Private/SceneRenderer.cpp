@@ -270,6 +270,10 @@ namespace Omni {
 		// Clear light data
 		m_HostPointLights.clear();
 
+		// Change current render target
+		m_CurrectMainRenderTarget = m_RendererOutputs[Renderer::GetCurrentFrameIndex()];
+		m_CurrentDepthAttachment = m_DepthAttachments[Renderer::GetCurrentFrameIndex()];
+
 		// Write camera data to device buffer
 		if (camera) {
 			m_Camera = camera;
@@ -281,6 +285,10 @@ namespace Omni {
 			camera_data.position = m_Camera->GetPosition();
 			camera_data.frustum = m_Camera->GenerateFrustum();
 			camera_data.forward_vector = m_Camera->GetForwardVector();
+			// If camera is 3D (very likely to be truth though) cast it to 3D camera and get FOV, otherwise use fixed 90 degree FOV
+			camera_data.fov = m_Camera->GetType() == CameraProjectionType::PROJECTION_3D ? ShareAs<Camera3D>(m_Camera)->GetFOV() : glm::radians(90.0f);
+			camera_data.viewport_width = m_CurrectMainRenderTarget->GetSpecification().extent.r;
+			camera_data.viewport_height = m_CurrectMainRenderTarget->GetSpecification().extent.g;
 
 			m_CameraDataBuffer->UploadData(
 				Renderer::GetCurrentFrameIndex() * (m_CameraDataBuffer->GetSpecification().size / Renderer::GetConfig().frames_in_flight),
@@ -290,11 +298,6 @@ namespace Omni {
 
 			DebugRenderer::SetCameraBuffer(m_CameraDataBuffer);
 		}
-
-
-		// Change current render target
-		m_CurrectMainRenderTarget = m_RendererOutputs[Renderer::GetCurrentFrameIndex()];
-		m_CurrentDepthAttachment = m_DepthAttachments[Renderer::GetCurrentFrameIndex()];
 
 		// Change layout of render target
 		Renderer::Submit([=]() {

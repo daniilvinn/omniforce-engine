@@ -17,21 +17,25 @@ namespace Omni {
 			uint32 triangle_count : 8;
 			uint32 bitrate : 6;
 		} metadata;
+	};
 
-		// Debug data
-		// TODO: remove this data after virtual geometry development is finished. 
-		// DO NOT forget to remove it from GLSL meshlet declaration!
-		// TODO: add shared source files so I can't forget to remove something when a structure is shared between C++ and GLSL
-		uint32 group = 0;
-		uint32 lod = 0;
+	struct MeshletLODCullingData {
+		Sphere sphere;
+		Sphere parent_sphere = { glm::vec3(+INFINITY), +INFINITY };
+
+		float32 error;
+		float32 parent_error;
 	};
 
 	struct OMNIFORCE_API MeshletCullBounds {
+		// Visibility culling data
 		Sphere vis_culling_sphere;
-
 		glm::vec3 cone_apex;
 		glm::i8vec3 cone_axis;
 		int8 cone_cutoff;
+
+		// LOD culling data
+		MeshletLODCullingData lod_culling;
 	};
 
 	using MeshClusterGroup = std::vector<uint32>;

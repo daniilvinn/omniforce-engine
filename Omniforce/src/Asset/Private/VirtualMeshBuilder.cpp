@@ -30,10 +30,6 @@ namespace Omni {
 		for (uint32 i = 0; i < mesh_cluster_groups.size(); i++)
 			mesh_cluster_groups[i].push_back(i);
 
-		for (uint32 i = 0; i < meshlets_data->meshlets.size(); i++) {
-			meshlets_data->meshlets[i].group = i;
-		}
-
 		// Global data
 		uint32 lod_idx = 1; // initialized with 1 because we already have LOD 0 (source mesh)
 		float32 simplify_scale = meshopt_simplifyScale((float32*)vertices.data(), vertices.size() / vertex_stride, vertex_stride);
@@ -133,14 +129,15 @@ namespace Omni {
 
 				// Generate LOD
 				bool lod_generation_failed = false;
+				float32 result_error = 0.0f;
 				while (!simplified_indices.size() || simplified_indices.size() == merged_indices.size()) {
-					mesh_preprocessor.GenerateMeshLOD(&simplified_indices, &vertices, &merged_indices, vertex_stride, merged_indices.size() * simplification_rate, target_error, true);
+					result_error = mesh_preprocessor.GenerateMeshLOD(&simplified_indices, &vertices, &merged_indices, vertex_stride, merged_indices.size() * simplification_rate, target_error, true);
 					target_error += 0.05f;
 					simplification_rate += 0.05f;
 
 					OMNIFORCE_ASSERT(simplified_indices.size());
 
-					// Failed to generate LOD for a given group. Reregister meshlets and skip the group
+					// Failed to generate LOD for a given group. Re register meshlets and skip the group
 					if (simplification_rate >= 1.0f && (simplified_indices.size() == merged_indices.size())) {
 						OMNIFORCE_CORE_WARNING("Failed to generate LOD, registering source clusters");
 
@@ -155,16 +152,55 @@ namespace Omni {
 				if (lod_generation_failed)
 					continue;
 
+				// Compute LOD culling bounding sphere for current simplified (!) group
+				AABB group_aabb = { glm::vec3(+INFINITY), glm::vec3(-INFINITY)};
+
+				for (const auto& index : simplified_indices) {
+					const glm::vec3 vertex = Utils::FetchVertexFromBuffer(vertices, index, vertex_stride);
+
+					group_aabb.max = glm::max(group_aabb.max, vertex);
+					group_aabb.min = glm::min(group_aabb.min, vertex);
+				}
+
+				Sphere simplified_group_bounding_sphere = Utils::SphereFromAABB(group_aabb);
+
+				// Compute error in mesh scale
+				const float32 local_mesh_scale = meshopt_simplifyScale((float32*)vertices.data(), vertices.size() / vertex_stride, vertex_stride);
+				float32 mesh_space_error = result_error * local_mesh_scale;
+
+				// Find biggest error of children clusters
+				float32 max_children_error = 0.0f;
+				for (const auto& child_meshlet_index : group) {
+					max_children_error = std::max(meshlets_data->cull_bounds[child_meshlet_index].lod_culling.error, max_children_error);
+				}
+
+				mesh_space_error += max_children_error;
+				for (const auto& child_meshlet_index : group) {
+					meshlets_data->cull_bounds[child_meshlet_index].lod_culling.parent_sphere = simplified_group_bounding_sphere;
+					meshlets_data->cull_bounds[child_meshlet_index].lod_culling.parent_error = mesh_space_error;
+				}
+
 				// Split back
 				Scope<ClusterizedMesh> simplified_meshlets = mesh_preprocessor.GenerateMeshlets(&vertices, &simplified_indices, vertex_stride);
+
+				for (auto& bounds : simplified_meshlets->cull_bounds) {
+					bounds.lod_culling.error = mesh_space_error;
+					bounds.lod_culling.sphere = simplified_group_bounding_sphere;
+				}
+
+				for (const auto& simplified_bounds : simplified_meshlets->cull_bounds) {
+					float32 source_max_error = 0.0f;
+					for (const auto& source_meshlet_index : group) {
+						source_max_error = std::max(source_max_error, meshlets_data->cull_bounds[source_meshlet_index].lod_culling.error);
+					}
+					OMNIFORCE_ASSERT_TAGGED(simplified_bounds.lod_culling.error > source_max_error, "Invalid cluster group error evaluation during mesh build");
+				}
 
 				uint32 group_idx = RandomEngine::Generate<uint32>();
 				num_newly_created_meshlets += simplified_meshlets->meshlets.size();
 				for (auto& meshlet : simplified_meshlets->meshlets) {
 					meshlet.vertex_offset += meshlets_data->indices.size();
 					meshlet.triangle_offset += meshlets_data->local_indices.size();
-					meshlet.group = group_idx;
-					meshlet.lod = lod_idx;
 				}
 				for (uint32 i = 0; i < simplified_meshlets->meshlets.size(); i++)
 					current_meshlets.push_back(meshlets_data->meshlets.size() + i);

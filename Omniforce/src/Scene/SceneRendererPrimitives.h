@@ -15,6 +15,9 @@ namespace Omni {
 		glm::vec3 position;
 		Frustum frustum;
 		glm::vec3 forward_vector;
+		float32 fov; // In radians
+		float32 viewport_height;
+		float32 viewport_width;
 	};
 
 	struct DeviceMeshData {

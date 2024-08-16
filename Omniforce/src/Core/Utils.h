@@ -139,5 +139,14 @@ namespace Omni {
 			return *(glm::vec3*)(vertex_data.data() + (vertex_stride * index));
 		}
 
+		inline Sphere SphereFromAABB(const AABB& aabb) {
+			Sphere sphere = {};
+
+			sphere.center = (aabb.min + aabb.max) * 0.5f;
+			sphere.radius = glm::length(aabb.max - aabb.min) * 0.5f;
+
+			return sphere;
+		}
+
 	}
 }

@@ -24,6 +24,14 @@ const int MESHLET_DATA_BITRATE_BIT_COUNT = 6;
 #define ExtractMeshletTriangleCount(meshlet_metadata)   bitfieldExtract(meshlet_metadata, MESHLET_DATA_TRIANGLE_COUNT_BIT_OFFSET, MESHLET_DATA_TRIANGLE_COUNT_BIT_COUNT)
 #define ExtractMeshletBitrate(meshlet_metadata)         bitfieldExtract(meshlet_metadata, MESHLET_DATA_BITRATE_BIT_OFFSET, MESHLET_DATA_BITRATE_BIT_COUNT)
 
+struct MeshletLODCullData {
+    Sphere sphere;
+    Sphere parent_sphere;
+
+    float error;
+	float parent_error;
+};
+
 layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer MeshAttributesData {
     #if !defined(__OMNI_HAS_VERTEX_NORMAL) && !defined(__OMNI_HAS_VERTEX_TANGENT) && !defined(__OMNI_HAS_VERTEX_TEXCOORDS) // using a trick so it compiles for other non-3D passes
         float unused;
@@ -45,8 +53,6 @@ layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Mes
 	uint vertex_offset;     // offset within an array of vertex attribute data
 	uint triangle_offset;
 	uint metadata;          // 7 bits of vertex count, then 8 bits of triangle count and then 6 bits of bitrate
-    uint group;
-    uint lod;
 };
 
 layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer MeshMicroindices {
@@ -55,10 +61,11 @@ layout(buffer_reference, scalar, buffer_reference_align = 1) readonly buffer Mes
 
 layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer MeshletCullBounds {
     Sphere bounding_sphere;
-
     vec3 cone_apex;
     i8vec3 cone_axis;
     int8_t cone_cutoff;
+
+    MeshletLODCullData lod_culling;
 };
 
 struct MeshLOD {

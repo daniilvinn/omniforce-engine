@@ -176,7 +176,6 @@ public:
 						{
 						case 0:  ImGui::Selectable("Cluster view", &is_selected);		break;
 						case 1:  ImGui::Selectable("Triangle view", &is_selected);		break;
-						case 2:  ImGui::Selectable("Cluster group view", &is_selected);		break;
 						default: break;
 						}
 
