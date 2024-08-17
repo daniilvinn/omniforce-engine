@@ -460,7 +460,6 @@ namespace Omni {
 		for (uint32 i = 0; i < remap_table.size(); i++)
 			remap_table[i] = i;
 
-
 		for (const auto& index : lod_indices) {
 			if (edge_vertex_map[index])
 				continue;
@@ -514,7 +513,7 @@ namespace Omni {
 			vertex_stride
 		);
 		indices.resize(indices.size() - ib_padding);
-
+		
 		// for each meshlet
 		for (const auto& meshletIndex : current_meshlets) {
 			const auto& meshlet = meshlets[meshletIndex];
@@ -525,8 +524,8 @@ namespace Omni {
 				// for each edge of the triangle
 				for (uint32 i = 0; i < 3; i++) {
 					MeshletEdge edge(
-						geometry_only_indices[local_indices[(i + triangleIndex * 3) + meshlet.triangle_offset] + meshlet.vertex_offset],
-						geometry_only_indices[local_indices[(((i + 1) % 3) + triangleIndex * 3) + meshlet.triangle_offset] + meshlet.vertex_offset]
+						geometry_only_indices[indices[local_indices[(i + triangleIndex * 3) + meshlet.triangle_offset] + meshlet.vertex_offset]],
+						geometry_only_indices[indices[local_indices[(((i + 1) % 3) + triangleIndex * 3) + meshlet.triangle_offset] + meshlet.vertex_offset]]
 					);
 					if (edge.first != edge.second) {
 						edges[edge].emplace(meshletIndex);
