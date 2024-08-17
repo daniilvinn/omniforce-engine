@@ -1,8 +1,6 @@
 #ifndef VIRTUAL_GEOMETRY_UTILS_GLSLH
 #define VIRTUAL_GEOMETRY_UTILS_GLSLH
 
-#extension GL_EXT_debug_printf : require
-
 #include "mesh_data.glslh"
 #include "camera_data.glslh"
 #include "sphere.glslh"
@@ -19,11 +17,10 @@ float ProjectMeshletError(Sphere sphere, CameraData camera_data, float half_fov_
 }
 
 bool TestMeshletLOD(MeshletLODCullData lod_culling_data, CameraData camera_data, RenderObjectData render_object) {
-    // assume a fixed fov and perspective projection
     const float half_fov_cot = 1.0f / tan(camera_data.fov / 2.0f);
     const float viewport = camera_data.viewport_height;
 
-    // Project self sphere
+    // Project current meshlet's sphere
     Sphere projected_bounding_sphere = Sphere(
         lod_culling_data.sphere.center,
         max(lod_culling_data.error, 0.000000001f)
@@ -32,6 +29,7 @@ bool TestMeshletLOD(MeshletLODCullData lod_culling_data, CameraData camera_data,
     projected_bounding_sphere = TransformSphere(projected_bounding_sphere, render_object.transform, camera_data.view);
     const float result_error = ProjectMeshletError(projected_bounding_sphere, camera_data, half_fov_cot);
 
+    // Project parent sphere
     Sphere parent_projected_bounding_sphere = Sphere(
         lod_culling_data.parent_sphere.center,
         max(lod_culling_data.parent_error, 0.000000001f)
@@ -39,8 +37,6 @@ bool TestMeshletLOD(MeshletLODCullData lod_culling_data, CameraData camera_data,
 
     parent_projected_bounding_sphere = TransformSphere(parent_projected_bounding_sphere, render_object.transform, camera_data.view);
     const float parent_result_error = ProjectMeshletError(parent_projected_bounding_sphere, camera_data, half_fov_cot);
-
-    debugPrintfEXT("%f    %f", result_error, parent_result_error);
 
     return result_error <= 15.0f && parent_result_error > 15.0f;
 }
