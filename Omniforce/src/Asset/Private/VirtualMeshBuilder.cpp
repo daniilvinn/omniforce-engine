@@ -193,7 +193,7 @@ namespace Omni {
 					for (const auto& source_meshlet_index : group) {
 						source_max_error = std::max(source_max_error, meshlets_data->cull_bounds[source_meshlet_index].lod_culling.error);
 					}
-					OMNIFORCE_ASSERT_TAGGED(simplified_bounds.lod_culling.error > source_max_error, "Invalid cluster group error evaluation during mesh build");
+					OMNIFORCE_ASSERT_TAGGED(simplified_bounds.lod_culling.error >= source_max_error, "Invalid cluster group error evaluation during mesh build");
 				}
 
 				uint32 group_idx = RandomEngine::Generate<uint32>();
@@ -460,6 +460,7 @@ namespace Omni {
 		for (uint32 i = 0; i < remap_table.size(); i++)
 			remap_table[i] = i;
 
+
 		for (const auto& index : lod_indices) {
 			if (edge_vertex_map[index])
 				continue;
@@ -499,6 +500,21 @@ namespace Omni {
 		std::vector<bool> result(vertices.size() / vertex_stride, false);
 		rh::unordered_map<MeshletEdge, rh::unordered_set<uint32>> edges;
 
+		std::vector<uint32> geometry_only_indices;
+
+		// A hack to satisfity meshopt with `index_count % 3 == 0` requirement
+		uint32 ib_padding = 3 - (indices.size() % 3);
+		indices.resize(indices.size() + ib_padding);
+		MeshPreprocessor mesh_preprocessor = {};
+		mesh_preprocessor.GenerateShadowIndexBuffer(
+			&geometry_only_indices,
+			&indices,
+			&vertices,
+			12,
+			vertex_stride
+		);
+		indices.resize(indices.size() - ib_padding);
+
 		// for each meshlet
 		for (const auto& meshletIndex : current_meshlets) {
 			const auto& meshlet = meshlets[meshletIndex];
@@ -509,8 +525,8 @@ namespace Omni {
 				// for each edge of the triangle
 				for (uint32 i = 0; i < 3; i++) {
 					MeshletEdge edge(
-						indices[local_indices[(i + triangleIndex * 3) + meshlet.triangle_offset] + meshlet.vertex_offset],
-						indices[local_indices[(((i + 1) % 3) + triangleIndex * 3) + meshlet.triangle_offset] + meshlet.vertex_offset]
+						geometry_only_indices[local_indices[(i + triangleIndex * 3) + meshlet.triangle_offset] + meshlet.vertex_offset],
+						geometry_only_indices[local_indices[(((i + 1) % 3) + triangleIndex * 3) + meshlet.triangle_offset] + meshlet.vertex_offset]
 					);
 					if (edge.first != edge.second) {
 						edges[edge].emplace(meshletIndex);
@@ -520,7 +536,7 @@ namespace Omni {
 		}
 
 		for (const auto& [edge, meshlets] : edges) {
-			if (meshlets.size() > 1) {
+			if (meshlets.size() == 1) {
 				result[edge.first] = true;
 				result[edge.second] = true;
 			}
