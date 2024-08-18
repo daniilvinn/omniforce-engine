@@ -134,7 +134,7 @@ public:
 					const MeshComponent& mesh_component = entity.GetComponent<MeshComponent>();
 
 					Shared<Mesh> mesh = AssetManager::Get()->GetAsset<Mesh>(mesh_component.mesh_handle);
-					Sphere bounding_sphere = mesh->GetBoundingSphere(0);
+					Sphere bounding_sphere = mesh->GetBoundingSphere();
 					AABB aabb = mesh->GetAABB();
 
 					float32 max_scale = glm::max(glm::max(trs.scale.x, trs.scale.y), trs.scale.z);

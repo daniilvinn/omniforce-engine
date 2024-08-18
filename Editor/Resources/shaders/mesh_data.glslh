@@ -3,7 +3,6 @@
 
 #include "sphere.glslh"
 #include "AABB.glslh"
-#include "constants.glslh"
 #include "bitstream.glslh"
 
 #extension GL_EXT_shader_explicit_arithmetic_types_int8     : require
@@ -68,7 +67,8 @@ layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Mes
     MeshletLODCullData lod_culling;
 };
 
-struct MeshLOD {
+layout(buffer_reference, scalar, buffer_reference_align = 4) buffer MeshData {
+    float lod_distance_multiplier;
     Sphere bounding_sphere;
     uint meshlet_count;
     int quantization_grid_size;
@@ -77,11 +77,6 @@ struct MeshLOD {
     MeshMeshletsData meshlets_data;
     MeshMicroindices micro_indices;
     MeshletCullBounds meshlets_cull_bounds;
-};
-
-layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer MeshData {
-    float lod_distance_multiplier;
-    MeshLOD lods[OMNI_MAX_MESH_LOD_COUNT];
 };
 
 #endif

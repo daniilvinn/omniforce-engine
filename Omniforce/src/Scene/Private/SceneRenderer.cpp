@@ -575,16 +575,14 @@ namespace Omni {
 	{
 		DeviceMeshData mesh_data = {};
 		mesh_data.lod_distance_multiplier = 1.0f;
-		for (int32 i = 0; i < mesh->GetLODCount(); i++) {
-			mesh_data.lods[i].bounding_sphere = mesh->GetBoundingSphere(i);
-			mesh_data.lods[i].meshlet_count = mesh->GetMeshletCount(i);
-			mesh_data.lods[i].quantization_grid_size = mesh->GetQuantizationGridSize(i);
-			mesh_data.lods[i].geometry_bda = mesh->GetBuffer(i, MeshBufferKey::GEOMETRY)->GetDeviceAddress();
-			mesh_data.lods[i].attributes_bda = mesh->GetBuffer(i, MeshBufferKey::ATTRIBUTES)->GetDeviceAddress();
-			mesh_data.lods[i].meshlets_bda = mesh->GetBuffer(i, MeshBufferKey::MESHLETS)->GetDeviceAddress();
-			mesh_data.lods[i].micro_indices_bda = mesh->GetBuffer(i, MeshBufferKey::MICRO_INDICES)->GetDeviceAddress();
-			mesh_data.lods[i].meshlets_cull_data_bda = mesh->GetBuffer(i, MeshBufferKey::MESHLETS_CULL_DATA)->GetDeviceAddress();
-		}
+		mesh_data.bounding_sphere = mesh->GetBoundingSphere();
+		mesh_data.meshlet_count = mesh->GetMeshletCount();
+		mesh_data.quantization_grid_size = mesh->GetQuantizationGridSize();
+		mesh_data.geometry_bda = mesh->GetBuffer(MeshBufferKey::GEOMETRY)->GetDeviceAddress();
+		mesh_data.attributes_bda = mesh->GetBuffer(MeshBufferKey::ATTRIBUTES)->GetDeviceAddress();
+		mesh_data.meshlets_bda = mesh->GetBuffer(MeshBufferKey::MESHLETS)->GetDeviceAddress();
+		mesh_data.micro_indices_bda = mesh->GetBuffer(MeshBufferKey::MICRO_INDICES)->GetDeviceAddress();
+		mesh_data.meshlets_cull_data_bda = mesh->GetBuffer(MeshBufferKey::MESHLETS_CULL_DATA)->GetDeviceAddress();
 
 		return m_MeshResourcesBuffer.Allocate(mesh->Handle, mesh_data);
 	}

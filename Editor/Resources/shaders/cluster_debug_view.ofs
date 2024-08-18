@@ -34,8 +34,7 @@ void main()
 	RenderObjectData render_object_data = pc.render_objects_data[gl_DrawID];
 
 	Transform transform = render_object_data.transform;
-	MeshData root_mesh_data = pc.mesh_data[render_object_data.geometry_data_id];
-	MeshLOD mesh_data = root_mesh_data.lods[render_object_data.lod];
+	MeshData mesh_data = pc.mesh_data[render_object_data.geometry_data_id];
 
 	if(gl_GlobalInvocationID.x >= mesh_data.meshlet_count) { // check if we are out of bounds
 		return;
@@ -103,8 +102,7 @@ void main()
 {
 	RenderObjectData render_object_data = pc.render_objects_data[gl_DrawID];
 
-	MeshData root_mesh_data = pc.mesh_data[render_object_data.geometry_data_id];
-	MeshLOD mesh_data = root_mesh_data.lods[render_object_data.lod];
+	MeshData mesh_data = pc.mesh_data[render_object_data.geometry_data_id];
 
 	Transform transform = render_object_data.transform;
 	vec4 rotation_quaternion = vec4(unpackSnorm2x16(transform.packed_rotation[0]), unpackSnorm2x16(transform.packed_rotation[1]));
