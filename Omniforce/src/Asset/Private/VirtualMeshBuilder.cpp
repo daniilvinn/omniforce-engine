@@ -524,8 +524,8 @@ namespace Omni {
 				// for each edge of the triangle
 				for (uint32 i = 0; i < 3; i++) {
 					MeshletEdge edge(
-						geometry_only_indices[indices[local_indices[(i + triangleIndex * 3) + meshlet.triangle_offset] + meshlet.vertex_offset]],
-						geometry_only_indices[indices[local_indices[(((i + 1) % 3) + triangleIndex * 3) + meshlet.triangle_offset] + meshlet.vertex_offset]]
+						geometry_only_indices[local_indices[(i + triangleIndex * 3) + meshlet.triangle_offset] + meshlet.vertex_offset],
+						geometry_only_indices[local_indices[(((i + 1) % 3) + triangleIndex * 3) + meshlet.triangle_offset] + meshlet.vertex_offset]
 					);
 					if (edge.first != edge.second) {
 						edges[edge].emplace(meshletIndex);
@@ -535,7 +535,7 @@ namespace Omni {
 		}
 
 		for (const auto& [edge, meshlets] : edges) {
-			if (meshlets.size() == 1) {
+			if (meshlets.size() > 1) {
 				result[edge.first] = true;
 				result[edge.second] = true;
 			}
