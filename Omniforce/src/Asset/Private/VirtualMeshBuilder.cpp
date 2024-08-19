@@ -518,7 +518,7 @@ namespace Omni {
 		for (const auto& meshletIndex : current_meshlets) {
 			const auto& meshlet = meshlets[meshletIndex];
 
-			const uint32 triangleCount = meshlet.metadata.triangle_count / 3;
+			const uint32 triangleCount = meshlet.metadata.triangle_count;
 			// for each triangle of the meshlet
 			for (uint32 triangleIndex = 0; triangleIndex < triangleCount; triangleIndex++) {
 				// for each edge of the triangle
