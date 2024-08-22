@@ -44,7 +44,13 @@ namespace Omni {
 		for (uint32 i = 0; i < previous_lod_meshlets.size(); i++)
 			previous_lod_meshlets[i] = i;
 
+		OMNIFORCE_CORE_INFO("Virtual mesh generation started. Max LOD count: {}", max_lod);
+
+
 		while (lod_idx < max_lod) {
+			LODGenerationPassStatistics stats = {};
+			stats.input_meshlet_count = previous_lod_meshlets.size();
+
 			float32 t_lod = float32(lod_idx) / (float32)max_lod;
 			float32 min_vertex_distance = (t_lod * 0.1f + (1.0f - t_lod) * 0.01f) * simplify_scale;
 
@@ -53,6 +59,7 @@ namespace Omni {
 			// 3. Generate welded remap table
 			// 4. Clear index array of current meshlets, so next meshlets can properly fill new data
 			std::vector<bool> edge_vertices_map = GenerateEdgeMap(meshlets_data->meshlets, previous_lod_meshlets, vertices, meshlets_data->indices, meshlets_data->local_indices, vertex_stride);
+
 
 			// Evaluate unique indices to be welded
 			rh::unordered_flat_set<uint32> unique_indices;
@@ -73,14 +80,17 @@ namespace Omni {
 			for (auto& index : unique_indices)
 				vertices_to_weld.push_back({ *(glm::vec3*)&vertices[index * vertex_stride], index });
 
+			stats.input_vertex_count = vertices_to_weld.size();
+
 			KDTree kd_tree;
 			kd_tree.BuildFromPointSet(vertices_to_weld);
 
 			// Weld close enough vertices together
-			std::vector<uint32> welder_remap_table = GenerateVertexWelderRemapTable(vertices, vertex_stride, kd_tree, unique_indices, edge_vertices_map, min_vertex_distance);
+			std::vector<uint32> welder_remap_table = GenerateVertexWelderRemapTable(vertices, vertex_stride, kd_tree, unique_indices, edge_vertices_map, min_vertex_distance, stats);
 
 			// Generate meshlet groups
 			auto groups = GroupMeshClusters(meshlets_data->meshlets, previous_lod_meshlets, welder_remap_table, meshlets_data->indices, meshlets_data->local_indices, vertices, vertex_stride);
+			stats.group_count = groups.size();
 
 			// Remove empty groups
 			std::erase_if(groups, [](const auto& group) {
@@ -145,11 +155,12 @@ namespace Omni {
 
 					// Failed to generate LOD for a given group. Re register meshlets and skip the group
 					if (simplification_rate >= 1.0f && (simplified_indices.size() == merged_indices.size())) {
-						OMNIFORCE_CORE_WARNING("Failed to generate LOD, registering source clusters");
 
 						lod_generation_failed = true;
 						for (const auto& meshlet_idx : group)
 							previous_lod_meshlets.push_back(meshlet_idx);
+
+						stats.group_simplification_failure_count++;
 
 						break;
 					}
@@ -194,6 +205,7 @@ namespace Omni {
 					bounds.lod_culling.sphere = simplified_group_bounding_sphere;
 				}
 
+				// Sanity check
 				for (const auto& simplified_bounds : simplified_meshlets->cull_bounds) {
 					float32 source_max_error = 0.0f;
 					for (const auto& source_meshlet_index : group) {
@@ -202,26 +214,38 @@ namespace Omni {
 					OMNIFORCE_ASSERT_TAGGED(simplified_bounds.lod_culling.error >= source_max_error, "Invalid cluster group error evaluation during mesh build");
 				}
 
-				uint32 group_idx = RandomEngine::Generate<uint32>();
+				// Patch data
 				num_newly_created_meshlets += simplified_meshlets->meshlets.size();
 				for (auto& meshlet : simplified_meshlets->meshlets) {
 					meshlet.vertex_offset += meshlets_data->indices.size();
 					meshlet.triangle_offset += meshlets_data->local_indices.size();
 				}
+
+				// Register new meshlets for next LOD generation pass
 				for (uint32 i = 0; i < simplified_meshlets->meshlets.size(); i++)
 					previous_lod_meshlets.push_back(meshlets_data->meshlets.size() + i);
 
+				// Push group's to buffers
 				meshlets_data->meshlets.insert(meshlets_data->meshlets.end(), simplified_meshlets->meshlets.begin(), simplified_meshlets->meshlets.end());
 				meshlets_data->indices.insert(meshlets_data->indices.end(), simplified_meshlets->indices.begin(), simplified_meshlets->indices.end());
 				meshlets_data->local_indices.insert(meshlets_data->local_indices.end(), simplified_meshlets->local_indices.begin(), simplified_meshlets->local_indices.end());
 				meshlets_data->cull_bounds.insert(meshlets_data->cull_bounds.end(), simplified_meshlets->cull_bounds.begin(), simplified_meshlets->cull_bounds.end());
 
+				// Update statistics
+				stats.output_meshlet_count += simplified_meshlets->meshlets.size();
 			}
 
 			if (num_newly_created_meshlets == 1)
 				break;
 
-			OMNIFORCE_CORE_TRACE("Generated LOD_{}", lod_idx);
+			OMNIFORCE_CORE_TRACE("Virtual mesh generation pass #{} finished. Statistics:", lod_idx);
+			OMNIFORCE_CORE_TRACE("\tInput meshlet count: {}", stats.input_meshlet_count);
+			OMNIFORCE_CORE_TRACE("\tOutput meshlet count: {}", stats.output_meshlet_count);
+			OMNIFORCE_CORE_TRACE("\tGroup count: {}", stats.group_count);
+			OMNIFORCE_CORE_TRACE("\tInput vertex count: {}", stats.input_vertex_count);
+			OMNIFORCE_CORE_TRACE("\tWelded vertex count: {}", stats.welded_vertex_count);
+			OMNIFORCE_CORE_TRACE("\tLocked vertex count: {}", stats.locked_vertex_count);
+			OMNIFORCE_CORE_TRACE("\tGroup simplification failure count: {}", stats.group_simplification_failure_count);
 			lod_idx++;
 		}
 
@@ -422,7 +446,7 @@ namespace Omni {
 
 	// TODO: take UVs into account
 	// Assumes that positions are encoded in first 12 bytes of vertices
-	std::vector<Omni::uint32> VirtualMeshBuilder::GenerateVertexWelderRemapTable(const std::vector<byte>& vertices, uint32 vertex_stride, const KDTree& kd_tree, const rh::unordered_flat_set<uint32>& lod_indices, const std::vector<bool>& edge_vertex_map, float32 min_vertex_distance)
+	std::vector<Omni::uint32> VirtualMeshBuilder::GenerateVertexWelderRemapTable(const std::vector<byte>& vertices, uint32 vertex_stride, const KDTree& kd_tree, const rh::unordered_flat_set<uint32>& lod_indices, const std::vector<bool>& edge_vertex_map, float32 min_vertex_distance, LODGenerationPassStatistics& stats)
 	{
 		std::vector<uint32> remap_table(vertices.size() / vertex_stride);
 
@@ -431,8 +455,10 @@ namespace Omni {
 			remap_table[i] = i;
 
 		for (const auto& index : lod_indices) {
-			if (edge_vertex_map[index])
+			if (edge_vertex_map[index]) {
+				stats.locked_vertex_count++;
 				continue;
+			}
 
 			float32 min_distance_sq = min_vertex_distance * min_vertex_distance;
 			const glm::vec3 current_vertex = Utils::FetchVertexFromBuffer(vertices, index, vertex_stride);
@@ -452,6 +478,10 @@ namespace Omni {
 
 			OMNIFORCE_ASSERT(lod_indices.contains(remap_table[replacement]));
 			remap_table[index] = remap_table[replacement];
+
+			// If a vertex was welded with itself, we don't recognize it as "vertex was welded"
+			if(neighbour_indices.size())
+				stats.welded_vertex_count++;
 		}
 
 		return remap_table;

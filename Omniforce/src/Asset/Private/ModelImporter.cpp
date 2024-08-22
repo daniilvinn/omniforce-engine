@@ -40,7 +40,7 @@ namespace Omni {
 	{
 		// Setup timer
 		Timer timer;
-		OMNIFORCE_CORE_TRACE("Importing model \"{}\"...", path.string());
+		OMNIFORCE_CORE_INFO("Importing model \"{}\"...", path.string());
 
 		// Init global data
 		ftf::Asset ftf_asset;
