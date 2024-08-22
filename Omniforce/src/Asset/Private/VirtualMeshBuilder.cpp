@@ -34,14 +34,15 @@ namespace Omni {
 		uint32 lod_idx = 1; // initialized with 1 because we already have LOD 0 (source mesh)
 		float32 simplify_scale = meshopt_simplifyScale((float32*)vertices.data(), vertices.size() / vertex_stride, vertex_stride);
 		// Compute max lod count. I expect each lod level to have 2 times less indices than
-		// previous level. Added 2 if some levels won't be able to half index count
-		const uint32 max_lod = glm::ceil(glm::log2(float32(indices.size())));
-		//const uint32 max_lod = 5;
+		// previous level. Removed 5 levels because a single meshlet can hold up to 2^7 triangles + 2 lods
+		// in case if some group won't be able to half the index count. Clamped for convenience.
+		// So if a `max_lod` is X, it's value is:
+		// x = ceil(log2(c)) - 5 + 2, where `c` is index count of source mesh
+		const uint32 max_lod = glm::clamp((uint32)glm::ceil(glm::log2(float32(indices.size()))) - 5, 1u, 25u);
 
-		std::vector<uint32> previous_lod_indices = indices;
-		std::vector<uint32> current_meshlets(meshlets_data->meshlets.size());
-		for (uint32 i = 0; i < current_meshlets.size(); i++)
-			current_meshlets[i] = i;
+		std::vector<uint32> previous_lod_meshlets(meshlets_data->meshlets.size());
+		for (uint32 i = 0; i < previous_lod_meshlets.size(); i++)
+			previous_lod_meshlets[i] = i;
 
 		while (lod_idx < max_lod) {
 			float32 t_lod = float32(lod_idx) / (float32)max_lod;
@@ -51,13 +52,20 @@ namespace Omni {
 			// 2. Compute average vertex distance for current source meshlets
 			// 3. Generate welded remap table
 			// 4. Clear index array of current meshlets, so next meshlets can properly fill new data
-			std::vector<bool> edge_vertices_map = GenerateEdgeMap(meshlets_data->meshlets, current_meshlets, vertices, meshlets_data->indices, meshlets_data->local_indices, vertex_stride);
-			float32 average_vertex_distance_sq = ComputeAverageVertexDistanceSquared(vertices, previous_lod_indices, vertex_stride);
+			std::vector<bool> edge_vertices_map = GenerateEdgeMap(meshlets_data->meshlets, previous_lod_meshlets, vertices, meshlets_data->indices, meshlets_data->local_indices, vertex_stride);
 
 			// Evaluate unique indices to be welded
 			rh::unordered_flat_set<uint32> unique_indices;
-			for (auto& index : previous_lod_indices)
-				unique_indices.emplace(index);
+			
+			// Fetch vertices to be welded. We can only use those vertices which are used in previous LOD level
+			for (auto& meshlet_idx : previous_lod_meshlets) {
+				RenderableMeshlet& meshlet = meshlets_data->meshlets[meshlet_idx];
+
+				// Fetch index data
+				for (uint32 index_idx = 0; index_idx < meshlet.metadata.triangle_count * 3; index_idx++) {
+					unique_indices.emplace(meshlets_data->indices[meshlet.vertex_offset + meshlets_data->local_indices[meshlet.triangle_offset + index_idx]]);
+				}
+			}
 
 			std::vector<std::pair<glm::vec3, uint32>> vertices_to_weld;
 			vertices_to_weld.reserve(unique_indices.size());
@@ -70,10 +78,9 @@ namespace Omni {
 
 			// Weld close enough vertices together
 			std::vector<uint32> welder_remap_table = GenerateVertexWelderRemapTable(vertices, vertex_stride, kd_tree, unique_indices, edge_vertices_map, min_vertex_distance);
-			previous_lod_indices.clear();
 
 			// Generate meshlet groups
-			auto groups = GroupMeshClusters(meshlets_data->meshlets, current_meshlets, welder_remap_table, meshlets_data->indices, meshlets_data->local_indices, vertices, vertex_stride);
+			auto groups = GroupMeshClusters(meshlets_data->meshlets, previous_lod_meshlets, welder_remap_table, meshlets_data->indices, meshlets_data->local_indices, vertices, vertex_stride);
 
 			// Remove empty groups
 			std::erase_if(groups, [](const auto& group) {
@@ -81,7 +88,7 @@ namespace Omni {
 			});
 
 			// Clear current meshlets indices, so we can register new ones
-			current_meshlets.clear();
+			previous_lod_meshlets.clear();
 
 			// Process groups, also detect edges for next LOD generation pass
 			uint32 num_newly_created_meshlets = 0;
@@ -120,7 +127,6 @@ namespace Omni {
 				// Skip if no indices after merging (maybe all triangles are degenerate?)
 				if (merged_indices.size() == 0)
 					continue;
-				previous_lod_indices.insert(previous_lod_indices.end(), merged_indices.begin(), merged_indices.end());
 
 				// Setup simplification parameters
 				float32 target_error = 0.9f * t_lod + 0.01f * (1 - t_lod);
@@ -143,7 +149,7 @@ namespace Omni {
 
 						lod_generation_failed = true;
 						for (const auto& meshlet_idx : group)
-							current_meshlets.push_back(meshlet_idx);
+							previous_lod_meshlets.push_back(meshlet_idx);
 
 						break;
 					}
@@ -203,7 +209,7 @@ namespace Omni {
 					meshlet.triangle_offset += meshlets_data->local_indices.size();
 				}
 				for (uint32 i = 0; i < simplified_meshlets->meshlets.size(); i++)
-					current_meshlets.push_back(meshlets_data->meshlets.size() + i);
+					previous_lod_meshlets.push_back(meshlets_data->meshlets.size() + i);
 
 				meshlets_data->meshlets.insert(meshlets_data->meshlets.end(), simplified_meshlets->meshlets.begin(), simplified_meshlets->meshlets.end());
 				meshlets_data->indices.insert(meshlets_data->indices.end(), simplified_meshlets->indices.begin(), simplified_meshlets->indices.end());
