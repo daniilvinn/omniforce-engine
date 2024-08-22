@@ -41,8 +41,6 @@ namespace Omni {
 			uint32 vertex_stride
 		);
 
-		// Average squared vertex distance, used for vertex welding
-		float32 ComputeAverageVertexDistanceSquared(const std::vector<byte> vertices, const std::vector<uint32>& indices, uint32 vertex_stride);
 		// Finds edge vertices so they are not involved in welding
 		std::vector<bool> GenerateEdgeMap(std::span<RenderableMeshlet> meshlets, const std::span<uint32> current_meshlets, const std::vector<byte>& vertices, std::vector<uint32>& indices, const std::vector<uint8>& local_indices, uint32 vertex_stride);
 		// Performs vertex welding

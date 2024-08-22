@@ -420,42 +420,6 @@ namespace Omni {
 
 	}
 
-	float32 VirtualMeshBuilder::ComputeAverageVertexDistanceSquared(const std::vector<byte> vertices, const std::vector<uint32>& indices, uint32 vertex_stride)
-	{
-		// Law of large numbers:
-		// In probability theory, the law of large numbers (LLN) is a mathematical theorem that 
-		// states that the average of the results obtained from a large number of independent 
-		// and identical random samples converges to the true value, if it exists.
-
-		// Sample 1024 random triangles and compute distance between its vertices. Dramatically speeds up vertex density computation for high-fidelity meshes
-		// with large vertex and index counts
-		OMNIFORCE_ASSERT_TAGGED(indices.size(), "No indices was provided");
-		OMNIFORCE_ASSERT_TAGGED(vertices.size(), "No vertex data was provided");
-
-		const uint32 NUM_SAMPLES = 1024;
-		const uint32 triangle_count = indices.size() / 3;
-
-		float64 average_distance_sq = 0.0f;
-
-		for (uint32 i = 0; i < NUM_SAMPLES; i++) {
-			uint32 triangle_sample_id = RandomEngine::Generate<uint32>(0, triangle_count - 1);
-			uint32 i0 = indices[triangle_sample_id + 0];
-			uint32 i1 = indices[triangle_sample_id + 1];
-			uint32 i2 = indices[triangle_sample_id + 2];
-
-			glm::vec3* v0, * v1, * v2;
-			v0 = (glm::vec3*)&vertices[i0 * vertex_stride];
-			v1 = (glm::vec3*)&vertices[i1 * vertex_stride];
-			v2 = (glm::vec3*)&vertices[i2 * vertex_stride];
-
-			average_distance_sq += glm::distance2(*v0, *v1);
-			average_distance_sq += glm::distance2(*v1, *v2);
-			average_distance_sq += glm::distance2(*v0, *v2);
-		}
-
-		return average_distance_sq / (NUM_SAMPLES * 3);
-	}
-
 	// TODO: take UVs into account
 	// Assumes that positions are encoded in first 12 bytes of vertices
 	std::vector<Omni::uint32> VirtualMeshBuilder::GenerateVertexWelderRemapTable(const std::vector<byte>& vertices, uint32 vertex_stride, const KDTree& kd_tree, const rh::unordered_flat_set<uint32>& lod_indices, const std::vector<bool>& edge_vertex_map, float32 min_vertex_distance)
