@@ -38,7 +38,7 @@ bool TestMeshletLOD(MeshletLODCullData lod_culling_data, CameraData camera_data,
     parent_projected_bounding_sphere = TransformSphere(parent_projected_bounding_sphere, render_object.transform, camera_data.view);
     const float parent_result_error = ProjectMeshletError(parent_projected_bounding_sphere, camera_data, half_fov_cot);
 
-    return result_error <= 15.0f && parent_result_error > 15.0f;
+    return result_error <= 1.0f && parent_result_error > 1.0f;
 }
 
 #endif
