@@ -467,7 +467,7 @@ namespace Omni {
 
 			uint32 replacement = index;
 			for (const auto& neighbour : neighbour_indices) {
-				const glm::vec3 neighbour_vertex = Utils::FetchVertexFromBuffer(vertices, neighbour, vertex_stride);
+				const glm::vec3 neighbour_vertex = Utils::FetchVertexFromBuffer(vertices, remap_table[neighbour], vertex_stride);
 
 				const float32 vertex_distance_squared = glm::distance2(current_vertex, neighbour_vertex);
 				if (vertex_distance_squared < min_distance_sq) {
@@ -515,20 +515,20 @@ namespace Omni {
 		indices.resize(indices.size() - ib_padding);
 		
 		// for each meshlet
-		for (const auto& meshletIndex : current_meshlets) {
-			const auto& meshlet = meshlets[meshletIndex];
+		for (const auto& meshlet_idx : current_meshlets) {
+			const auto& meshlet = meshlets[meshlet_idx];
 
-			const uint32 triangleCount = meshlet.metadata.triangle_count;
-			// for each triangle of the meshlet
-			for (uint32 triangleIndex = 0; triangleIndex < triangleCount; triangleIndex++) {
-				// for each edge of the triangle
+			const uint32 triangle_count = meshlet.metadata.triangle_count;
+			
+			for (uint32 triangle_idx = 0; triangle_idx < triangle_count; triangle_idx++) {
+				
 				for (uint32 i = 0; i < 3; i++) {
 					MeshletEdge edge(
-						geometry_only_indices[local_indices[(i + triangleIndex * 3) + meshlet.triangle_offset] + meshlet.vertex_offset],
-						geometry_only_indices[local_indices[(((i + 1) % 3) + triangleIndex * 3) + meshlet.triangle_offset] + meshlet.vertex_offset]
+						geometry_only_indices[local_indices[(i + triangle_idx * 3) + meshlet.triangle_offset] + meshlet.vertex_offset],
+						geometry_only_indices[local_indices[(((i + 1) % 3) + triangle_idx * 3) + meshlet.triangle_offset] + meshlet.vertex_offset]
 					);
 					if (edge.first != edge.second) {
-						edges[edge].emplace(meshletIndex);
+						edges[edge].emplace(meshlet_idx);
 					}
 				}
 			}
