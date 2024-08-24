@@ -7,7 +7,7 @@
 #include "render_object.glslh"
 
 float ProjectMeshletError(Sphere sphere, CameraData camera_data, float half_fov_cot) {
-    // Early out in case of infinite erro
+    // Early out in case of infinite error
     if(isinf(sphere.radius))
         return sphere.radius;
 
@@ -38,6 +38,7 @@ bool TestMeshletLOD(MeshletLODCullData lod_culling_data, CameraData camera_data,
     parent_projected_bounding_sphere = TransformSphere(parent_projected_bounding_sphere, render_object.transform, camera_data.view);
     const float parent_result_error = ProjectMeshletError(parent_projected_bounding_sphere, camera_data, half_fov_cot);
 
+    // Perform a LOD test. If error (in pixels) of current meshlet is small enough AND parent error is too big, we render this group
     return result_error <= 1.0f && parent_result_error > 1.0f;
 }
 
