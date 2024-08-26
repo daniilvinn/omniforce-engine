@@ -395,7 +395,7 @@ namespace Omni {
 			compute_pc.data = (byte*)compute_push_constants_data;
 			compute_pc.size = sizeof IndirectFrustumCullPassPushContants;
 
-			uint32 num_work_groups = (m_HostRenderQueue[device_render_queue.first].size() + 31) / 32;
+			uint32 num_work_groups = (m_HostRenderQueue[device_render_queue.first].size() + 255) / 256;
 			Renderer::DispatchCompute(m_IndirectFrustumCullPipeline, { num_work_groups, 1, 1 }, compute_pc);
 
 			PipelineResourceBarrierInfo indirect_params_barrier = {};
