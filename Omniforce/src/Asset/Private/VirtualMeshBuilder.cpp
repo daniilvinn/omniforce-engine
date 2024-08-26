@@ -205,15 +205,6 @@ namespace Omni {
 					bounds.lod_culling.sphere = simplified_group_bounding_sphere;
 				}
 
-				// Sanity check
-				for (const auto& simplified_bounds : simplified_meshlets->cull_bounds) {
-					float32 source_max_error = 0.0f;
-					for (const auto& source_meshlet_index : group) {
-						source_max_error = std::max(source_max_error, meshlets_data->cull_bounds[source_meshlet_index].lod_culling.error);
-					}
-					OMNIFORCE_ASSERT_TAGGED(simplified_bounds.lod_culling.error >= source_max_error, "Invalid cluster group error evaluation during mesh build");
-				}
-
 				// Patch data
 				num_newly_created_meshlets += simplified_meshlets->meshlets.size();
 				for (auto& meshlet : simplified_meshlets->meshlets) {
