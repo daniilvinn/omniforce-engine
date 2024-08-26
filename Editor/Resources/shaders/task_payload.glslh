@@ -5,7 +5,7 @@
 
 struct TaskPayload {
 	uint base_offset;
-	uint8_t meshlet_ids[32];
+	uint8_t meshlet_ids[128];
 };
 
 taskPayloadSharedEXT TaskPayload task_payload;

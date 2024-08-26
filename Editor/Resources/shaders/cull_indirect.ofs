@@ -60,7 +60,7 @@ void main() {
         pc.culled_objects[index].geometry_data_id = object.geometry_data_id;
         pc.culled_objects[index].material_bda = object.material_bda;
 
-        uint meshlet_count = (mesh_data.meshlet_count + 31) / 32;
+        uint meshlet_count = (mesh_data.meshlet_count + 127) / 128;
         pc.output_buffer.draw_params[index] = uvec3(meshlet_count, 1, 1);
     }
 }

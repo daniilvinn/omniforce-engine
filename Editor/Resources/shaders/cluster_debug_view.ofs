@@ -15,7 +15,7 @@
 #include "frustum.glslh"
 #include "virtual_geometry_utils.glslh"
 
-layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
 
 shared uint s_actual_num_meshlets;
 
@@ -60,9 +60,12 @@ void main()
 	if(TestMeshletLOD(cull_bounds.lod_culling, pc.camera_data, render_object_data)) {
 		if((dot(normalize(cone_apex - pc.camera_data.position), cone_axis) < float(cull_bounds.cone_cutoff) * CONE_DECODE_CONSTANT) && FrustumTestBoundingSphere(pc.camera_data.frustum, bounding_sphere)) {
 			uint id_index = atomicAdd(s_actual_num_meshlets, 1);
-			task_payload.meshlet_ids[id_index] = uint8_t(gl_GlobalInvocationID.x & 0x1F);
+			task_payload.meshlet_ids[id_index] = gl_GlobalInvocationID.x & (gl_WorkGroupSize.x - 1);
 		}
 	}
+
+	// Synchronize access to `s_actual_num_meshlets`
+	barrier();
 
 	// Emit mesh work groups
 	if(lid == 0 && s_actual_num_meshlets != 0) {
