@@ -219,12 +219,46 @@ namespace Omni {
 
 	uint32 VulkanRenderer::GetDeviceMinimalUniformBufferAlignment() const
 	{
-		return m_Device->GetPhysicalDevice()->GetProps().limits.minUniformBufferOffsetAlignment;
+		return m_Device->GetPhysicalDevice()->GetProperties().properties.limits.minUniformBufferOffsetAlignment;
 	}
 
 	uint32 VulkanRenderer::GetDeviceMinimalStorageBufferAlignment() const
 	{
-		return m_Device->GetPhysicalDevice()->GetProps().limits.minStorageBufferOffsetAlignment;
+		return m_Device->GetPhysicalDevice()->GetProperties().properties.limits.minStorageBufferOffsetAlignment;
+	}
+
+	uint32 VulkanRenderer::GetDeviceOptimalTaskWorkGroupSize() const
+	{
+		void* node = m_Device->GetPhysicalDevice()->GetProperties().pNext;
+		VkStructureType type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT;
+		while (node != nullptr) {
+			if (memcmp(node, &type, sizeof VkStructureType) == 0) {
+				return ((VkPhysicalDeviceMeshShaderPropertiesEXT*)node)->maxPreferredTaskWorkGroupInvocations;
+			}
+
+			intptr_t offset_ptr = ((intptr_t)node + 4); // offsetting to pNext
+			node = (void*)offset_ptr;
+		}
+
+		OMNIFORCE_ASSERT_TAGGED(false, "Failed to find VkPhysicalDeviceMeshShaderPropertiesEXT structure");
+		return 0;
+	}
+
+	uint32 VulkanRenderer::GetDeviceOptimalMeshWorkGroupSize() const
+	{
+		void* node = m_Device->GetPhysicalDevice()->GetProperties().pNext;
+		VkStructureType type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT;
+		while (node != nullptr) {
+			if (memcmp(node, &type, sizeof VkStructureType) == 0) {
+				return ((VkPhysicalDeviceMeshShaderPropertiesEXT*)node)->maxPreferredMeshWorkGroupInvocations;
+			}
+
+			intptr_t offset_ptr = ((intptr_t)node + 4); // offsetting to pNext
+			node = (void*)offset_ptr;
+		}
+
+		OMNIFORCE_ASSERT_TAGGED(false, "Failed to find VkPhysicalDeviceMeshShaderPropertiesEXT structure");
+		return 0;
 	}
 
 	uint32 VulkanRenderer::GetDeviceOptimalComputeWorkGroupSize() const

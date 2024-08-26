@@ -65,10 +65,8 @@ namespace Omni {
 		delete[] device_scores;
 
 		m_PhysicalDevice = physical_devices[suitable_device_index];
-
-		vkGetPhysicalDeviceProperties(m_PhysicalDevice, &m_DeviceProps);
 		
-		OMNIFORCE_CORE_TRACE("Selected Vulkan device: {0}", m_DeviceProps.deviceName);
+		OMNIFORCE_CORE_TRACE("Selected Vulkan device: {0}", m_DeviceProps.properties.deviceName);
 
 		uint32 queue_family_property_count = 0;
 		vkGetPhysicalDeviceQueueFamilyProperties(m_PhysicalDevice, &queue_family_property_count, nullptr);
@@ -89,6 +87,29 @@ namespace Omni {
 		}
 		
 		m_Indices.present = m_Indices.graphics;
+
+		// Fetch and preferred work group size for mesh shading
+		VkPhysicalDeviceMeshShaderPropertiesEXT* mesh_shader_properties = new VkPhysicalDeviceMeshShaderPropertiesEXT;
+		mesh_shader_properties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT;
+
+		m_DeviceProps = {};
+		m_DeviceProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+		m_DeviceProps.pNext = &mesh_shader_properties;
+
+		vkGetPhysicalDeviceProperties2(m_PhysicalDevice, &m_DeviceProps);
+	}
+
+	VulkanPhysicalDevice::~VulkanPhysicalDevice()
+	{
+		// TODO: test this code
+		void* node = &m_DeviceProps;
+		while (node != nullptr) {
+			intptr_t offset_ptr = ((intptr_t)node + 4); // offsetting to pNext
+			void* next_node = (void*)offset_ptr;
+
+			delete node;
+			node = next_node;
+		}
 	}
 
 	std::vector<VkPhysicalDevice> VulkanPhysicalDevice::List(VulkanGraphicsContext* ctx)
