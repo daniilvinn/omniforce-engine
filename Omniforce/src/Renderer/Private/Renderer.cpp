@@ -20,7 +20,6 @@ namespace Omni {
 	{
 		s_RendererAPI = new VulkanRenderer(config);
 		ShaderLibrary::Init();
-
 	}
 
 	void Renderer::Shutdown()
@@ -132,6 +131,16 @@ namespace Omni {
 	uint32 Renderer::GetDeviceMinimalStorageBufferOffsetAlignment()
 	{
 		return s_RendererAPI->GetDeviceMinimalStorageBufferAlignment();
+	}
+
+	uint32 Renderer::GetDeviceOptimalTaskWorkGroupSize()
+	{
+		return s_RendererAPI->GetDeviceOptimalTaskWorkGroupSize();
+	}
+
+	uint32 Renderer::GetDeviceOptimalMeshWorkGroupSize()
+	{
+		return s_RendererAPI->GetDeviceOptimalMeshWorkGroupSize();
 	}
 
 	uint32 Renderer::GetDeviceOptimalComputeWorkGroupSize()

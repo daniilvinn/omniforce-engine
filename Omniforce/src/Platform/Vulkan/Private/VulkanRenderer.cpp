@@ -233,7 +233,8 @@ namespace Omni {
 		VkStructureType type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT;
 		while (node != nullptr) {
 			if (memcmp(node, &type, sizeof VkStructureType) == 0) {
-				return ((VkPhysicalDeviceMeshShaderPropertiesEXT*)node)->maxPreferredTaskWorkGroupInvocations;
+				// If allowed, use smaller work group size
+				return std::min(((VkPhysicalDeviceMeshShaderPropertiesEXT*)node)->maxPreferredTaskWorkGroupInvocations, 128u);
 			}
 
 			intptr_t offset_ptr = ((intptr_t)node + 4); // offsetting to pNext
@@ -250,7 +251,8 @@ namespace Omni {
 		VkStructureType type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT;
 		while (node != nullptr) {
 			if (memcmp(node, &type, sizeof VkStructureType) == 0) {
-				return ((VkPhysicalDeviceMeshShaderPropertiesEXT*)node)->maxPreferredMeshWorkGroupInvocations;
+				// If allowed, use smaller work group size
+				return std::min(((VkPhysicalDeviceMeshShaderPropertiesEXT*)node)->maxPreferredMeshWorkGroupInvocations, 64u);
 			}
 
 			intptr_t offset_ptr = ((intptr_t)node + 4); // offsetting to pNext
