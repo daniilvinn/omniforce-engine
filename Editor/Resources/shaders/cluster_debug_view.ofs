@@ -15,7 +15,7 @@
 #include "frustum.glslh"
 #include "virtual_geometry_utils.glslh"
 
-layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x = __OMNI_TASK_SHADER_PREFERRED_WORK_GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
 
 shared uint s_actual_num_meshlets;
 
@@ -88,7 +88,7 @@ void main()
 #include "sphere.glslh"
 #include "pcg_hash.glslh"
 
-layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x = __OMNI_MESH_SHADER_PREFERRED_WORK_GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
 layout(triangles, max_vertices = 64, max_primitives = 124) out;
 
 layout(push_constant, scalar) uniform pc_ {
