@@ -42,12 +42,15 @@ namespace Omni {
 		// x = ceil(log2(c)) - 5 + 2, where `c` is index count of source mesh
 		const uint32 max_lod = glm::clamp((uint32)glm::ceil(glm::log2(float32(indices.size()))) - 5, 1u, 25u);
 
+		// Init with source meshlets
 		std::vector<uint32> previous_lod_meshlets(meshlets_data->meshlets.size());
 		for (uint32 i = 0; i < previous_lod_meshlets.size(); i++)
 			previous_lod_meshlets[i] = i;
 
 		OMNIFORCE_CORE_INFO("Virtual mesh generation started. Max LOD count: {}", max_lod);
 
+		// Use shared mutex for parallel group processing.
+		// Acquire shared lock on reads, but a unique lock on writes so threads can concurrently read data
 		std::shared_mutex mtx;
 		
 		while (lod_idx < max_lod) {
@@ -66,7 +69,7 @@ namespace Omni {
 
 			// Evaluate unique indices to be welded
 			rh::unordered_flat_set<uint32> unique_indices;
-			
+
 			// Fetch vertices to be welded. We can only use those vertices which are used in previous LOD level
 			for (auto& meshlet_idx : previous_lod_meshlets) {
 				RenderableMeshlet& meshlet = meshlets_data->meshlets[meshlet_idx];
@@ -81,7 +84,7 @@ namespace Omni {
 			vertices_to_weld.reserve(unique_indices.size());
 
 			for (auto& index : unique_indices)
-				vertices_to_weld.push_back({ *(glm::vec3*)&vertices[index * vertex_stride], index });
+				vertices_to_weld.push_back({ Utils::FetchVertexFromBuffer(vertices, index, vertex_stride), index });
 
 			stats.input_vertex_count = vertices_to_weld.size();
 
@@ -252,9 +255,7 @@ namespace Omni {
 				stats.output_meshlet_count += simplified_meshlets->meshlets.size();
 			}
 
-			if (num_newly_created_meshlets == 1)
-				break;
-
+			// Dump pass statistics
 			OMNIFORCE_CORE_TRACE("Virtual mesh generation pass #{} finished. Statistics:", lod_idx);
 			OMNIFORCE_CORE_TRACE("\tInput meshlet count: {}", stats.input_meshlet_count);
 			OMNIFORCE_CORE_TRACE("\tOutput meshlet count: {}", stats.output_meshlet_count.load());
@@ -263,6 +264,11 @@ namespace Omni {
 			OMNIFORCE_CORE_TRACE("\tWelded vertex count: {}", stats.welded_vertex_count);
 			OMNIFORCE_CORE_TRACE("\tLocked vertex count: {}", stats.locked_vertex_count);
 			OMNIFORCE_CORE_TRACE("\tGroup simplification failure count: {}", stats.group_simplification_failure_count.load());
+
+			// If only 1 meshlet was created, finish mesh building - nothing to simplify further
+			if (num_newly_created_meshlets == 1)
+				break;
+
 			lod_idx++;
 		}
 
@@ -298,7 +304,7 @@ namespace Omni {
 
 		// meshlets represented by their index into 'meshlets'
 		std::unordered_map<MeshletEdge, std::vector<uint32>> edges_meshlets_map;
-		std::unordered_map<uint32, std::vector<MeshletEdge>> meshlets_edges_map; // probably could be a vector
+		std::unordered_map<uint32, std::vector<MeshletEdge>> meshlets_edges_map;
 		std::vector<uint32> geometry_only_indices;
 
 		// A hack to satisfity meshopt with `index_count % 3 == 0` requirement
@@ -400,17 +406,17 @@ namespace Omni {
 
 				for (const auto& meshlet : connections) {
 					if (meshlet != meshlet_idx) {
-						auto existingEdgeIter = std::find(edge_adjacency.begin() + edge_adjacency_range_begin_iterator, edge_adjacency.end(), meshlet);
-						if (existingEdgeIter == edge_adjacency.end()) {
-							// First encounter - register connection
+						auto iterator = std::find(edge_adjacency.begin() + edge_adjacency_range_begin_iterator, edge_adjacency.end(), meshlet);
+						if (iterator == edge_adjacency.end()) {
+							// In case of first encounter, register this edge
 							edge_adjacency.emplace_back(meshlet);
 							edge_weights.emplace_back(1);
 						}
 						else {
-							// Increment connection count
-							std::ptrdiff_t pointer_distance = std::distance(edge_adjacency.begin(), existingEdgeIter);
+							// In other case, just increment edge count
+							std::ptrdiff_t pointer_distance = std::distance(edge_adjacency.begin(), iterator);
 
-							OMNIFORCE_ASSERT_TAGGED(pointer_distance >= 0, "Pointer distanceless than zero");
+							OMNIFORCE_ASSERT_TAGGED(pointer_distance >= 0, "Pointer distance is less than zero");
 							OMNIFORCE_ASSERT_TAGGED(pointer_distance < edge_weights.size(), "Edge weights and edge adjacency must have the same length");
 
 							edge_weights[pointer_distance]++;
@@ -420,12 +426,15 @@ namespace Omni {
 			}
 			x_adjacency.push_back(edge_adjacency_range_begin_iterator);
 		}
+		// Add last value
 		x_adjacency.push_back(edge_adjacency.size());
 
+		// Sanity check
 		OMNIFORCE_ASSERT_TAGGED(x_adjacency.size() == meshlet_indices.size() + 1, "unexpected count of vertices for METIS graph: invalid xadj");
 		OMNIFORCE_ASSERT_TAGGED(edge_adjacency.size() == edge_weights.size(), "Failed during METIS CSR graph generation: invalid adjncy / edgwgts");
 
-		idx_t final_cut_cost; // final cost of the cut found by METIS
+		// Launch partition
+		idx_t final_cut_cost = 0; // final cost of the cut found by METIS
 		int result = -1;
 		{
 #ifndef BLABLA
@@ -450,7 +459,7 @@ namespace Omni {
 
 		OMNIFORCE_ASSERT_TAGGED(result == METIS_OK, "Graph partitioning failed!");
 
-		// ===== Group meshlets together
+		// Fill the resulting data structure
 		std::vector<MeshClusterGroup> groups;
 		groups.resize(num_partitions);
 		for (uint32 i = 0; i < meshlet_indices.size(); i++) {
@@ -530,8 +539,7 @@ namespace Omni {
 			vertex_stride
 		);
 		indices.resize(indices.size() - ib_padding);
-		
-		// for each meshlet
+	
 		for (const auto& meshlet_idx : current_meshlets) {
 			const auto& meshlet = meshlets[meshlet_idx];
 
@@ -540,6 +548,7 @@ namespace Omni {
 			for (uint32 triangle_idx = 0; triangle_idx < triangle_count; triangle_idx++) {
 				
 				for (uint32 i = 0; i < 3; i++) {
+					// Use remap table which "eliminates" the attributes, because vertices might have different attributes (hence indices as well) but the same position - they must be locked
 					MeshletEdge edge(
 						geometry_only_indices[local_indices[(i + triangle_idx * 3) + meshlet.triangle_offset] + meshlet.vertex_offset],
 						geometry_only_indices[local_indices[(((i + 1) % 3) + triangle_idx * 3) + meshlet.triangle_offset] + meshlet.vertex_offset]
@@ -551,6 +560,7 @@ namespace Omni {
 			}
 		}
 
+		// Fill the data
 		for (const auto& [edge, meshlets] : edges) {
 			if (meshlets.size() > 1) {
 				result[edge.first] = true;
