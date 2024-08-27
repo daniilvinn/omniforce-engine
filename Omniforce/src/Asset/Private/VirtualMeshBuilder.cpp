@@ -58,7 +58,7 @@ namespace Omni {
 			stats.input_meshlet_count = previous_lod_meshlets.size();
 
 			float32 t_lod = float32(lod_idx) / (float32)max_lod;
-			float32 min_vertex_distance = (t_lod * 0.1f + (1.0f - t_lod) * 0.01f) * simplify_scale;
+			//float32 min_vertex_distance = (t_lod * 0.1f + (1.0f - t_lod) * 0.01f) * simplify_scale;
 
 			// 1. Find edge vertices (not indices)
 			// 2. Compute average vertex distance for current source meshlets
@@ -66,17 +66,27 @@ namespace Omni {
 			// 4. Clear index array of current meshlets, so next meshlets can properly fill new data
 			std::vector<bool> edge_vertices_map = GenerateEdgeMap(meshlets_data->meshlets, previous_lod_meshlets, vertices, meshlets_data->indices, meshlets_data->local_indices, vertex_stride);
 
-
 			// Evaluate unique indices to be welded
 			rh::unordered_flat_set<uint32> unique_indices;
 
 			// Fetch vertices to be welded. We can only use those vertices which are used in previous LOD level
+			// Declare a mesh surface area, used further to compute minimal distance for vertices to be welded
+			float64 total_surface_area = 0.0;
 			for (auto& meshlet_idx : previous_lod_meshlets) {
 				RenderableMeshlet& meshlet = meshlets_data->meshlets[meshlet_idx];
 
+				glm::vec3 triangle_points[3] = {};
 				// Fetch index data
 				for (uint32 index_idx = 0; index_idx < meshlet.metadata.triangle_count * 3; index_idx++) {
 					unique_indices.emplace(meshlets_data->indices[meshlet.vertex_offset + meshlets_data->local_indices[meshlet.triangle_offset + index_idx]]);
+
+					// Fetch triangle points
+					triangle_points[index_idx % 3] = Utils::FetchVertexFromBuffer(vertices, meshlets_data->indices[meshlet.vertex_offset + meshlets_data->local_indices[meshlet.triangle_offset + index_idx]], vertex_stride);
+
+					// Compute triangle area and add it to the overall mesh surface area
+					if (index_idx % 3 == 2) {
+						total_surface_area += 0.5f * glm::length(glm::cross(triangle_points[1] - triangle_points[0], triangle_points[2] - triangle_points[0]));
+					}
 				}
 			}
 
@@ -90,6 +100,9 @@ namespace Omni {
 
 			KDTree kd_tree;
 			kd_tree.BuildFromPointSet(vertices_to_weld);
+
+			// Compute average vertex density.
+			float32 min_vertex_distance = simplify_scale / ((float64)unique_indices.size() / total_surface_area);
 
 			// Weld close enough vertices together
 			std::vector<uint32> welder_remap_table = GenerateVertexWelderRemapTable(vertices, vertex_stride, kd_tree, unique_indices, edge_vertices_map, min_vertex_distance, stats);
