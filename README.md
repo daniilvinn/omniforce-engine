@@ -13,7 +13,7 @@
 * Project system
 
 ## How to build
-Build instructions can be found in `BUILD.md`<br/>
+Build instructions can be found in [BUILD.md](BUILD.md)<br/>
 The main requirements for the Omniforce engine:
 * The engine was only tested with MSVC compiler under Windows 11
 * Vulkan SDK 1.3 (was tested specifically with SDK 1.3.280)
