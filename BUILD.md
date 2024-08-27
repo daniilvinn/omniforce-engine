@@ -2,8 +2,9 @@
 ## Requirements
 * Vulkan SDK (tested on 1.3.280) installed on the machine (path to the Vulkan SDK must be added to the PATH system, in order for CMake to find the SDK). It can be downloaded from this page: https://www.lunarg.com/vulkan-sdk/
 * CMake 3.23. It can be downloaded from https://cmake.org/download/.
+* Windows 10/11. The engine currently works only on Windows.
 <br><br>
-To run the engine, **a GPU with support of Mesh Shader technology is required**: NVIDIA Turing (and newer) or AMD RDNA2 (and newer) or any other GPU which supports Mesh Shaders.
+To run the engine, **a GPU with support of mesh shader technology is required**: NVIDIA Turing (and newer) or AMD RDNA2 (and newer) or any other GPU which supports Mesh Shaders.
 <br>
 
 ## Build instructions
