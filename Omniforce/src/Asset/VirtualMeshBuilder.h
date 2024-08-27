@@ -7,6 +7,7 @@
 
 #include <span>
 #include <shared_mutex>
+#include <atomic>
 
 #include <robin_hood.h>
 
@@ -24,12 +25,12 @@ namespace Omni {
 
 	struct LODGenerationPassStatistics {
 		uint32 input_meshlet_count = 0; // input meshlet count
-		uint32 output_meshlet_count = 0; // output meshlet count
+		std::atomic<uint32> output_meshlet_count = 0; // output meshlet count
 		uint32 group_count = 0; // how many groups were generated
 		uint32 welded_vertex_count = 0; // how many vertices were welded to another vertex
 		uint32 input_vertex_count = 0; // how many vertices in the input (must equal to previous pass `output_index_count`)
 		uint32 locked_vertex_count = 0; // how many vertices were locked during welding due to edge detection
-		uint32 group_simplification_failure_count = 0; // how many groups failed to simplify
+		std::atomic<uint32> group_simplification_failure_count = 0; // how many groups failed to simplify
 	};
 
 	// Utility function for building virtual clusterized mesh

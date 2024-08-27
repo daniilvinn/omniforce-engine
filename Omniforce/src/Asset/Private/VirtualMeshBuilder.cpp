@@ -4,6 +4,7 @@
 #include <Asset/MeshPreprocessor.h>
 #include <Core/RandomNumberGenerator.h>
 #include <Core/KDTree.h>
+#include <Core/Timer.h>
 
 #include <unordered_map>
 #include <fstream>
@@ -19,6 +20,7 @@ namespace Omni {
 
 	VirtualMesh VirtualMeshBuilder::BuildClusterGraph(const std::vector<byte>& vertices, const std::vector<uint32>& indices, uint32 vertex_stride)
 	{
+		Timer timer;
 		MeshPreprocessor mesh_preprocessor = {};
 
 		// Clusterize initial mesh, basically build LOD 0
@@ -46,7 +48,8 @@ namespace Omni {
 
 		OMNIFORCE_CORE_INFO("Virtual mesh generation started. Max LOD count: {}", max_lod);
 
-
+		std::shared_mutex mtx;
+		
 		while (lod_idx < max_lod) {
 			LODGenerationPassStatistics stats = {};
 			stats.input_meshlet_count = previous_lod_meshlets.size();
@@ -103,14 +106,27 @@ namespace Omni {
 			// Process groups, also detect edges for next LOD generation pass
 			uint32 num_newly_created_meshlets = 0;
 
-			for (const auto& group : groups) {
+			// Launch parallel processing of generated groups
+			#pragma omp parallel for
+			for (int32 group_idx = 0; group_idx < groups.size(); group_idx++) {
+				const std::vector<uint32>& group = groups[group_idx];
+
 				// Merge meshlets
 				// Prepare storage
+
+				// Group-local geometry data
+				std::vector<uint32> group_to_mesh_space_vertex_remap;
+				rhumap<uint32, uint32> mesh_to_group_space_vertex_remap;
+				std::vector<byte> group_local_vbo;
+
+				// Other data
 				std::vector<uint32> merged_indices;
 				uint32 num_merged_indices = 0;
 
+				mtx.lock_shared();
 				for (auto& meshlet_idx : group)
 					num_merged_indices += meshlets_data->meshlets[meshlet_idx].metadata.triangle_count * 3;
+				mtx.unlock_shared();
 
 				merged_indices.reserve(num_merged_indices);
 
@@ -119,7 +135,9 @@ namespace Omni {
 					RenderableMeshlet& meshlet = meshlets_data->meshlets[meshlet_idx];
 					uint32 triangle_indices[3] = {};
 					for (uint32 index_idx = 0; index_idx < meshlet.metadata.triangle_count * 3; index_idx++) {
+						mtx.lock_shared();
 						triangle_indices[index_idx % 3] = welder_remap_table[meshlets_data->indices[meshlet.vertex_offset + meshlets_data->local_indices[meshlet.triangle_offset + index_idx]]];
+						mtx.unlock_shared();
 
 						if (index_idx % 3 == 2) {// last index of triangle was registered
 							bool is_triangle_degenerate = (triangle_indices[0] == triangle_indices[1] || triangle_indices[0] == triangle_indices[2] || triangle_indices[1] == triangle_indices[2]);
@@ -187,15 +205,19 @@ namespace Omni {
 
 				// Find biggest error of children clusters
 				float32 max_children_error = 0.0f;
+				mtx.lock_shared();
 				for (const auto& child_meshlet_index : group) {
 					max_children_error = std::max(meshlets_data->cull_bounds[child_meshlet_index].lod_culling.error, max_children_error);
 				}
+				mtx.unlock_shared();
 
 				mesh_space_error += max_children_error;
+				mtx.lock_shared();
 				for (const auto& child_meshlet_index : group) {
 					meshlets_data->cull_bounds[child_meshlet_index].lod_culling.parent_sphere = simplified_group_bounding_sphere;
 					meshlets_data->cull_bounds[child_meshlet_index].lod_culling.parent_error = mesh_space_error;
 				}
+				mtx.unlock_shared();
 
 				// Split back
 				Scope<ClusterizedMesh> simplified_meshlets = mesh_preprocessor.GenerateMeshlets(&vertices, &simplified_indices, vertex_stride);
@@ -204,6 +226,9 @@ namespace Omni {
 					bounds.lod_culling.error = mesh_space_error;
 					bounds.lod_culling.sphere = simplified_group_bounding_sphere;
 				}
+
+				// Acquire a unique(!!!) lock, so data patching is performed exclusively, so new meshlets acquire correct offsets within a buffer
+				mtx.lock();
 
 				// Patch data
 				num_newly_created_meshlets += simplified_meshlets->meshlets.size();
@@ -221,6 +246,7 @@ namespace Omni {
 				meshlets_data->indices.insert(meshlets_data->indices.end(), simplified_meshlets->indices.begin(), simplified_meshlets->indices.end());
 				meshlets_data->local_indices.insert(meshlets_data->local_indices.end(), simplified_meshlets->local_indices.begin(), simplified_meshlets->local_indices.end());
 				meshlets_data->cull_bounds.insert(meshlets_data->cull_bounds.end(), simplified_meshlets->cull_bounds.begin(), simplified_meshlets->cull_bounds.end());
+				mtx.unlock();
 
 				// Update statistics
 				stats.output_meshlet_count += simplified_meshlets->meshlets.size();
@@ -231,12 +257,12 @@ namespace Omni {
 
 			OMNIFORCE_CORE_TRACE("Virtual mesh generation pass #{} finished. Statistics:", lod_idx);
 			OMNIFORCE_CORE_TRACE("\tInput meshlet count: {}", stats.input_meshlet_count);
-			OMNIFORCE_CORE_TRACE("\tOutput meshlet count: {}", stats.output_meshlet_count);
+			OMNIFORCE_CORE_TRACE("\tOutput meshlet count: {}", stats.output_meshlet_count.load());
 			OMNIFORCE_CORE_TRACE("\tGroup count: {}", stats.group_count);
 			OMNIFORCE_CORE_TRACE("\tInput vertex count: {}", stats.input_vertex_count);
 			OMNIFORCE_CORE_TRACE("\tWelded vertex count: {}", stats.welded_vertex_count);
 			OMNIFORCE_CORE_TRACE("\tLocked vertex count: {}", stats.locked_vertex_count);
-			OMNIFORCE_CORE_TRACE("\tGroup simplification failure count: {}", stats.group_simplification_failure_count);
+			OMNIFORCE_CORE_TRACE("\tGroup simplification failure count: {}", stats.group_simplification_failure_count.load());
 			lod_idx++;
 		}
 
@@ -249,7 +275,7 @@ namespace Omni {
 		mesh.cull_bounds = meshlets_data->cull_bounds;
 		mesh.vertex_stride = vertex_stride;
 
-		OMNIFORCE_CORE_TRACE("Mesh building finished. Final triangle count (including all LOD levels): {}", mesh.local_indices.size() / 3);
+		OMNIFORCE_CORE_TRACE("Mesh building finished. Time taken: {}s. Final triangle count (including all LOD levels): {}", timer.ElapsedMilliseconds() / 1000.0f, mesh.local_indices.size() / 3);
 
 		return mesh;
 
