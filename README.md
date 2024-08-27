@@ -47,3 +47,4 @@ The main requirements for the Omniforce engine:
 * meshoptimizer
 * metis
 * fmt (pulled from spdlog)
+* miniaudio
