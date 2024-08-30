@@ -37,9 +37,10 @@ namespace Omni {
 		float32 simplify_scale = meshopt_simplifyScale((float32*)vertices.data(), vertices.size() / vertex_stride, vertex_stride);
 		// Compute max lod count. I expect each lod level to have 2 times less indices than
 		// previous level. Removed 5 levels because a single meshlet can hold up to 2^7 triangles + 2 lods
-		// in case if some group won't be able to half the index count. Clamped for convenience.
+		// in case if some group won't be able to half the index count. Clamped for 
+		// convenience.
 		// So if a `max_lod` is X, it's value is:
-		// x = ceil(log2(c)) - 5 + 2, where `c` is index count of source mesh
+		// x = ceil(log2(c)) - 7 + 2, where `c` is index count of source mesh
 		const uint32 max_lod = glm::clamp((uint32)glm::ceil(glm::log2(float32(indices.size()))) - 5, 1u, 25u);
 
 		// Init with source meshlets
@@ -98,11 +99,16 @@ namespace Omni {
 
 			stats.input_vertex_count = vertices_to_weld.size();
 
+			// Build acceleration structure to speed up vertex neighbors look up
 			KDTree kd_tree;
 			kd_tree.BuildFromPointSet(vertices_to_weld);
 
-			// Compute average vertex density.
-			float32 min_vertex_distance = simplify_scale / ((float64)unique_indices.size() / total_surface_area);
+			// Compute average vertex density
+			float32 vertex_density = (float64)indices.size() / total_surface_area;
+			float32 min_vertex_distance = glm::sqrt(simplify_scale / vertex_density) * t_lod * 0.3f;
+
+			stats.min_welder_vertex_distance = min_vertex_distance;
+			stats.mesh_scale = simplify_scale;
 
 			// Weld close enough vertices together
 			std::vector<uint32> welder_remap_table = GenerateVertexWelderRemapTable(vertices, vertex_stride, kd_tree, unique_indices, edge_vertices_map, min_vertex_distance, stats);
@@ -132,7 +138,7 @@ namespace Omni {
 
 				// Group-local geometry data
 				std::vector<uint32> group_to_mesh_space_vertex_remap;
-				rhumap<uint32, uint32> mesh_to_group_space_vertex_remap;
+				std::unordered_map<uint32, uint32> mesh_to_group_space_vertex_remap;
 				std::vector<byte> group_local_vbo;
 
 				// Other data
@@ -146,7 +152,13 @@ namespace Omni {
 
 				merged_indices.reserve(num_merged_indices);
 
+				uint32 vbo_vertex_count = 0;
+
+				// Allocate worst case memory
+				group_local_vbo.resize(num_merged_indices * vertex_stride);
+
 				// Merge
+				uint32 test = 0;
 				for (auto& meshlet_idx : group) {
 					RenderableMeshlet& meshlet = meshlets_data->meshlets[meshlet_idx];
 					uint32 triangle_indices[3] = {};
@@ -156,57 +168,75 @@ namespace Omni {
 						mtx.unlock_shared();
 
 						if (index_idx % 3 == 2) {// last index of triangle was registered
-							bool is_triangle_degenerate = (triangle_indices[0] == triangle_indices[1] || triangle_indices[0] == triangle_indices[2] || triangle_indices[1] == triangle_indices[2]);
+							const bool is_triangle_degenerate = (triangle_indices[0] == triangle_indices[1] || triangle_indices[0] == triangle_indices[2] || triangle_indices[1] == triangle_indices[2]);
 
 							// Check if triangle is degenerate
+							// https://github.com/jglrxavpok/Carrot/blob/8f8bfe22c0a68cc55e74f04543c611f1120e06e5/asset_tools/fertilizer/gltf/GLTFProcessing.cpp
 							if (!is_triangle_degenerate) {
-								merged_indices.push_back(triangle_indices[0]);
-								merged_indices.push_back(triangle_indices[1]);
-								merged_indices.push_back(triangle_indices[2]);
+								for (uint32 i = 0; i < 3; i++) {
+									auto [iterator, was_new] = mesh_to_group_space_vertex_remap.try_emplace(triangle_indices[i]);
+									test++;
+
+									if (was_new) {
+										iterator->second = vbo_vertex_count;
+										memcpy(group_local_vbo.data() + (vertex_stride * vbo_vertex_count), vertices.data() + (vertex_stride * iterator->second), vertex_stride);
+										vbo_vertex_count++;
+									}
+									merged_indices.push_back(iterator->second);
+								}
 							}
 						}
 					}
 				}
 
+				// Shrink to fit
+				group_local_vbo.resize(vbo_vertex_count * vertex_stride);
+
 				// Skip if no indices after merging (maybe all triangles are degenerate?)
 				if (merged_indices.size() == 0)
 					continue;
+				
+				// Create remap table to remap indices back to mesh space from group space
+				group_to_mesh_space_vertex_remap = std::vector<uint32>(group_local_vbo.size() / vertex_stride, ~0ull);
+
+				for (const auto& [mesh_space_idx, group_space_idx] : mesh_to_group_space_vertex_remap) {
+					OMNIFORCE_ASSERT_TAGGED(group_space_idx < group_to_mesh_space_vertex_remap.size(), "Mismatched sizes");
+					group_to_mesh_space_vertex_remap[group_space_idx] = mesh_space_idx;
+				}
 
 				// Setup simplification parameters
-				float32 target_error = 0.9f * t_lod + 0.01f * (1 - t_lod);
-				float32 simplification_rate = 0.5f;
-				std::vector<uint32> simplified_indices;
+				const float32 target_error = 0.9f * t_lod + 0.01f * (1 - t_lod);
+				const float32 simplification_rate = 0.5f;
+				std::vector<uint32> simplified_group_indices;
 
 				// Generate LOD
 				bool lod_generation_failed = false;
 				float32 result_error = 0.0f;
-				while (!simplified_indices.size() || simplified_indices.size() == merged_indices.size()) {
-					result_error = mesh_preprocessor.GenerateMeshLOD(&simplified_indices, &vertices, &merged_indices, vertex_stride, merged_indices.size() * simplification_rate, target_error, true);
-					target_error += 0.05f;
-					simplification_rate += 0.05f;
+				result_error = mesh_preprocessor.GenerateMeshLOD(&simplified_group_indices, &group_local_vbo, &merged_indices, vertex_stride, merged_indices.size() * simplification_rate, target_error, true);
 
-					OMNIFORCE_ASSERT(simplified_indices.size());
+				OMNIFORCE_ASSERT(simplified_group_indices.size());
 
-					// Failed to generate LOD for a given group. Re register meshlets and skip the group
-					if (simplification_rate >= 1.0f && (simplified_indices.size() == merged_indices.size())) {
+				// Failed to generate LOD for a given group. Re register meshlets and skip the group
+				if (simplified_group_indices.size() == merged_indices.size()) {
 
-						lod_generation_failed = true;
-						for (const auto& meshlet_idx : group)
-							previous_lod_meshlets.push_back(meshlet_idx);
+					lod_generation_failed = true;
+					for (const auto& meshlet_idx : group)
+						previous_lod_meshlets.push_back(meshlet_idx);
 
-						stats.group_simplification_failure_count++;
+					stats.group_simplification_failure_count++;
 
-						break;
-					}
+					continue;
 				}
 
-				if (lod_generation_failed)
-					continue;
+				// Remap indices back to mesh space
+				for (auto& index : simplified_group_indices) {
+					index = group_to_mesh_space_vertex_remap[index];
+				}
 
 				// Compute LOD culling bounding sphere for current simplified (!) group
 				AABB group_aabb = { glm::vec3(+INFINITY), glm::vec3(-INFINITY)};
 
-				for (const auto& index : simplified_indices) {
+				for (const auto& index : simplified_group_indices) {
 					const glm::vec3 vertex = Utils::FetchVertexFromBuffer(vertices, index, vertex_stride);
 
 					group_aabb.max = glm::max(group_aabb.max, vertex);
@@ -236,7 +266,7 @@ namespace Omni {
 				mtx.unlock_shared();
 
 				// Split back
-				Scope<ClusterizedMesh> simplified_meshlets = mesh_preprocessor.GenerateMeshlets(&vertices, &simplified_indices, vertex_stride);
+				Scope<ClusterizedMesh> simplified_meshlets = mesh_preprocessor.GenerateMeshlets(&vertices, &simplified_group_indices, vertex_stride);
 
 				for (auto& bounds : simplified_meshlets->cull_bounds) {
 					bounds.lod_culling.error = mesh_space_error;
@@ -277,6 +307,9 @@ namespace Omni {
 			OMNIFORCE_CORE_TRACE("\tWelded vertex count: {}", stats.welded_vertex_count);
 			OMNIFORCE_CORE_TRACE("\tLocked vertex count: {}", stats.locked_vertex_count);
 			OMNIFORCE_CORE_TRACE("\tGroup simplification failure count: {}", stats.group_simplification_failure_count.load());
+			OMNIFORCE_CORE_TRACE("\tDegenerate triangle count: {}", stats.degenerate_triangles_erased.load());
+			OMNIFORCE_CORE_TRACE("\tMin. welder vertex distance: {}", stats.min_welder_vertex_distance);
+			OMNIFORCE_CORE_TRACE("\tMesh scale: {}", stats.mesh_scale);
 
 			// If only 1 meshlet was created, finish mesh building - nothing to simplify further
 			if (num_newly_created_meshlets == 1)
@@ -312,7 +345,7 @@ namespace Omni {
 		OMNIFORCE_ASSERT_TAGGED(vertex_stride >= 12, "Vertex stride is less than 12: no vertex position data?");
 
 		// Early out if there is less than 8 meshlets (unable to partition)
-		if (meshlet_indices.size() < 8)
+		if (meshlet_indices.size() < 12)
 			return { {meshlet_indices.begin(), meshlet_indices.end() } };
 
 		// meshlets represented by their index into 'meshlets'
@@ -332,7 +365,7 @@ namespace Omni {
 			vertex_stride
 		);
 		indices.resize(indices.size() - ib_padding);
-
+		
 		// for each cluster
 		for (uint32 meshlet_idx = 0; meshlet_idx < meshlet_indices.size(); meshlet_idx++) {
 			const auto& meshlet = meshlets[meshlet_indices[meshlet_idx]];
@@ -380,7 +413,7 @@ namespace Omni {
 
 		idx_t graph_vertex_count = meshlet_indices.size(); // graph is built from meshlets, hence graph vertex = meshlet
 		idx_t num_constrains = 1;
-		idx_t num_partitions = meshlet_indices.size() / 4; // Group by 4 meshlets
+		idx_t num_partitions = meshlet_indices.size() / 6; // Group by 4 meshlets
 
 		OMNIFORCE_ASSERT_TAGGED(num_partitions > 1, "Invalid partition count");
 

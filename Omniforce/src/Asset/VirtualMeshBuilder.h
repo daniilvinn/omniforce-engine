@@ -31,6 +31,9 @@ namespace Omni {
 		uint32 input_vertex_count = 0; // how many vertices in the input (must equal to previous pass `output_index_count`)
 		uint32 locked_vertex_count = 0; // how many vertices were locked during welding due to edge detection
 		std::atomic<uint32> group_simplification_failure_count = 0; // how many groups failed to simplify
+		std::atomic<uint32> degenerate_triangles_erased = 0; // how many degenerate triangles were removed after welding
+		float32 mesh_scale = 0.0f;
+		float32 min_welder_vertex_distance = 0.0f;
 	};
 
 	// Utility function for building virtual clusterized mesh
