@@ -2,6 +2,7 @@
 
 #include <glm/gtx/norm.hpp>
 #include <meshoptimizer.h>
+#include <ranges>
 
 #include <Seb.h>
 #include <Seb_point.h>
@@ -18,10 +19,10 @@ namespace Omni {
 		meshlets_data->indices.resize(num_meshlets * 64);
 		meshlets_data->local_indices.resize(num_meshlets * 124 * 3);
 
-		meshopt_Meshlet* meshopt_meshlets = new meshopt_Meshlet[num_meshlets];
+		std::vector<meshopt_Meshlet> meshopt_meshlets(num_meshlets);
 
 		uint64 actual_num_meshlets = meshopt_buildMeshlets(
-			meshopt_meshlets, 
+			meshopt_meshlets.data(),
 			meshlets_data->indices.data(), 
 			meshlets_data->local_indices.data(),
 			indices->data(), 
@@ -39,15 +40,14 @@ namespace Omni {
 		meshlets_data->local_indices.resize(actual_num_meshlets * 124 * 3);
 
 		meshlets_data->cull_bounds.resize(actual_num_meshlets);
-		uint32 idx = 0;
-		for (auto& meshlet : meshlets_data->meshlets) {
-			meshlet.vertex_offset = meshopt_meshlets[idx].vertex_offset;
-			meshlet.metadata.vertex_count = meshopt_meshlets[idx].vertex_count;
-			meshlet.triangle_offset = meshopt_meshlets[idx].triangle_offset;
-			meshlet.metadata.triangle_count = meshopt_meshlets[idx].triangle_count;
+		for (auto [meshlet, bounds, meshopt_meshlet] : std::views::zip(meshlets_data->meshlets, meshlets_data->cull_bounds, meshopt_meshlets)) {
+			meshlet.vertex_offset = meshopt_meshlet.vertex_offset;
+			meshlet.metadata.vertex_count = meshopt_meshlet.vertex_count;
+			meshlet.triangle_offset = meshopt_meshlet.triangle_offset;
+			meshlet.metadata.triangle_count = meshopt_meshlet.triangle_count;
 			meshlet.vertex_bit_offset = 0;
 
-			meshopt_Bounds bounds = meshopt_computeMeshletBounds(
+			meshopt_Bounds meshopt_bounds = meshopt_computeMeshletBounds(
 				&meshlets_data->indices[meshlet.vertex_offset],
 				&meshlets_data->local_indices[meshlet.triangle_offset],
 				meshlet.metadata.triangle_count,
@@ -56,18 +56,18 @@ namespace Omni {
 				vertex_stride
 			);
 
-			meshlets_data->cull_bounds[idx].vis_culling_sphere = { glm::vec3(bounds.center[0], bounds.center[1], bounds.center[2]), bounds.radius}; // copy bounding sphere
-			meshlets_data->cull_bounds[idx].cone_apex = glm::vec3(bounds.cone_apex[0], bounds.cone_apex[1], bounds.cone_apex[2]);					// copy cone apex
-			meshlets_data->cull_bounds[idx].cone_axis = glm::i8vec3(bounds.cone_axis_s8[0], bounds.cone_axis_s8[1], bounds.cone_axis_s8[2]);		// copy s8 cone axis
-			meshlets_data->cull_bounds[idx].cone_cutoff = bounds.cone_cutoff_s8;																	// copy s8 cone cutoff
-
-			idx++;
+			bounds.vis_culling_sphere =				{ glm::vec3(meshopt_bounds.center[0], meshopt_bounds.center[1], meshopt_bounds.center[2]), meshopt_bounds.radius }; // copy bounding sphere
+			bounds.cone_apex =						glm::vec3(meshopt_bounds.cone_apex[0], meshopt_bounds.cone_apex[1], meshopt_bounds.cone_apex[2]);					// copy cone apex
+			bounds.cone_axis =						glm::i8vec3(meshopt_bounds.cone_axis_s8[0], meshopt_bounds.cone_axis_s8[1], meshopt_bounds.cone_axis_s8[2]);		// copy s8 cone axis
+			bounds.cone_cutoff =					meshopt_bounds.cone_cutoff_s8;																						// copy s8 cone cutoff
+			bounds.lod_culling.sphere =				bounds.vis_culling_sphere;
+			bounds.lod_culling.parent_sphere =		Sphere(glm::vec3(0.0f, 0.0f, 0.0f), +INFINITY);
+			bounds.lod_culling.error =				0.0f;
+			bounds.lod_culling.parent_error =		+INFINITY;
 		}
 
 		meshlets_data->indices.resize(meshlets_data->meshlets[meshlets_data->meshlets.size() - 1].vertex_offset + meshlets_data->meshlets[meshlets_data->meshlets.size() - 1].metadata.vertex_count);
 		meshlets_data->local_indices.resize(meshlets_data->meshlets[meshlets_data->meshlets.size() - 1].triangle_offset + meshlets_data->meshlets[meshlets_data->meshlets.size() - 1].metadata.triangle_count * 3);
-
-		delete[] meshopt_meshlets;
 
 		return meshlets_data;
 	}
@@ -168,8 +168,9 @@ namespace Omni {
 		}
 	}
 
-	void MeshPreprocessor::GenerateMeshLOD(std::vector<uint32>* out_indices, const std::vector<byte>* vertex_data, const std::vector<uint32>* index_data, uint32 vertex_stride, uint32 target_index_count, float32 target_error, bool lock_borders) {
+	Omni::float32 MeshPreprocessor::GenerateMeshLOD(std::vector<uint32>* out_indices, const std::vector<byte>* vertex_data, const std::vector<uint32>* index_data, uint32 vertex_stride, uint32 target_index_count, float32 target_error, bool lock_borders) {
 		out_indices->resize(index_data->size());
+		float32 result_error = 0.0f;
 		out_indices->resize(meshopt_simplify(
 			out_indices->data(),
 			index_data->data(),
@@ -179,8 +180,10 @@ namespace Omni {
 			vertex_stride,
 			target_index_count,
 			target_error,
-			lock_borders ? meshopt_SimplifyLockBorder : 0
+			lock_borders ? meshopt_SimplifyLockBorder : 0,
+			&result_error
 		));
+		return result_error;
 	}
 
 	void MeshPreprocessor::SplitVertexData(std::vector<glm::vec3>* geometry, std::vector<byte>* attributes, const std::vector<byte>* in_vertex_data, uint32 vertex_stride)

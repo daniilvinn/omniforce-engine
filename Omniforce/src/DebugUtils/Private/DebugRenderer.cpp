@@ -186,15 +186,12 @@ namespace Omni {
 			memset(pc_data, 0u, sizeof uint64 * 5);
 
 			static int32 lod = 0;
-			ImGui::Begin("lod selector");
-			ImGui::SliderInt("Lod", &lod, 0, 25);
-			ImGui::End();
 
 			pc_data[0] = camera_data->GetDeviceAddress() + camera_data->GetFrameOffset();
 			pc_data[1] = mesh_data->GetDeviceAddress();
 			pc_data[2] = render_queue->GetDeviceAddress();
 			pc_data[3] = uint64(mode);
-			pc_data[4] = lod;
+			pc_data[4] = lod; // unused
 
 			MiscData pcs = {};
 			pcs.data = (byte*)pc_data;

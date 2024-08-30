@@ -270,6 +270,10 @@ namespace Omni {
 		// Clear light data
 		m_HostPointLights.clear();
 
+		// Change current render target
+		m_CurrectMainRenderTarget = m_RendererOutputs[Renderer::GetCurrentFrameIndex()];
+		m_CurrentDepthAttachment = m_DepthAttachments[Renderer::GetCurrentFrameIndex()];
+
 		// Write camera data to device buffer
 		if (camera) {
 			m_Camera = camera;
@@ -281,6 +285,10 @@ namespace Omni {
 			camera_data.position = m_Camera->GetPosition();
 			camera_data.frustum = m_Camera->GenerateFrustum();
 			camera_data.forward_vector = m_Camera->GetForwardVector();
+			// If camera is 3D (very likely to be truth though) cast it to 3D camera and get FOV, otherwise use fixed 90 degree FOV
+			camera_data.fov = m_Camera->GetType() == CameraProjectionType::PROJECTION_3D ? ShareAs<Camera3D>(m_Camera)->GetFOV() : glm::radians(90.0f);
+			camera_data.viewport_width = m_CurrectMainRenderTarget->GetSpecification().extent.r;
+			camera_data.viewport_height = m_CurrectMainRenderTarget->GetSpecification().extent.g;
 
 			m_CameraDataBuffer->UploadData(
 				Renderer::GetCurrentFrameIndex() * (m_CameraDataBuffer->GetSpecification().size / Renderer::GetConfig().frames_in_flight),
@@ -290,11 +298,6 @@ namespace Omni {
 
 			DebugRenderer::SetCameraBuffer(m_CameraDataBuffer);
 		}
-
-
-		// Change current render target
-		m_CurrectMainRenderTarget = m_RendererOutputs[Renderer::GetCurrentFrameIndex()];
-		m_CurrentDepthAttachment = m_DepthAttachments[Renderer::GetCurrentFrameIndex()];
 
 		// Change layout of render target
 		Renderer::Submit([=]() {
@@ -392,7 +395,7 @@ namespace Omni {
 			compute_pc.data = (byte*)compute_push_constants_data;
 			compute_pc.size = sizeof IndirectFrustumCullPassPushContants;
 
-			uint32 num_work_groups = (m_HostRenderQueue[device_render_queue.first].size() + 31) / 32;
+			uint32 num_work_groups = (m_HostRenderQueue[device_render_queue.first].size() + 255) / 256;
 			Renderer::DispatchCompute(m_IndirectFrustumCullPipeline, { num_work_groups, 1, 1 }, compute_pc);
 
 			PipelineResourceBarrierInfo indirect_params_barrier = {};
@@ -572,16 +575,14 @@ namespace Omni {
 	{
 		DeviceMeshData mesh_data = {};
 		mesh_data.lod_distance_multiplier = 1.0f;
-		for (int32 i = 0; i < mesh->GetLODCount(); i++) {
-			mesh_data.lods[i].bounding_sphere = mesh->GetBoundingSphere(i);
-			mesh_data.lods[i].meshlet_count = mesh->GetMeshletCount(i);
-			mesh_data.lods[i].quantization_grid_size = mesh->GetQuantizationGridSize(i);
-			mesh_data.lods[i].geometry_bda = mesh->GetBuffer(i, MeshBufferKey::GEOMETRY)->GetDeviceAddress();
-			mesh_data.lods[i].attributes_bda = mesh->GetBuffer(i, MeshBufferKey::ATTRIBUTES)->GetDeviceAddress();
-			mesh_data.lods[i].meshlets_bda = mesh->GetBuffer(i, MeshBufferKey::MESHLETS)->GetDeviceAddress();
-			mesh_data.lods[i].micro_indices_bda = mesh->GetBuffer(i, MeshBufferKey::MICRO_INDICES)->GetDeviceAddress();
-			mesh_data.lods[i].meshlets_cull_data_bda = mesh->GetBuffer(i, MeshBufferKey::MESHLETS_CULL_DATA)->GetDeviceAddress();
-		}
+		mesh_data.bounding_sphere = mesh->GetBoundingSphere();
+		mesh_data.meshlet_count = mesh->GetMeshletCount();
+		mesh_data.quantization_grid_size = mesh->GetQuantizationGridSize();
+		mesh_data.geometry_bda = mesh->GetBuffer(MeshBufferKey::GEOMETRY)->GetDeviceAddress();
+		mesh_data.attributes_bda = mesh->GetBuffer(MeshBufferKey::ATTRIBUTES)->GetDeviceAddress();
+		mesh_data.meshlets_bda = mesh->GetBuffer(MeshBufferKey::MESHLETS)->GetDeviceAddress();
+		mesh_data.micro_indices_bda = mesh->GetBuffer(MeshBufferKey::MICRO_INDICES)->GetDeviceAddress();
+		mesh_data.meshlets_cull_data_bda = mesh->GetBuffer(MeshBufferKey::MESHLETS_CULL_DATA)->GetDeviceAddress();
 
 		return m_MeshResourcesBuffer.Allocate(mesh->Handle, mesh_data);
 	}

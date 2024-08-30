@@ -7,6 +7,7 @@
 #include <Memory/Pointers.hpp>
 
 #include <map>
+#include <limits>
 
 namespace Omni {
 
@@ -33,6 +34,12 @@ namespace Omni {
 
 	template<typename Key, typename Value>
 	using rhumap = rh::unordered_map<Key, Value>;
+
+	inline constexpr float32 FP32_MAX = std::numeric_limits<float32>::max();
+	inline constexpr float64 FP64_MAX = std::numeric_limits<float64>::max();
+
+	inline constexpr float32 FP32_MIN = std::numeric_limits<float32>::min();
+	inline constexpr float64 FP64_MIN = std::numeric_limits<float64>::min();
 
 	template<typename T = float32>
 	struct vec2 {

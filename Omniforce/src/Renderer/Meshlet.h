@@ -9,24 +9,33 @@
 namespace Omni {
 
 	struct OMNIFORCE_API RenderableMeshlet {
-		uint32 vertex_bit_offset;
-		uint32 vertex_offset;
-		uint32 triangle_offset;
+		uint32 vertex_bit_offset = 0;
+		uint32 vertex_offset = 0;
+		uint32 triangle_offset = 0;
 		struct {
 			uint32 vertex_count : 7;
 			uint32 triangle_count : 8;
 			uint32 bitrate : 6;
 		} metadata;
-		uint32 group;
-		uint32 lod = 0;
+	};
+
+	struct MeshletLODCullingData {
+		Sphere sphere;
+		Sphere parent_sphere = { glm::vec3(+INFINITY), +INFINITY };
+
+		float32 error;
+		float32 parent_error;
 	};
 
 	struct OMNIFORCE_API MeshletCullBounds {
+		// Visibility culling data
 		Sphere vis_culling_sphere;
-
 		glm::vec3 cone_apex;
 		glm::i8vec3 cone_axis;
 		int8 cone_cutoff;
+
+		// LOD culling data
+		MeshletLODCullingData lod_culling;
 	};
 
 	using MeshClusterGroup = std::vector<uint32>;

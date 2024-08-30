@@ -15,20 +15,21 @@ namespace Omni {
 		glm::vec3 position;
 		Frustum frustum;
 		glm::vec3 forward_vector;
+		float32 fov; // In radians
+		float32 viewport_height;
+		float32 viewport_width;
 	};
 
 	struct DeviceMeshData {
 		float32 lod_distance_multiplier;
-		struct LOD {
-			Sphere bounding_sphere;
-			uint32 meshlet_count;
-			int32 quantization_grid_size;
-			uint64 geometry_bda;
-			uint64 attributes_bda;
-			uint64 meshlets_bda;
-			uint64 micro_indices_bda;
-			uint64 meshlets_cull_data_bda;
-		} lods[Mesh::OMNI_MAX_MESH_LOD_COUNT];
+		Sphere bounding_sphere;
+		uint32 meshlet_count;
+		int32 quantization_grid_size;
+		uint64 geometry_bda;
+		uint64 attributes_bda;
+		uint64 meshlets_bda;
+		uint64 micro_indices_bda;
+		uint64 meshlets_cull_data_bda;
 	};
 
 	struct TRS {
@@ -39,7 +40,6 @@ namespace Omni {
 
 	struct DeviceRenderableObject {
 		TRS trs;
-		const uint32 lod = 0; // computed on the device
 		uint32 render_data_index;
 		uint64 material_bda;
 	};
