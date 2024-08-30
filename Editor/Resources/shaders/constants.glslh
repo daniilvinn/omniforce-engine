@@ -1,10 +1,6 @@
 #ifndef CONSTANTS_GLSLH
 #define CONSTANTS_GLSLH
 
-const uint OMNI_MAX_MESH_LOD_COUNT = 4;
-
-const float OMNI_LOD_DISTANCES[OMNI_MAX_MESH_LOD_COUNT] = { 20.0f, 50.0f, 90.0f, 160.0f };
-
 const float PI = 3.14159265359;
 
 #endif

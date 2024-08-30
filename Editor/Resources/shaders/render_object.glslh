@@ -7,7 +7,6 @@
 
 layout(buffer_reference, scalar, buffer_reference_align = 4) buffer RenderObjectData {
 	Transform transform;
-	uint lod;
 	uint geometry_data_id;
 	uint64_t material_bda;
 };

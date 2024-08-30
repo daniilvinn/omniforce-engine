@@ -214,7 +214,7 @@ namespace Omni {
 		depth_stencil_state.depthBoundsTestEnable = VK_FALSE;
 		depth_stencil_state.stencilTestEnable = VK_FALSE;
 
-		uint32 supported_multisampling_flags = device->GetPhysicalDevice()->GetProps().limits.framebufferColorSampleCounts;
+		uint32 supported_multisampling_flags = device->GetPhysicalDevice()->GetProperties().properties.limits.framebufferColorSampleCounts;
 
 		if (!(supported_multisampling_flags & m_Specification.sample_count)) 
 		{

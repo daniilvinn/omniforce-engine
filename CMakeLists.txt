@@ -5,6 +5,10 @@ cmake_minimum_required (VERSION 3.23)
 
 project ("Omniforce Engine")
 
+if(MSVC)
+	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+endif()
+
 set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/installation")
 
 find_package(OpenMP REQUIRED)
@@ -19,6 +23,13 @@ add_subdirectory (ScriptEngine)
 
 if(MSVC)
 	set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${EDITOR_TARGET})
-	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP /W1 /MD<$<CONFIG:Debug>:d>")
+
+	get_filename_component(MSVC_RUNTIME_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
+
+	set(MSVC_RUNTIME_DLLS_RELEASE
+        "${MSVC_RUNTIME_DIR}/vcruntime140.dll"
+        "${MSVC_RUNTIME_DIR}/msvcp140.dll"
+    )
+
+	install(FILES ${MSVC_RUNTIME_DLLS_RELEASE} DESTINATION "${CMAKE_INSTALL_PREFIX}")
 endif()

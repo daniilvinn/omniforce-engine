@@ -134,7 +134,7 @@ public:
 					const MeshComponent& mesh_component = entity.GetComponent<MeshComponent>();
 
 					Shared<Mesh> mesh = AssetManager::Get()->GetAsset<Mesh>(mesh_component.mesh_handle);
-					Sphere bounding_sphere = mesh->GetBoundingSphere(0);
+					Sphere bounding_sphere = mesh->GetBoundingSphere();
 					AABB aabb = mesh->GetAABB();
 
 					float32 max_scale = glm::max(glm::max(trs.scale.x, trs.scale.y), trs.scale.z);
@@ -176,7 +176,6 @@ public:
 						{
 						case 0:  ImGui::Selectable("Cluster view", &is_selected);		break;
 						case 1:  ImGui::Selectable("Triangle view", &is_selected);		break;
-						case 2:  ImGui::Selectable("Cluster group view", &is_selected);		break;
 						default: break;
 						}
 

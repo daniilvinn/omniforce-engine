@@ -17,19 +17,20 @@ namespace Omni {
 	class VulkanPhysicalDevice {
 	public:
 		VulkanPhysicalDevice(VulkanGraphicsContext* ctx);
+		~VulkanPhysicalDevice();
 
 		static Shared<VulkanPhysicalDevice> Select(VulkanGraphicsContext* ctx);
 		static std::vector<VkPhysicalDevice> List(VulkanGraphicsContext* ctx);
 
 		VkPhysicalDevice Raw() const { return m_PhysicalDevice; }
-		VkPhysicalDeviceProperties GetProps() const { return m_DeviceProps; }
+		VkPhysicalDeviceProperties2 GetProperties() const { return m_DeviceProps; }
 		QueueFamilyIndex GetQueueFamilyIndices() const { return m_Indices; }
 
 		bool IsExtensionSupported(const std::string& extension) const;
 
 	private:
 		VkPhysicalDevice m_PhysicalDevice;
-		VkPhysicalDeviceProperties m_DeviceProps;
+		VkPhysicalDeviceProperties2 m_DeviceProps;
 		QueueFamilyIndex m_Indices;
 	};
 

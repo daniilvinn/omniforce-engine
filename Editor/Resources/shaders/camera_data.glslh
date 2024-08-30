@@ -10,6 +10,9 @@ layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Cam
 	vec3 position;
 	Frustum frustum;
 	vec3 forward_vector;
+	float fov; // in radians
+	float viewport_height;
+	float viewport_width;
 };
 
 #endif
