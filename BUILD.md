@@ -1,4 +1,9 @@
 # Building the engine
+## Using the release
+The simplest way to launch and test the engine is to simply download the latest release on GitHub and follow the guidelines.
+<br>
+However, if the newest version of engine is required, follow the steps below.
+
 ## Requirements
 * Vulkan SDK (tested on 1.3.280) installed on the machine (path to the Vulkan SDK must be added to the PATH system, in order for CMake to find the SDK). It can be downloaded from this page: https://www.lunarg.com/vulkan-sdk/
 * CMake 3.23. It can be downloaded from https://cmake.org/download/.
