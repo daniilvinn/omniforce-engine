@@ -4,6 +4,7 @@
 #include <Filesystem/Filesystem.h>
 #include <Threading/JobSystem.h>
 #include "../ShaderCompiler.h"
+#include "../Renderer.h"
 
 #include <fstream>
 
@@ -11,9 +12,11 @@ namespace Omni {
 
 	ShaderLibrary::ShaderLibrary()
 	{
-		m_GlobalMacros.push_back(std::make_pair("_OMNI_SCENE_DESCRIPTOR_SET", "0"));
-		m_GlobalMacros.push_back(std::make_pair("_OMNI_PASS_DESCRIPTOR_SET", "1"));
-		m_GlobalMacros.push_back(std::make_pair("_OMNI_DRAW_CALL_DESCRIPTOR_SET", "2"));
+		m_GlobalMacros.push_back({ "_OMNI_SCENE_DESCRIPTOR_SET", "0" });
+		m_GlobalMacros.push_back({ "_OMNI_PASS_DESCRIPTOR_SET", "1" });
+		m_GlobalMacros.push_back({ "_OMNI_DRAW_CALL_DESCRIPTOR_SET", "2" });
+		m_GlobalMacros.push_back({ "__OMNI_TASK_SHADER_PREFERRED_WORK_GROUP_SIZE", std::to_string(Renderer::GetDeviceOptimalTaskWorkGroupSize()) });
+		m_GlobalMacros.push_back({ "__OMNI_MESH_SHADER_PREFERRED_WORK_GROUP_SIZE", std::to_string(Renderer::GetDeviceOptimalMeshWorkGroupSize()) });
 		m_GlobalMacros.shrink_to_fit();
 	}
 

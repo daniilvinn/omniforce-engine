@@ -12,8 +12,9 @@
 #include "render_object.glslh" // common render object data
 #include "task_payload.glslh"
 #include "frustum.glslh"
+#include "virtual_geometry_utils.glslh"
 
-layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x = __OMNI_TASK_SHADER_PREFERRED_WORK_GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
 
 shared uint s_actual_num_meshlets;
 
@@ -30,9 +31,7 @@ void main()
 	RenderObjectData render_object_data = pc.render_objects_data[gl_DrawID];
 
 	Transform transform = render_object_data.transform;
-	MeshData root_mesh_data = pc.mesh_data[render_object_data.geometry_data_id];
-
-	MeshLOD mesh_data = root_mesh_data.lods[render_object_data.lod];
+	MeshData mesh_data = pc.mesh_data[render_object_data.geometry_data_id];
 
 	if(gl_GlobalInvocationID.x >= mesh_data.meshlet_count) { // check if we are out of bounds
 		return;
@@ -57,12 +56,15 @@ void main()
     bounding_sphere.radius = bounding_sphere.radius * max(max(transform.scale.x, transform.scale.y), transform.scale.z);
 
 	// Cull
-	//if((dot(normalize(cone_apex - pc.camera_data.position), cone_axis) < float(cull_bounds.cone_cutoff) * CONE_DECODE_CONSTANT) && FrustumTestBoundingSphere(pc.camera_data.frustum, bounding_sphere)) {
-	if(render_object_data.lod == meshlet_data.lod) {
-		uint id_index = atomicAdd(s_actual_num_meshlets, 1);
-		task_payload.meshlet_ids[id_index] = uint8_t(gl_GlobalInvocationID.x & 0x1F);
+	if(TestMeshletLOD(cull_bounds.lod_culling, pc.camera_data, render_object_data)) {
+		if((dot(normalize(cone_apex - pc.camera_data.position), cone_axis) < float(cull_bounds.cone_cutoff) * CONE_DECODE_CONSTANT) && FrustumTestBoundingSphere(pc.camera_data.frustum, bounding_sphere)) {
+			uint id_index = atomicAdd(s_actual_num_meshlets, 1);
+			task_payload.meshlet_ids[id_index] = uint8_t(gl_GlobalInvocationID.x & (gl_WorkGroupSize.x - 1));
+		}
 	}
-	//}
+
+	// Synchronize access to `s_actual_num_meshlets`
+	barrier();
 
 	// Emit mesh work groups
 	if(lid == 0 && s_actual_num_meshlets != 0) {
@@ -83,7 +85,7 @@ void main()
 #include "mesh_quantization.glslh"
 #include "sphere.glslh"
 
-layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x = __OMNI_MESH_SHADER_PREFERRED_WORK_GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
 layout(triangles, max_vertices = 64, max_primitives = 124) out;
 
 layout(location = 0) out uint64_t out_material_bda[];
@@ -113,8 +115,7 @@ void main()
 {
 	RenderObjectData render_object_data = pc.render_objects_data[gl_DrawID];
 
-	MeshData root_mesh_data = pc.mesh_data[render_object_data.geometry_data_id];
-	MeshLOD mesh_data = root_mesh_data.lods[render_object_data.lod];
+	MeshData mesh_data = pc.mesh_data[render_object_data.geometry_data_id];
 
 	Transform transform = render_object_data.transform;
 	vec4 rotation_quaternion = vec4(unpackSnorm2x16(transform.packed_rotation[0]), unpackSnorm2x16(transform.packed_rotation[1]));
@@ -180,7 +181,7 @@ void main()
 	}
 
 	// attributes and material bda
-	uint num_processing_attributes = 64 / gl_WorkGroupSize.x;
+	uint num_processing_attributes = (meshlet_vertex_count + gl_WorkGroupSize.x - 1) / gl_WorkGroupSize.x;;
 	for(int i = 0; i < num_processing_attributes; i++) {
 		if((gl_LocalInvocationIndex * vertex_processing_iterations + i) >= meshlet_vertex_count) {
 			break;

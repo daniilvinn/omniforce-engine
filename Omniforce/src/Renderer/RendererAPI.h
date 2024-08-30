@@ -19,6 +19,8 @@ namespace Omni {
 		virtual uint32 GetCurrentFrameIndex() const = 0;
 		virtual uint32 GetDeviceMinimalUniformBufferAlignment() const = 0;
 		virtual uint32 GetDeviceMinimalStorageBufferAlignment() const = 0;
+		virtual uint32 GetDeviceOptimalTaskWorkGroupSize() const = 0;;
+		virtual uint32 GetDeviceOptimalMeshWorkGroupSize() const = 0;;
 		virtual uint32 GetDeviceOptimalComputeWorkGroupSize() const = 0;
 		virtual Shared<Swapchain> GetSwapchain() = 0;
 		virtual Shared<DeviceCmdBuffer> GetCmdBuffer() = 0;

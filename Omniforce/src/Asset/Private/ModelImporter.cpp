@@ -40,7 +40,7 @@ namespace Omni {
 	{
 		// Setup timer
 		Timer timer;
-		OMNIFORCE_CORE_TRACE("Importing model \"{}\"...", path.string());
+		OMNIFORCE_CORE_INFO("Importing model \"{}\"...", path.string());
 
 		// Init global data
 		ftf::Asset ftf_asset;
@@ -294,122 +294,118 @@ namespace Omni {
 	void ModelImporter::ProcessMeshData(Shared<Mesh>* out_mesh, AABB* out_lod0_aabb, const std::vector<byte>* vertex_data, const std::vector<uint32>* index_data, uint32 vertex_stride, std::shared_mutex* mtx)
 	{
 		// Init crucial data
-		std::array<MeshData, Mesh::OMNI_MAX_MESH_LOD_COUNT> mesh_lods = {};
+		MeshData mesh_data;
 		AABB lod0_aabb = {};
 		VirtualMesh vmesh = {};
 
 		// Process mesh data on per-LOD basis. It involves generating LOD index buffer, optimizing mesh, generating meshlets and remapping data
-		for (uint32 i = 0; i < Mesh::OMNI_MAX_MESH_LOD_COUNT; i++) {
-			MeshPreprocessor mesh_preprocessor = {};
-
-			// Optimize mesh (remove redundant vertices, optimize for vertex cache etc.)
-			std::vector<byte> optimized_vertices;
-			std::vector<uint32> optimized_indices;
-			
-			mesh_preprocessor.OptimizeMesh(&optimized_vertices, &optimized_indices, vertex_data, index_data, vertex_stride);
 		
-			if (i == 0) {
-				VirtualMeshBuilder vmesh_builder = {};
+		MeshPreprocessor mesh_preprocessor = {};
 
-				vmesh = vmesh_builder.BuildClusterGraph(optimized_vertices, optimized_indices, vertex_stride);
+		// Optimize mesh (remove redundant vertices, optimize for vertex cache etc.)
+		std::vector<byte> optimized_vertices;
+		std::vector<uint32> optimized_indices;
 
-				OMNIFORCE_ASSERT_TAGGED(vmesh.meshlets.size(), "No virtual mesh clusters generated");
-				OMNIFORCE_ASSERT_TAGGED(vmesh.indices.size() >= 3, "No virtual mesh indices generated");
-				OMNIFORCE_ASSERT_TAGGED(vmesh.local_indices.size() >= 3, "No virtual mesh local indices generated");
+		mesh_preprocessor.OptimizeMesh(&optimized_vertices, &optimized_indices, vertex_data, index_data, vertex_stride);
+
+		VirtualMeshBuilder vmesh_builder = {};
+
+		vmesh = vmesh_builder.BuildClusterGraph(optimized_vertices, optimized_indices, vertex_stride);
+
+		OMNIFORCE_ASSERT_TAGGED(vmesh.meshlets.size(), "No virtual mesh clusters generated");
+		OMNIFORCE_ASSERT_TAGGED(vmesh.indices.size() >= 3, "No virtual mesh indices generated");
+		OMNIFORCE_ASSERT_TAGGED(vmesh.local_indices.size() >= 3, "No virtual mesh local indices generated");
+
+
+		// Remap vertices to get rid of generated index buffer after generation of meshlets
+		std::vector<byte> remapped_vertices(vmesh.indices.size() * vertex_stride);
+		mesh_preprocessor.RemapVertices(&remapped_vertices, &optimized_vertices, vertex_stride, &vmesh.indices);
+
+		// Split vertex data into two data streams: geometry and attributes.
+		// It is an optimization used for depth-prepass and shadow maps rendering to speed up data reads.
+		std::vector<glm::vec3> deinterleaved_vertex_data(remapped_vertices.size() / vertex_stride);
+		mesh_data.attributes.resize(remapped_vertices.size() / vertex_stride * (vertex_stride - sizeof glm::vec3));
+		mesh_preprocessor.SplitVertexData(&deinterleaved_vertex_data, &mesh_data.attributes, &remapped_vertices, vertex_stride);
+
+		// Generate mesh bounds
+		Bounds mesh_bounds = mesh_preprocessor.GenerateMeshBounds(&deinterleaved_vertex_data);
+
+		// Copy data
+		mesh_data.meshlets = vmesh.meshlets;
+		mesh_data.local_indices = vmesh.local_indices;
+		mesh_data.cull_data = vmesh.cull_bounds;
+		mesh_data.bounding_sphere = mesh_bounds.sphere;
+
+		// test on OOB
+		for (auto& meshlet : vmesh.meshlets) {
+			OMNIFORCE_ASSERT_TAGGED(meshlet.vertex_offset + meshlet.metadata.vertex_count <= deinterleaved_vertex_data.size(), "OOB");
+
+			OMNIFORCE_ASSERT_TAGGED(meshlet.triangle_offset + meshlet.metadata.triangle_count <= vmesh.local_indices.size(), "OOB");
+
+			for (uint32 local_index_idx = 0; local_index_idx < meshlet.metadata.triangle_count * 3; local_index_idx++) {
+				OMNIFORCE_ASSERT_TAGGED(meshlet.triangle_offset + local_index_idx < vmesh.local_indices.size(), "OOB");
+				uint32 local_index = vmesh.local_indices[meshlet.triangle_offset + local_index_idx];
+				OMNIFORCE_ASSERT_TAGGED(local_index < meshlet.metadata.vertex_count, "OOB");
 			}
-
-			// Remap vertices to get rid of generated index buffer after generation of meshlets
-			std::vector<byte> remapped_vertices(vmesh.indices.size() * vertex_stride);
-			mesh_preprocessor.RemapVertices(&remapped_vertices, &optimized_vertices, vertex_stride, &vmesh.indices);
-
-			// Split vertex data into two data streams: geometry and attributes.
-			// It is an optimization used for depth-prepass and shadow maps rendering to speed up data reads.
-			std::vector<glm::vec3> deinterleaved_vertex_data(remapped_vertices.size() / vertex_stride);
-			mesh_lods[i].attributes.resize(remapped_vertices.size() / vertex_stride * (vertex_stride - sizeof glm::vec3));
-			mesh_preprocessor.SplitVertexData(&deinterleaved_vertex_data, &mesh_lods[i].attributes, &remapped_vertices, vertex_stride);
-
-			// Generate mesh bounds
-			Bounds mesh_bounds = mesh_preprocessor.GenerateMeshBounds(&deinterleaved_vertex_data);
-
-			// Copy data
-			mesh_lods[i].meshlets			= vmesh.meshlets;
-			mesh_lods[i].local_indices		= vmesh.local_indices;
-			mesh_lods[i].cull_data			= vmesh.cull_bounds;
-			mesh_lods[i].bounding_sphere	= mesh_bounds.sphere;
-
-			// test on OOB
-			for (auto& meshlet : vmesh.meshlets) {
-				OMNIFORCE_ASSERT_TAGGED(meshlet.vertex_offset + meshlet.metadata.vertex_count <= deinterleaved_vertex_data.size(), "OOB");
-
-				OMNIFORCE_ASSERT_TAGGED(meshlet.triangle_offset + meshlet.metadata.triangle_count <= vmesh.local_indices.size(), "OOB");
-
-				for (uint32 local_index_idx = 0; local_index_idx < meshlet.metadata.triangle_count * 3; local_index_idx++) {
-					OMNIFORCE_ASSERT_TAGGED(meshlet.triangle_offset + local_index_idx < vmesh.local_indices.size(), "OOB");
-					uint32 local_index = vmesh.local_indices[meshlet.triangle_offset + local_index_idx];
-					OMNIFORCE_ASSERT_TAGGED(local_index < meshlet.metadata.vertex_count, "OOB");
-				}
-			}
-
-			// If i == 0, save generated mesh AABB, which will be used for LOD selection on runtime
-			if (i == 0)
-				lod0_aabb = mesh_bounds.aabb;
-
-			// Quantize vertex positions
-			VertexDataQuantizer quantizer;
-			const uint32 vertex_bitrate = 24;
-			mesh_lods[i].quantization_grid_size = vertex_bitrate;
-			uint32 mesh_bitrate = quantizer.ComputeMeshBitrate(vertex_bitrate, lod0_aabb);
-			uint32 vertex_bitstream_bit_size = deinterleaved_vertex_data.size() * mesh_bitrate * 3;
-			uint32 grid_size = 1u << vertex_bitrate;
-
-			// byte size is aligned by 4 bytes. So if we have 17 bits worth of data, we create a 4 bytes long bit stream. 
-			// if we have 67 bits worth of data, we create 12 bytes long bit stream
-			// We reserve worse case memory size
-			Scope<BitStream> vertex_stream = std::make_unique<BitStream>((vertex_bitstream_bit_size + 31u) / 32u * 4u);
-			uint32 meshlet_idx = 0;
-
-			// Precision tests
-			float32 min_error = FLT_MAX;
-			float32 max_error = FLT_MIN;
-
-			for (auto& meshlet_bounds : mesh_lods[i].cull_data) {
-				uint32 meshlet_bitrate = std::clamp((uint32)std::ceil(std::log2(meshlet_bounds.vis_culling_sphere.radius * 2 * grid_size)), 1u, 32u); // we need diameter of a sphere, not radius
-
-				RenderableMeshlet& meshlet = mesh_lods[i].meshlets[meshlet_idx];
-
-				meshlet.vertex_bit_offset = vertex_stream->GetNumBitsUsed();
-				meshlet.metadata.bitrate = meshlet_bitrate;
-
-				meshlet_bounds.vis_culling_sphere.center = glm::round(meshlet_bounds.vis_culling_sphere.center * float32(grid_size)) / float32(grid_size);
-
-				uint32 base_vertex_offset = mesh_lods[i].meshlets[meshlet_idx].vertex_offset;
-				for (uint32 vertex_idx = 0; vertex_idx < meshlet.metadata.vertex_count; vertex_idx++) {
-					for(uint32 vertex_channel = 0; vertex_channel < 3; vertex_channel++) {
-						float32 original_vertex = deinterleaved_vertex_data[base_vertex_offset + vertex_idx][vertex_channel];
-						float32 meshlet_space_value = original_vertex - meshlet_bounds.vis_culling_sphere.center[vertex_channel];
-
-
-						uint32 value = quantizer.QuantizeVertexChannel(
-							meshlet_space_value,
-							vertex_bitrate,
-							meshlet_bitrate
-						);
-
-						vertex_stream->Append(meshlet_bitrate, value);
-					}
-				}
-				meshlet_idx++;
-			}
-
-			mesh_lods[i].geometry = std::move(vertex_stream);
-
 		}
+
+		// If i == 0, save generated mesh AABB, which will be used for LOD selection on runtime
+		lod0_aabb = mesh_bounds.aabb;
+
+		// Quantize vertex positions
+		VertexDataQuantizer quantizer;
+		const uint32 vertex_bitrate = 24;
+		mesh_data.quantization_grid_size = vertex_bitrate;
+		uint32 mesh_bitrate = quantizer.ComputeMeshBitrate(vertex_bitrate, lod0_aabb);
+		uint32 vertex_bitstream_bit_size = deinterleaved_vertex_data.size() * mesh_bitrate * 3;
+		uint32 grid_size = 1u << vertex_bitrate;
+
+		// byte size is aligned by 4 bytes. So if we have 17 bits worth of data, we create a 4 bytes long bit stream. 
+		// if we have 67 bits worth of data, we create 12 bytes long bit stream
+		// We reserve worse case memory size
+		Scope<BitStream> vertex_stream = std::make_unique<BitStream>((vertex_bitstream_bit_size + 31u) / 32u * 4u);
+		uint32 meshlet_idx = 0;
+
+		// Precision tests
+		float32 min_error = FLT_MAX;
+		float32 max_error = FLT_MIN;
+
+		for (auto& meshlet_bounds : mesh_data.cull_data) {
+			uint32 meshlet_bitrate = std::clamp((uint32)std::ceil(std::log2(meshlet_bounds.vis_culling_sphere.radius * 2 * grid_size)), 1u, 32u); // we need diameter of a sphere, not radius
+
+			RenderableMeshlet& meshlet = mesh_data.meshlets[meshlet_idx];
+
+			meshlet.vertex_bit_offset = vertex_stream->GetNumBitsUsed();
+			meshlet.metadata.bitrate = meshlet_bitrate;
+
+			meshlet_bounds.vis_culling_sphere.center = glm::round(meshlet_bounds.vis_culling_sphere.center * float32(grid_size)) / float32(grid_size);
+
+			uint32 base_vertex_offset = mesh_data.meshlets[meshlet_idx].vertex_offset;
+			for (uint32 vertex_idx = 0; vertex_idx < meshlet.metadata.vertex_count; vertex_idx++) {
+				for (uint32 vertex_channel = 0; vertex_channel < 3; vertex_channel++) {
+					float32 original_vertex = deinterleaved_vertex_data[base_vertex_offset + vertex_idx][vertex_channel];
+					float32 meshlet_space_value = original_vertex - meshlet_bounds.vis_culling_sphere.center[vertex_channel];
+
+
+					uint32 value = quantizer.QuantizeVertexChannel(
+						meshlet_space_value,
+						vertex_bitrate,
+						meshlet_bitrate
+					);
+
+					vertex_stream->Append(meshlet_bitrate, value);
+				}
+			}
+			meshlet_idx++;
+		}
+
+		mesh_data.geometry = std::move(vertex_stream);
 
 		// Create mesh under mutex
 		{
 			std::lock_guard lock(*mtx);
 			*out_mesh = Mesh::Create(
-				mesh_lods,
+				mesh_data,
 				lod0_aabb
 			);
 		}

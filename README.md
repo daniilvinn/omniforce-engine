@@ -13,11 +13,11 @@
 * Project system
 
 ## How to build
-Build instructions can be found in `BUILD.md`<br/>
+Build instructions can be found in [BUILD.md](BUILD.md)<br/>
 The main requirements for the Omniforce engine:
 * The engine was only tested with MSVC compiler under Windows 11
 * Vulkan SDK 1.3 (was tested specifically with SDK 1.3.280)
-* A GPU which supports Mesh Shaders - NVIDIA Turing / AMD RDNA2 or newer.
+* A GPU which supports mesh shaders - NVIDIA Turing / AMD RDNA2 or newer
 
 ## Goals
 * Virtual geometry renderer to allow rendering of high-fidelity meshes in real-time
@@ -47,3 +47,4 @@ The main requirements for the Omniforce engine:
 * meshoptimizer
 * metis
 * fmt (pulled from spdlog)
+* miniaudio
