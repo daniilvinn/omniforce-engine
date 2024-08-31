@@ -9,6 +9,9 @@ namespace Omni {
 
 	class OMNIFORCE_API BitStream {
 	public:
+		using StorageType = uint32;
+		static constexpr uint32 StorageTypeBitSize = sizeof(StorageType) * 8u;
+
 		BitStream(uint32 size)
 		{
 			OMNIFORCE_ASSERT_TAGGED(size % 4 == 0, "Bit stream size can only be a multiple of 4");
@@ -100,9 +103,9 @@ namespace Omni {
 		}
 
 		void Resize(uint32 new_size) {
-			OMNIFORCE_ASSERT_TAGGED(new_size % 4 == 0, "Size must be a multiple of 4");
+			OMNIFORCE_ASSERT_TAGGED(new_size % sizeof(StorageType) == 0, "Size must be a multiple of StorageType byte size");
 
-			uint32* new_storage = new uint32[new_size];
+			StorageType* new_storage = new StorageType[new_size / sizeof(StorageType)];
 			memset(new_storage, 0, new_size);
 			memcpy(new_storage, m_Storage, GetNumStorageBytesUsed());
 
@@ -118,7 +121,7 @@ namespace Omni {
 		uint32 GetStorageSize()			const { return m_StorageSize; }
 
 	private:
-		uint32* m_Storage;
+		StorageType* m_Storage;
 		uint32 m_StorageSize;
 		uint32 m_NumBitsUsed;
 	};

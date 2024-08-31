@@ -12,6 +12,32 @@ namespace Omni {
 
 	class OMNIFORCE_API VertexDataQuantizer {
 	public:
+		// Find optimal vertex (!!!) bitrate.
+		// So basically a bitrate which is high enough to not produce visible precision loss,
+		// and low enough to keep high compression rate
+		uint32 ComputeOptimalVertexBitrate(const AABB& aabb) {
+			const float32 max_local_precision_loss = 0.0001f; // Maximum 0.01% loss within a mesh
+
+			glm::vec3 furthest_vertex = {};
+			
+			furthest_vertex = glm::max(furthest_vertex, glm::abs(aabb.max));
+			furthest_vertex = glm::max(furthest_vertex, glm::abs(aabb.min));
+
+			uint32 vertex_bitrate = 1;
+
+			while (true) {
+				float32 error = (1.0f / (1u << vertex_bitrate));
+
+				for (uint32 i = 0; i < 3; i++) {
+					if (error / furthest_vertex[i] < max_local_precision_loss) {
+						return vertex_bitrate;
+					}
+				}
+
+				vertex_bitrate++;
+			}
+		}
+
 		// NOTE: mesh bitrate doesn't equal to vertex bitrate.
 		// Vertex bitrate is precision within a single unit (in our case - a single meter, so 1.0f)
 		// and is used to determine how much precision there can be within a single unit. 

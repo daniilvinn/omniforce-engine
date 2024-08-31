@@ -354,7 +354,7 @@ namespace Omni {
 
 		// Quantize vertex positions
 		VertexDataQuantizer quantizer;
-		const uint32 vertex_bitrate = 24;
+		const uint32 vertex_bitrate = quantizer.ComputeOptimalVertexBitrate(lod0_aabb);
 		mesh_data.quantization_grid_size = vertex_bitrate;
 		uint32 mesh_bitrate = quantizer.ComputeMeshBitrate(vertex_bitrate, lod0_aabb);
 		uint32 vertex_bitstream_bit_size = deinterleaved_vertex_data.size() * mesh_bitrate * 3;
@@ -363,15 +363,13 @@ namespace Omni {
 		// byte size is aligned by 4 bytes. So if we have 17 bits worth of data, we create a 4 bytes long bit stream. 
 		// if we have 67 bits worth of data, we create 12 bytes long bit stream
 		// We reserve worse case memory size
-		Scope<BitStream> vertex_stream = std::make_unique<BitStream>((vertex_bitstream_bit_size + 31u) / 32u * 4u);
+		Scope<BitStream> vertex_stream = std::make_unique<BitStream>((vertex_bitstream_bit_size + BitStream::StorageTypeBitSize - 1) / BitStream::StorageTypeBitSize * 4u);
 		uint32 meshlet_idx = 0;
 
-		// Precision tests
-		float32 min_error = FLT_MAX;
-		float32 max_error = FLT_MIN;
-
 		for (auto& meshlet_bounds : mesh_data.cull_data) {
-			uint32 meshlet_bitrate = std::clamp((uint32)std::ceil(std::log2(meshlet_bounds.vis_culling_sphere.radius * 2 * grid_size)), 1u, 32u); // we need diameter of a sphere, not radius
+			uint32 meshlet_bitrate = std::clamp((uint32)std::ceil(std::log2(meshlet_bounds.vis_culling_sphere.radius * 2 * grid_size)), 1u, BitStream::StorageTypeBitSize); // we need diameter of a sphere, not radius
+
+			OMNIFORCE_ASSERT_TAGGED(meshlet_bitrate <= BitStream::StorageTypeBitSize, "Bit stream overflow");
 
 			RenderableMeshlet& meshlet = mesh_data.meshlets[meshlet_idx];
 
@@ -385,7 +383,6 @@ namespace Omni {
 				for (uint32 vertex_channel = 0; vertex_channel < 3; vertex_channel++) {
 					float32 original_vertex = deinterleaved_vertex_data[base_vertex_offset + vertex_idx][vertex_channel];
 					float32 meshlet_space_value = original_vertex - meshlet_bounds.vis_culling_sphere.center[vertex_channel];
-
 
 					uint32 value = quantizer.QuantizeVertexChannel(
 						meshlet_space_value,
