@@ -18,6 +18,7 @@ namespace Omni {
 		uint32 ComputeOptimalVertexBitrate(const AABB& aabb) {
 			const float32 max_local_precision_loss = 0.0001f; // Maximum 0.01% loss within a mesh
 
+			// Find furthest possible vertex
 			glm::vec3 furthest_vertex = {};
 			
 			furthest_vertex = glm::max(furthest_vertex, glm::abs(aabb.max));
@@ -26,8 +27,9 @@ namespace Omni {
 			uint32 vertex_bitrate = 1;
 
 			while (true) {
-				float32 error = (1.0f / (1u << vertex_bitrate));
+				float32 error = (1.0f / (1u << vertex_bitrate)) / 2; // Divide by 2, since the value gets snapped to nearest, so only 1/2 of an error is possible
 
+				// Check if all channels meet the precision requirements
 				for (uint32 i = 0; i < 3; i++) {
 					if (error / furthest_vertex[i] < max_local_precision_loss) {
 						return vertex_bitrate;
