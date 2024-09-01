@@ -59,7 +59,6 @@ namespace Omni {
 			stats.input_meshlet_count = previous_lod_meshlets.size();
 
 			float32 t_lod = float32(lod_idx) / (float32)max_lod;
-			//float32 min_vertex_distance = (t_lod * 0.1f + (1.0f - t_lod) * 0.01f) * simplify_scale;
 
 			// 1. Find edge vertices (not indices)
 			// 2. Compute average vertex distance for current source meshlets

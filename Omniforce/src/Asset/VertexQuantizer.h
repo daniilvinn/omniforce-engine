@@ -25,8 +25,13 @@ namespace Omni {
 			furthest_vertex = glm::max(furthest_vertex, glm::abs(aabb.min));
 
 			uint32 vertex_bitrate = 1;
+			uint32 mesh_bitrate = 0;
 
 			while (true) {
+				mesh_bitrate = ComputeMeshBitrate(vertex_bitrate, aabb);
+				if (mesh_bitrate > 32)
+					return vertex_bitrate;
+
 				float32 error = (1.0f / (1u << vertex_bitrate)) / 2; // Divide by 2, since the value gets snapped to nearest, so only 1/2 of an error is possible
 
 				// Check if all channels meet the precision requirements
