@@ -184,6 +184,7 @@ namespace Omni {
 		vulkan_1_1_features.pNext = &uint8_index_feature_enable_struct;
 		vulkan_1_1_features.shaderDrawParameters = true;
 		vulkan_1_1_features.storageBuffer16BitAccess = true;
+		vulkan_1_1_features.storagePushConstant16 = true;
 
 		VkPhysicalDeviceVulkan12Features vulkan_1_2_features = {};
 		vulkan_1_2_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;

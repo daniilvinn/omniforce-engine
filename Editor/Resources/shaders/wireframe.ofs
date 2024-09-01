@@ -17,15 +17,8 @@ layout(push_constant, scalar) uniform PushConstants {
     u8vec3 color;
 } pc;
 
-vec3 RotateByQuat(vec3 vertex, vec4 quat) {
-	vec3 uv = cross(quat.xyz, vertex);
-	vec3 uuv = cross(quat.xyz, uv);
-	return vertex + ((uv * quat.w) + uuv) * 2.0;
-};
-
 void main() {
-    vec4 rotation_quaternion = vec4(unpackSnorm2x16(pc.transform.packed_rotation[0]), unpackSnorm2x16(pc.transform.packed_rotation[1]));
-    gl_Position = pc.camera.view_proj * vec4(RotateByQuat(position * pc.transform.scale, rotation_quaternion) + pc.transform.translation, 1.0f);
+    gl_Position = pc.camera.view_proj * vec4(TransformPoint(position, pc.transform), 1.0f);
 }
 
 #pragma stage : fragment

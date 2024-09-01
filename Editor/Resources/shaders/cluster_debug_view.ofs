@@ -14,6 +14,7 @@
 #include "task_payload.glslh"
 #include "frustum.glslh"
 #include "virtual_geometry_utils.glslh"
+#include "transform.glslh"
 
 layout(local_size_x = __OMNI_TASK_SHADER_PREFERRED_WORK_GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
 
@@ -32,9 +33,9 @@ void main()
 	uint lid = gl_LocalInvocationIndex; // lid = lane id
 	
 	RenderObjectData render_object_data = pc.render_objects_data[gl_DrawID];
+	MeshData mesh_data = pc.mesh_data[render_object_data.geometry_data_id];
 
 	Transform transform = render_object_data.transform;
-	MeshData mesh_data = pc.mesh_data[render_object_data.geometry_data_id];
 
 	if(gl_GlobalInvocationID.x >= mesh_data.meshlet_count) { // check if we are out of bounds
 		return;
@@ -45,15 +46,14 @@ void main()
 	}
 
 	MeshletCullBounds cull_bounds = mesh_data.meshlets_cull_bounds[gl_GlobalInvocationID.x];
-	vec4 rotation_quaternion = vec4(unpackSnorm2x16(transform.packed_rotation[0]), unpackSnorm2x16(transform.packed_rotation[1]));
 
 	const float CONE_DECODE_CONSTANT = 1.0f / 127.0f;
 
-	vec3 cone_apex = RotateByQuat(cull_bounds.cone_apex * transform.scale, rotation_quaternion) + transform.translation;
-	vec3 cone_axis = RotateByQuat(vec3(cull_bounds.cone_axis) * CONE_DECODE_CONSTANT, rotation_quaternion); 
+	vec3 cone_apex = TransformPoint(cull_bounds.cone_apex, transform);
+	vec3 cone_axis = RotateByQuat(vec3(cull_bounds.cone_axis) * CONE_DECODE_CONSTANT, vec4(transform.rotation)); 
 
 	Sphere bounding_sphere = cull_bounds.bounding_sphere;
-	bounding_sphere.center = RotateByQuat(bounding_sphere.center * transform.scale, rotation_quaternion) + transform.translation;
+	bounding_sphere.center = TransformPoint(bounding_sphere.center, transform);
     bounding_sphere.radius = bounding_sphere.radius * max(max(transform.scale.x, transform.scale.y), transform.scale.z);
 
 	// Cull
@@ -108,7 +108,6 @@ void main()
 	MeshData mesh_data = pc.mesh_data[render_object_data.geometry_data_id];
 
 	Transform transform = render_object_data.transform;
-	vec4 rotation_quaternion = vec4(unpackSnorm2x16(transform.packed_rotation[0]), unpackSnorm2x16(transform.packed_rotation[1]));
 
 	MeshMeshletsData meshlet_data = mesh_data.meshlets_data[task_payload.base_offset + task_payload.meshlet_ids[gl_WorkGroupID.x]];
 	vec3 meshlet_center = mesh_data.meshlets_cull_bounds[task_payload.base_offset + task_payload.meshlet_ids[gl_WorkGroupID.x]].bounding_sphere.center;
@@ -152,7 +151,7 @@ void main()
 			meshlet_center
 		);
 
-		vertex = RotateByQuat(vertex * transform.scale, rotation_quaternion) + transform.translation;
+		vertex = TransformPoint(vertex, transform);
 
 		gl_MeshVerticesEXT[gl_LocalInvocationIndex * vertex_processing_iterations + i].gl_Position = pc.camera_data.view_proj * vec4(vertex, 1.0f);
 	}

@@ -34,7 +34,7 @@ namespace Omni {
 
 	struct TRS {
 		glm::vec3 translation;
-		glm::uvec2 rotation;
+		glm::u16vec4 rotation;
 		glm::vec3 scale;
 	};
 

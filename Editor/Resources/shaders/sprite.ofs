@@ -5,6 +5,7 @@
 #extension GL_EXT_buffer_reference2 : require
 
 #include "common.glslh"
+#include "transform.glslh"
 
 vec3 vertices[6] = {
 	vec3( -1.0f,  -1.0f,  0.0f ),
@@ -35,9 +36,7 @@ layout(location = 2) out vec4 color_tint;
 void main() {
 	Sprite sprite = sprite_data.sprites[gl_InstanceIndex];
 
-	vec4 rotation_quaternion = vec4(unpackSnorm2x16(sprite.rotation[0]), unpackSnorm2x16(sprite.rotation[1]));
-
-	vec3 rotated_vertex = RotateByQuat(vec3(sprite.size, 1.0f) * vertices[gl_VertexIndex], rotation_quaternion);
+	vec3 rotated_vertex = RotateByQuat(vec3(sprite.size, 1.0f) * vertices[gl_VertexIndex], vec4(sprite.rotation));
 	gl_Position = pc.camera_data.view_proj * vec4(sprite.position + rotated_vertex, 1);
 
 	tex_coord = tex_coords[gl_VertexIndex];

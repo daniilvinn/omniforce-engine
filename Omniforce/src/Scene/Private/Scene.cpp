@@ -112,10 +112,8 @@ namespace Omni {
 				TRSComponent trs_component = entity.GetWorldTransform();
 				TagComponent& tag_component = entity.GetComponent<TagComponent>();
 
-				glm::uvec2 packed_quat = {
-					glm::packSnorm2x16({trs_component.rotation.x, trs_component.rotation.y}),
-					glm::packSnorm2x16({trs_component.rotation.z, trs_component.rotation.w})
-				};
+				glm::quat& r = trs_component.rotation;
+				glm::u16vec4 packed_quat = glm::packHalf( glm::vec4(r.x,r.y,r.z,r.w) );
 
 				// Assemble sprite structure
 				Sprite sprite;
@@ -136,10 +134,10 @@ namespace Omni {
 
 				DeviceRenderableObject renderable_object = {};
 				renderable_object.trs.translation = trs_component.translation;
-				renderable_object.trs.rotation = {
-					glm::packSnorm2x16({trs_component.rotation.x, trs_component.rotation.y}),
-					glm::packSnorm2x16({trs_component.rotation.z, trs_component.rotation.w})
-				};
+				renderable_object.trs.rotation = glm::packHalf(glm::vec4(
+					trs_component.rotation.x, trs_component.rotation.y,
+					trs_component.rotation.z, trs_component.rotation.w
+				));
 				renderable_object.trs.scale = trs_component.scale;
 				renderable_object.render_data_index = m_Renderer->GetMeshIndex(mesh_data.mesh_handle);
 				renderable_object.material_bda = m_Renderer->GetMaterialBDA(mesh_data.material_handle);

@@ -8,25 +8,13 @@ struct Sphere {
 	float radius;
 };
 
-vec3 QuaternionRotate(vec3 vertex, vec4 quat) {
-	vec3 uv = cross(quat.xyz, vertex);
-	vec3 uuv = cross(quat.xyz, uv);
-	return vertex + ((uv * quat.w) + uuv) * 2.0;
-};
-
 Sphere TransformSphere(Sphere sphere, Transform transform, mat4 camera_transform) {
 	Sphere result_sphere = sphere;
 	
 	// Scale the position and radius
-	result_sphere.center *= transform.scale;
 	result_sphere.radius *= max(transform.scale.x, max(transform.scale.y, transform.scale.z));
-
-	// Rotate the position
-	vec4 rotation_quaternion = vec4(unpackSnorm2x16(transform.packed_rotation[0]), unpackSnorm2x16(transform.packed_rotation[1]));
-	result_sphere.center = QuaternionRotate(result_sphere.center, rotation_quaternion);
-
-	// Translate the position
-	result_sphere.center += transform.translation;
+	
+	result_sphere.center = TransformPoint(result_sphere.center, transform);
 
 	// Transform position into a view space
 	vec4 view_space_position = camera_transform * vec4(result_sphere.center, 1.0);
