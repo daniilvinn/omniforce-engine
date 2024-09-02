@@ -7,6 +7,7 @@
 #include <Asset/MeshPreprocessor.h>
 
 #include <imgui.h>
+#include <glm/gtc/packing.hpp>
 
 namespace Omni {
 
@@ -106,11 +107,9 @@ namespace Omni {
 	void DebugRenderer::RenderWireframeSphere(const glm::vec3& position, float radius, const glm::vec3& color)
 	{
 		renderer->m_DebugRequests.push_back([=]() {
-			glm::quat identity_quat = {};
-
 			TRS trs = {};
 			trs.translation = position;
-			trs.rotation = { glm::packSnorm2x16({ identity_quat.x, identity_quat.y }), glm::packSnorm2x16({ identity_quat.z, identity_quat.w }) };
+			trs.rotation = glm::packHalf(glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
 			trs.scale = { radius, radius, radius };
 
 			glm::u8vec3 encoded_color = { color.r * 255, color.g * 255, color.b * 255 };
@@ -134,7 +133,7 @@ namespace Omni {
 		renderer->m_DebugRequests.push_back([=]() {
 			TRS trs = {};
 			trs.translation = translation;
-			trs.rotation = { glm::packSnorm2x16({ rotation.x, rotation.y }), glm::packSnorm2x16({ rotation.z, rotation.w }) };
+			trs.rotation = glm::packHalf(glm::vec4(rotation.x, rotation.y, rotation.z, rotation.w));
 			trs.scale = scale;
 
 			glm::u8vec3 encoded_color = { color.r * 255, color.g * 255, color.b * 255 };
@@ -158,7 +157,7 @@ namespace Omni {
 		renderer->m_DebugRequests.push_back([=]() {
 			TRS trs = {};
 			trs.translation = translation;
-			trs.rotation = { glm::packSnorm2x16({ rotation.x, rotation.y }), glm::packSnorm2x16({ rotation.z, rotation.w }) };
+			trs.rotation = glm::packHalf(glm::vec4( rotation.x, rotation.y, rotation.z, rotation.w ) );
 			trs.scale = scale;
 
 			glm::u8vec3 encoded_color = { color.r * 255, color.g * 255, color.b * 255 };
