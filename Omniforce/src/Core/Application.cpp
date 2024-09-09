@@ -37,7 +37,7 @@ namespace Omni
 		WindowSystem::WindowConfig main_window_config = {};
 		main_window_config.event_callback = OMNIFORCE_BIND_EVENT_FUNCTION(Application::OnEvent);
 		main_window_config.tag = "main";
-		main_window_config.title = "Omniforce Game Engine";
+		main_window_config.title = OMNIFORCE_BUILD_CONFIG != OMNIFORCE_DEBUG_CONFIG ? "Omniforce Game Engine" : "Omniforce Game Engine | Debug build";
 		main_window_config.width = 1920;
 		main_window_config.height = 1080;
 		main_window_config.fs_exclusive = false;
