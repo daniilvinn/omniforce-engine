@@ -86,7 +86,7 @@ namespace Omni {
 					AABB lod0_aabb = {};
 
 					auto mesh_process_task = subflow.emplace([&, this]() {
-						ProcessMeshData(&mesh, &lod0_aabb, &vertex_data, &index_data, vertex_stride, &mtx);
+						ProcessMeshData(&mesh, &lod0_aabb, &vertex_data, &index_data, vertex_stride, attribute_metadata_table, &mtx);
 						OMNIFORCE_CORE_TRACE("[{}/{}] Loaded mesh: {}", ++mesh_load_progress_counter, ftf_asset.meshes.size(), ftf_mesh.name);
 					}).succeed(attribute_read_task);
 
@@ -291,7 +291,7 @@ namespace Omni {
 		}
 	}
 
-	void ModelImporter::ProcessMeshData(Shared<Mesh>* out_mesh, AABB* out_lod0_aabb, const std::vector<byte>* vertex_data, const std::vector<uint32>* index_data, uint32 vertex_stride, std::shared_mutex* mtx)
+	void ModelImporter::ProcessMeshData(Shared<Mesh>* out_mesh, AABB* out_lod0_aabb, const std::vector<byte>* vertex_data, const std::vector<uint32>* index_data, uint32 vertex_stride, const VertexAttributeMetadataTable& vertex_metadata, std::shared_mutex* mtx)
 	{
 		// Init crucial data
 		MeshData mesh_data;
@@ -310,7 +310,7 @@ namespace Omni {
 
 		VirtualMeshBuilder vmesh_builder = {};
 
-		vmesh = vmesh_builder.BuildClusterGraph(optimized_vertices, optimized_indices, vertex_stride);
+		vmesh = vmesh_builder.BuildClusterGraph(optimized_vertices, optimized_indices, vertex_stride, vertex_metadata);
 
 		OMNIFORCE_ASSERT_TAGGED(vmesh.meshlets.size(), "No virtual mesh clusters generated");
 		OMNIFORCE_ASSERT_TAGGED(vmesh.indices.size() >= 3, "No virtual mesh indices generated");

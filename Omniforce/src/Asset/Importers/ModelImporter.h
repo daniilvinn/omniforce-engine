@@ -24,12 +24,12 @@ namespace Omni {
 
 	namespace ftf = fastgltf;
 
+	using MeshMaterialPair = std::pair<AssetHandle, AssetHandle>;
+	using VertexAttributeMetadataTable = std::map<std::string, uint8>;
+
 	class OMNIFORCE_API ModelImporter {
 	public:
 		AssetHandle Import(std::filesystem::path path);
-
-		using MeshMaterialPair = std::pair<AssetHandle, AssetHandle>;
-		using VertexAttributeMetadataTable = std::map<std::string, uint8>;
 
 	private:
 		/*
@@ -56,7 +56,15 @@ namespace Omni {
 		/*
 		*  Process vertex data: optimize, generate lods, meshlets and create Mesh objects
 		*/
-		void ProcessMeshData(Shared<Mesh>* out_mesh, AABB* out_lod0_aabb, const std::vector<byte>* vertex_data, const std::vector<uint32>* index_data, uint32 vertex_stride, std::shared_mutex* mtx);
+		void ProcessMeshData(
+			Shared<Mesh>* out_mesh, 
+			AABB* out_lod0_aabb, 
+			const std::vector<byte>* vertex_data, 
+			const std::vector<uint32>* index_data, 
+			uint32 vertex_stride, 
+			const VertexAttributeMetadataTable& vertex_metadata, 
+			std::shared_mutex* mtx
+		);
 
 		/*
 		*  Process material data. Load image, generate mip-maps, compress data and create Material objects

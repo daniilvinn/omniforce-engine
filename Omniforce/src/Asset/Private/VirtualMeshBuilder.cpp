@@ -14,11 +14,12 @@
 #include <metis.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/norm.hpp>
+#include <glm/gtc/packing.hpp>
 #include <meshoptimizer.h>
 
 namespace Omni {
 
-	VirtualMesh VirtualMeshBuilder::BuildClusterGraph(const std::vector<byte>& vertices, const std::vector<uint32>& indices, uint32 vertex_stride)
+	VirtualMesh VirtualMeshBuilder::BuildClusterGraph(const std::vector<byte>& vertices, const std::vector<uint32>& indices, uint32 vertex_stride, const VertexAttributeMetadataTable& vertex_metadata)
 	{
 		Timer timer;
 		MeshPreprocessor mesh_preprocessor = {};
@@ -105,12 +106,13 @@ namespace Omni {
 			// Compute average vertex density
 			float32 vertex_density = (float64)indices.size() / total_surface_area;
 			float32 min_vertex_distance = glm::sqrt(simplify_scale / vertex_density) * t_lod * 0.3f;
+			float32 min_uv_distance = t_lod * 0.5f + (1.0f - t_lod) * 1.0f / 256.0f;
 
 			stats.min_welder_vertex_distance = min_vertex_distance;
 			stats.mesh_scale = simplify_scale;
 
 			// Weld close enough vertices together
-			std::vector<uint32> welder_remap_table = GenerateVertexWelderRemapTable(vertices, vertex_stride, kd_tree, unique_indices, edge_vertices_map, min_vertex_distance, stats);
+			std::vector<uint32> welder_remap_table = GenerateVertexWelderRemapTable(vertices, vertex_stride, kd_tree, unique_indices, edge_vertices_map, min_vertex_distance, min_uv_distance, vertex_metadata, stats);
 
 			// Generate meshlet groups
 			auto groups = GroupMeshClusters(meshlets_data->meshlets, previous_lod_meshlets, welder_remap_table, meshlets_data->indices, meshlets_data->local_indices, vertices, vertex_stride);
@@ -482,7 +484,7 @@ namespace Omni {
 		idx_t final_cut_cost = 0; // final cost of the cut found by METIS
 		int result = -1;
 		{
-#ifndef BLABLA
+#ifndef METIS_HAS_THREADLOCAL
 			std::lock_guard lock(m_Mutex);
 #endif
 			result = METIS_PartGraphKway(
@@ -517,13 +519,33 @@ namespace Omni {
 
 	// TODO: take UVs into account
 	// Assumes that positions are encoded in first 12 bytes of vertices
-	std::vector<Omni::uint32> VirtualMeshBuilder::GenerateVertexWelderRemapTable(const std::vector<byte>& vertices, uint32 vertex_stride, const KDTree& kd_tree, const rh::unordered_flat_set<uint32>& lod_indices, const std::vector<bool>& edge_vertex_map, float32 min_vertex_distance, LODGenerationPassStatistics& stats)
+	std::vector<Omni::uint32> VirtualMeshBuilder::GenerateVertexWelderRemapTable(
+		const std::vector<byte>& vertices, 
+		uint32 vertex_stride, 
+		const KDTree& kd_tree, 
+		const rh::unordered_flat_set<uint32>& lod_indices, 
+		const std::vector<bool>& edge_vertex_map, 
+		float32 min_vertex_distance, 
+		float32 min_uv_distance, 
+		const VertexAttributeMetadataTable& vertex_metadata, 
+		LODGenerationPassStatistics& stats
+	)
 	{
 		std::vector<uint32> remap_table(vertices.size() / vertex_stride);
 
 		// Init remap table
-		for (uint32 i = 0; i < remap_table.size(); i++)
-			remap_table[i] = i;
+		std::iota(remap_table.begin(), remap_table.end(), 0);
+
+		// Init UVs offsets
+		bool has_uvs = false;
+		std::vector<uint8> uv_channels_offsets;
+		for (const auto& metadata_entry : vertex_metadata) {
+			if (metadata_entry.first.find("TEXCOORD") != std::string::npos) {
+				has_uvs = true;
+				uv_channels_offsets.push_back(metadata_entry.second);
+			}
+		}
+	
 
 		for (const auto& index : lod_indices) {
 			if (edge_vertex_map[index]) {
@@ -531,19 +553,51 @@ namespace Omni {
 				continue;
 			}
 
+			// Fetch current vertex UVs
+			const glm::vec3 current_vertex_position = Utils::FetchVertexFromBuffer(vertices, index, vertex_stride);
+			std::vector<glm::vec2> current_vertex_uvs;
+
+			// Init current vertex UVs
+			for (const auto& uv_channel_offset : uv_channels_offsets) {
+				current_vertex_uvs.push_back(glm::unpackHalf(Utils::FetchDataFromBuffer<glm::u16vec2>(vertices, index, uv_channel_offset, vertex_stride)));
+			}
+
 			float32 min_distance_sq = min_vertex_distance * min_vertex_distance;
-			const glm::vec3 current_vertex = Utils::FetchVertexFromBuffer(vertices, index, vertex_stride);
+			float32 min_uv_distance_sq = min_uv_distance * min_uv_distance;
 
-			const std::vector<uint32> neighbour_indices = kd_tree.ClosestPointSet(current_vertex, min_vertex_distance, index);
+			const std::vector<uint32> neighbour_indices = kd_tree.ClosestPointSet(current_vertex_position, min_vertex_distance, index);
 
+			// Check neighbours
 			uint32 replacement = index;
 			for (const auto& neighbour : neighbour_indices) {
-				const glm::vec3 neighbour_vertex = Utils::FetchVertexFromBuffer(vertices, remap_table[neighbour], vertex_stride);
+				const glm::vec3 neighbour_vertex_position = Utils::FetchVertexFromBuffer(vertices, remap_table[neighbour], vertex_stride);
 
-				const float32 vertex_distance_squared = glm::distance2(current_vertex, neighbour_vertex);
+				const glm::vec2 neighbour_vertex_uvs = Utils::FetchVertexFromBuffer(vertices, remap_table[neighbour], vertex_stride);
+
+				const float32 vertex_distance_squared = glm::distance2(current_vertex_position, neighbour_vertex_position);
 				if (vertex_distance_squared < min_distance_sq) {
-					replacement = neighbour;
-					min_distance_sq = vertex_distance_squared;
+					// Check UV distances
+					bool uv_test_passed = true;
+					for (uint32 uv_index = 0; const auto& uv_channel_offset : uv_channels_offsets) {
+						glm::vec2 uv = glm::unpackHalf(Utils::FetchDataFromBuffer<glm::u16vec2>(vertices, remap_table[neighbour], uv_channel_offset, vertex_stride));
+
+						float32 uv_distance_sq = glm::distance2(uv, current_vertex_uvs[uv_index]);
+						if (uv_distance_sq <= min_uv_distance_sq) {
+							min_distance_sq = uv_distance_sq;
+						}
+						else {
+							uv_test_passed = false;
+							break;
+						}
+
+						uv_index++;
+					}
+
+					if (uv_test_passed) {
+						replacement = neighbour;
+						min_distance_sq = vertex_distance_squared;
+					}
+
 				}
 			}
 

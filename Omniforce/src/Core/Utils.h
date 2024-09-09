@@ -139,6 +139,11 @@ namespace Omni {
 			return *(glm::vec3*)(vertex_data.data() + (vertex_stride * index));
 		}
 
+		template<typename T>
+		inline T FetchDataFromBuffer(const std::vector<byte>& vertex_data, uint32 index, uint8 offset, uint32 vertex_stride) {
+			return *(T*)(vertex_data.data() + (vertex_stride * index) + offset);
+		}
+
 		inline Sphere SphereFromAABB(const AABB& aabb) {
 			Sphere sphere = {};
 

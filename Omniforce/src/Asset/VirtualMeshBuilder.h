@@ -4,6 +4,7 @@
 #include <Foundation/Types.h>
 #include <Renderer/Meshlet.h>
 #include <Core/KDTree.h>
+#include "Importers/ModelImporter.h"
 
 #include <span>
 #include <shared_mutex>
@@ -40,7 +41,12 @@ namespace Omni {
 	class VirtualMeshBuilder {
 	public:
 		// Generates a Virtual mesh - a hierarchy of meshlets, representing variable level of detail between each LOD level.
-		VirtualMesh BuildClusterGraph(const std::vector<byte>& vertices, const std::vector<uint32>& indices, uint32 vertex_stride);
+		VirtualMesh BuildClusterGraph(
+			const std::vector<byte>& vertices, 
+			const std::vector<uint32>& indices, 
+			uint32 vertex_stride, 
+			const VertexAttributeMetadataTable& vertex_metadata
+		);
 
 		// === Helper methods ===
 		// Takes a list of meshlets and mesh data, outputs a list of groups of meshlets
@@ -55,12 +61,31 @@ namespace Omni {
 		);
 
 		// Finds edge vertices so they are not involved in welding
-		std::vector<bool> GenerateEdgeMap(std::span<RenderableMeshlet> meshlets, const std::span<uint32> current_meshlets, const std::vector<byte>& vertices, std::vector<uint32>& indices, const std::vector<uint8>& local_indices, uint32 vertex_stride);
+		std::vector<bool> GenerateEdgeMap(
+			std::span<RenderableMeshlet> meshlets, 
+			const std::span<uint32> current_meshlets, 
+			const std::vector<byte>& vertices, 
+			std::vector<uint32>& indices, 
+			const std::vector<uint8>& local_indices, 
+			uint32 vertex_stride
+		);
+
 		// Performs vertex welding
-		std::vector<uint32> GenerateVertexWelderRemapTable(const std::vector<byte>& vertices, uint32 vertex_stride, const KDTree& kd_tree, const rh::unordered_flat_set<uint32>& lod_indices, const std::vector<bool>& edge_vertex_map, float32 min_vertex_distance, LODGenerationPassStatistics& stats);
+		std::vector<uint32> GenerateVertexWelderRemapTable(
+			const std::vector<byte>& vertices, 
+			uint32 vertex_stride, 
+			const KDTree& kd_tree, 
+			const rh::unordered_flat_set<uint32>& lod_indices, 
+			const std::vector<bool>& edge_vertex_map, 
+			float32 min_vertex_distance,
+			float32 min_uv_distance
+		,
+			const VertexAttributeMetadataTable& vertex_metadata,
+			LODGenerationPassStatistics& stats
+		);
 
 	private:
-#ifndef BLABLA
+#ifndef METIS_HAS_THREADLOCAL
 		inline static std::shared_mutex m_Mutex;
 #endif
 
