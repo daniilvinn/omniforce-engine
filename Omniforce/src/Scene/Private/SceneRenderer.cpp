@@ -289,6 +289,8 @@ namespace Omni {
 			camera_data.fov = m_Camera->GetType() == CameraProjectionType::PROJECTION_3D ? ShareAs<Camera3D>(m_Camera)->GetFOV() : glm::radians(90.0f);
 			camera_data.viewport_width = m_CurrectMainRenderTarget->GetSpecification().extent.r;
 			camera_data.viewport_height = m_CurrectMainRenderTarget->GetSpecification().extent.g;
+			camera_data.near_clip_distance = m_Camera->GetNearClip();
+			camera_data.far_clip_distance = m_Camera->GetFarClip();
 
 			m_CameraDataBuffer->UploadData(
 				Renderer::GetCurrentFrameIndex() * (m_CameraDataBuffer->GetSpecification().size / Renderer::GetConfig().frames_in_flight),

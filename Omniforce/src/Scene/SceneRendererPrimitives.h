@@ -18,6 +18,8 @@ namespace Omni {
 		float32 fov; // In radians
 		float32 viewport_height;
 		float32 viewport_width;
+		float32 near_clip_distance;
+		float32 far_clip_distance;
 	};
 
 	struct DeviceMeshData {

@@ -13,6 +13,8 @@ layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Cam
 	float fov; // in radians
 	float viewport_height;
 	float viewport_width;
+	float near_clip_distance;
+	float far_clip_distance;
 };
 
 #endif

@@ -8,7 +8,7 @@ struct Sphere {
 	float radius;
 };
 
-Sphere TransformSphere(Sphere sphere, Transform transform, mat4 camera_transform) {
+Sphere TransformSphereViewModel(Sphere sphere, Transform transform, mat4 camera_transform) {
 	Sphere result_sphere = sphere;
 	
 	// Scale the position and radius
@@ -21,7 +21,6 @@ Sphere TransformSphere(Sphere sphere, Transform transform, mat4 camera_transform
 
 	// Assign new position and compute view-space radius
 	result_sphere.center = view_space_position.xyz;
-	result_sphere.radius /= view_space_position.w;
 
 	return result_sphere;
 }
