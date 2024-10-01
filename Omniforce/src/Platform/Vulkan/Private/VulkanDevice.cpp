@@ -195,7 +195,7 @@ namespace Omni {
 		vulkan_1_2_features.runtimeDescriptorArray = true;
 		vulkan_1_2_features.scalarBlockLayout = true;
 		vulkan_1_2_features.bufferDeviceAddress = true;
-		vulkan_1_2_features.bufferDeviceAddressCaptureReplay = OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG;
+		vulkan_1_2_features.bufferDeviceAddressCaptureReplay = OMNIFORCE_BUILD_CONFIG != OMNIFORCE_RELEASE_CONFIG;
 		vulkan_1_2_features.drawIndirectCount = true;
 		vulkan_1_2_features.storageBuffer8BitAccess = true;
 		vulkan_1_2_features.shaderInt8 = true;
@@ -276,7 +276,7 @@ namespace Omni {
 		OMNIFORCE_ASSERT_TAGGED(m_PhysicalDevice->IsExtensionSupported(VK_EXT_MESH_SHADER_EXTENSION_NAME), "Mesh shading is not supported, aborting execution");
 		extensions.push_back(VK_EXT_MESH_SHADER_EXTENSION_NAME);
 
-		if (m_PhysicalDevice->IsExtensionSupported(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME) && OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG) {
+		if (m_PhysicalDevice->IsExtensionSupported(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME) && OMNIFORCE_BUILD_CONFIG != OMNIFORCE_RELEASE_CONFIG) {
 			extensions.push_back(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME);
 		}
 

@@ -2,7 +2,7 @@
 
 #define OMNIFORCE_DEBUG_CONFIG 0x1
 #define OMNIFORCE_RELEASE_CONFIG 0x2
-#define OMNIFORCE_RELWITHDEBINFO_CONFIG OMNIFORCE_RELEASE_CONFIG
+#define OMNIFORCE_RELWITHDEBINFO_CONFIG 0x3
 
 #ifdef OMNIFORCE_DEBUG
 	#define OMNIFORCE_BUILD_CONFIG OMNIFORCE_DEBUG_CONFIG
@@ -19,7 +19,7 @@
 		#error Engine requires 64-bit system to build.
 	#endif
 #else
-	#error Only Windows platform is supported (WIP)
+	#error Only Windows platform is supported
 #endif
 
 #define OMNIFORCE_PLATFORM_WIN64 0x1
@@ -67,7 +67,7 @@
 	#define OMNIFORCE_ASSERT_TAGGED(expression, ...)
 #endif
 
-#ifdef OMNIFORCE_DEBUG
+#ifndef OMNIFORCE_RELEASE
 	#define	OMNI_DEBUG_ONLY_CODE(code) code 
 #else
 	#define OMNI_DEBUG_ONLY_CODE(code)
