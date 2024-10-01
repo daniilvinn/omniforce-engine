@@ -130,7 +130,7 @@ void main()
         SetMeshOutputsEXT(meshlet_vertex_count, meshlet_triangle_count);
     };
 
-	// vertices
+	// process vertex data
 	uint vertex_processing_iterations = (meshlet_vertex_count + gl_WorkGroupSize.x - 1) / gl_WorkGroupSize.x;
 	int bit_extend_bitmask = 1 << (meshlet_bitrate - 1);
 
@@ -139,18 +139,14 @@ void main()
 			break;
 		}
 
-		// Read from bit stream and extend sign bit
-		ivec3 encoded_vertex = ivec3(
-			// Read X
-			(BitStreamRead(mesh_data.vertices, meshlet_bitrate, meshlet_data.vertex_bit_offset + 
-				(gl_LocalInvocationIndex * meshlet_bitrate * 3 * vertex_processing_iterations + (i * 3 * meshlet_bitrate))) ^ bit_extend_bitmask) - bit_extend_bitmask,
-			// Read Y
-			(BitStreamRead(mesh_data.vertices, meshlet_bitrate, meshlet_data.vertex_bit_offset + 
-				(gl_LocalInvocationIndex * meshlet_bitrate * 3 * vertex_processing_iterations + (i * 3 * meshlet_bitrate)) + meshlet_bitrate) ^ bit_extend_bitmask) - bit_extend_bitmask,
-			// Read Z
-			(BitStreamRead(mesh_data.vertices, meshlet_bitrate, meshlet_data.vertex_bit_offset + 
-				(gl_LocalInvocationIndex * meshlet_bitrate * 3 * vertex_processing_iterations + (i * 3 * meshlet_bitrate)) + meshlet_bitrate * 2) ^ bit_extend_bitmask) - bit_extend_bitmask
-		);
+		// Compute offset
+		uint vtx_offset = gl_LocalInvocationIndex * meshlet_bitrate * 3 * vertex_processing_iterations + (i * 3 * meshlet_bitrate);
+
+		// Fetch vertex
+		ivec3 encoded_vertex = FetchVertexFromStream(mesh_data.vertices, meshlet_bitrate, meshlet_data.vertex_bit_offset + vtx_offset);
+
+		// Restore sign
+		encoded_vertex = (encoded_vertex ^ bit_extend_bitmask) - bit_extend_bitmask;
 
 		// Decode vertex
 		vec3 vertex = DecodeVertex(
@@ -161,9 +157,38 @@ void main()
 
 		vertex = TransformPoint(vertex, transform);
 
+		vertex_output[gl_LocalInvocationIndex * vertex_processing_iterations + i].position = vertex;
 		gl_MeshVerticesEXT[gl_LocalInvocationIndex * vertex_processing_iterations + i].gl_Position = pc.camera_data.view_proj * vec4(vertex, 1.0f);
+
+		// Process attributes
+		out_material_bda[gl_LocalInvocationIndex * vertex_processing_iterations + i] = render_object_data.material_bda;
+	
+		#ifdef __OMNI_HAS_VERTEX_TEXCOORDS
+			for(int j = 0; j < __OMNI_MESH_TEXCOORD_COUNT; j++) {
+				vertex_output[gl_LocalInvocationIndex * vertex_processing_iterations + i].uv[j] = vec2(mesh_data.attributes[meshlet_data.vertex_offset + (gl_LocalInvocationIndex * vertex_processing_iterations + i)].uv[j]);
+			}
+		#endif
+
+		// Process normals, tangents and bitangents
+		#ifdef __OMNI_HAS_VERTEX_NORMAL
+			f16vec3 normal = normalize(
+				RotateByQuat(
+					DecodeNormal(mesh_data.attributes[meshlet_data.vertex_offset + (gl_LocalInvocationIndex * vertex_processing_iterations + i)].normal), 
+					transform.rotation
+				)
+			);
+			vertex_output[gl_LocalInvocationIndex * vertex_processing_iterations + i].normal = vec3(normal);
+		#endif
+		#if defined(__OMNI_HAS_NORMAL_MAP) && defined(__OMNI_HAS_VERTEX_NORMAL) && defined(__OMNI_HAS_VERTEX_TANGENT)
+			f16vec4 tangent = DecodeTangent(mesh_data.attributes[meshlet_data.vertex_offset + (gl_LocalInvocationIndex * vertex_processing_iterations + i)].tangent);
+			tangent.xyz = normalize(tangent.xyz - dot(tangent.xyz, normal) * normal); // reorthogonalize
+
+			vertex_output[gl_LocalInvocationIndex * vertex_processing_iterations + i].tangent = vec4(tangent);
+		#endif
+
 	}
 
+	// process triangle data
 	uint index_processing_iterations = (meshlet_triangle_count + gl_WorkGroupSize.x - 1) / gl_WorkGroupSize.x;
 	for(int i = 0; i < index_processing_iterations; i++) {
 		if(gl_LocalInvocationIndex * index_processing_iterations + i >= meshlet_triangle_count) {
@@ -175,39 +200,6 @@ void main()
 			mesh_data.micro_indices[meshlet_data.triangle_offset + ((gl_LocalInvocationIndex * index_processing_iterations + i) * 3 + 1)].micro_index,
 			mesh_data.micro_indices[meshlet_data.triangle_offset + ((gl_LocalInvocationIndex * index_processing_iterations + i) * 3 + 2)].micro_index
 		);
-	}
-
-	// attributes and material bda
-	uint num_processing_attributes = (meshlet_vertex_count + gl_WorkGroupSize.x - 1) / gl_WorkGroupSize.x;;
-	for(int i = 0; i < num_processing_attributes; i++) {
-		if((gl_LocalInvocationIndex * vertex_processing_iterations + i) >= meshlet_vertex_count) {
-			break;
-		}
-
-		out_material_bda[gl_LocalInvocationIndex * num_processing_attributes + i] = render_object_data.material_bda;
-	
-		#ifdef __OMNI_HAS_VERTEX_TEXCOORDS
-			for(int j = 0; j < __OMNI_MESH_TEXCOORD_COUNT; j++) {
-				vertex_output[gl_LocalInvocationIndex * num_processing_attributes + i].uv[j] = vec2(mesh_data.attributes[meshlet_data.vertex_offset + (gl_LocalInvocationIndex * num_processing_attributes + i)].uv[j]);
-			}
-		#endif
-
-		// Process normals, tangents and bitangents
-		#ifdef __OMNI_HAS_VERTEX_NORMAL
-			f16vec3 normal = normalize(
-				RotateByQuat(
-					DecodeNormal(mesh_data.attributes[meshlet_data.vertex_offset + (gl_LocalInvocationIndex * num_processing_attributes + i)].normal), 
-					transform.rotation
-				)
-			);
-			vertex_output[gl_LocalInvocationIndex * num_processing_attributes + i].normal = vec3(normal);
-		#endif
-		#if defined(__OMNI_HAS_NORMAL_MAP) && defined(__OMNI_HAS_VERTEX_NORMAL) && defined(__OMNI_HAS_VERTEX_TANGENT)
-			f16vec4 tangent = DecodeTangent(mesh_data.attributes[meshlet_data.vertex_offset + (gl_LocalInvocationIndex * num_processing_attributes + i)].tangent);
-			tangent.xyz = normalize(tangent.xyz - dot(tangent.xyz, normal) * normal); // reorthogonalize
-
-			vertex_output[gl_LocalInvocationIndex * num_processing_attributes + i].tangent = vec4(tangent);
-		#endif
 	}
 }
 

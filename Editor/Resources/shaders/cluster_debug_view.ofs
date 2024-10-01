@@ -132,17 +132,15 @@ void main()
 		}
 
 		// Read from bit stream and extend sign bit
-		ivec3 encoded_vertex = ivec3(
-			// Read X
-			(BitStreamRead(mesh_data.vertices, meshlet_bitrate, meshlet_data.vertex_bit_offset + 
-				(gl_LocalInvocationIndex * meshlet_bitrate * 3 * vertex_processing_iterations + (i * 3 * meshlet_bitrate))) ^ bit_extend_bitmask) - bit_extend_bitmask,
-			// Read Y
-			(BitStreamRead(mesh_data.vertices, meshlet_bitrate, meshlet_data.vertex_bit_offset + 
-				(gl_LocalInvocationIndex * meshlet_bitrate * 3 * vertex_processing_iterations + (i * 3 * meshlet_bitrate)) + meshlet_bitrate) ^ bit_extend_bitmask) - bit_extend_bitmask,
-			// Read Z
-			(BitStreamRead(mesh_data.vertices, meshlet_bitrate, meshlet_data.vertex_bit_offset + 
-				(gl_LocalInvocationIndex * meshlet_bitrate * 3 * vertex_processing_iterations + (i * 3 * meshlet_bitrate)) + meshlet_bitrate * 2) ^ bit_extend_bitmask) - bit_extend_bitmask
-		);
+
+		// Compute offset
+		uint vtx_offset = gl_LocalInvocationIndex * meshlet_bitrate * 3 * vertex_processing_iterations + (i * 3 * meshlet_bitrate);
+
+		// Fetch vertex
+		ivec3 encoded_vertex = FetchVertexFromStream(mesh_data.vertices, meshlet_bitrate, meshlet_data.vertex_bit_offset + vtx_offset);
+
+		// Restore sign
+		encoded_vertex = (encoded_vertex ^ bit_extend_bitmask) - bit_extend_bitmask;
 
 		// Decode vertex
 		vec3 vertex = DecodeVertex(

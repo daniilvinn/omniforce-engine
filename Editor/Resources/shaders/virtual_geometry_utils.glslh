@@ -26,7 +26,7 @@ bool TestMeshletLOD(MeshletLODCullData lod_culling_data, CameraData camera_data,
         max(lod_culling_data.error, 0.000000001f)
     );
 
-    projected_bounding_sphere = TransformSphere(projected_bounding_sphere, render_object.transform, camera_data.view);
+    projected_bounding_sphere = TransformSphereViewModel(projected_bounding_sphere, render_object.transform, camera_data.view);
     const float result_error = ProjectMeshletError(projected_bounding_sphere, camera_data, half_fov_cot);
 
     // Project parent sphere
@@ -35,11 +35,11 @@ bool TestMeshletLOD(MeshletLODCullData lod_culling_data, CameraData camera_data,
         max(lod_culling_data.parent_error, 0.000000001f)
     );
 
-    parent_projected_bounding_sphere = TransformSphere(parent_projected_bounding_sphere, render_object.transform, camera_data.view);
+    parent_projected_bounding_sphere = TransformSphereViewModel(parent_projected_bounding_sphere, render_object.transform, camera_data.view);
     const float parent_result_error = ProjectMeshletError(parent_projected_bounding_sphere, camera_data, half_fov_cot);
 
     // Perform a LOD test. If error (in pixels) of current meshlet is small enough AND parent error is too big, we render this group
-    return result_error <= 1.6f && parent_result_error > 1.6f;
+    return result_error <= 3.0f && parent_result_error > 3.0f;
 }
 
 #endif

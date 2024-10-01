@@ -91,6 +91,7 @@ void main() {
 
 	vec3 ambient = vec3(0.001) * base_color;
 	vec3 color   = ambient + Lo;
+	color = color * metallic_roughness_ao.r;
 	color = color / (color + vec3(1.0));
 	color = pow(color, vec3(1.0/2.2)); 
 

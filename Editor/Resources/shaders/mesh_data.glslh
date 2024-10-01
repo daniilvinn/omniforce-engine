@@ -23,6 +23,19 @@ const int MESHLET_DATA_BITRATE_BIT_COUNT = 6;
 #define ExtractMeshletTriangleCount(meshlet_metadata)   bitfieldExtract(meshlet_metadata, MESHLET_DATA_TRIANGLE_COUNT_BIT_OFFSET, MESHLET_DATA_TRIANGLE_COUNT_BIT_COUNT)
 #define ExtractMeshletBitrate(meshlet_metadata)         bitfieldExtract(meshlet_metadata, MESHLET_DATA_BITRATE_BIT_OFFSET, MESHLET_DATA_BITRATE_BIT_COUNT)
 
+// Compute local offset of the vertex channel based on multiple variables.
+// Used just for convenience
+ivec3 FetchVertexFromStream(ReadOnlyBitStream stream, uint meshlet_bitrate, uint offset) {
+    return ivec3(
+			// Read X
+			BitStreamRead(stream, meshlet_bitrate, offset),
+			// Read Y
+			BitStreamRead(stream, meshlet_bitrate, offset + meshlet_bitrate),
+			// Read Z
+			BitStreamRead(stream, meshlet_bitrate, offset + meshlet_bitrate * 2)
+	);
+}
+
 struct MeshletLODCullData {
     Sphere sphere;
     Sphere parent_sphere;
