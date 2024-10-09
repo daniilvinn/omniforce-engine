@@ -384,7 +384,7 @@ namespace Omni {
 		image_create_info.arrayLayers = 1;
 		image_create_info.format = convert(m_Specification.format);
 		image_create_info.samples = VK_SAMPLE_COUNT_1_BIT; // HACK
-		image_create_info.usage = VK_IMAGE_USAGE_STORAGE_BIT;
+		image_create_info.usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 		image_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
 		image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 

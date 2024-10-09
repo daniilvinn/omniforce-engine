@@ -374,9 +374,12 @@ namespace Omni {
 			Shared<DeviceBuffer> indirect_params_buffer = m_DeviceIndirectDrawParams[host_render_queue.first];
 
 			Renderer::Submit([=]() {
-				culled_objects_buffer->Clear(Renderer::GetCmdBuffer(), 0, culled_objects_buffer->GetSpecification().size, 0);
-				indirect_params_buffer->Clear(Renderer::GetCmdBuffer(), 0, indirect_params_buffer->GetSpecification().size, 0);
+				culled_objects_buffer->Clear(Renderer::GetCmdBuffer(), 0, 4, 0);
+				indirect_params_buffer->Clear(Renderer::GetCmdBuffer(), 0, 4, 0);
+				m_VisibleClusters->Clear(Renderer::GetCmdBuffer(), 0, 4, 0);
 			});
+
+			Renderer::ClearImage(m_VisibilityBuffer, { 0.0f, 0.0f, 0.0f, 0.0f });
 
 			PipelineResourceBarrierInfo indirect_params_barrier = {};
 			indirect_params_barrier.src_stages = (BitMask)PipelineStage::TRANSFER;
@@ -482,18 +485,19 @@ namespace Omni {
 			// Render survived objects
 			MiscData graphics_pc = {};
 			uint64* data = new uint64[4];
+
 			data[0] = camera_data_device_address;
 			data[1] = m_MeshResourcesBuffer.GetStorageBDA();
 			data[2] = culled_objects_buffer->GetDeviceAddress();
 			data[3] = m_VisibleClusters->GetDeviceAddress();
+
 			graphics_pc.data = (byte*)data;
 			graphics_pc.size = sizeof uint64 * 4;
 
 			Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], device_render_queue.first, 0);
 			Renderer::RenderMeshTasksIndirect(m_VisBufferPass, m_DeviceIndirectDrawParams[device_render_queue.first], graphics_pc);
 		}
-		Renderer::EndRender(m_CurrectMainRenderTarget);
-#pragma endregion
+		Renderer::EndRender({});
 
 		pbr_attachment_barrier.new_image_layout = ImageLayout::SHADER_READ_ONLY;
 		pbr_attachment_barrier.src_stages = (BitMask)PipelineStage::COLOR_ATTACHMENT_OUTPUT;
@@ -502,7 +506,6 @@ namespace Omni {
 		pbr_attachment_barrier.dst_access_mask = (BitMask)PipelineAccess::UNIFORM_READ;
 
 		PipelineBarrierInfo render_barrier_info = {};
-		render_barrier_info.buffer_barriers = render_barriers;
 		render_barrier_info.image_barriers.push_back(std::make_pair(m_GBuffer.positions, pbr_attachment_barrier));
 		render_barrier_info.image_barriers.push_back(std::make_pair(m_GBuffer.base_color, pbr_attachment_barrier));
 		render_barrier_info.image_barriers.push_back(std::make_pair(m_GBuffer.normals, pbr_attachment_barrier));

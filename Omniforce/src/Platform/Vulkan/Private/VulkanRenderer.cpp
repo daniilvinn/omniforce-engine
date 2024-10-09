@@ -124,13 +124,16 @@ namespace Omni {
 	void VulkanRenderer::ClearImage(Shared<Image> image, const fvec4& value)
 	{
 		Renderer::Submit([=]() mutable {
+			bool is_storage_image = image->GetSpecification().usage == ImageUsage::STORAGE_IMAGE;
 
-			image->SetLayout(
-				m_CurrentCmdBuffer,
-				ImageLayout::TRANSFER_DST,
-				PipelineStage::TOP_OF_PIPE,
-				PipelineStage::TRANSFER
-			);
+			if (!is_storage_image) {
+				image->SetLayout(
+					m_CurrentCmdBuffer,
+					ImageLayout::TRANSFER_DST,
+					PipelineStage::TOP_OF_PIPE,
+					PipelineStage::TRANSFER
+				);
+			}
 
 
 			Shared<VulkanImage> vk_image = ShareAs<VulkanImage>(image);
@@ -148,13 +151,15 @@ namespace Omni {
 			range.baseArrayLayer = 0;
 			range.layerCount = 1;
 
-			vkCmdClearColorImage(m_CurrentCmdBuffer->Raw(), vk_image->Raw(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear_color_value, 1, &range);
+			vkCmdClearColorImage(m_CurrentCmdBuffer->Raw(), vk_image->Raw(), is_storage_image ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear_color_value, 1, &range);
 
-			image->SetLayout(m_CurrentCmdBuffer,
-				ImageLayout::PRESENT_SRC,
-				PipelineStage::TRANSFER,
-				PipelineStage::BOTTOM_OF_PIPE
-			);
+			if (!is_storage_image) {
+				image->SetLayout(m_CurrentCmdBuffer,
+					ImageLayout::PRESENT_SRC,
+					PipelineStage::TRANSFER,
+					PipelineStage::BOTTOM_OF_PIPE
+				);
+			}
 		});
 	}
 
