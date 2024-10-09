@@ -7,6 +7,8 @@
 #extension GL_EXT_nonuniform_qualifier					 : require
 #extension GL_EXT_mesh_shader							 : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+#extension GL_KHR_shader_subgroup_ballot				 : require
+#extension GL_KHR_shader_subgroup_arithmetic			 : require
 
 #include "common.glslh" // common
 #include "mesh_data.glslh" // mesh data
@@ -47,18 +49,9 @@ void main()
 
 	MeshletCullBounds cull_bounds = mesh_data.meshlets_cull_bounds[gl_GlobalInvocationID.x];
 
-	const float CONE_DECODE_CONSTANT = 1.0f / 127.0f;
-
-	vec3 cone_apex = TransformPoint(cull_bounds.cone_apex, transform);
-	vec3 cone_axis = RotateByQuat(vec3(cull_bounds.cone_axis) * CONE_DECODE_CONSTANT, vec4(transform.rotation)); 
-
-	Sphere bounding_sphere = cull_bounds.bounding_sphere;
-	bounding_sphere.center = TransformPoint(bounding_sphere.center, transform);
-    bounding_sphere.radius = bounding_sphere.radius * max(max(transform.scale.x, transform.scale.y), transform.scale.z);
-
 	// Cull
 	if(TestMeshletLOD(cull_bounds.lod_culling, pc.camera_data, render_object_data)) {
-		if((dot(normalize(cone_apex - pc.camera_data.position), cone_axis) < float(cull_bounds.cone_cutoff) * CONE_DECODE_CONSTANT) && FrustumTestBoundingSphere(pc.camera_data.frustum, bounding_sphere)) {
+		if(TestMeshletVisibility(cull_bounds, pc.camera_data, transform)) {
 			uint id_index = atomicAdd(s_actual_num_meshlets, 1);
 			task_payload.meshlet_ids[id_index] = uint8_t(gl_GlobalInvocationID.x & (gl_WorkGroupSize.x - 1));
 		}

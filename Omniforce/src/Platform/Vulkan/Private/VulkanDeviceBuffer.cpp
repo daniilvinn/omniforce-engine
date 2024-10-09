@@ -51,7 +51,7 @@ namespace Omni {
 		if (m_Specification.buffer_usage == DeviceBufferUsage::INDIRECT_PARAMS)
 			m_Specification.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
 
-		m_Allocation = alloc->AllocateBuffer(&buffer_create_info, vma_flags, &m_Buffer);
+		m_Allocation = alloc->AllocateBuffer(spec, &buffer_create_info, vma_flags, &m_Buffer);
 
 		OMNI_DEBUG_ONLY_CODE(
 			VkDebugUtilsObjectNameInfoEXT name_info = {};
@@ -83,7 +83,7 @@ namespace Omni {
 		if (m_Specification.buffer_usage == DeviceBufferUsage::INDIRECT_PARAMS)
 			m_Specification.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
 
-		m_Allocation = alloc->AllocateBuffer(&buffer_create_info, vma_flags, &m_Buffer);
+		m_Allocation = alloc->AllocateBuffer(spec, &buffer_create_info, vma_flags, &m_Buffer);
 		this->UploadData(0, data, data_size);
 	}
 

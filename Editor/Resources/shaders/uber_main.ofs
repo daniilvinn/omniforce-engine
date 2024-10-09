@@ -2,10 +2,13 @@
 #pragma stage : task
 #version 460 core
 
-#extension GL_EXT_scalar_block_layout	: require
-#extension GL_EXT_buffer_reference2		: require
-#extension GL_EXT_nonuniform_qualifier	: require
-#extension GL_EXT_mesh_shader			: require
+#extension GL_EXT_scalar_block_layout				: require
+#extension GL_EXT_buffer_reference2					: require
+#extension GL_EXT_nonuniform_qualifier				: require
+#extension GL_EXT_mesh_shader						: require
+#extension GL_EXT_debug_printf						: require
+#extension GL_KHR_shader_subgroup_arithmetic		: require
+#extension GL_KHR_shader_subgroup_ballot			: require
 
 #include "common.glslh" // common
 #include "mesh_data.glslh" // mesh data
@@ -43,27 +46,29 @@ void main()
 	}
 
 	MeshletCullBounds cull_bounds = mesh_data.meshlets_cull_bounds[gl_GlobalInvocationID.x];
-	MeshMeshletsData meshlet_data = mesh_data.meshlets_data[gl_GlobalInvocationID.x];
 
-	const float CONE_DECODE_CONSTANT = 1.0f / 127.0f;
+	// Test this code with work groups of 64 threads and more
+	bool is_optimal_lod = TestMeshletLOD(cull_bounds.lod_culling, pc.camera_data, render_object_data);
+	bool is_visible = TestMeshletVisibility(cull_bounds, pc.camera_data, transform);
 
-	vec3 cone_apex = TransformPoint(cull_bounds.cone_apex, transform);
-	vec3 cone_axis = RotateByQuat(vec3(cull_bounds.cone_axis) * CONE_DECODE_CONSTANT, vec4(transform.rotation));
+	// Compute offset using subgroup intrinsics
+	uvec4 ballot = subgroupBallot(is_optimal_lod && is_visible);
+	uint subgroup_offset_atomic = 0;
 
-	Sphere bounding_sphere = cull_bounds.bounding_sphere;
-	bounding_sphere.center = TransformPoint(bounding_sphere.center, transform);
-    bounding_sphere.radius = bounding_sphere.radius * max(max(transform.scale.x, transform.scale.y), transform.scale.z);
+	if(subgroupElect()) {
+		subgroup_offset_atomic = atomicAdd(s_actual_num_meshlets, subgroupBallotBitCount(ballot));
+	}
+
+	uint subgroup_offset = subgroupBroadcastFirst(subgroup_offset_atomic);
 
 	// Cull
-	if(TestMeshletLOD(cull_bounds.lod_culling, pc.camera_data, render_object_data)) {
-		if((dot(normalize(cone_apex - pc.camera_data.position), cone_axis) < float(cull_bounds.cone_cutoff) * CONE_DECODE_CONSTANT) && FrustumTestBoundingSphere(pc.camera_data.frustum, bounding_sphere)) {
-			uint id_index = atomicAdd(s_actual_num_meshlets, 1);
-			task_payload.meshlet_ids[id_index] = uint8_t(gl_GlobalInvocationID.x & (gl_WorkGroupSize.x - 1));
-		}
+	if(is_optimal_lod && is_visible) {
+		uint id_index = subgroup_offset + subgroupExclusiveAdd(1);
+		task_payload.meshlet_ids[id_index] = uint8_t(gl_GlobalInvocationID.x & (gl_WorkGroupSize.x - 1));
 	}
 
 	// Synchronize access to `s_actual_num_meshlets`
-	barrier();
+	//subgroupBarrier();
 
 	// Emit mesh work groups
 	if(lid == 0 && s_actual_num_meshlets != 0) {
@@ -74,6 +79,7 @@ void main()
 
 #pragma stage : mesh
 #version 460 core
+
 #extension GL_EXT_mesh_shader									: require
 #extension GL_EXT_debug_printf									: require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16		: require
@@ -109,6 +115,7 @@ layout(location = 1) out VertexOutput {
 } vertex_output[];
 
 #include "task_payload.glslh"
+#include "pcg_hash.glslh"
 
 void main()
 {
@@ -205,6 +212,7 @@ void main()
 
 #pragma stage : fragment
 #version 460 core
+
 #extension GL_EXT_nonuniform_qualifier							: require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16		: require
 #extension GL_EXT_debug_printf									: require
@@ -213,6 +221,8 @@ void main()
 #include "mesh_data.glslh"
 #include "render_object.glslh"
 #include "texture.glslh"
+
+layout(early_fragment_tests) in;
 
 layout(push_constant, scalar) uniform pc_ {
     CameraData camera_data;
@@ -294,7 +304,7 @@ void main() {
 			1.0f - v_InputAttributes.uv[material.base_color_map.uv_channel_index].y)
 		);
 		#ifdef __OMNI_HAS_ALPHA_CUTOFF // alpha masking
-			if(color.a <= material.alpha_cutoff) discard;
+			//if(color.a <= material.alpha_cutoff) discard;
 		#endif
 	#endif
     out_color = color;

@@ -4,6 +4,8 @@
 #include "sphere.glslh"
 #include "AABB.glslh"
 #include "bitstream.glslh"
+#include "Transform.glslh"
+#include "camera_data.glslh"
 
 #extension GL_EXT_shader_explicit_arithmetic_types_int8     : require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16  : require
@@ -18,23 +20,6 @@ const int MESHLET_DATA_TRIANGLE_COUNT_BIT_COUNT = 8;
 
 const int MESHLET_DATA_BITRATE_BIT_OFFSET = 15;
 const int MESHLET_DATA_BITRATE_BIT_COUNT = 6;
-
-#define ExtractMeshletVertexCount(meshlet_metadata)     bitfieldExtract(meshlet_metadata, MESHLET_DATA_VERTEX_COUNT_BIT_OFFSET, MESHLET_DATA_VERTEX_COUNT_BIT_COUNT)
-#define ExtractMeshletTriangleCount(meshlet_metadata)   bitfieldExtract(meshlet_metadata, MESHLET_DATA_TRIANGLE_COUNT_BIT_OFFSET, MESHLET_DATA_TRIANGLE_COUNT_BIT_COUNT)
-#define ExtractMeshletBitrate(meshlet_metadata)         bitfieldExtract(meshlet_metadata, MESHLET_DATA_BITRATE_BIT_OFFSET, MESHLET_DATA_BITRATE_BIT_COUNT)
-
-// Compute local offset of the vertex channel based on multiple variables.
-// Used just for convenience
-ivec3 FetchVertexFromStream(ReadOnlyBitStream stream, uint meshlet_bitrate, uint offset) {
-    return ivec3(
-			// Read X
-			BitStreamRead(stream, meshlet_bitrate, offset),
-			// Read Y
-			BitStreamRead(stream, meshlet_bitrate, offset + meshlet_bitrate),
-			// Read Z
-			BitStreamRead(stream, meshlet_bitrate, offset + meshlet_bitrate * 2)
-	);
-}
 
 struct MeshletLODCullData {
     Sphere sphere;
@@ -91,5 +76,41 @@ layout(buffer_reference, scalar, buffer_reference_align = 4) buffer MeshData {
     MeshMicroindices micro_indices;
     MeshletCullBounds meshlets_cull_bounds;
 };
+
+#define ExtractMeshletVertexCount(meshlet_metadata)     bitfieldExtract(meshlet_metadata, MESHLET_DATA_VERTEX_COUNT_BIT_OFFSET, MESHLET_DATA_VERTEX_COUNT_BIT_COUNT)
+#define ExtractMeshletTriangleCount(meshlet_metadata)   bitfieldExtract(meshlet_metadata, MESHLET_DATA_TRIANGLE_COUNT_BIT_OFFSET, MESHLET_DATA_TRIANGLE_COUNT_BIT_COUNT)
+#define ExtractMeshletBitrate(meshlet_metadata)         bitfieldExtract(meshlet_metadata, MESHLET_DATA_BITRATE_BIT_OFFSET, MESHLET_DATA_BITRATE_BIT_COUNT)
+
+// Compute local offset of the vertex channel based on multiple variables.
+// Used just for convenience
+ivec3 FetchVertexFromStream(ReadOnlyBitStream stream, uint meshlet_bitrate, uint offset) {
+    return ivec3(
+			// Read X
+			BitStreamRead(stream, meshlet_bitrate, offset),
+			// Read Y
+			BitStreamRead(stream, meshlet_bitrate, offset + meshlet_bitrate),
+			// Read Z
+			BitStreamRead(stream, meshlet_bitrate, offset + meshlet_bitrate * 2)
+	);
+}
+
+bool TestMeshletVisibility(MeshletCullBounds cull_bounds, CameraData camera_data, Transform transform) {
+    // (dot(normalize(cone_apex - pc.camera_data.position), cone_axis) < float(cull_bounds.cone_cutoff) * CONE_DECODE_CONSTANT)
+
+    const float CONE_DECODE_CONSTANT = 1.0f / 127.0f;
+
+    vec3 cone_apex = TransformPoint(cull_bounds.cone_apex, transform);
+	vec3 cone_axis = RotateByQuat(vec3(cull_bounds.cone_axis) * CONE_DECODE_CONSTANT, vec4(transform.rotation));
+    float cone_cutoff = float(cull_bounds.cone_cutoff) * CONE_DECODE_CONSTANT;
+
+    Sphere bounding_sphere = cull_bounds.bounding_sphere;
+    bounding_sphere.center = TransformPoint(bounding_sphere.center, transform);
+    bounding_sphere.radius = bounding_sphere.radius * max(max(transform.scale.x, transform.scale.y), transform.scale.z);
+
+    bool is_front_face = dot(normalize(cone_apex - camera_data.position), cone_axis) < cone_cutoff;
+    bool is_in_frustum = FrustumTestBoundingSphere(camera_data.frustum, bounding_sphere);
+
+    return is_front_face && is_in_frustum;
+}
 
 #endif

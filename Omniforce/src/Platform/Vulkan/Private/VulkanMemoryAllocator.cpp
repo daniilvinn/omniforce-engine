@@ -3,8 +3,8 @@
 
 #include <Core/Utils.h>
 #include "VulkanMemoryAllocator.h"
-
 #include "../VulkanGraphicsContext.h"
+#include "../VulkanDeviceBuffer.h"
 
 #if OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG
 #define OMNIFORCE_TRACE_DEVICE_ALLOCATIONS 0
@@ -62,11 +62,11 @@ namespace Omni {
 		vmaInvalidateAllocation(m_Allocator, allocation, offset, size);
 	}
 
-	VmaAllocation VulkanMemoryAllocator::AllocateBuffer(VkBufferCreateInfo* create_info, uint32_t flags, VkBuffer* buffer)
+	VmaAllocation VulkanMemoryAllocator::AllocateBuffer(const DeviceBufferSpecification& spec, VkBufferCreateInfo* create_info, uint32_t flags, VkBuffer* buffer)
 	{
 		std::lock_guard lock(m_Mutex);
 		VmaAllocationCreateInfo allocation_create_info = {};
-		allocation_create_info.usage = VMA_MEMORY_USAGE_AUTO;
+		allocation_create_info.usage = spec.heap == DeviceBufferMemoryHeap::DEVICE ? VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE : VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
 		allocation_create_info.flags = flags;
 
 		VmaAllocation allocation;

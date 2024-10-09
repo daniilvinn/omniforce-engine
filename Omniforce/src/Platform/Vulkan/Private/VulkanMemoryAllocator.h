@@ -4,6 +4,7 @@
 
 #include <vk_mem_alloc.h>
 #include <shared_mutex>
+#include "../VulkanDeviceBuffer.h"
 
 namespace Omni {
 
@@ -22,7 +23,7 @@ namespace Omni {
 
 		void InvalidateAllocation(VmaAllocation allocation, uint64 size = VK_WHOLE_SIZE, uint64 offset = 0);
 
-		VmaAllocation AllocateBuffer(VkBufferCreateInfo* create_info, uint32_t flags, VkBuffer* buffer);
+		VmaAllocation AllocateBuffer(const DeviceBufferSpecification& spec, VkBufferCreateInfo* create_info, uint32_t flags, VkBuffer* buffer);
 		VmaAllocation AllocateImage(VkImageCreateInfo* create_info, uint32_t flags, VkImage* image);
 
 		void DestroyBuffer(VkBuffer* buffer, VmaAllocation* allocation);
