@@ -467,32 +467,7 @@ namespace Omni {
 
 		// Render 3D
 		if (!IsInDebugMode()) {
-		std::vector<std::pair<Shared<DeviceBuffer>, PipelineResourceBarrierInfo>> render_barriers;
-		Renderer::BeginRender(
-			{ m_GBuffer.positions, m_GBuffer.base_color, m_GBuffer.normals, m_GBuffer.metallic_roughness_occlusion, m_CurrentDepthAttachment },
-			m_CurrectMainRenderTarget->GetSpecification().extent,
-			{ 0, 0 },
-			{ 0.2f, 0.2f, 0.3f, 1.0 }
-		);
-
-		for (auto& device_render_queue : m_DeviceRenderQueue) {
-			Shared<DeviceBuffer> indirect_params_buffer = m_DeviceIndirectDrawParams[device_render_queue.first];
-			Shared<DeviceBuffer> culled_objects_buffer = m_CulledDeviceRenderQueue[device_render_queue.first];
-
-			// Render survived objects
-			MiscData graphics_pc = {};
-			uint64* data = new uint64[3];
-			data[0] = camera_data_device_address;
-			data[1] = m_MeshResourcesBuffer.GetStorageBDA();
-			data[2] = culled_objects_buffer->GetDeviceAddress();
-			graphics_pc.data = (byte*)data;
-			graphics_pc.size = sizeof uint64 * 3;
-
-			Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], device_render_queue.first, 0);
-			Renderer::RenderMeshTasksIndirect(device_render_queue.first, m_DeviceIndirectDrawParams[device_render_queue.first], graphics_pc);
-		}
-		Renderer::EndRender(m_CurrectMainRenderTarget);
-#pragma region
+		// Vis buffer pass
 		Renderer::BeginRender(
 			{ },
 			m_CurrectMainRenderTarget->GetSpecification().extent,
