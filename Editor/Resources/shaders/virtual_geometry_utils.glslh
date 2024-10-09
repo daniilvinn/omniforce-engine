@@ -17,13 +17,14 @@ float ProjectMeshletError(Sphere sphere, CameraData camera_data, float half_fov_
 }
 
 bool TestMeshletLOD(MeshletLODCullData lod_culling_data, CameraData camera_data, RenderObjectData render_object) {
+
     const float half_fov_cot = 1.0f / tan(camera_data.fov / 2.0f);
     const float viewport = camera_data.viewport_height;
 
     // Project current meshlet's sphere
     Sphere projected_bounding_sphere = Sphere(
         lod_culling_data.sphere.center,
-        max(lod_culling_data.error, 0.000000001f)
+        max(lod_culling_data.error, 0.0000001f)
     );
 
     projected_bounding_sphere = TransformSphereViewModel(projected_bounding_sphere, render_object.transform, camera_data.view);
@@ -32,7 +33,7 @@ bool TestMeshletLOD(MeshletLODCullData lod_culling_data, CameraData camera_data,
     // Project parent sphere
     Sphere parent_projected_bounding_sphere = Sphere(
         lod_culling_data.parent_sphere.center,
-        max(lod_culling_data.parent_error, 0.000000001f)
+        max(lod_culling_data.parent_error, 0.0000001f)
     );
 
     parent_projected_bounding_sphere = TransformSphereViewModel(parent_projected_bounding_sphere, render_object.transform, camera_data.view);
