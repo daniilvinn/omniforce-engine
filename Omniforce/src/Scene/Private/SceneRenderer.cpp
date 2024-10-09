@@ -490,25 +490,6 @@ namespace Omni {
 
 			Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], device_render_queue.first, 0);
 			Renderer::RenderMeshTasksIndirect(device_render_queue.first, m_DeviceIndirectDrawParams[device_render_queue.first], graphics_pc);
-
-			PipelineResourceBarrierInfo indirect_params_barrier = {};
-			indirect_params_barrier.src_stages = (BitMask)PipelineStage::TASK_SHADER | (BitMask)PipelineStage::MESH_SHADER;
-			indirect_params_barrier.dst_stages = (BitMask)PipelineStage::TRANSFER;
-			indirect_params_barrier.src_access_mask = (BitMask)PipelineAccess::SHADER_READ;
-			indirect_params_barrier.dst_access_mask = (BitMask)PipelineAccess::TRANSFER_WRITE;
-			indirect_params_barrier.buffer_barrier_offset = indirect_params_buffer->GetFrameOffset();
-			indirect_params_barrier.buffer_barrier_size = indirect_params_buffer->GetPerFrameSize();
-
-			PipelineResourceBarrierInfo culled_objects_barrier = {};
-			culled_objects_barrier.src_stages = (BitMask)PipelineStage::TASK_SHADER | (BitMask)PipelineStage::MESH_SHADER;
-			culled_objects_barrier.dst_stages = (BitMask)PipelineStage::TRANSFER;
-			culled_objects_barrier.src_access_mask = (BitMask)PipelineAccess::SHADER_READ;
-			culled_objects_barrier.dst_access_mask = (BitMask)PipelineAccess::TRANSFER_WRITE;
-			culled_objects_barrier.buffer_barrier_offset = culled_objects_buffer->GetFrameOffset();
-			culled_objects_barrier.buffer_barrier_size = culled_objects_buffer->GetPerFrameSize();
-
-			render_barriers.push_back(std::make_pair(m_DeviceIndirectDrawParams[device_render_queue.first], indirect_params_barrier));
-			render_barriers.push_back(std::make_pair(m_CulledDeviceRenderQueue[device_render_queue.first], culled_objects_barrier));
 		}
 		Renderer::EndRender(m_CurrectMainRenderTarget);
 #pragma region
