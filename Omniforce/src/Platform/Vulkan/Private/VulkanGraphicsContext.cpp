@@ -66,6 +66,7 @@ namespace Omni {
 		device_features.shaderInt64 = true;
 		device_features.wideLines = true;
 		device_features.shaderInt16 = true;
+		device_features.fragmentStoresAndAtomics = true;
 
 		Shared<VulkanPhysicalDevice> device = VulkanPhysicalDevice::Select(this);
 		m_Device = std::make_shared<VulkanDevice>(device, std::forward<VkPhysicalDeviceFeatures>(device_features));

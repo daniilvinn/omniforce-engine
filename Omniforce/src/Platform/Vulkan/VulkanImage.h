@@ -28,6 +28,7 @@ namespace Omni {
 		case ImageFormat::BC6h:							return VK_FORMAT_BC6H_UFLOAT_BLOCK;
 		case ImageFormat::RGBA64_SFLOAT:				return VK_FORMAT_R16G16B16A16_SFLOAT;
 		case ImageFormat::RGB24_UNORM:					return VK_FORMAT_R8G8B8_UNORM;
+		case ImageFormat::R64_UINT:						return VK_FORMAT_R64_UINT;
 		default:
 			std::unreachable();
 			break;
@@ -129,6 +130,7 @@ namespace Omni {
 		void CreateTexture();
 		void CreateRenderTarget();
 		void CreateDepthBuffer();
+		void CreateStorageImage();
 
 	private:
 

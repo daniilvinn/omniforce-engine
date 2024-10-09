@@ -28,7 +28,8 @@ namespace Omni {
 	enum class OMNIFORCE_API ImageUsage : uint8 {
 		TEXTURE,
 		RENDER_TARGET,
-		DEPTH_BUFFER
+		DEPTH_BUFFER,
+		STORAGE_IMAGE
 	};
 
 	enum class OMNIFORCE_API ImageFormat : uint8 {
@@ -48,7 +49,8 @@ namespace Omni {
 		BC6h,
 		BC7,
 		RGBA64_SFLOAT,
-		RGB24_UNORM
+		RGB24_UNORM,
+		R64_UINT
 	};
 
 	enum class OMNIFORCE_API ImageType : uint8 {

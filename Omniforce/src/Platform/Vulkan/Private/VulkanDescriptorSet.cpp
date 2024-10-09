@@ -99,14 +99,14 @@ namespace Omni {
 
 		VkDescriptorImageInfo descriptor_image_info = {};
 		descriptor_image_info.imageView = vk_image->RawView();
-		descriptor_image_info.sampler = vk_sampler->Raw();
-		descriptor_image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		descriptor_image_info.sampler = sampler ? vk_sampler->Raw() : nullptr;
+		descriptor_image_info.imageLayout = sampler ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
 
 		VkWriteDescriptorSet write_descriptor_set = {};
 		write_descriptor_set.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		write_descriptor_set.dstSet = m_DescriptorSet;
 		write_descriptor_set.dstBinding = binding;
-		write_descriptor_set.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		write_descriptor_set.descriptorType = sampler ? VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER : VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 		write_descriptor_set.dstArrayElement = array_element;
 		write_descriptor_set.descriptorCount = 1;
 		write_descriptor_set.pImageInfo = &descriptor_image_info;

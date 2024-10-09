@@ -168,11 +168,16 @@ namespace Omni {
 		VkDeviceQueueCreateInfo queue_create_infos[2] = { general_queue_create_info, async_compute_queue_create_info };
 		std::vector<const char*> enabled_extensions = GetRequiredExtensions();
 
+		VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT image_atomic_int64_struct = {};
+		image_atomic_int64_struct.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_IMAGE_ATOMIC_INT64_FEATURES_EXT;
+		image_atomic_int64_struct.shaderImageInt64Atomics = true;
+
 		VkPhysicalDeviceMeshShaderFeaturesEXT mesh_shading_enable_struct = {};
 		mesh_shading_enable_struct.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
 		mesh_shading_enable_struct.meshShader = true;
 		mesh_shading_enable_struct.taskShader = true;
 		mesh_shading_enable_struct.meshShaderQueries = true;
+		mesh_shading_enable_struct.pNext = &image_atomic_int64_struct;
 
 		VkPhysicalDeviceIndexTypeUint8FeaturesEXT uint8_index_feature_enable_struct = {};
 		uint8_index_feature_enable_struct.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT;
@@ -282,6 +287,10 @@ namespace Omni {
 
 		if (m_PhysicalDevice->IsExtensionSupported(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME)) {
 			extensions.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
+		}
+
+		if (m_PhysicalDevice->IsExtensionSupported(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME)) {
+			extensions.push_back(VK_EXT_SHADER_IMAGE_ATOMIC_INT64_EXTENSION_NAME);
 		}
 
 		OMNIFORCE_CORE_TRACE("Enabled Vulkan device extensions:");
