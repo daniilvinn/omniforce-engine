@@ -6,7 +6,6 @@
 #extension GL_EXT_buffer_reference2					: require
 #extension GL_EXT_nonuniform_qualifier				: require
 #extension GL_EXT_mesh_shader						: require
-#extension GL_EXT_debug_printf						: require
 #extension GL_KHR_shader_subgroup_arithmetic		: require
 #extension GL_KHR_shader_subgroup_ballot			: require
 
@@ -68,7 +67,7 @@ void main()
 	}
 
 	// Synchronize access to `s_actual_num_meshlets`
-	//subgroupBarrier();
+	subgroupBarrier();
 
 	// Emit mesh work groups
 	if(lid == 0 && s_actual_num_meshlets != 0) {

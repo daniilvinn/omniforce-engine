@@ -35,9 +35,9 @@ void main()
 	uint lid = gl_LocalInvocationIndex; // lid = lane id
 	
 	RenderObjectData render_object_data = pc.render_objects_data[gl_DrawID];
-	MeshData mesh_data = pc.mesh_data[render_object_data.geometry_data_id];
 
 	Transform transform = render_object_data.transform;
+	MeshData mesh_data = pc.mesh_data[render_object_data.geometry_data_id];
 
 	if(gl_GlobalInvocationID.x >= mesh_data.meshlet_count) { // check if we are out of bounds
 		return;
@@ -49,16 +49,28 @@ void main()
 
 	MeshletCullBounds cull_bounds = mesh_data.meshlets_cull_bounds[gl_GlobalInvocationID.x];
 
+	// Test this code with work groups of 64 threads and more
+	bool is_optimal_lod = TestMeshletLOD(cull_bounds.lod_culling, pc.camera_data, render_object_data);
+	bool is_visible = TestMeshletVisibility(cull_bounds, pc.camera_data, transform);
+
+	// Compute offset using subgroup intrinsics
+	uvec4 ballot = subgroupBallot(is_optimal_lod && is_visible);
+	uint subgroup_offset_atomic = 0;
+
+	if(subgroupElect()) {
+		subgroup_offset_atomic = atomicAdd(s_actual_num_meshlets, subgroupBallotBitCount(ballot));
+	}
+
+	uint subgroup_offset = subgroupBroadcastFirst(subgroup_offset_atomic);
+
 	// Cull
-	if(TestMeshletLOD(cull_bounds.lod_culling, pc.camera_data, render_object_data)) {
-		if(TestMeshletVisibility(cull_bounds, pc.camera_data, transform)) {
-			uint id_index = atomicAdd(s_actual_num_meshlets, 1);
-			task_payload.meshlet_ids[id_index] = uint8_t(gl_GlobalInvocationID.x & (gl_WorkGroupSize.x - 1));
-		}
+	if(is_optimal_lod && is_visible) {
+		uint id_index = subgroup_offset + subgroupExclusiveAdd(1);
+		task_payload.meshlet_ids[id_index] = uint8_t(gl_GlobalInvocationID.x & (gl_WorkGroupSize.x - 1));
 	}
 
 	// Synchronize access to `s_actual_num_meshlets`
-	barrier();
+	subgroupBarrier();
 
 	// Emit mesh work groups
 	if(lid == 0 && s_actual_num_meshlets != 0) {
