@@ -61,6 +61,7 @@ namespace Omni {
 		* @return returns an index the resource can be accessed with
 		*/
 		uint32 AcquireResourceIndex(Shared<Image> image, SamplerFilteringMode filtering_mode);
+		uint32 AcquireResourceIndex(Shared<Image> image);
 		uint32 AcquireResourceIndex(Shared<Mesh> mesh);
 		uint32 AcquireResourceIndex(Shared<Material> material); // WARNING: this returns offset in material pool, not index
 
@@ -103,7 +104,9 @@ namespace Omni {
 		Shared<DeviceBuffer> m_CameraDataBuffer;
 
 		Scope<VirtualMemoryBlock> m_TextureIndexAllocator;
+		Scope<VirtualMemoryBlock> m_StorageImageIndexAllocator;
 		rhumap<UUID, uint32> m_TextureIndices;
+		rhumap<UUID, uint32> m_StorageImageIndices;
 		Shared<DeviceBuffer> m_SpriteDataBuffer;
 
 		DeviceIndexedResourceBuffer<DeviceMeshData> m_MeshResourcesBuffer;
@@ -123,6 +126,10 @@ namespace Omni {
 			Shared<Image> metallic_roughness_occlusion;
 		} m_GBuffer;
 		Shared<Pipeline> m_PBRFullscreenPipeline;
+
+		Shared<Image> m_VisibilityBuffer;
+		Shared<Pipeline> m_VisBufferPass;
+		Shared<DeviceBuffer> m_VisibleClusters;
 
 		std::vector<PointLight> m_HostPointLights;
 		Shared<DeviceBuffer> m_DevicePointLights;

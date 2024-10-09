@@ -23,8 +23,9 @@ namespace Omni {
 	}
 
 	SceneRenderer::SceneRenderer(const SceneRendererSpecification& spec)
-		: m_Specification(spec), m_MaterialDataPool(this, 4096 * 256 /* 256Kb of data*/), m_TextureIndexAllocator(VirtualMemoryBlock::Create(4 * INT16_MAX)),
-		m_MeshResourcesBuffer(4096 * sizeof DeviceMeshData) // allow up to 4096 meshes be allocated at once
+		: m_Specification(spec), m_MaterialDataPool(this, 4096 * 256 /* 256Kb of data*/), m_TextureIndexAllocator(VirtualMemoryBlock::Create(4 * UINT16_MAX)),
+		m_MeshResourcesBuffer(4096 * sizeof DeviceMeshData), // allow up to 4096 meshes be allocated at once
+		m_StorageImageIndexAllocator(VirtualMemoryBlock::Create(4 * UINT16_MAX))
 	{
 		AssetManager* asset_manager = AssetManager::Get();
 
@@ -34,6 +35,7 @@ namespace Omni {
 			// Camera Data
 			bindings.push_back({ 0, DescriptorBindingType::SAMPLED_IMAGE, UINT16_MAX, (uint64)DescriptorFlags::PARTIALLY_BOUND });
 			bindings.push_back({ 1, DescriptorBindingType::STORAGE_BUFFER, 1, 0 });
+			bindings.push_back({ 2, DescriptorBindingType::STORAGE_IMAGE, 1, 0 });
 
 			DescriptorSetSpecification global_set_spec = {};
 			global_set_spec.bindings = std::move(bindings);
@@ -144,6 +146,7 @@ namespace Omni {
 				sf.emplace([&]() { shader_library->LoadShader("Resources/shaders/sprite.ofs"); });
 				sf.emplace([&]() { shader_library->LoadShader("Resources/shaders/cull_indirect.ofs"); });
 				sf.emplace([&]() { shader_library->LoadShader("Resources/shaders/PBR.ofs"); });
+				sf.emplace([&]() { shader_library->LoadShader("Resources/shaders/vis_buffer.ofs"); });
 			});
 			JobSystem::GetExecutor()->run(taskflow).wait();
 
@@ -163,6 +166,16 @@ namespace Omni {
 			pipeline_spec.depth_test_enable = false;
 
 			m_PBRFullscreenPipeline = Pipeline::Create(pipeline_spec);
+
+			// Vis buffer pass
+			pipeline_spec.shader = shader_library->GetShader("vis_buffer.ofs");
+			pipeline_spec.debug_name = "Vis buffer pass";
+			pipeline_spec.output_attachments_formats = {};
+			pipeline_spec.culling_mode = PipelineCullingMode::BACK;
+			pipeline_spec.depth_test_enable = false;
+			pipeline_spec.color_blending_enable = false;
+
+			m_VisBufferPass = Pipeline::Create(pipeline_spec);
 
 			// compute frustum culling
 			pipeline_spec.type = PipelineType::COMPUTE;
@@ -226,7 +239,35 @@ namespace Omni {
 			AcquireResourceIndex(m_GBuffer.normals, SamplerFilteringMode::LINEAR);
 			AcquireResourceIndex(m_GBuffer.metallic_roughness_occlusion, SamplerFilteringMode::LINEAR);
 		}
+		// Init visibility buffer
+		{
+			ImageSpecification image_spec = ImageSpecification::Default();
+			image_spec.usage = ImageUsage::STORAGE_IMAGE;
+			image_spec.format = ImageFormat::R64_UINT;
+			image_spec.extent = Renderer::GetSwapchainImage()->GetSpecification().extent;
+			OMNI_DEBUG_ONLY_CODE(image_spec.debug_name = "Vis-buffer attachment");
 
+			m_VisibilityBuffer = Image::Create(image_spec);
+
+			for (auto& set : m_SceneDescriptorSet) {
+				set->Write(2, 0, m_VisibilityBuffer, nullptr);
+			}
+		}
+		// Init visible cluster buffer
+		{
+			DeviceBufferSpecification buffer_spec = {};
+			buffer_spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
+			buffer_spec.heap = DeviceBufferMemoryHeap::DEVICE;
+			buffer_spec.memory_usage = DeviceBufferMemoryUsage::NO_HOST_ACCESS;
+
+			// Allocate maximum 2^25 clusters, since it is maximum index in vis buffer.
+			// Actually a pretty big buffer (256 MB), so need to consider reducing its size
+			// + 4 bytes for size
+			buffer_spec.size = 4 + glm::pow(2, 25) * sizeof(SceneVisibleCluster) ; 
+
+			m_VisibleClusters = DeviceBuffer::Create(buffer_spec);
+		}
+		// Init host light source storage
 		{
 			m_HostPointLights.reserve(256);
 
@@ -335,7 +376,7 @@ namespace Omni {
 			Renderer::Submit([=]() {
 				culled_objects_buffer->Clear(Renderer::GetCmdBuffer(), 0, culled_objects_buffer->GetSpecification().size, 0);
 				indirect_params_buffer->Clear(Renderer::GetCmdBuffer(), 0, indirect_params_buffer->GetSpecification().size, 0);
-				});
+			});
 
 			PipelineResourceBarrierInfo indirect_params_barrier = {};
 			indirect_params_barrier.src_stages = (BitMask)PipelineStage::TRANSFER;
@@ -470,6 +511,33 @@ namespace Omni {
 			render_barriers.push_back(std::make_pair(m_CulledDeviceRenderQueue[device_render_queue.first], culled_objects_barrier));
 		}
 		Renderer::EndRender(m_CurrectMainRenderTarget);
+#pragma region
+		Renderer::BeginRender(
+			{ },
+			m_CurrectMainRenderTarget->GetSpecification().extent,
+			{ 0, 0 },
+			{ 0.2f, 0.2f, 0.3f, 1.0 }
+		);
+
+		for (auto& device_render_queue : m_DeviceRenderQueue) {
+			Shared<DeviceBuffer> indirect_params_buffer = m_DeviceIndirectDrawParams[device_render_queue.first];
+			Shared<DeviceBuffer> culled_objects_buffer = m_CulledDeviceRenderQueue[device_render_queue.first];
+
+			// Render survived objects
+			MiscData graphics_pc = {};
+			uint64* data = new uint64[4];
+			data[0] = camera_data_device_address;
+			data[1] = m_MeshResourcesBuffer.GetStorageBDA();
+			data[2] = culled_objects_buffer->GetDeviceAddress();
+			data[3] = m_VisibleClusters->GetDeviceAddress();
+			graphics_pc.data = (byte*)data;
+			graphics_pc.size = sizeof uint64 * 4;
+
+			Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], device_render_queue.first, 0);
+			Renderer::RenderMeshTasksIndirect(m_VisBufferPass, m_DeviceIndirectDrawParams[device_render_queue.first], graphics_pc);
+		}
+		Renderer::EndRender(m_CurrectMainRenderTarget);
+#pragma endregion
 
 		pbr_attachment_barrier.new_image_layout = ImageLayout::SHADER_READ_ONLY;
 		pbr_attachment_barrier.src_stages = (BitMask)PipelineStage::COLOR_ATTACHMENT_OUTPUT;
@@ -575,6 +643,8 @@ namespace Omni {
 
 	uint32 SceneRenderer::AcquireResourceIndex(Shared<Mesh> mesh)
 	{
+		std::lock_guard lock(m_Mutex);
+
 		DeviceMeshData mesh_data = {};
 		mesh_data.lod_distance_multiplier = 1.0f;
 		mesh_data.bounding_sphere = mesh->GetBoundingSphere();
@@ -587,6 +657,12 @@ namespace Omni {
 		mesh_data.meshlets_cull_data_bda = mesh->GetBuffer(MeshBufferKey::MESHLETS_CULL_DATA)->GetDeviceAddress();
 
 		return m_MeshResourcesBuffer.Allocate(mesh->Handle, mesh_data);
+	}
+
+	uint32 SceneRenderer::AcquireResourceIndex(Shared<Image> image)
+	{
+		OMNIFORCE_ASSERT_TAGGED(false, "Not implemented");
+		std::unreachable();
 	}
 
 	bool SceneRenderer::ReleaseResourceIndex(Shared<Image> image)

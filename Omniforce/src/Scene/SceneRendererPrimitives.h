@@ -74,4 +74,10 @@ namespace Omni {
 		uint32 value;
 	};
 
+	// Just so I can do `sizeof()` with it
+	struct SceneVisibleCluster {
+		const uint32 instance_index = 0;
+		const uint32 cluster_index = 0;
+	};
+
 }

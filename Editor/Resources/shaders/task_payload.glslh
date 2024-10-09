@@ -5,6 +5,7 @@
 
 struct TaskPayload {
 	uint base_offset;
+	uint base_vis_cluster_offset;
 	uint8_t meshlet_ids[__OMNI_TASK_SHADER_PREFERRED_WORK_GROUP_SIZE];
 };
 
