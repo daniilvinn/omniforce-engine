@@ -7,6 +7,63 @@
 
 namespace Omni {
 
+	class VulkanImage : public Image {
+	public:
+		VulkanImage();
+		VulkanImage(const ImageSpecification& spec, VkImage image, VkImageView view);
+		VulkanImage(const ImageSpecification& spec, AssetHandle id);
+		VulkanImage(const ImageSpecification& spec, const std::vector<RGBA32> data, const AssetHandle& id);
+		VulkanImage(std::filesystem::path path);
+		~VulkanImage();
+
+		void CreateFromRaw(const ImageSpecification& spec, VkImage image, VkImageView view);
+		void Destroy() override;
+
+		VkImage Raw() const { return m_Image; }
+		VkImageView RawView() const { return m_ImageView; };
+		ImageSpecification GetSpecification() const override { return m_Specification; }
+
+		ImageLayout GetCurrentLayout() const { return m_CurrentLayout; }
+
+		// It is supposed that image has actually already been transitioned into layout.
+		void SetCurrentLayout(ImageLayout layout) { m_CurrentLayout = layout; } 
+		void SetLayout(Shared<DeviceCmdBuffer> cmd_buffer, ImageLayout new_layout, PipelineStage src_stage, PipelineStage dst_stage, BitMask src_access = 0, BitMask dst_access = 0) override;
+
+	private:
+		void CreateTexture();
+		void CreateRenderTarget();
+		void CreateDepthBuffer();
+		void CreateStorageImage();
+
+	private:
+
+		ImageSpecification m_Specification;
+
+		VkImage m_Image;
+		VmaAllocation m_Allocation;
+		VkImageView m_ImageView;
+		ImageLayout m_CurrentLayout;
+		
+		bool m_CreatedFromRaw;
+
+	};
+
+	class VulkanImageSampler : public ImageSampler {
+	public:
+		VulkanImageSampler(const ImageSamplerSpecification& spec);
+		~VulkanImageSampler();
+
+		void Destroy() override;
+
+		VkSampler Raw() const { return m_Sampler; }
+		ImageSamplerSpecification GetSpecification() const { return m_Specification; }
+
+	private:
+		VkSampler m_Sampler;
+		ImageSamplerSpecification m_Specification;
+
+	};
+
 #pragma region converts
 	constexpr VkFormat convert(const ImageFormat& format) {
 		switch (format)
@@ -103,62 +160,5 @@ namespace Omni {
 	}
 
 #pragma endregion
-
-	class VulkanImage : public Image {
-	public:
-		VulkanImage();
-		VulkanImage(const ImageSpecification& spec, VkImage image, VkImageView view);
-		VulkanImage(const ImageSpecification& spec, AssetHandle id);
-		VulkanImage(const ImageSpecification& spec, const std::vector<RGBA32> data, const AssetHandle& id);
-		VulkanImage(std::filesystem::path path);
-		~VulkanImage();
-
-		void CreateFromRaw(const ImageSpecification& spec, VkImage image, VkImageView view);
-		void Destroy() override;
-
-		VkImage Raw() const { return m_Image; }
-		VkImageView RawView() const { return m_ImageView; };
-		ImageSpecification GetSpecification() const override { return m_Specification; }
-
-		ImageLayout GetCurrentLayout() const { return m_CurrentLayout; }
-
-		// It is supposed that image has actually already been transitioned into layout.
-		void SetCurrentLayout(ImageLayout layout) { m_CurrentLayout = layout; } 
-		void SetLayout(Shared<DeviceCmdBuffer> cmd_buffer, ImageLayout new_layout, PipelineStage src_stage, PipelineStage dst_stage, BitMask src_access = 0, BitMask dst_access = 0) override;
-
-	private:
-		void CreateTexture();
-		void CreateRenderTarget();
-		void CreateDepthBuffer();
-		void CreateStorageImage();
-
-	private:
-
-		ImageSpecification m_Specification;
-
-		VkImage m_Image;
-		VmaAllocation m_Allocation;
-		VkImageView m_ImageView;
-		ImageLayout m_CurrentLayout;
-		
-		bool m_CreatedFromRaw;
-
-	};
-
-	class VulkanImageSampler : public ImageSampler {
-	public:
-		VulkanImageSampler(const ImageSamplerSpecification& spec);
-		~VulkanImageSampler();
-
-		void Destroy() override;
-
-		VkSampler Raw() const { return m_Sampler; }
-		ImageSamplerSpecification GetSpecification() const { return m_Specification; }
-
-	private:
-		VkSampler m_Sampler;
-		ImageSamplerSpecification m_Specification;
-
-	};
 
 }
