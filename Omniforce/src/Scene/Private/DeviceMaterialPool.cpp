@@ -41,13 +41,14 @@ namespace Omni {
 
 		auto material_table = m->GetTable();
 
-		uint16 material_size = 0;
+		// Reserve first 4 bytes for pipeline UUID
+		uint16 material_size = 4;
 
 		for (auto& entry : material_table)
 			material_size += Material::GetRuntimeEntrySize(entry.second.index());
 
 		byte* material_data = new byte[material_size];
-		uint32 current_offset = 0;
+		uint32 current_offset = 4;
 
 		for (auto& material_entry : material_table) {
 			if (material_entry.second.index() == 0) {
@@ -60,6 +61,10 @@ namespace Omni {
 				material_entry.second = MaterialTextureProperty((uint64)texture_property.first | (((uint64)texture_property.second) << 32), 0);
 			}
 		}
+
+		// Copy pipeline device id to first 4 bytes
+		uint32 device_pipeline_id = m->GetPipeline()->GetDeviceID();
+		memcpy(material_data, &device_pipeline_id, sizeof(device_pipeline_id));
 
 		for (auto& entry : material_table) {			
 			uint8 entry_size = Material::GetRuntimeEntrySize(entry.second.index());

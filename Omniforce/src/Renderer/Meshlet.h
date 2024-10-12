@@ -70,7 +70,7 @@ namespace std {
 	struct hash<Omni::MeshletEdge> {
 		size_t operator()(const Omni::MeshletEdge& edge) const {
 			uint32_t h = hash<uint32_t>()(edge.first);
-			Omni::Utils::CombineHashes(h, edge.second);
+			h = Omni::Utils::CombineHashes(h, edge.second);
 			return h;
 		}
 	};

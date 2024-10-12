@@ -209,7 +209,7 @@ namespace Omni {
 		VkPipelineDepthStencilStateCreateInfo depth_stencil_state = {};
 		depth_stencil_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 		depth_stencil_state.depthTestEnable = m_Specification.depth_test_enable;
-		depth_stencil_state.depthWriteEnable = m_Specification.depth_test_enable;
+		depth_stencil_state.depthWriteEnable = m_Specification.depth_write_enable;
 		depth_stencil_state.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;
 		depth_stencil_state.depthBoundsTestEnable = VK_FALSE;
 		depth_stencil_state.stencilTestEnable = VK_FALSE;

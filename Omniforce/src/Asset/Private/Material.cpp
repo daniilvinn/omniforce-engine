@@ -38,6 +38,10 @@ namespace Omni {
 
 		Shared<Shader> shader = shader_library->GetShader("uber_main.ofs", m_Macros);
 
+		// add device pipeline id as a macro
+		UUID pipeline_id;
+		m_Macros.emplace("__OMNI_PIPELINE_LOCAL_HASH", std::to_string(Pipeline::ComputeDeviceID(pipeline_id)));
+
 		if (!shader) {
 			shader_library->LoadShader("Resources/shaders/uber_main.ofs", m_Macros);
 			shader = shader_library->GetShader("uber_main.ofs", m_Macros);
@@ -50,7 +54,7 @@ namespace Omni {
 		pipeline_spec.color_blending_enable = false;
 
 		PipelineLibrary::HasPipeline(pipeline_spec) ?
-			m_Pipeline = PipelineLibrary::GetPipeline(pipeline_spec) : m_Pipeline = Pipeline::Create(pipeline_spec);
+			m_Pipeline = PipelineLibrary::GetPipeline(pipeline_spec) : m_Pipeline = Pipeline::Create(pipeline_spec, pipeline_id);
 
 		m_Macros.clear();
 	}

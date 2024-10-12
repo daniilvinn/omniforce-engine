@@ -127,11 +127,18 @@ namespace Omni {
 			return storage_req;
 		}
 
+		template<typename T>
+		inline T ComputeHash(const T& value) {
+			return rh::hash<T>()(value);
+		}
+
 		template <class T>
-		inline void CombineHashes(T& seed, const T& v)
+		inline T CombineHashes(const T& seed, const T& v)
 		{
+			T res = seed;
 			rh::hash<T> hasher;
-			seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+			res ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+			return res;
 		}
 
 		// Assumes that vertex position is encoded in first 12 bytes of a given vertex's data

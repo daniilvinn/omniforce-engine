@@ -139,14 +139,43 @@ namespace Omni {
 		}
 		// Initialize pipelines
 		{
-			ShaderLibrary* shader_library = ShaderLibrary::Get();
 			// Load shaders
+			ShaderLibrary* shader_library = ShaderLibrary::Get();
 			tf::Taskflow taskflow;
-			tf::Task shaders_load_task = taskflow.emplace([&shader_library](tf::Subflow& sf) {
-				sf.emplace([&]() { shader_library->LoadShader("Resources/shaders/sprite.ofs"); });
-				sf.emplace([&]() { shader_library->LoadShader("Resources/shaders/cull_indirect.ofs"); });
-				sf.emplace([&]() { shader_library->LoadShader("Resources/shaders/PBR.ofs"); });
-				sf.emplace([&]() { shader_library->LoadShader("Resources/shaders/vis_buffer.ofs"); });
+
+			std::string shader_prefix = "Resources/shaders/";
+
+			std::map<std::string, UUID> shader_name_to_uuid_table;
+
+			shader_name_to_uuid_table.emplace("sprite.ofs", UUID());
+			shader_name_to_uuid_table.emplace("cull_indirect.ofs", UUID());
+			shader_name_to_uuid_table.emplace("PBR.ofs", UUID());
+			shader_name_to_uuid_table.emplace("vis_buffer.ofs", UUID());
+			shader_name_to_uuid_table.emplace("vis_material_resolve.ofs", UUID());
+
+			// helper lambda
+			auto m = [](UUID id) -> auto {
+				std::map<std::string, std::string> m;
+				m.emplace("__OMNI_PIPELINE_LOCAL_HASH", std::to_string(Pipeline::ComputeDeviceID(id)));
+				return m;
+			};
+
+			tf::Task shaders_load_task = taskflow.emplace([&](tf::Subflow& sf) {
+				sf.emplace([&, shader_name = "sprite.ofs"]() { 
+					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
+				});
+				sf.emplace([&, shader_name = "cull_indirect.ofs"]() { 
+					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
+				});
+				sf.emplace([&, shader_name = "PBR.ofs"]() { 
+					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
+				});
+				sf.emplace([&, shader_name = "vis_buffer.ofs"]() { 
+					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
+				});
+				sf.emplace([&, shader_name = "vis_material_resolve.ofs"]() { 
+					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
+				});
 			});
 			JobSystem::GetExecutor()->run(taskflow).wait();
 
@@ -157,15 +186,16 @@ namespace Omni {
 			pipeline_spec.output_attachments_formats = { ImageFormat::RGB32_HDR };
 			pipeline_spec.culling_mode = PipelineCullingMode::NONE;
 
-			m_SpritePass = Pipeline::Create(pipeline_spec);
+			m_SpritePass = Pipeline::Create(pipeline_spec, shader_name_to_uuid_table["sprite.ofs"]);
 
 			// PBR full screen
 			pipeline_spec.shader = shader_library->GetShader("PBR.ofs");
 			pipeline_spec.debug_name = "PBR full screen";
 			pipeline_spec.color_blending_enable = false;
 			pipeline_spec.depth_test_enable = false;
+			pipeline_spec.depth_write_enable = false;
 
-			m_PBRFullscreenPipeline = Pipeline::Create(pipeline_spec);
+			m_PBRFullscreenPipeline = Pipeline::Create(pipeline_spec, shader_name_to_uuid_table["PBR.ofs"]);
 
 			// Vis buffer pass
 			pipeline_spec.shader = shader_library->GetShader("vis_buffer.ofs");
@@ -175,14 +205,21 @@ namespace Omni {
 			pipeline_spec.depth_test_enable = false;
 			pipeline_spec.color_blending_enable = false;
 
-			m_VisBufferPass = Pipeline::Create(pipeline_spec);
+			m_VisBufferPass = Pipeline::Create(pipeline_spec, shader_name_to_uuid_table["vis_buffer.ofs"]);
+
+			// Vis material resolve pass
+			pipeline_spec.shader = shader_library->GetShader("vis_material_resolve.ofs");
+			pipeline_spec.debug_name = "Vis material resolve";
+			pipeline_spec.depth_write_enable = true;
+
+			m_VisMaterialResolvePass = Pipeline::Create(pipeline_spec, shader_name_to_uuid_table["vis_material_resolve.ofs"]);
 
 			// compute frustum culling
 			pipeline_spec.type = PipelineType::COMPUTE;
 			pipeline_spec.shader = shader_library->GetShader("cull_indirect.ofs");
 			pipeline_spec.debug_name = "frustum cull prepass";
 
-			m_IndirectFrustumCullPipeline = Pipeline::Create(pipeline_spec);
+			m_IndirectFrustumCullPipeline = Pipeline::Create(pipeline_spec, shader_name_to_uuid_table["cull_indirect.ofs"]);
 		}
 		// Initialize device render queue and all buffers for indirect drawing
 		{
@@ -526,7 +563,7 @@ namespace Omni {
 		pbr_pc.size = sizeof PBRFullScreenPassPushConstants;
 
 		// PBR full screen pass
-		Renderer::BeginRender({ m_CurrectMainRenderTarget }, m_CurrectMainRenderTarget->GetSpecification().extent, { 0, 0 }, { 0.0f, 0.0f, 0.0f, 1.0f });
+		Renderer::BeginRender({ m_CurrectMainRenderTarget }, m_CurrectMainRenderTarget->GetSpecification().extent, { 0, 0 }, { NAN, NAN, NAN, 1.0f });
 		Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], m_PBRFullscreenPipeline, 0);
 		Renderer::RenderQuads(m_PBRFullscreenPipeline, pbr_pc);
 		Renderer::EndRender(m_CurrectMainRenderTarget);

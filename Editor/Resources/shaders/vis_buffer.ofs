@@ -203,6 +203,7 @@ void main()
 #include "texture.glslh"
 #include "visible_clusters_buffer.glslh"
 
+// force early z. can afford for hardware raster
 layout(early_fragment_tests) in;
 
 layout(location = 0) flat in uint v_VisibleClusterIndex;

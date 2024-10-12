@@ -129,6 +129,7 @@ namespace Omni {
 
 		Shared<Image> m_VisibilityBuffer;
 		Shared<Pipeline> m_VisBufferPass;
+		Shared<Pipeline> m_VisMaterialResolvePass;
 		Shared<DeviceBuffer> m_VisibleClusters;
 
 		std::vector<PointLight> m_HostPointLights;

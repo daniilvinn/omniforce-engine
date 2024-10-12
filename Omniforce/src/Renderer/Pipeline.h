@@ -55,6 +55,7 @@ namespace Omni {
 		bool primitive_restart_enable;
 		bool color_blending_enable;
 		bool depth_test_enable;
+		bool depth_write_enable;
 		bool multisampling_enable;
 		uint8 sample_count;
 
@@ -74,6 +75,7 @@ namespace Omni {
 			spec.primitive_restart_enable = false;
 			spec.color_blending_enable = true;
 			spec.depth_test_enable = true;
+			spec.depth_write_enable = true;
 			spec.multisampling_enable = false;
 			spec.sample_count = 1;
 
@@ -101,11 +103,17 @@ namespace Omni {
 	class OMNIFORCE_API Pipeline {
 	public:
 		// NOTE: automatically(!!!) adds pipeline to pipeline library
-		static Shared<Pipeline> Create(const PipelineSpecification& spec);
+		static Shared<Pipeline> Create(const PipelineSpecification& spec, UUID id = UUID());
 		virtual void Destroy() = 0;
 
 		virtual const PipelineSpecification& GetSpecification() const = 0;
 		UUID GetID() const { return m_ID; }
+		uint32 GetDeviceID() const {
+			return uint32((m_ID >> 32) ^ m_ID);
+		}
+		static uint32 ComputeDeviceID(UUID id) {
+			return uint32((id >> 32) ^ id);
+		}
 
 	protected:
 		UUID m_ID;
