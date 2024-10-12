@@ -73,16 +73,21 @@ namespace Omni {
 		Shared<Shader> shader = Shader::Create(compilation_result.bytecode, path);
 
 		m_Mutex.lock();
-		if (auto shader_filename = path.filename().string(); m_Library.contains(shader_filename)) {
-			m_Library[shader_filename].push_back({ shader, macros });
+		auto shader_filename = path.filename().string();
+
+		ShaderMacroTable macros_without_uuid = macros;
+		macros_without_uuid.erase("__OMNI_PIPELINE_LOCAL_HASH");
+
+		if (m_Library.contains(shader_filename)) {
+			m_Library[shader_filename].push_back({ shader, macros_without_uuid });
 		}
 		else {
 			std::vector<std::pair<Shared<Shader>, ShaderMacroTable>> permutations;
-			permutations.push_back({ shader, macros });
+			permutations.push_back({ shader, macros_without_uuid });
 			m_Library.emplace(shader_filename, permutations);
 		}
 		m_Mutex.unlock();
-		
+
 		return true;
 	}
 
@@ -144,6 +149,9 @@ namespace Omni {
 		auto& permutation_list = m_Library.at(key);
 
 		for (auto& permutation : permutation_list) {
+			if (permutation.second.size() == 1 && macros.size() == 0)
+				return permutation.first;
+
 			if (permutation.second == macros)
 				return permutation.first;
 		}
