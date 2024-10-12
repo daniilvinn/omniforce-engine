@@ -2,13 +2,13 @@
 #pragma stage : vertex
 #version 460 core
 
-vec3 vertices[6] = {
-	vec3( -1.0f,  -1.0f,  0.0f ),
-	vec3(  1.0f,  -1.0f,  0.0f ),
-	vec3(  1.0f,   1.0f,  0.0f ),
-	vec3(  1.0f,   1.0f,  0.0f ),
-	vec3( -1.0f,   1.0f,  0.0f ),
-	vec3( -1.0f,  -1.0f,  0.0f )
+vec2 vertices[6] = {
+	vec2( -1.0f,  -1.0f ),
+	vec2(  1.0f,  -1.0f ),
+	vec2(  1.0f,   1.0f ),
+	vec2(  1.0f,   1.0f ),
+	vec2( -1.0f,   1.0f ),
+	vec2( -1.0f,  -1.0f )
 };
 
 vec2 tex_coords[6] = {
@@ -23,7 +23,7 @@ vec2 tex_coords[6] = {
 layout(location = 0) out vec2 out_texcoord;
 
 void main() {
-	gl_Position = vec4(vertices[gl_VertexIndex], 1.0f);
+	gl_Position = vec4(vertices[gl_VertexIndex], 0.0f, 1.0f);
 	out_texcoord = tex_coords[gl_VertexIndex];
 }
 
