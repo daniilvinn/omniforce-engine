@@ -31,7 +31,7 @@ namespace Omni {
 
 		static void Render(Shared<Image> target, Shared<Image> depth_target, fvec4 clear_value);
 
-		static void RenderSceneDebugView(Shared<DeviceBuffer> camera_data, Shared<DeviceBuffer> mesh_data, Shared<DeviceBuffer> render_queue, Shared<DeviceBuffer> indirect_params, DebugSceneView mode);
+		static void RenderSceneDebugView(Shared<DeviceBuffer> visible_clusters, DebugSceneView mode, Shared<DescriptorSet> descriptor_set);
 
 	private:
 		DebugRenderer();

@@ -25,8 +25,8 @@ namespace Omni {
 	{
 		// Init pipeline
 		ShaderLibrary* shader_library = ShaderLibrary::Get();
-		shader_library->LoadShader("Resources/shaders/wireframe.ofs");
-		shader_library->LoadShader("Resources/shaders/cluster_debug_view.ofs");
+		shader_library->LoadShader("Resources/shaders/wireframe.ofs", { {"__OMNI_PIPELINE_LOCAL_HASH", std::to_string(Pipeline::ComputeDeviceID(UUID()))}});
+		shader_library->LoadShader("Resources/shaders/cluster_debug_view.ofs", { {"__OMNI_PIPELINE_LOCAL_HASH", std::to_string(Pipeline::ComputeDeviceID(UUID()))} });
 
 		DeviceBufferLayoutElement element("position", DeviceDataType::FLOAT3);
 		DeviceBufferLayout buffer_layout(std::vector{ element });
@@ -48,6 +48,7 @@ namespace Omni {
 		pipeline_spec.debug_name = "cluster debug view";
 		pipeline_spec.topology = PipelineTopology::TRIANGLES;
 		pipeline_spec.shader = shader_library->GetShader("cluster_debug_view.ofs");
+		pipeline_spec.input_layout = {};
 
 		m_DebugViewPipeline = Pipeline::Create(pipeline_spec);
 
@@ -176,27 +177,21 @@ namespace Omni {
 		});
 	}
 
-	void DebugRenderer::RenderSceneDebugView(Shared<DeviceBuffer> camera_data, Shared<DeviceBuffer> mesh_data, Shared<DeviceBuffer> render_queue, Shared<DeviceBuffer> indirect_params, DebugSceneView mode)
+	void DebugRenderer::RenderSceneDebugView(Shared<DeviceBuffer> visible_clusters, DebugSceneView mode, Shared<DescriptorSet> descriptor_set)
 	{
-
 		renderer->m_DebugRequests.push_back([=]() {
 
-			uint64* pc_data = new uint64[5];
-			memset(pc_data, 0u, sizeof uint64 * 5);
-
-			static int32 lod = 0;
-
-			pc_data[0] = camera_data->GetDeviceAddress() + camera_data->GetFrameOffset();
-			pc_data[1] = mesh_data->GetDeviceAddress();
-			pc_data[2] = render_queue->GetDeviceAddress();
-			pc_data[3] = uint64(mode);
-			pc_data[4] = lod; // unused
+			uint64* pc_data = new uint64[2];
 
 			MiscData pcs = {};
 			pcs.data = (byte*)pc_data;
-			pcs.size = sizeof uint64 * 5;
+			pcs.size = sizeof uint64 * 2;
 
-			Renderer::RenderMeshTasksIndirect(renderer->m_DebugViewPipeline, indirect_params, pcs);
+			pc_data[0] = uint64(mode);
+			pc_data[1] = uint64(visible_clusters->GetDeviceAddress());
+
+			Renderer::BindSet(descriptor_set, renderer->m_DebugViewPipeline, 0);
+			Renderer::RenderQuads(renderer->m_DebugViewPipeline, pcs);
 		});
 	}
 
