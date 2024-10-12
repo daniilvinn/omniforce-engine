@@ -41,6 +41,7 @@ namespace Omni {
 
 	bool ShaderLibrary::LoadShader(const std::filesystem::path& path, const ShaderMacroTable& macros) {
 		ShaderCompiler shader_compiler;
+		OMNIFORCE_ASSERT_TAGGED(macros.contains("__OMNI_PIPELINE_LOCAL_HASH"), "No pipeline ID macro provided");
 
 		for (auto& global_macro : m_GlobalMacros)
 			shader_compiler.AddGlobalMacro(global_macro.first, global_macro.second);
@@ -75,15 +76,12 @@ namespace Omni {
 		m_Mutex.lock();
 		auto shader_filename = path.filename().string();
 
-		ShaderMacroTable macros_without_uuid = macros;
-		macros_without_uuid.erase("__OMNI_PIPELINE_LOCAL_HASH");
-
 		if (m_Library.contains(shader_filename)) {
-			m_Library[shader_filename].push_back({ shader, macros_without_uuid });
+			m_Library[shader_filename].push_back({ shader, macros });
 		}
 		else {
 			std::vector<std::pair<Shared<Shader>, ShaderMacroTable>> permutations;
-			permutations.push_back({ shader, macros_without_uuid });
+			permutations.push_back({ shader, macros });
 			m_Library.emplace(shader_filename, permutations);
 		}
 		m_Mutex.unlock();
@@ -141,19 +139,24 @@ namespace Omni {
 		return false;
 	}
 
-	Shared<Shader> ShaderLibrary::GetShader(std::string key, const ShaderMacroTable& macros)
-	{
+	Omni::Shared<Omni::Shader> ShaderLibrary::GetShader(std::string key, ShaderMacroTable macros) {
 		if (!m_Library.contains(key))
 			return nullptr;
 
 		auto& permutation_list = m_Library.at(key);
 
 		for (auto& permutation : permutation_list) {
-			if (permutation.second.size() == 1 && macros.size() == 0)
-				return permutation.first;
+			auto& permutation_macro_table = permutation.second;
+			
+			std::string& permutation_id = permutation_macro_table.at("__OMNI_PIPELINE_LOCAL_HASH");
+			
+			// Emplace an id so if everything other than ID matches, then we can freely return this shader
+			macros["__OMNI_PIPELINE_LOCAL_HASH"] = permutation_id;
 
-			if (permutation.second == macros)
+			if (permutation_macro_table == macros)
 				return permutation.first;
+			else
+				macros.erase("__OMNI_PIPELINE_LOCAL_HASH");
 		}
 
 		return nullptr;

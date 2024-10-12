@@ -9,10 +9,11 @@ float ComputeMaterialResolveFragmentDepth() {
 	return 1.0f / ((__OMNI_PIPELINE_LOCAL_HASH_32 ^ ((__OMNI_PIPELINE_LOCAL_HASH_32 & 0xFF000000) >> 8)) & 0x00FFFFFF);
 }
 
+// Move higher 8 bits to the right, perform XOR op, mask out higher bits
+// Then divide 1.0f by computed value
 float ComputeMaterialResolveFragmentDepth(uint seed) {
-	// Move higher 8 bits to the right, perform XOR op, mask out higher bits
-	// Then divide 1.0f by computed value
-	return 1.0f / ((seed ^ ((seed & 0xFF000000) >> 8)) & 0x00FFFFFF);
+	uint divisor = ((seed ^ ((seed & 0xFF000000) >> 8)) & 0x00FFFFFF);
+	return 1.0f / (divisor % 5);
 }
 
 #endif

@@ -112,10 +112,11 @@ namespace Omni {
 		DeviceIndexedResourceBuffer<DeviceMeshData> m_MeshResourcesBuffer;
 		DeviceMaterialPool m_MaterialDataPool;
 
-		rhumap<Shared<Pipeline>, std::vector<DeviceRenderableObject>> m_HostRenderQueue;
-		CallbackRHUMap<Shared<Pipeline>, Shared<DeviceBuffer>> m_DeviceRenderQueue;
-		rhumap<Shared<Pipeline>, Shared<DeviceBuffer>> m_CulledDeviceRenderQueue;
-		rhumap<Shared<Pipeline>, Shared<DeviceBuffer>> m_DeviceIndirectDrawParams;
+		rh::unordered_flat_set<Shared<Pipeline>> m_ActiveMaterialPipelines;
+		std::vector<DeviceRenderableObject> m_HostRenderQueue;
+		Shared<DeviceBuffer> m_DeviceRenderQueue;
+		Shared<DeviceBuffer> m_CulledDeviceRenderQueue;
+		Shared<DeviceBuffer> m_DeviceIndirectDrawParams;
 
 		Shared<Pipeline> m_IndirectFrustumCullPipeline;
 

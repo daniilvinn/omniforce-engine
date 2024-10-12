@@ -41,7 +41,7 @@ namespace Omni {
 		*  @brief Acquire shader from library. Read-only.
 		*  @return a shared pointer to shader. If shader is not present, returns nullptr.
 		*/
-		Shared<Shader> GetShader(std::string key, const ShaderMacroTable& macros = {});
+		Shared<Shader> GetShader(std::string key, ShaderMacroTable macros = {});
 
 		/*
 		*  @return a whole shader library. Can be used to iterate through, e.g. for using with ImGui to list all shaders

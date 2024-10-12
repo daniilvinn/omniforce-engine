@@ -46,8 +46,15 @@ layout(buffer_reference, scalar, buffer_reference_align = 4) restrict readonly b
 void main() {
     uvec2 payload = unpack32(imageLoad(visibility_buffer, ivec2(gl_FragCoord.xy)).r); // unpack to avoid int64 operations (very slow)
 
+	// Write NaN depth and return in case if there's no visible cluster in this area
+
+	if(payload.g == 0u) {
+		gl_FragDepth = uintBitsToFloat(0xFFFFFFFF);
+		return;
+	}
+
 	// Move to 7 bits right to discard triangle id and get correct visible cluster ID
-    VisibleCluster visible_cluster = pc.visible_clusters.clusters[payload.x >> 7];
+    VisibleCluster visible_cluster = pc.visible_clusters.clusters[payload.r >> 7];
 	RenderObjectData instance_data = pc.render_objects[visible_cluster.instance_index];
 
 	uint material_pipeline_id = MaterialPipelineID(instance_data.material_bda).id;
