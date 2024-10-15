@@ -32,7 +32,7 @@ namespace Omni {
 			vertex_stride, 
 			64, 
 			124, 
-			0.25f
+			0.0f
 		);
 
 		meshlets_data->meshlets.resize(actual_num_meshlets);

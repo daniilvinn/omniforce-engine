@@ -125,6 +125,7 @@ namespace Omni {
 			staging_buffer_spec.size = data_size;
 			staging_buffer_spec.buffer_usage = DeviceBufferUsage::STAGING_BUFFER;
 			staging_buffer_spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
+			staging_buffer_spec.heap = DeviceBufferMemoryHeap::HOST;
 
 			VulkanDeviceBuffer staging_buffer(staging_buffer_spec, data, data_size);
 
