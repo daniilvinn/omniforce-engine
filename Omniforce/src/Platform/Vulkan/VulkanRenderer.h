@@ -29,7 +29,7 @@ namespace Omni {
 
 		void BeginFrame() override;
 		void EndFrame() override;
-		void BeginRender(const std::vector<Shared<Image>> attachments, uvec3 render_area, ivec2 render_offset, fvec4 clear_color) override;
+		void BeginRender(const std::vector<Shared<Image>> attachments, uvec3 render_area, ivec2 render_offset, fvec4 clear_color, bool clear_depth) override;
 		void EndRender(Shared<Image> target) override;
 		void WaitDevice() override;
 		void BindSet(Shared<DescriptorSet> set, Shared<Pipeline> pipeline, uint8 index) override;

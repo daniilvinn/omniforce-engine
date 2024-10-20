@@ -48,9 +48,9 @@ namespace Omni {
 		s_RendererAPI->EndFrame();
 	}
 
-	void Renderer::BeginRender(const std::vector<Shared<Image>> attachments, uvec3 render_area, ivec2 offset, fvec4 clear_value)
+	void Renderer::BeginRender(const std::vector<Shared<Image>> attachments, uvec3 render_area, ivec2 offset, fvec4 clear_value, bool clear_depth /*= true*/)
 	{
-		s_RendererAPI->BeginRender(attachments, render_area, offset, clear_value);
+		s_RendererAPI->BeginRender(attachments, render_area, offset, clear_value, clear_depth);
 	}
 
 	void Renderer::EndRender(Shared<Image> target) 

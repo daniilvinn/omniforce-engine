@@ -39,6 +39,13 @@ namespace Omni {
 		FILL,
 		EDGE_ONLY
 	};
+
+	enum class OMNIFORCE_API PipelineDepthTestOp : uint8 {
+		LESS,
+		GREATER,
+		GREATER_OR_EQUAL,
+		EQUALS
+	};
 #pragma endregion
 
 	struct OMNIFORCE_API PipelineSpecification {
@@ -51,6 +58,7 @@ namespace Omni {
 		PipelineFrontFace front_face;
 		PipelineTopology topology;
 		PipelineFillMode fill_mode;
+		PipelineDepthTestOp depth_test_op;
 		std::vector<ImageFormat> output_attachments_formats;
 		bool primitive_restart_enable;
 		bool color_blending_enable;
@@ -71,6 +79,7 @@ namespace Omni {
 			spec.front_face = PipelineFrontFace::COUNTER_CLOCKWISE;
 			spec.topology = PipelineTopology::TRIANGLES;
 			spec.fill_mode = PipelineFillMode::FILL;
+			spec.depth_test_op = PipelineDepthTestOp::GREATER_OR_EQUAL;
 			spec.output_attachments_formats = {};
 			spec.primitive_restart_enable = false;
 			spec.color_blending_enable = true;

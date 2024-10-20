@@ -3,6 +3,9 @@
 
 #include "frustum.glslh"
 
+#extension GL_EXT_buffer_reference2			: require
+#extension GL_EXT_scalar_block_layout		: require
+
 layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer CameraData {
 	mat4 view;
 	mat4 proj;

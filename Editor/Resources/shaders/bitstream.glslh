@@ -1,7 +1,8 @@
 #ifndef BITSTREAM_GLSLH
 #define BITSTREAM_GLSLH
 
-#extension GL_EXT_buffer_reference2 : require
+#extension GL_EXT_buffer_reference2		: require
+#extension GL_EXT_scalar_block_layout	: require
 
 layout(buffer_reference, scalar, buffer_reference_align = 4) buffer ReadOnlyBitStream {
 	uint storage[];

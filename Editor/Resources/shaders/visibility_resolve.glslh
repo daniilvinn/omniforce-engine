@@ -10,7 +10,7 @@ struct BarycentricDerivative
 
 // Compute barycentric coordinates of a pixel between 3 vertices
 // Also analytically compute derivates
-BarycentricDerivative CalcFullBary(vec4 v0, vec4 v1, vec4 v2, vec2 pixel_ndc, vec2 image_size)
+BarycentricDerivative CalculateFullBary(vec4 v0, vec4 v1, vec4 v2, vec2 pixel_ndc, vec2 image_size)
 {
     BarycentricDerivative ret;
 
@@ -53,7 +53,7 @@ BarycentricDerivative CalcFullBary(vec4 v0, vec4 v1, vec4 v2, vec2 pixel_ndc, ve
     return ret;
 }
 
-// float interpolation utils
+// Scalar float interpolation utils
 float InterpolateVertexData(BarycentricDerivative deriv, float v0, float v1, float v2)
 {
     vec3 merged_vertex = vec3(v0, v1, v2);
@@ -70,7 +70,6 @@ float InterpolateVertexData(BarycentricDerivative deriv, float v0, float v1, flo
 
     return dot(merged_vertex, deriv.lambda);
 }
-
 
 // vec2 interpolation utils
 vec2 InterpolateVertexData(BarycentricDerivative deriv, vec2 v0, vec2 v1, vec2 v2)

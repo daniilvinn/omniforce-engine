@@ -193,7 +193,6 @@ void main()
 #version 460 core
 
 #extension GL_EXT_nonuniform_qualifier							: require
-#extension GL_EXT_shader_explicit_arithmetic_types_float16		: require
 #extension GL_EXT_shader_explicit_arithmetic_types_int64		: require
 #extension GL_EXT_debug_printf									: require
 
@@ -202,9 +201,6 @@ void main()
 #include "render_object.glslh"
 #include "texture.glslh"
 #include "visible_clusters_buffer.glslh"
-
-// force early z. can afford for hardware raster
-layout(early_fragment_tests) in;
 
 layout(location = 0) flat in uint v_VisibleClusterIndex;
 

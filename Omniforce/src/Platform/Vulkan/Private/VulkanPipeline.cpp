@@ -9,48 +9,48 @@ namespace Omni {
 	constexpr VkFormat convert(const DeviceDataType& type) {
 		switch (type)
 		{
-		case DeviceDataType::INT:				return VK_FORMAT_R32_SINT;
-		case DeviceDataType::INT2:				return VK_FORMAT_R32G32_SINT;
-		case DeviceDataType::INT3:				return VK_FORMAT_R32G32B32_SINT;
-		case DeviceDataType::INT4:				return VK_FORMAT_R32G32B32A32_SINT;
-		case DeviceDataType::FLOAT:				return VK_FORMAT_R32_SFLOAT;
-		case DeviceDataType::FLOAT2:			return VK_FORMAT_R32G32_SFLOAT;
-		case DeviceDataType::FLOAT3:			return VK_FORMAT_R32G32B32_SFLOAT;
-		case DeviceDataType::FLOAT4:			return VK_FORMAT_R32G32B32A32_SFLOAT;
-		case DeviceDataType::IMAT3:				return VK_FORMAT_R32G32B32_SINT;
-		case DeviceDataType::IMAT4:				return VK_FORMAT_R32G32B32A32_SINT;
-		case DeviceDataType::MAT3:				return VK_FORMAT_R32G32B32_SFLOAT;
-		case DeviceDataType::MAT4:				return VK_FORMAT_R32G32B32A32_SFLOAT;
-		default:								std::unreachable();
+		case DeviceDataType::INT:						return VK_FORMAT_R32_SINT;
+		case DeviceDataType::INT2:						return VK_FORMAT_R32G32_SINT;
+		case DeviceDataType::INT3:						return VK_FORMAT_R32G32B32_SINT;
+		case DeviceDataType::INT4:						return VK_FORMAT_R32G32B32A32_SINT;
+		case DeviceDataType::FLOAT:						return VK_FORMAT_R32_SFLOAT;
+		case DeviceDataType::FLOAT2:					return VK_FORMAT_R32G32_SFLOAT;
+		case DeviceDataType::FLOAT3:					return VK_FORMAT_R32G32B32_SFLOAT;
+		case DeviceDataType::FLOAT4:					return VK_FORMAT_R32G32B32A32_SFLOAT;
+		case DeviceDataType::IMAT3:						return VK_FORMAT_R32G32B32_SINT;
+		case DeviceDataType::IMAT4:						return VK_FORMAT_R32G32B32A32_SINT;
+		case DeviceDataType::MAT3:						return VK_FORMAT_R32G32B32_SFLOAT;
+		case DeviceDataType::MAT4:						return VK_FORMAT_R32G32B32A32_SFLOAT;
+		default:										std::unreachable();
 		}
 	}
 
 	constexpr VkPrimitiveTopology convert(const PipelineTopology& topology) {
 		switch (topology)
 		{
-		case PipelineTopology::TRIANGLES:		return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-		case PipelineTopology::LINES:			return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-		case PipelineTopology::POINTS:			return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
-		default:								std::unreachable();
+		case PipelineTopology::TRIANGLES:				return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		case PipelineTopology::LINES:					return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+		case PipelineTopology::POINTS:					return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+		default:										std::unreachable();
 		}
 	}
 
 	constexpr VkPolygonMode convert(const PipelineFillMode& mode) {
 		switch (mode)
 		{
-		case PipelineFillMode::FILL:			return VK_POLYGON_MODE_FILL;
-		case PipelineFillMode::EDGE_ONLY:		return VK_POLYGON_MODE_LINE;
-		default:								std::unreachable();
+		case PipelineFillMode::FILL:					return VK_POLYGON_MODE_FILL;
+		case PipelineFillMode::EDGE_ONLY:				return VK_POLYGON_MODE_LINE;
+		default:										std::unreachable();
 		}
 	}
 
 	constexpr VkCullModeFlagBits convert(const PipelineCullingMode& mode) {
 		switch (mode)
 		{
-		case PipelineCullingMode::BACK:			return VK_CULL_MODE_BACK_BIT;
-		case PipelineCullingMode::FRONT:		return VK_CULL_MODE_FRONT_BIT;
-		case PipelineCullingMode::NONE:			return VK_CULL_MODE_NONE;
-		default:								std::unreachable();
+		case PipelineCullingMode::BACK:					return VK_CULL_MODE_BACK_BIT;
+		case PipelineCullingMode::FRONT:				return VK_CULL_MODE_FRONT_BIT;
+		case PipelineCullingMode::NONE:					return VK_CULL_MODE_NONE;
+		default:										std::unreachable();
 		}
 	}
 
@@ -60,6 +60,17 @@ namespace Omni {
 		case PipelineFrontFace::CLOCKWISE:				return VK_FRONT_FACE_CLOCKWISE;
 		case PipelineFrontFace::COUNTER_CLOCKWISE:		return VK_FRONT_FACE_COUNTER_CLOCKWISE;
 		default:										std::unreachable();
+		}
+	}
+
+	constexpr VkCompareOp convert(const PipelineDepthTestOp op) {
+		switch (op)
+		{
+		case PipelineDepthTestOp::LESS:					return VK_COMPARE_OP_LESS;
+		case PipelineDepthTestOp::GREATER:				return VK_COMPARE_OP_GREATER;
+		case PipelineDepthTestOp::GREATER_OR_EQUAL:		return VK_COMPARE_OP_GREATER_OR_EQUAL;
+		case PipelineDepthTestOp::EQUALS:				return VK_COMPARE_OP_EQUAL;
+		default: std::unreachable();
 		}
 	}
 
@@ -210,7 +221,7 @@ namespace Omni {
 		depth_stencil_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 		depth_stencil_state.depthTestEnable = m_Specification.depth_test_enable;
 		depth_stencil_state.depthWriteEnable = m_Specification.depth_write_enable;
-		depth_stencil_state.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;
+		depth_stencil_state.depthCompareOp = convert(m_Specification.depth_test_op);
 		depth_stencil_state.depthBoundsTestEnable = VK_FALSE;
 		depth_stencil_state.stencilTestEnable = VK_FALSE;
 

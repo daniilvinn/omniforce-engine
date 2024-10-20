@@ -438,8 +438,8 @@ namespace Omni {
 			culled_objects_barrier.buffer_barrier_offset = 0;
 			culled_objects_barrier.buffer_barrier_size = m_CulledDeviceRenderQueue->GetSpecification().size;
 
-			buffers_clear_barriers.push_back(std::make_pair(m_DeviceIndirectDrawParams, indirect_params_barrier));
-			buffers_clear_barriers.push_back(std::make_pair(m_CulledDeviceRenderQueue, culled_objects_barrier));
+			buffers_clear_barriers.push_back({ m_DeviceIndirectDrawParams, indirect_params_barrier });
+			buffers_clear_barriers.push_back({ m_CulledDeviceRenderQueue, culled_objects_barrier });
 			
 			// Early transition of PBR attachments' layout
 			PipelineResourceBarrierInfo pbr_attachment_barrier = {};
@@ -447,14 +447,14 @@ namespace Omni {
 			pbr_attachment_barrier.dst_stages = (BitMask)PipelineStage::COLOR_ATTACHMENT_OUTPUT;
 			pbr_attachment_barrier.src_access_mask = (BitMask)PipelineAccess::UNIFORM_READ;
 			pbr_attachment_barrier.dst_access_mask = (BitMask)PipelineAccess::COLOR_ATTACHMENT_WRITE;
-			pbr_attachment_barrier.new_image_layout = ImageLayout::GENERAL;
+			pbr_attachment_barrier.new_image_layout = ImageLayout::COLOR_ATTACHMENT;
 
 			PipelineBarrierInfo clear_buffers_barrier_info = {};
 			clear_buffers_barrier_info.buffer_barriers = buffers_clear_barriers;
-			clear_buffers_barrier_info.image_barriers.push_back(std::make_pair(m_GBuffer.positions, pbr_attachment_barrier));
-			clear_buffers_barrier_info.image_barriers.push_back(std::make_pair(m_GBuffer.base_color, pbr_attachment_barrier));
-			clear_buffers_barrier_info.image_barriers.push_back(std::make_pair(m_GBuffer.normals, pbr_attachment_barrier));
-			clear_buffers_barrier_info.image_barriers.push_back(std::make_pair(m_GBuffer.metallic_roughness_occlusion, pbr_attachment_barrier));
+			clear_buffers_barrier_info.image_barriers.push_back({ m_GBuffer.positions, pbr_attachment_barrier });
+			clear_buffers_barrier_info.image_barriers.push_back({ m_GBuffer.base_color, pbr_attachment_barrier });
+			clear_buffers_barrier_info.image_barriers.push_back({ m_GBuffer.normals, pbr_attachment_barrier });
+			clear_buffers_barrier_info.image_barriers.push_back({ m_GBuffer.metallic_roughness_occlusion, pbr_attachment_barrier });
 
 			Renderer::InsertBarrier(clear_buffers_barrier_info);
 		}
@@ -500,8 +500,8 @@ namespace Omni {
 			culled_objects_barrier.buffer_barrier_offset = 0;
 			culled_objects_barrier.buffer_barrier_size = m_CulledDeviceRenderQueue->GetSpecification().size;
 
-			culling_buffers_barriers.push_back(std::make_pair(m_DeviceIndirectDrawParams, indirect_params_barrier));
-			culling_buffers_barriers.push_back(std::make_pair(m_CulledDeviceRenderQueue, culled_objects_barrier));
+			culling_buffers_barriers.push_back({ m_DeviceIndirectDrawParams, indirect_params_barrier });
+			culling_buffers_barriers.push_back({ m_CulledDeviceRenderQueue, culled_objects_barrier });
 
 			PipelineBarrierInfo culling_barrier_info = {};
 			culling_barrier_info.buffer_barriers = culling_buffers_barriers;
@@ -534,6 +534,28 @@ namespace Omni {
 			Renderer::RenderMeshTasksIndirect(m_VisBufferPass, m_DeviceIndirectDrawParams, graphics_pc);
 
 			Renderer::EndRender({});
+
+			// Prepare a barrier so material resolve waits for rasterization
+			PipelineResourceBarrierInfo vis_buf_barrier_info = {};
+			vis_buf_barrier_info.src_stages = (BitMask)PipelineStage::BOTTOM_OF_PIPE;
+			vis_buf_barrier_info.dst_stages = (BitMask)PipelineStage::TOP_OF_PIPE;
+			vis_buf_barrier_info.src_access_mask = (BitMask)PipelineAccess::NONE;
+			vis_buf_barrier_info.dst_access_mask = (BitMask)PipelineAccess::NONE;
+			vis_buf_barrier_info.new_image_layout = ImageLayout::GENERAL;
+
+			PipelineResourceBarrierInfo vis_clusters_barrier_info = {};
+			vis_clusters_barrier_info.src_stages = (BitMask)PipelineStage::BOTTOM_OF_PIPE;
+			vis_clusters_barrier_info.dst_stages = (BitMask)PipelineStage::TOP_OF_PIPE;
+			vis_clusters_barrier_info.src_access_mask = (BitMask)PipelineAccess::NONE;
+			vis_clusters_barrier_info.dst_access_mask = (BitMask)PipelineAccess::NONE;
+			vis_clusters_barrier_info.buffer_barrier_offset = 0;
+			vis_clusters_barrier_info.buffer_barrier_size = m_VisibleClusters->GetSpecification().size;
+
+			PipelineBarrierInfo barrier_info = {};
+			barrier_info.image_barriers.push_back({ m_VisibilityBuffer, vis_buf_barrier_info });
+			barrier_info.buffer_barriers.push_back({ m_VisibleClusters, vis_clusters_barrier_info });
+
+			Renderer::InsertBarrier(barrier_info);
 		}
 		if (!IsInDebugMode()) {
 			// Visible materials resolve pass
@@ -558,6 +580,47 @@ namespace Omni {
 
 				Renderer::EndRender({ m_CurrentDepthAttachment });
 
+				PipelineResourceBarrierInfo resource_barrier_info = {};
+				resource_barrier_info.src_stages = (BitMask)PipelineStage::BOTTOM_OF_PIPE;
+				resource_barrier_info.dst_stages = (BitMask)PipelineStage::TOP_OF_PIPE;
+				resource_barrier_info.src_access_mask = (BitMask)PipelineAccess::NONE;
+				resource_barrier_info.dst_access_mask = (BitMask)PipelineAccess::NONE;
+				resource_barrier_info.new_image_layout = ImageLayout::DEPTH_STENCIL_ATTACHMENT;
+
+				PipelineBarrierInfo barrier_info = {};
+				barrier_info.image_barriers.push_back({ m_CurrentDepthAttachment, resource_barrier_info });
+
+				Renderer::InsertBarrier(barrier_info);
+
+
+			}
+			// G Buffer passes
+			{
+				Renderer::BeginRender(
+					{ m_GBuffer.positions, m_GBuffer.base_color, m_GBuffer.normals, m_GBuffer.metallic_roughness_occlusion, m_CurrentDepthAttachment },
+					m_CurrectMainRenderTarget->GetSpecification().extent,
+					{ 0, 0 },
+					{ 0.2f, 0.2f, 0.3f, 1.0 },
+					false
+				);
+
+				for (const auto& pipeline : m_ActiveMaterialPipelines) {
+					MiscData pc = {};
+
+					uint64* pc_data = new uint64[4];
+					pc_data[0] = m_CameraDataBuffer->GetDeviceAddress() + m_CameraDataBuffer->GetFrameOffset();
+					pc_data[1] = m_MeshResourcesBuffer.GetStorageBDA();
+					pc_data[2] = m_CulledDeviceRenderQueue->GetDeviceAddress();
+					pc_data[3] = m_VisibleClusters->GetDeviceAddress();
+
+					pc.data = (byte*)pc_data;
+					pc.size = sizeof uint64 * 4;
+
+					Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], pipeline, 0);
+					Renderer::RenderQuads(pipeline, pc);
+				}
+
+				Renderer::EndRender(m_CurrectMainRenderTarget);
 			}
 			// PBR full screen pass
 			{
@@ -570,10 +633,10 @@ namespace Omni {
 				pbr_attachment_barrier.dst_access_mask = (BitMask)PipelineAccess::UNIFORM_READ;
 
 				PipelineBarrierInfo render_barrier_info = {};
-				render_barrier_info.image_barriers.push_back(std::make_pair(m_GBuffer.positions, pbr_attachment_barrier));
-				render_barrier_info.image_barriers.push_back(std::make_pair(m_GBuffer.base_color, pbr_attachment_barrier));
-				render_barrier_info.image_barriers.push_back(std::make_pair(m_GBuffer.normals, pbr_attachment_barrier));
-				render_barrier_info.image_barriers.push_back(std::make_pair(m_GBuffer.metallic_roughness_occlusion, pbr_attachment_barrier));
+				render_barrier_info.image_barriers.push_back({ m_GBuffer.positions, pbr_attachment_barrier });
+				render_barrier_info.image_barriers.push_back({ m_GBuffer.base_color, pbr_attachment_barrier });
+				render_barrier_info.image_barriers.push_back({ m_GBuffer.normals, pbr_attachment_barrier });
+				render_barrier_info.image_barriers.push_back({ m_GBuffer.metallic_roughness_occlusion, pbr_attachment_barrier });
 				Renderer::InsertBarrier(render_barrier_info);
 
 				// Prepare push constants

@@ -347,7 +347,8 @@ namespace Omni {
 			{ image },
 			image->GetSpecification().extent,
 			{ 0,0 },
-			{ 0.0f, 0.0f, 0.0f, 1.0f }
+			{ 0.0f, 0.0f, 0.0f, 1.0f },
+			true
 		);
 
 		Renderer::Submit([=]() mutable {
@@ -436,7 +437,7 @@ namespace Omni {
 				vk_barrier.image = vk_image->Raw();
 				vk_barrier.oldLayout = (VkImageLayout)vk_image->GetCurrentLayout();
 				vk_barrier.newLayout = (VkImageLayout)image_barrier.second.new_image_layout;
-				vk_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				vk_barrier.subresourceRange.aspectMask = image->GetSpecification().usage != ImageUsage::DEPTH_BUFFER ? VK_IMAGE_ASPECT_COLOR_BIT : VK_IMAGE_ASPECT_DEPTH_BIT;
 				vk_barrier.subresourceRange.baseArrayLayer = 0;
 				vk_barrier.subresourceRange.layerCount = image->GetSpecification().array_layers;
 				vk_barrier.subresourceRange.baseMipLevel = 0;
@@ -459,7 +460,7 @@ namespace Omni {
 		});
 	}
 
-	void VulkanRenderer::BeginRender(const std::vector<Shared<Image>> attachments, uvec3 render_area, ivec2 render_offset, fvec4 clear_color)
+	void VulkanRenderer::BeginRender(const std::vector<Shared<Image>> attachments, uvec3 render_area, ivec2 render_offset, fvec4 clear_color, bool clear_depth)
 	{
 		Renderer::Submit([=]() mutable {
 
@@ -520,7 +521,7 @@ namespace Omni {
 					depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 					depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 					depth_attachment.clearValue.color = { 0,0,0,1 };
-					if (clear_color.a != 0.0f)
+					if (clear_depth)
 						depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 					else
 						depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;

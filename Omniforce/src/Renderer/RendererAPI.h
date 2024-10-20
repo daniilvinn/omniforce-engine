@@ -27,7 +27,7 @@ namespace Omni {
 
 		virtual void BeginFrame() = 0;
 		virtual void EndFrame() = 0;
-		virtual void BeginRender(const std::vector<Shared<Image>> attachments, uvec3 render_area, ivec2 render_offset, fvec4 clear_color) = 0;
+		virtual void BeginRender(const std::vector<Shared<Image>> attachments, uvec3 render_area, ivec2 render_offset, fvec4 clear_color, bool clear_depth) = 0;
 		virtual void EndRender(Shared<Image> target) = 0;
 		virtual void WaitDevice() = 0;
 		virtual void BindSet(Shared<DescriptorSet> set, Shared<Pipeline> pipeline, uint8 index) = 0;
