@@ -10,6 +10,7 @@ struct BarycentricDerivative
 
 // Compute barycentric coordinates of a pixel between 3 vertices
 // Also analytically compute derivates
+// Vertices are in clip-space, just after MVP transformation
 BarycentricDerivative CalculateFullBary(vec4 v0, vec4 v1, vec4 v2, vec2 pixel_ndc, vec2 image_size)
 {
     BarycentricDerivative ret;
@@ -76,9 +77,6 @@ vec2 InterpolateVertexData(BarycentricDerivative deriv, vec2 v0, vec2 v1, vec2 v
 {
     vec2 merged_vertex = v0 * deriv.lambda.x + v1 * deriv.lambda.y + v2 * deriv.lambda.z;
 
-    vec2 ddx = v0 * deriv.ddx.x + v1 * deriv.ddx.y + v2 * deriv.ddx.z;
-    vec2 ddy = v0 * deriv.ddy.x + v1 * deriv.ddy.y + v2 * deriv.ddy.z;
-
     return merged_vertex;
 }
 
@@ -97,9 +95,6 @@ vec2 InterpolateVertexData(BarycentricDerivative deriv, vec2 v0, vec2 v1, vec2 v
 vec3 InterpolateVertexData(BarycentricDerivative deriv, vec3 v0, vec3 v1, vec3 v2)
 {
     vec3 merged_vertex = v0 * deriv.lambda.x + v1 * deriv.lambda.y + v2 * deriv.lambda.z;
-
-    vec3 ddx = v0 * deriv.ddx.x + v1 * deriv.ddx.y + v2 * deriv.ddx.z;
-    vec3 ddy = v0 * deriv.ddy.x + v1 * deriv.ddy.y + v2 * deriv.ddy.z;
 
     return merged_vertex;
 }

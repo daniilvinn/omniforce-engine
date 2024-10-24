@@ -52,6 +52,8 @@ void main()
 #extension GL_EXT_shader_explicit_arithmetic_types_int64		: require
 #extension GL_EXT_debug_printf									: require
 
+layout(early_fragment_tests) in;
+
 layout(push_constant, scalar) uniform pc_ {
     CameraData camera_data;
     MeshData mesh_data;
@@ -116,11 +118,15 @@ uvec3 LoadTriangleIndices(RenderObjectData instance_data, uint cluster_index, ui
 	MeshData mesh_data = pc.mesh_data[instance_data.geometry_data_id];
 	uint triangle_offset = mesh_data.meshlets_data[cluster_index].triangle_offset;
 
-	return uvec3(
-		mesh_data.micro_indices[triangle_offset + (triangle_id * 3) + 0].micro_index,
-		mesh_data.micro_indices[triangle_offset + (triangle_id * 3) + 1].micro_index,
-		mesh_data.micro_indices[triangle_offset + (triangle_id * 3) + 2].micro_index
+	uvec3 indices = triangle_offset + uvec3(0,1,2) + triangle_id * 3;
+
+	uvec3 result = uvec3(
+		mesh_data.micro_indices[indices.x].micro_index,
+		mesh_data.micro_indices[indices.y].micro_index,
+		mesh_data.micro_indices[indices.z].micro_index
 	);
+
+	return result;
 }
 
 void LoadVertexPositions(out vec4 v[3], RenderObjectData instance, uint cluster_index, uvec3 triangle_indices) {
@@ -136,6 +142,8 @@ void LoadVertexPositions(out vec4 v[3], RenderObjectData instance, uint cluster_
 	// Offset is global within bit stream
 	uvec3 meshlet_vtx_offsets = meshlet_data.vertex_bit_offset + triangle_indices * meshlet_bitrate;
 
+	vec3 result[3];
+
 	// Fetch, decode and transform vertices
 	for(int i = 0; i < 3; i++) {
 		// Fetch encoded vertex
@@ -145,13 +153,10 @@ void LoadVertexPositions(out vec4 v[3], RenderObjectData instance, uint cluster_
 		encoded_vertex = encoded_vertex = (encoded_vertex ^ bit_extend_bitmask) - bit_extend_bitmask;;
 
 		// Decode vertex
-		v[i] = vec4(
-			DecodeVertex(encoded_vertex, mesh_data.quantization_grid_size, meshlet_center),
-			1.0f
-		);
+		result[i] = DecodeVertex(encoded_vertex, mesh_data.quantization_grid_size, meshlet_center);
 
 		// Transform vertex
-		v[i] = pc.camera_data.view_proj * vec4(TransformPoint(v[i].xyz, instance.transform), 1.0f);
+		v[i] = pc.camera_data.view_proj * vec4(TransformPoint(result[i], instance.transform), 1.0f);
 	}
 
 }
@@ -182,11 +187,14 @@ void main() {
 		triangle_indices
 	);
 
+	vec2 pixel_ndc = (gl_FragCoord.xy / imageSize(visibility_buffer)) * 2.0 - 1.0;
+	pixel_ndc.y = -pixel_ndc.y;
+
 	BarycentricDerivative bary_deriv = CalculateFullBary(
 		triangle_vertices[0],
 		triangle_vertices[1],
 		triangle_vertices[2],
-		(gl_FragCoord.xy / imageSize(visibility_buffer)) * 2.0 - 1.0,
+		pixel_ndc,
 		imageSize(visibility_buffer)
 	);
 
