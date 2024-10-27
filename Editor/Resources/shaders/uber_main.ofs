@@ -140,7 +140,7 @@ void LoadVertexPositions(out vec4 v[3], RenderObjectData instance, uint cluster_
 
 	// Compute vertices bit offset.
 	// Offset is global within bit stream
-	uvec3 meshlet_vtx_offsets = meshlet_data.vertex_bit_offset + triangle_indices * meshlet_bitrate;
+	uvec3 meshlet_vtx_offsets = meshlet_data.vertex_bit_offset + triangle_indices * (meshlet_bitrate * 3);
 
 	vec3 result[3];
 
@@ -150,7 +150,7 @@ void LoadVertexPositions(out vec4 v[3], RenderObjectData instance, uint cluster_
 		ivec3 encoded_vertex = FetchVertexFromStream(mesh_data.vertices, meshlet_bitrate, meshlet_vtx_offsets[i]);
 
 		// Restore sign
-		encoded_vertex = encoded_vertex = (encoded_vertex ^ bit_extend_bitmask) - bit_extend_bitmask;;
+		encoded_vertex = (encoded_vertex ^ bit_extend_bitmask) - bit_extend_bitmask;
 
 		// Decode vertex
 		result[i] = DecodeVertex(encoded_vertex, mesh_data.quantization_grid_size, meshlet_center);
@@ -224,7 +224,7 @@ void main() {
 			uvs[i] = f16vec2(InterpolateVertexData(bary_deriv, vertex_uv[0], vertex_uv[1], vertex_uv[2], ddx[i], ddy[i]));
 
 			// Invert Y coordinate
-			uvs[i].y = uvs[i].y - 1.0hf;
+			uvs[i].y = 1.0hf - uvs[i].y;
 		}
 	}
 
