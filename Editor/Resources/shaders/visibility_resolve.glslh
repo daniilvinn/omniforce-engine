@@ -109,4 +109,22 @@ vec3 InterpolateVertexData(BarycentricDerivative deriv, vec3 v0, vec3 v1, vec3 v
     return merged_vertex;
 }
 
+// vec4 interpolation utils
+vec4 InterpolateVertexData(BarycentricDerivative deriv, vec4 v0, vec4 v1, vec4 v2)
+{
+    vec4 merged_vertex = v0 * deriv.lambda.x + v1 * deriv.lambda.y + v2 * deriv.lambda.z;
+
+    return merged_vertex;
+}
+
+vec4 InterpolateVertexData(BarycentricDerivative deriv, vec4 v0, vec4 v1, vec4 v2, out vec4 ddx, out vec4 ddy)
+{
+    vec4 merged_vertex = v0 * deriv.lambda.x + v1 * deriv.lambda.y + v2 * deriv.lambda.z;
+
+    ddx = v0 * deriv.ddx.x + v1 * deriv.ddx.y + v2 * deriv.ddx.z;
+    ddy = v0 * deriv.ddy.x + v1 * deriv.ddy.y + v2 * deriv.ddy.z;
+
+    return merged_vertex;
+}
+
 #endif

@@ -206,6 +206,7 @@ void main() {
 		);
 	}
 
+	#ifdef __OMNI_HAS_VERTEX_TEXCOORDS
 	// Fetch all UVs and interpolate them. Will be used to fetch texture data
 	f16vec2 uvs[__OMNI_MESH_TEXCOORD_COUNT];
 	vec2	ddx[__OMNI_MESH_TEXCOORD_COUNT];
@@ -227,6 +228,7 @@ void main() {
 			uvs[i].y = 1.0hf - uvs[i].y;
 		}
 	}
+	#endif
 
 	// Base color
 	{
@@ -243,7 +245,7 @@ void main() {
 	// Normal
 	{
 	#if defined(__OMNI_HAS_NORMAL_MAP) && defined(__OMNI_HAS_VERTEX_NORMAL) && defined(__OMNI_HAS_VERTEX_TANGENT)
-		uint uv_id = material.normal_map.uv_channel_index
+		uint uv_id = material.normal_map.uv_channel_index;
 
 		// Fetch and interpolate tangents
 		f16vec4 T;
@@ -295,17 +297,19 @@ void main() {
 	}
 
 	// Metallic roughness occlusion
-	vec3 metallic_roughness_occlusion = vec3(0.0f, 0.0f, 1.0f);
+	{
+		vec3 metallic_roughness_occlusion = vec3(0.0f, 0.0f, 1.0f);
 
-	#ifdef __OMNI_HAS_METALLIC_ROUGHNESS_MAP
-	metallic_roughness_occlusion = textureGrad(
-		texture_bank[material.metallic_roughness_map.texture_index], 
-		uvs[material.metallic_roughness_map.uv_channel_index],
-		ddx[material.metallic_roughness_map.uv_channel_index],
-		ddy[material.metallic_roughness_map.uv_channel_index]
-	).xyz;
-	#endif
+		#ifdef __OMNI_HAS_METALLIC_ROUGHNESS_MAP
+		metallic_roughness_occlusion = textureGrad(
+			texture_bank[material.metallic_roughness_map.texture_index], 
+			uvs[material.metallic_roughness_map.uv_channel_index],
+			ddx[material.metallic_roughness_map.uv_channel_index],
+			ddy[material.metallic_roughness_map.uv_channel_index]
+		).xyz;
+		#endif
 
-	out_metallic_roughness_occlusion = vec4(metallic_roughness_occlusion, 1.0f);
+		out_metallic_roughness_occlusion = vec4(metallic_roughness_occlusion, 1.0f);
+	}
 
 }
