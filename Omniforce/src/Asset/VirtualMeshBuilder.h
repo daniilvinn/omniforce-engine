@@ -37,7 +37,7 @@ namespace Omni {
 		float32 min_welder_vertex_distance = 0.0f;
 	};
 
-	// Utility function for building virtual clusterized mesh
+	// Utility class for virtual clusterized mesh build
 	class VirtualMeshBuilder {
 	public:
 		// Generates a Virtual mesh - a hierarchy of meshlets, representing variable level of detail between each LOD level.
@@ -78,8 +78,7 @@ namespace Omni {
 			const rh::unordered_flat_set<uint32>& lod_indices, 
 			const std::vector<bool>& edge_vertex_map, 
 			float32 min_vertex_distance,
-			float32 min_uv_distance
-		,
+			float32 min_uv_distance,
 			const VertexAttributeMetadataTable& vertex_metadata,
 			LODGenerationPassStatistics& stats
 		);
