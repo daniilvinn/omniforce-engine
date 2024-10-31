@@ -152,6 +152,7 @@ namespace Omni {
 			shader_name_to_uuid_table.emplace("PBR.ofs", UUID());
 			shader_name_to_uuid_table.emplace("vis_buffer.ofs", UUID());
 			shader_name_to_uuid_table.emplace("vis_material_resolve.ofs", UUID());
+			shader_name_to_uuid_table.emplace("sw_raster_micropoly.ofs", UUID());
 
 			// helper lambda
 			auto m = [](UUID id) -> auto {
@@ -174,6 +175,9 @@ namespace Omni {
 					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
 				});
 				sf.emplace([&, shader_name = "vis_material_resolve.ofs"]() { 
+					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
+				});
+				sf.emplace([&, shader_name = "sw_raster_micropoly.ofs"]() {
 					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
 				});
 			});
@@ -505,6 +509,7 @@ namespace Omni {
 
 			PipelineBarrierInfo culling_barrier_info = {};
 			culling_barrier_info.buffer_barriers = culling_buffers_barriers;
+
 			Renderer::InsertBarrier(culling_barrier_info);
 		}
 
@@ -537,17 +542,17 @@ namespace Omni {
 
 			// Prepare a barrier so material resolve waits for rasterization
 			PipelineResourceBarrierInfo vis_buf_barrier_info = {};
-			vis_buf_barrier_info.src_stages = (BitMask)PipelineStage::BOTTOM_OF_PIPE;
-			vis_buf_barrier_info.dst_stages = (BitMask)PipelineStage::TOP_OF_PIPE;
-			vis_buf_barrier_info.src_access_mask = (BitMask)PipelineAccess::NONE;
-			vis_buf_barrier_info.dst_access_mask = (BitMask)PipelineAccess::NONE;
+			vis_buf_barrier_info.src_stages = (BitMask)PipelineStage::FRAGMENT_SHADER;
+			vis_buf_barrier_info.dst_stages = (BitMask)PipelineStage::FRAGMENT_SHADER;
+			vis_buf_barrier_info.src_access_mask = (BitMask)PipelineAccess::SHADER_WRITE;
+			vis_buf_barrier_info.dst_access_mask = (BitMask)PipelineAccess::SHADER_READ;
 			vis_buf_barrier_info.new_image_layout = ImageLayout::GENERAL;
 
 			PipelineResourceBarrierInfo vis_clusters_barrier_info = {};
-			vis_clusters_barrier_info.src_stages = (BitMask)PipelineStage::BOTTOM_OF_PIPE;
-			vis_clusters_barrier_info.dst_stages = (BitMask)PipelineStage::TOP_OF_PIPE;
-			vis_clusters_barrier_info.src_access_mask = (BitMask)PipelineAccess::NONE;
-			vis_clusters_barrier_info.dst_access_mask = (BitMask)PipelineAccess::NONE;
+			vis_clusters_barrier_info.src_stages = (BitMask)PipelineStage::TASK_SHADER;
+			vis_clusters_barrier_info.dst_stages = (BitMask)PipelineStage::FRAGMENT_SHADER;
+			vis_clusters_barrier_info.src_access_mask = (BitMask)PipelineAccess::SHADER_WRITE;
+			vis_clusters_barrier_info.dst_access_mask = (BitMask)PipelineAccess::SHADER_READ;
 			vis_clusters_barrier_info.buffer_barrier_offset = 0;
 			vis_clusters_barrier_info.buffer_barrier_size = m_VisibleClusters->GetSpecification().size;
 
@@ -581,18 +586,16 @@ namespace Omni {
 				Renderer::EndRender({ m_CurrentDepthAttachment });
 
 				PipelineResourceBarrierInfo resource_barrier_info = {};
-				resource_barrier_info.src_stages = (BitMask)PipelineStage::BOTTOM_OF_PIPE;
-				resource_barrier_info.dst_stages = (BitMask)PipelineStage::TOP_OF_PIPE;
-				resource_barrier_info.src_access_mask = (BitMask)PipelineAccess::NONE;
-				resource_barrier_info.dst_access_mask = (BitMask)PipelineAccess::NONE;
+				resource_barrier_info.src_stages = (BitMask)PipelineStage::LATE_FRAGMENT_TESTS;
+				resource_barrier_info.dst_stages = (BitMask)PipelineStage::EARLY_FRAGMENT_TESTS;
+				resource_barrier_info.src_access_mask = (BitMask)PipelineAccess::DEPTH_STENCIL_ATTACHMENT_WRITE;
+				resource_barrier_info.dst_access_mask = (BitMask)PipelineAccess::DEPTH_STENCIL_ATTACHMENT_READ;
 				resource_barrier_info.new_image_layout = ImageLayout::DEPTH_STENCIL_ATTACHMENT;
 
 				PipelineBarrierInfo barrier_info = {};
 				barrier_info.image_barriers.push_back({ m_CurrentDepthAttachment, resource_barrier_info });
 
 				Renderer::InsertBarrier(barrier_info);
-
-
 			}
 			// G Buffer passes
 			{
