@@ -1,0 +1,314 @@
+#pragma lang : glsl
+#pragma stage : compute
+#version 460 core
+
+/*
+//	Software rasterizer for micropolygons
+//	Used to rasterize polygons (triangles) that are really small (up to 16-32 pixels in size)
+//  General principle:
+//  1. Fetch cluster
+//  2. Fetch vertices, transform vertices, store in groupshared
+//  3. Fetch triangle data
+//  4. Compute screen-space AABB (in pixels) of a triangle
+//  5. (Optional?) Perform thread shuffle to free threads that are unused due to AABB being less than 1 pixel in size
+//  6. Setup triangle: compute depth gradient, edge equations etc.
+//  7. For every row of pixels within an AABB:
+//	   7.1. Find a range of pixels within the row that cover a triangle
+//	   7.2. Compute depth gradient
+//  8. Write data to visibility buffer using `imageAtomicMax()`
+*/
+
+#include "common.glslh"
+#include "camera_data.glslh"
+#include "render_object.glslh"
+#include "mesh_data.glslh"
+#include "visible_clusters_buffer.glslh"
+#include "mesh_quantization.glslh"
+
+#extension GL_EXT_scalar_block_layout						: require
+#extension GL_EXT_buffer_reference2							: require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64	: require
+#extension GL_EXT_shared_memory_block						: require
+
+layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+
+layout(buffer_reference, scalar, buffer_reference_align = 4) restrict readonly buffer SWRasterMicropolyClusters {
+	uvec3 count; // uvec3 because we use this value for an indirect dispatch 
+	uint indices[]; // indices to visible clusters array
+};
+
+layout(push_constant, scalar) uniform pc_ {
+	CameraData camera_data;
+	MeshData mesh_data;
+	RenderObjectData render_objects_data;
+	VisibleClusters visible_clusters;
+	SWRasterMicropolyClusters sw_raster_clusters;
+} pc;
+
+shared SharedMeshClusterData {
+	vec4 vertices[64];
+} shared_data;
+
+struct SWRasterTriangle {
+	ivec2	min_pixel;
+	ivec2	max_pixel;
+	vec2	edge_01;
+	vec2	edge_12;
+	vec2	edge_20;
+	float	c0;
+	float	c1;
+	float	c2;
+	vec3	depth_plane;
+	vec3	inverse_w;
+	vec3	bary_ddx;
+	vec3	bary_ddy;
+	bool	is_valid; // false is backface
+};
+
+float ComputeDepthGradient(SWRasterTriangle raster_triangle, ivec2 pixel) {
+    vec2 delta = vec2(pixel - raster_triangle.min_pixel);
+    
+    vec3 barycentric_coords = vec3(
+		raster_triangle.bary_ddx * delta.x +
+		raster_triangle.bary_ddy * delta.y +
+		vec3(raster_triangle.c0, raster_triangle.c1, raster_triangle.c2)
+    );
+
+    return dot(barycentric_coords, raster_triangle.depth_plane);
+};
+
+SWRasterTriangle SetupRasterTriangle(vec4 vertices[3], AABB_2D triangle_aabb) {
+	SWRasterTriangle raster_triangle;
+
+	raster_triangle.is_valid = true;
+	raster_triangle.inverse_w = vec3(vertices[0].w, vertices[1].w, vertices[2].w);
+
+	vec3 v01 = vertices[1].xyz - vertices[0].xyz;
+	vec3 v02 = vertices[2].xyz - vertices[0].xyz;
+
+	float determinant_xy = v01.x * v02.y - v01.y * v02.x;
+	raster_triangle.is_valid = !(determinant_xy >= 0.0f);
+
+	vec2 vert0 = vertices[0].xy;
+	vec2 vert1 = vertices[1].xy;
+	vec2 vert2 = vertices[2].xy;
+
+	const vec2 min_subpixel = min(vert0, min(vert1, vert2));
+	const vec2 max_subpixel = max(vert0, max(vert1, vert2));
+
+
+	raster_triangle.min_pixel = ivec2(floor(min_subpixel + 0.5 - 1));
+	raster_triangle.max_pixel = ivec2(floor(max_subpixel - 0.5 - 1));
+
+	raster_triangle.min_pixel = ivec2(max(raster_triangle.min_pixel, triangle_aabb.min));
+	raster_triangle.max_pixel = ivec2(min(raster_triangle.max_pixel, triangle_aabb.max - 1));
+	
+	// Limit the rasterizer bounds to a sensible max.
+	raster_triangle.max_pixel = ivec2(min(raster_triangle.max_pixel, raster_triangle.min_pixel + 63));
+
+	if(any(greaterThan(raster_triangle.min_pixel, raster_triangle.max_pixel)))
+		raster_triangle.is_valid = false;
+
+	raster_triangle.edge_01 = -v01.xy;
+	raster_triangle.edge_12 = vert1 - vert2;
+	raster_triangle.edge_20 = v02.xy;
+	
+	const vec2 base_subpixel = vec2(raster_triangle.min_pixel + 0.5f);
+
+	vert0 -= base_subpixel;
+	vert1 -= base_subpixel;
+	vert2 -= base_subpixel;
+
+	raster_triangle.c0 = raster_triangle.edge_12.y * vert1.x - raster_triangle.edge_12.x * vert1.y;
+	raster_triangle.c1 = raster_triangle.edge_20.y * vert2.x - raster_triangle.edge_20.x * vert2.y;
+	raster_triangle.c2 = raster_triangle.edge_01.y * vert0.x - raster_triangle.edge_01.x * vert0.y;
+
+	raster_triangle.c0 -= clamp(raster_triangle.edge_12.y + clamp(1.0f - raster_triangle.edge_12.x, 0.0f, 1.0f), 0.0f, 1.0f);
+	raster_triangle.c1 -= clamp(raster_triangle.edge_20.y + clamp(1.0f - raster_triangle.edge_20.x, 0.0f, 1.0f), 0.0f, 1.0f);
+	raster_triangle.c2 -= clamp(raster_triangle.edge_01.y + clamp(1.0f - raster_triangle.edge_01.x, 0.0f, 1.0f), 0.0f, 1.0f);
+
+	const float scale_to_unit = 1.0f / ( raster_triangle.c0 + raster_triangle.c1 + raster_triangle.c2 );
+	raster_triangle.bary_ddx = vec3(-raster_triangle.edge_12.y, -raster_triangle.edge_20.y, -raster_triangle.edge_01.y) * scale_to_unit;
+	raster_triangle.bary_ddy = vec3( raster_triangle.edge_12.x,  raster_triangle.edge_20.x,  raster_triangle.edge_01.x) * scale_to_unit;
+
+	raster_triangle.depth_plane.x = vertices[0].z;
+	raster_triangle.depth_plane.y = vertices[1].z - vertices[0].z;
+	raster_triangle.depth_plane.z = vertices[2].z - vertices[0].z;
+
+	raster_triangle.depth_plane.yz /= raster_triangle.c0 + raster_triangle.c1 + raster_triangle.c2;
+
+	return raster_triangle;
+};
+
+void SWRasterizeTriangle(SWRasterTriangle raster_triangle, uint cluster_id, uint primitive_id)
+{
+	float cy_0 = raster_triangle.c0;
+	float cy_1 = raster_triangle.c1;
+	float cy_2 = raster_triangle.c2;
+
+	vec3 edge_012 = { raster_triangle.edge_12.y, raster_triangle.edge_20.y, raster_triangle.edge_01.y };
+	bvec3 open_edge = lessThan(edge_012, vec3(0.0));
+
+	vec3 inverse_edge_012 = vec3(
+		edge_012.x == 0 ? 1e8 : 1.0f / edge_012.x,
+		edge_012.y == 0 ? 1e8 : 1.0f / edge_012.y,
+		edge_012.z == 0 ? 1e8 : 1.0f / edge_012.z
+	);
+	
+	int y = raster_triangle.min_pixel.y;
+	while(true)
+	{
+		vec3 cross_x = vec3( cy_0, cy_1, cy_2 ) * inverse_edge_012;
+
+		vec3 min_x = vec3(
+			open_edge.x ? cross_x.x : 0.0f,
+			open_edge.y ? cross_x.y : 0.0f,
+			open_edge.z ? cross_x.z : 0.0f
+		);
+
+		vec3 max_x = vec3(
+			open_edge.x ? raster_triangle.max_pixel.x - raster_triangle.min_pixel.x : cross_x.x,
+			open_edge.y ? raster_triangle.max_pixel.x - raster_triangle.min_pixel.x : cross_x.y,
+			open_edge.z ? raster_triangle.max_pixel.x - raster_triangle.min_pixel.x : cross_x.z
+		);
+
+		float x0 = ceil(max( min_x.x, max(min_x.y, min_x.z)));
+		float x1 = min(max_x.x, min(max_x.y, max_x.z));
+		
+		float cx_0 = cy_0 - x0 * raster_triangle.edge_12.y;
+		float cx_1 = cy_1 - x0 * raster_triangle.edge_20.y;
+		float cx_2 = cy_2 - x0 * raster_triangle.edge_01.y;
+
+		x0 += raster_triangle.min_pixel.x;
+		x1 += raster_triangle.min_pixel.x;
+		for(float x = x0; x <= x1; x++)
+		{
+			if(min( cx_0, min(cx_1, cx_2)) >= 0) {
+				// Compute depth and payload
+				uint depth = floatBitsToUint(ComputeDepthGradient(raster_triangle, ivec2(x,y)));
+				uint value = primitive_id | (cluster_id << 7);
+
+				imageAtomicMax(visibility_buffer, ivec2(x,y), pack64(uvec2(value, depth)));
+			}
+
+			cx_0 -= raster_triangle.edge_12.y;
+			cx_1 -= raster_triangle.edge_20.y;
+			cx_2 -= raster_triangle.edge_01.y;
+		}
+
+		if( y >= raster_triangle.max_pixel.y )
+			break;
+
+		cy_0 += raster_triangle.edge_12.x;
+		cy_1 += raster_triangle.edge_20.x;
+		cy_2 += raster_triangle.edge_01.x;
+
+		y++;
+	}
+}
+
+void main() {
+	// 1. Fetch cluster
+	VisibleCluster visible_cluster	=	pc.visible_clusters.clusters[pc.sw_raster_clusters.indices[gl_WorkGroupID.x]];
+	RenderObjectData instance_data	=	pc.render_objects_data[visible_cluster.instance_index];
+	MeshData mesh_data				=	pc.mesh_data[instance_data.geometry_data_id];
+	MeshMeshletsData meshlet_data	=	mesh_data.meshlets_data[visible_cluster.cluster_index];
+	Transform transform				=   instance_data.transform;
+	uint meshlet_vertex_count		=	ExtractMeshletVertexCount(meshlet_data.metadata);
+	uint meshlet_triangle_count		=	ExtractMeshletTriangleCount(meshlet_data.metadata);
+	uint meshlet_bitrate			=	ExtractMeshletBitrate(meshlet_data.metadata);
+
+	vec2 vis_buf_size = imageSize(visibility_buffer);
+
+	// 2. Fetch vertices, transform vertices, store in groupshared
+	{
+		vec3 meshlet_center = mesh_data.meshlets_cull_bounds[visible_cluster.cluster_index].bounding_sphere.center;
+
+		// Extract counts and bitrate from bit packed data
+		uint meshlet_vertex_count =		ExtractMeshletVertexCount(meshlet_data.metadata);
+		uint meshlet_triangle_count =	ExtractMeshletTriangleCount(meshlet_data.metadata);
+		uint meshlet_bitrate =			ExtractMeshletBitrate(meshlet_data.metadata);
+
+		uint vertex_processing_iterations = (meshlet_vertex_count + gl_WorkGroupSize.x - 1) / gl_WorkGroupSize.x;
+		int bit_extend_bitmask = 1 << (meshlet_bitrate - 1);
+
+		for(int i = 0; i < vertex_processing_iterations; i++) {
+			uint vertex_id = gl_LocalInvocationIndex * vertex_processing_iterations + i;
+
+			if(vertex_id >= meshlet_vertex_count) {
+				break;
+			}
+
+			// Compute offset
+			uint vtx_offset = gl_LocalInvocationIndex * meshlet_bitrate * 3 * vertex_processing_iterations + (i * 3 * meshlet_bitrate);
+
+			// Fetch vertex
+			ivec3 encoded_vertex = FetchVertexFromStream(mesh_data.vertices, meshlet_bitrate, meshlet_data.vertex_bit_offset + vtx_offset);
+
+			// Restore sign
+			encoded_vertex = (encoded_vertex ^ bit_extend_bitmask) - bit_extend_bitmask;
+
+			// Decode vertex
+			vec3 vertex = DecodeVertex(
+				encoded_vertex,
+				mesh_data.quantization_grid_size, 
+				meshlet_center
+			);
+
+			// Apply model transformation
+			vertex = TransformPoint(vertex, transform);
+
+			// Transform vertex, apply perspective division
+			vec4 result = pc.camera_data.view_proj * vec4(vertex, 1.0f);
+			result.xyz /= result.w;
+
+			// Store in groupshared
+			shared_data.vertices[vertex_id] = result;
+		}
+	}
+
+	// 3. Fetch triangle data
+	{
+		uvec3 triangle_indices;
+		uint index_processing_iterations = (meshlet_triangle_count + gl_WorkGroupSize.x - 1) / gl_WorkGroupSize.x;
+		for(int i = 0; i < index_processing_iterations; i++) {
+			uint primitive_id = gl_LocalInvocationIndex * index_processing_iterations + i;
+
+			if(primitive_id >= meshlet_triangle_count) {
+				break;
+			}
+
+			uvec3 offsets = meshlet_data.triangle_offset + (primitive_id * 3 + uvec3(0,1,2));
+
+			triangle_indices = uvec3(
+				mesh_data.micro_indices[offsets.x].micro_index,
+				mesh_data.micro_indices[offsets.y].micro_index,
+				mesh_data.micro_indices[offsets.z].micro_index
+			);
+
+			// 4. Compute screen-space AABB
+			AABB_2D triangle_aabb;
+
+			vec4 vertices[3] = {
+				shared_data.vertices[triangle_indices.x],
+				shared_data.vertices[triangle_indices.y],
+				shared_data.vertices[triangle_indices.z]
+			};
+
+			vec2 p0 = (vec2(vertices[0]) * 0.5 + 0.5) * vis_buf_size;
+			vec2 p1 = (vec2(vertices[1]) * 0.5 + 0.5) * vis_buf_size;
+			vec2 p2 = (vec2(vertices[2]) * 0.5 + 0.5) * vis_buf_size;
+
+			triangle_aabb.min.x = min(p0.x, min(p1.x, p2.x));
+			triangle_aabb.min.y = min(p0.y, min(p1.y, p2.y));
+			triangle_aabb.max.x = max(p0.x, max(p1.x, p2.x));
+			triangle_aabb.max.y = max(p0.y, max(p1.y, p2.y));
+
+			// 6. Setup triangle: compute depth gradient, edge equations etc.
+			SWRasterTriangle raster_triangle = SetupRasterTriangle(vertices, triangle_aabb);
+
+			// 8. Rasterize
+			SWRasterizeTriangle(raster_triangle, gl_WorkGroupID.x, primitive_id);
+		}
+	}
+}

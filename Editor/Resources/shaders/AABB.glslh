@@ -6,6 +6,12 @@ struct AABB {
 	vec3 max;
 };
 
+// Actually not my naming convention but it is more readable
+struct AABB_2D {
+	vec2 min;
+	vec2 max;
+};
+
 float AABBGetVolume(AABB aabb) {
 	float width = aabb.max.x - aabb.min.x;
 	float height = aabb.max.y - aabb.min.y;

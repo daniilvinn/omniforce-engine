@@ -168,9 +168,17 @@ namespace Omni {
 		VkDeviceQueueCreateInfo queue_create_infos[2] = { general_queue_create_info, async_compute_queue_create_info };
 		std::vector<const char*> enabled_extensions = GetRequiredExtensions();
 
+		VkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR work_group_explicit_memory_layout_struct = {};
+		work_group_explicit_memory_layout_struct.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_WORKGROUP_MEMORY_EXPLICIT_LAYOUT_FEATURES_KHR;
+		work_group_explicit_memory_layout_struct.workgroupMemoryExplicitLayout = true;
+		work_group_explicit_memory_layout_struct.workgroupMemoryExplicitLayout16BitAccess = true;
+		work_group_explicit_memory_layout_struct.workgroupMemoryExplicitLayout8BitAccess = true;
+		work_group_explicit_memory_layout_struct.workgroupMemoryExplicitLayoutScalarBlockLayout = true;
+
 		VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT image_atomic_int64_struct = {};
 		image_atomic_int64_struct.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_IMAGE_ATOMIC_INT64_FEATURES_EXT;
 		image_atomic_int64_struct.shaderImageInt64Atomics = true;
+		image_atomic_int64_struct.pNext = &work_group_explicit_memory_layout_struct;
 
 		VkPhysicalDeviceMeshShaderFeaturesEXT mesh_shading_enable_struct = {};
 		mesh_shading_enable_struct.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
@@ -291,6 +299,10 @@ namespace Omni {
 
 		if (m_PhysicalDevice->IsExtensionSupported(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME)) {
 			extensions.push_back(VK_EXT_SHADER_IMAGE_ATOMIC_INT64_EXTENSION_NAME);
+		}
+
+		if (m_PhysicalDevice->IsExtensionSupported(VK_KHR_WORKGROUP_MEMORY_EXPLICIT_LAYOUT_EXTENSION_NAME)) {
+			extensions.push_back(VK_KHR_WORKGROUP_MEMORY_EXPLICIT_LAYOUT_EXTENSION_NAME);
 		}
 
 		OMNIFORCE_CORE_TRACE("Enabled Vulkan device extensions:");
