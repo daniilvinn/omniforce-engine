@@ -25,7 +25,7 @@ struct Sprite {
 	uint texture_index;
 };
 
-layout(binding = 1, scalar) buffer SpriteData {
+layout(binding = 1, scalar) readonly buffer SpriteData {
 	Sprite sprites[];
 } sprite_data;
 

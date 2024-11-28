@@ -85,6 +85,7 @@ void main()
 	// Emit mesh work groups
 	if(lid == 0 && s_actual_num_meshlets != 0) {
 		task_payload.base_offset = gl_GlobalInvocationID.x;
+		task_payload.draw_id = gl_DrawID;
 		EmitMeshTasksEXT(s_actual_num_meshlets, 1, 1);
 	}
 }
@@ -119,7 +120,7 @@ layout(location = 0) flat out uint visible_clusters_indices[];
 
 void main()
 {
-	RenderObjectData render_object_data = pc.render_objects_data[gl_DrawID];
+	RenderObjectData render_object_data = pc.render_objects_data[task_payload.draw_id];
 
 	MeshData mesh_data = pc.mesh_data[render_object_data.geometry_data_id];
 

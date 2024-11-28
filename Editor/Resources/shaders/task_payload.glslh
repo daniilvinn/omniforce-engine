@@ -7,6 +7,7 @@ struct TaskPayload {
 	uint base_offset;
 	uint base_vis_cluster_offset;
 	uint8_t meshlet_ids[__OMNI_TASK_SHADER_PREFERRED_WORK_GROUP_SIZE];
+	uint draw_id; // newer Vulkan SDK versions don't allow the usage of `gl_DrawID` in mesh shader stages
 };
 
 taskPayloadSharedEXT TaskPayload task_payload;
