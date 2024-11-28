@@ -62,12 +62,12 @@ namespace Omni {
 		memcpy(vertex_data.data(), icosphere_data.first.data(), vertex_data.size());
 
 		// Get rid of index buffer
-		std::vector<byte> primitive_vertices(icosphere_data.second.size() * sizeof glm::vec3);
+		std::vector<byte> primitive_vertices(icosphere_data.second.size() * sizeof(glm::vec3));
 		mesh_preprocessor.RemapVertices(&primitive_vertices, &vertex_data, 12, &icosphere_data.second);
 		
 		// Convert to line topology
 		vertex_data.resize(icosphere_data.second.size() * sizeof(glm::vec3) * 2);
-		mesh_preprocessor.ConvertToLineTopology(&vertex_data, &primitive_vertices, sizeof glm::vec3);
+		mesh_preprocessor.ConvertToLineTopology(&vertex_data, &primitive_vertices, sizeof(glm::vec3));
 
 		DeviceBufferSpecification buffer_spec = {};
 		buffer_spec.buffer_usage = DeviceBufferUsage::VERTEX_BUFFER;
@@ -80,15 +80,15 @@ namespace Omni {
 		// Cube
 		auto cube_data = mesh_generator.GenerateCube();
 
-		vertex_data.resize(cube_data.first.size() * sizeof glm::vec3);
+		vertex_data.resize(cube_data.first.size() * sizeof(glm::vec3));
 
 		memcpy(vertex_data.data(), cube_data.first.data(), vertex_data.size());
 
-		primitive_vertices.resize(cube_data.second.size() * sizeof glm::vec3);
+		primitive_vertices.resize(cube_data.second.size() * sizeof(glm::vec3));
 		mesh_preprocessor.RemapVertices(&primitive_vertices, &vertex_data, 12, &cube_data.second);
 
 		vertex_data.resize(cube_data.second.size() * sizeof(glm::vec3) * 2);
-		mesh_preprocessor.ConvertToLineTopology(&vertex_data, &primitive_vertices, sizeof glm::vec3);
+		mesh_preprocessor.ConvertToLineTopology(&vertex_data, &primitive_vertices, sizeof(glm::vec3));
 
 		buffer_spec.size = vertex_data.size();
 
@@ -116,14 +116,14 @@ namespace Omni {
 			glm::u8vec3 encoded_color = { color.r * 255, color.g * 255, color.b * 255 };
 
 			WireframePushConstants* pc_data = new WireframePushConstants;
-			memset(pc_data, 0u, sizeof WireframePushConstants);
+			memset(pc_data, 0u, sizeof(WireframePushConstants));
 			pc_data->camera_data_bda = renderer->m_CameraBuffer->GetDeviceAddress() + renderer->m_CameraBuffer->GetFrameOffset();
 			pc_data->trs = trs;
 			pc_data->lines_color = encoded_color;
 			
 			MiscData pcs = {};
 			pcs.data = (byte*)pc_data;
-			pcs.size = sizeof WireframePushConstants;
+			pcs.size = sizeof(WireframePushConstants);
 
 			Renderer::RenderUnindexed(renderer->m_WireframePipeline, renderer->m_IcosphereMesh, pcs);
 		});
@@ -140,14 +140,14 @@ namespace Omni {
 			glm::u8vec3 encoded_color = { color.r * 255, color.g * 255, color.b * 255 };
 
 			WireframePushConstants* pc_data = new WireframePushConstants;
-			memset(pc_data, 0u, sizeof WireframePushConstants);
+			memset(pc_data, 0u, sizeof(WireframePushConstants));
 			pc_data->camera_data_bda = renderer->m_CameraBuffer->GetDeviceAddress() + renderer->m_CameraBuffer->GetFrameOffset();
 			pc_data->trs = trs;
 			pc_data->lines_color = encoded_color;
 
 			MiscData pcs = {};
 			pcs.data = (byte*)pc_data;
-			pcs.size = sizeof WireframePushConstants;
+			pcs.size = sizeof(WireframePushConstants);
 
 			Renderer::RenderUnindexed(renderer->m_WireframePipeline, renderer->m_CubeMesh, pcs);
 		});
@@ -164,14 +164,14 @@ namespace Omni {
 			glm::u8vec3 encoded_color = { color.r * 255, color.g * 255, color.b * 255 };
 
 			WireframePushConstants* pc_data = new WireframePushConstants;
-			memset(pc_data, 0u, sizeof WireframePushConstants);
+			memset(pc_data, 0u, sizeof(WireframePushConstants));
 			pc_data->camera_data_bda = renderer->m_CameraBuffer->GetDeviceAddress() + renderer->m_CameraBuffer->GetFrameOffset();
 			pc_data->trs = trs;
 			pc_data->lines_color = encoded_color;
 
 			MiscData pcs = {};
 			pcs.data = (byte*)pc_data;
-			pcs.size = sizeof WireframePushConstants;
+			pcs.size = sizeof(WireframePushConstants);
 
 			Renderer::RenderUnindexed(renderer->m_WireframePipeline, vbo, pcs);
 		});
@@ -185,7 +185,7 @@ namespace Omni {
 
 			MiscData pcs = {};
 			pcs.data = (byte*)pc_data;
-			pcs.size = sizeof uint64 * 2;
+			pcs.size = sizeof(uint64) * 2;
 
 			pc_data[0] = uint64(mode);
 			pc_data[1] = uint64(visible_clusters->GetDeviceAddress());

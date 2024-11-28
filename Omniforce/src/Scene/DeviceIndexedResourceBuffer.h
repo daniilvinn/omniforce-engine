@@ -22,7 +22,7 @@ namespace Omni {
 
 			m_DeviceBuffer = DeviceBuffer::Create(buffer_spec);
 			
-			buffer_spec.size = sizeof T;
+			buffer_spec.size = sizeof(T);
 			buffer_spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
 			buffer_spec.buffer_usage = DeviceBufferUsage::STAGING_BUFFER;
 
@@ -30,16 +30,16 @@ namespace Omni {
 		}
 
 		uint32 Allocate(const UUID& id, const T& data) {
-			uint32 offset = m_IndexAllocator->Allocate(sizeof T, alignof(T));
-			uint32 index = offset / sizeof T;
+			uint32 offset = m_IndexAllocator->Allocate(sizeof(T), alignof(T));
+			uint32 index = offset / sizeof (T);
 
 			OMNIFORCE_ASSERT_TAGGED(offset != UINT32_MAX, "Failed to find free block. It can be caused by fragmentation or exceeded resource limits");
 
-			m_StagingForCopy->UploadData(0, (void*)&data, sizeof T);
+			m_StagingForCopy->UploadData(0, (void*)&data, sizeof (T));
 
 			Shared<DeviceCmdBuffer> cmd_buffer = DeviceCmdBuffer::Create(DeviceCmdBufferLevel::PRIMARY, DeviceCmdBufferType::TRANSIENT, DeviceCmdType::GENERAL);
 			cmd_buffer->Begin();
-			m_StagingForCopy->CopyRegionTo(cmd_buffer, m_DeviceBuffer, 0, offset, sizeof T);
+			m_StagingForCopy->CopyRegionTo(cmd_buffer, m_DeviceBuffer, 0, offset, sizeof (T));
 			cmd_buffer->End();
 			cmd_buffer->Execute(true);
 

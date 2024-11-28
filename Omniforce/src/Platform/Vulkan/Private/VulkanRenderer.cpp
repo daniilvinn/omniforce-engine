@@ -188,8 +188,8 @@ namespace Omni {
 				vkCmdPushConstants(m_CurrentCmdBuffer->Raw(), vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
 				delete[] data.data;
 			}
-			uint32 max_draws = (vk_buffer->GetSpecification().size - 4) / sizeof glm::uvec3;
-			vkCmdDrawMeshTasksIndirectCountEXT(m_CurrentCmdBuffer->Raw(), vk_buffer->Raw(), 4, vk_buffer->Raw(), 0, max_draws, sizeof VkDrawMeshTasksIndirectCommandEXT);
+			uint32 max_draws = (vk_buffer->GetSpecification().size - 4) / sizeof(glm::uvec3);
+			vkCmdDrawMeshTasksIndirectCountEXT(m_CurrentCmdBuffer->Raw(), vk_buffer->Raw(), 4, vk_buffer->Raw(), 0, max_draws, sizeof(VkDrawMeshTasksIndirectCommandEXT));
 		});
 	}
 

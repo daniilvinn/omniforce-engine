@@ -105,7 +105,7 @@ namespace Omni {
 
 			// Configure file header
 			AssetFileHeader file_header = {};
-			file_header.header_size = sizeof AssetFileHeader;
+			file_header.header_size = sizeof(AssetFileHeader);
 			file_header.asset_type = AssetType::IMAGE_SRC;
 			file_header.uncompressed_data_size = bc7_encoded_data.size();
 			file_header.subresources_size = 0;
@@ -145,8 +145,8 @@ namespace Omni {
 			}
 			
 			// Write header and subresource metadata
-			fout.write((const char*)&file_header, sizeof file_header);
-			fout.write((const char*)subresources_metadata.data(), sizeof AssetFileSubresourceMetadata * subresources_metadata.size());
+			fout.write((const char*)&file_header, sizeof(file_header));
+			fout.write((const char*)subresources_metadata.data(), sizeof(AssetFileSubresourceMetadata) * subresources_metadata.size());
 			
 			std::vector<char> subresources_data(subresource_data_stream.tellp());
 			subresource_data_stream.read(subresources_data.data(), subresource_data_stream.tellp());
