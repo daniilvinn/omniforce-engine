@@ -312,6 +312,18 @@ namespace Omni {
 
 			m_VisibleClusters = DeviceBuffer::Create(buffer_spec);
 		}
+		// Init SW raster queue
+		{
+			DeviceBufferSpecification buffer_spec = {};
+			buffer_spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
+			buffer_spec.heap = DeviceBufferMemoryHeap::DEVICE;
+			buffer_spec.memory_usage = DeviceBufferMemoryUsage::NO_HOST_ACCESS;
+
+			// Assume that only a half of visible clusters at most will be SW rasterized
+			buffer_spec.size = m_VisibleClusters->GetSpecification().size / 2;
+
+			m_SWRasterQueue = DeviceBuffer::Create(buffer_spec);
+		}
 		// Init host light source storage
 		{
 			m_HostPointLights.reserve(256);
@@ -525,15 +537,16 @@ namespace Omni {
 
 			// Render survived objects
 			MiscData graphics_pc = {};
-			uint64* data = new uint64[4];
+			uint64* data = new uint64[5];
 
 			data[0] = camera_data_device_address;
 			data[1] = m_MeshResourcesBuffer.GetStorageBDA();
 			data[2] = m_CulledDeviceRenderQueue->GetDeviceAddress();
 			data[3] = m_VisibleClusters->GetDeviceAddress();
+			data[4] = m_SWRasterQueue->GetDeviceAddress();
 
 			graphics_pc.data = (byte*)data;
-			graphics_pc.size = sizeof uint64 * 4;
+			graphics_pc.size = sizeof uint64 * 5;
 
 			Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], m_VisBufferPass, 0);
 			Renderer::RenderMeshTasksIndirect(m_VisBufferPass, m_DeviceIndirectDrawParams, graphics_pc);

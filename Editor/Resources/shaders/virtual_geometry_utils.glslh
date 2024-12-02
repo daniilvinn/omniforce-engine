@@ -18,7 +18,11 @@ float ProjectMeshletError(Sphere sphere, CameraData camera_data) {
     return camera_data.viewport_height / 2.0f * half_fov_cot * r / sqrt(d2 - r * r);
 }
 
-bool TestMeshletLOD(MeshletLODCullData lod_culling_data, CameraData camera_data, RenderObjectData render_object) {
+// If projected sphere radius is less than 64 pixels, then enqueue to the SW raster
+bool IsSuitableForSWRaster(MeshletCullBounds cull_bounds, Transform transform, CameraData camera_data) {
+    Sphere sphere = TransformSphereViewModel(cull_bounds.bounding_sphere, transform, camera_data.view);
+    return ProjectMeshletError(cull_bounds.bounding_sphere, camera_data) < 64.0f;
+}
 
 bool TestMeshletLOD(MeshletLODCullData lod_culling_data, CameraData camera_data, RenderObjectData render_object) {
 
