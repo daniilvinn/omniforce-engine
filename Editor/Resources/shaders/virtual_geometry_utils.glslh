@@ -6,10 +6,12 @@
 #include "sphere.glslh"
 #include "render_object.glslh"
 
-float ProjectMeshletError(Sphere sphere, CameraData camera_data, float half_fov_cot) {
+float ProjectMeshletError(Sphere sphere, CameraData camera_data) {
     // Early out in case of infinite error
     if(isinf(sphere.radius))
         return sphere.radius;
+
+    const float half_fov_cot = 1.0f / tan(camera_data.fov / 2.0f);
 
     const float d2 = dot(sphere.center, sphere.center);
     const float r = sphere.radius;
@@ -18,8 +20,7 @@ float ProjectMeshletError(Sphere sphere, CameraData camera_data, float half_fov_
 
 bool TestMeshletLOD(MeshletLODCullData lod_culling_data, CameraData camera_data, RenderObjectData render_object) {
 
-    const float half_fov_cot = 1.0f / tan(camera_data.fov / 2.0f);
-    const float viewport = camera_data.viewport_height;
+bool TestMeshletLOD(MeshletLODCullData lod_culling_data, CameraData camera_data, RenderObjectData render_object) {
 
     // Project current meshlet's sphere
     Sphere projected_bounding_sphere = Sphere(
@@ -28,7 +29,7 @@ bool TestMeshletLOD(MeshletLODCullData lod_culling_data, CameraData camera_data,
     );
 
     projected_bounding_sphere = TransformSphereViewModel(projected_bounding_sphere, render_object.transform, camera_data.view);
-    const float result_error = ProjectMeshletError(projected_bounding_sphere, camera_data, half_fov_cot);
+    const float result_error = ProjectMeshletError(projected_bounding_sphere, camera_data);
 
     // Project parent sphere
     Sphere parent_projected_bounding_sphere = Sphere(
@@ -37,7 +38,7 @@ bool TestMeshletLOD(MeshletLODCullData lod_culling_data, CameraData camera_data,
     );
 
     parent_projected_bounding_sphere = TransformSphereViewModel(parent_projected_bounding_sphere, render_object.transform, camera_data.view);
-    const float parent_result_error = ProjectMeshletError(parent_projected_bounding_sphere, camera_data, half_fov_cot);
+    const float parent_result_error = ProjectMeshletError(parent_projected_bounding_sphere, camera_data);
 
     // Perform a LOD test. If error (in pixels) of current meshlet is small enough AND parent error is too big, we render this group
     return result_error <= 3.0f && parent_result_error > 3.0f;
