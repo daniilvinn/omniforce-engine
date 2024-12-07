@@ -414,9 +414,10 @@ namespace Omni {
 		const ftf::Material* material, const VertexAttributeMetadataTable* vertex_macro_table, std::shared_mutex* mtx)
 	{
 		MaterialImporter material_importer;
+		auto& mat = *out_material;
 
 		// Import mesh and join its task subflow used to load and process material properties
-		*out_material = AssetManager::Get()->GetAsset<Material>(material_importer.Import(subflow, asset, material));
+		mat = AssetManager::Get()->GetAsset<Material>(material_importer.Import(subflow, asset, material));
 		subflow.join();
 
 		// Add additional macros generated from vertex layout to generate correct shader variant
@@ -425,16 +426,16 @@ namespace Omni {
 		for (auto& metadata_entry : *vertex_macro_table) {
 			if (metadata_entry.first.find("TEXCOORD") != std::string::npos) {
 				if(num_uv_channels == 0)
-					(*out_material)->AddShaderMacro("__OMNI_HAS_VERTEX_TEXCOORDS");
+					mat->AddShaderMacro("__OMNI_HAS_VERTEX_TEXCOORDS");
 				num_uv_channels++;
 			}
-			(*out_material)->AddShaderMacro(fmt::format("__OMNI_HAS_VERTEX_{}", metadata_entry.first));
+			mat->AddShaderMacro(fmt::format("__OMNI_HAS_VERTEX_{}", metadata_entry.first));
 		}
 		// Set macro of num of UV channels
-		(*out_material)->AddShaderMacro("__OMNI_MESH_TEXCOORD_COUNT", std::to_string(num_uv_channels));
+		mat->AddShaderMacro("__OMNI_MESH_TEXCOORD_COUNT", std::to_string(num_uv_channels));
 
 		// All data is gathered - compile material pipeline
 		std::lock_guard lock(*mtx);
-		(*out_material)->CompilePipeline();
+		mat->CompilePipeline();
 	}
 }
