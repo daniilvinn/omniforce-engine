@@ -37,6 +37,7 @@ void main()
 	uint lid = gl_LocalInvocationIndex; // lid = lane id
 	
 	RenderObjectData render_object_data = pc.render_objects_data[gl_DrawID];
+
 	Transform transform = render_object_data.transform;
 	MeshData mesh_data = pc.mesh_data[render_object_data.geometry_data_id];
 
@@ -53,64 +54,31 @@ void main()
 	// Test this code with work groups of 64 threads and more
 	bool is_optimal_lod = TestMeshletLOD(cull_bounds.lod_culling, pc.camera_data, render_object_data);
 	bool is_visible = TestMeshletVisibility(cull_bounds, pc.camera_data, transform);
-	bool is_sw_rasterized = IsSuitableForSWRaster(cull_bounds, transform, pc.camera_data);
 
-	// Compute counts
-	uint num_survived_clusters = subgroupBallotBitCount(subgroupBallot(is_optimal_lod && is_visible));
-	uint num_sw_rasterized_clusters = num_survived_clusters - subgroupBallotBitCount(subgroupBallot(!is_sw_rasterized));
-	uint num_hw_rasterized_clusters = num_survived_clusters - num_sw_rasterized_clusters;
-	
-	// Cull if all the below is true:
-	// 1. Cluster has non-optimal LOD
-	// 2. Cluster is not visible
-	// 3. Current lane is not the first lane within a workgroup, because we need first lane to emit mesh tasks
-	if(!(is_optimal_lod && is_visible) && gl_GlobalInvocationID.x != 0) {
-		return;
-	}
+	// Compute offset using subgroup intrinsics
+	uvec4 ballot = subgroupBallot(is_optimal_lod && is_visible);
 
-	// Check if first lane is out. If yes, then skip everything until final emit of mesh tasks
+	uint subgroup_offset_atomic = 0;
+	uint subgroup_vis_clusters_offset_atomic = 0;
 
-	// Compute offsets for raster queues
-	uint hw_raster_queue_offset_atomic = 0;
-	uint sw_raster_queue_offset_atomic = 0;
-	uint visible_cluster_offset_atomic = 0;
+	uint bit_count = subgroupBallotBitCount(ballot);
 
-	uint hw_raster_queue_offset = 0;
-	uint sw_raster_queue_offset = 0;
-	uint visible_cluster_offset = 0;
-
-	// Do the computation in the first available lane of each subgroup
 	if(subgroupElect()) {
-		visible_cluster_offset_atomic = atomicAdd(pc.output_buffer.num_clusters, num_survived_clusters);
-		hw_raster_queue_offset_atomic = atomicAdd(s_actual_num_meshlets, num_hw_rasterized_clusters);
-		sw_raster_queue_offset_atomic = atomicAdd(pc.sw_raster_queue.cluster_count.x, num_sw_rasterized_clusters);
-
-		// NOTE: maybe bug here if work group size is bigger than subgroup size
-		task_payload.base_vis_cluster_offset = visible_cluster_offset_atomic;
+		subgroup_offset_atomic = atomicAdd(s_actual_num_meshlets, bit_count);
+		subgroup_vis_clusters_offset_atomic = atomicAdd(pc.output_buffer.num_clusters, bit_count);
+		task_payload.base_vis_cluster_offset = subgroup_vis_clusters_offset_atomic;
 	}
 
-	// Broadcast values to other lanes of a subgroup
-	hw_raster_queue_offset = subgroupBroadcastFirst(hw_raster_queue_offset_atomic);
-	sw_raster_queue_offset = subgroupBroadcastFirst(sw_raster_queue_offset_atomic);
-	visible_cluster_offset = subgroupBroadcastFirst(visible_cluster_offset_atomic);
+	uint subgroup_offset = subgroupBroadcastFirst(subgroup_offset_atomic);
+	uint subgroup_vis_clusters_offset = subgroupBroadcastFirst(subgroup_vis_clusters_offset_atomic);
 
-	// Save out of scope because this variable is used further for SW raster queue
-	uint vis_clusters_index = visible_cluster_offset + subgroupExclusiveAdd(1);
-
-	// Write visible clusters
+	// Cull
 	if(is_optimal_lod && is_visible) {
-		pc.output_buffer.clusters[vis_clusters_index] = VisibleCluster(gl_DrawID, gl_GlobalInvocationID.x);
-	}
+		uint id_index = subgroup_offset + subgroupExclusiveAdd(1);
+		uint vis_clusters_index = subgroup_vis_clusters_offset + id_index;
 
-	// Write SW rasterized clusters to the output buffer
-	if(is_sw_rasterized) {
-		uint sw_raster_cluster_id = sw_raster_queue_offset + subgroupExclusiveAdd(1);
-		pc.sw_raster_queue.cluster_ids[sw_raster_cluster_id] = vis_clusters_index;
-	} 
-	// Write HW rasterized clusters to the task payload
-	else {
-		uint hw_raster_cluster_id = hw_raster_queue_offset + subgroupExclusiveAdd(1);
-		task_payload.meshlet_ids[hw_raster_cluster_id] = uint8_t(gl_GlobalInvocationID.x & (gl_WorkGroupSize.x - 1));
+		pc.output_buffer.clusters[vis_clusters_index] = VisibleCluster(gl_DrawID, gl_GlobalInvocationID.x);
+		task_payload.meshlet_ids[id_index] = uint8_t(gl_GlobalInvocationID.x & (gl_WorkGroupSize.x - 1));
 	}
 
 	// Synchronize access to `s_actual_num_meshlets`

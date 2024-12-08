@@ -433,6 +433,7 @@ namespace Omni {
 				m_CulledDeviceRenderQueue->Clear(Renderer::GetCmdBuffer(), 0, 4, 0);
 				m_DeviceIndirectDrawParams->Clear(Renderer::GetCmdBuffer(), 0, 4, 0);
 				m_VisibleClusters->Clear(Renderer::GetCmdBuffer(), 0, 4, 0);
+				m_SWRasterQueue->Clear(Renderer::GetCmdBuffer(), 0, 4, 0); // TODO: change here so it it is cleared properly
 			});
 
 			Renderer::ClearImage(m_VisibilityBuffer, { 0.0f, 0.0f, 0.0f, 0.0f });
