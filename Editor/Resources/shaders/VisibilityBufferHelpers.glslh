@@ -1,7 +1,7 @@
 #ifndef VIS_BUFFER_HELPERS_GLSLH
 #define VIS_BUFFER_HELPERS_GLSLH
 
-#include "pipeline_local.glslh"
+#include "PipelineLocal.glslh"
 
 // Move higher 8 bits to the right, perform XOR op, mask out higher bits
 // Then divide 1.0f by computed value

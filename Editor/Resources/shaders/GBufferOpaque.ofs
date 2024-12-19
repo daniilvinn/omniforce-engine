@@ -2,12 +2,12 @@
 #pragma stage : vertex
 #version 460 core
 
-#include "common.glslh"
-#include "camera_data.glslh"
-#include "mesh_data.glslh"
-#include "render_object.glslh"
-#include "visible_clusters_buffer.glslh"
-#include "vis_buffer_helpers.glslh"
+#include "Common.glslh"
+#include "CameraData.glslh"
+#include "MeshData.glslh"
+#include "RenderObject.glslh"
+#include "VisibleClustersBuffer.glslh"
+#include "VisibilityBufferHelpers.glslh"
 
 #extension GL_EXT_scalar_block_layout				: require
 #extension GL_EXT_buffer_reference2					: require
@@ -38,13 +38,13 @@ void main()
 #pragma stage : fragment
 #version 460 core
 
-#include "common.glslh"
-#include "mesh_data.glslh"
-#include "render_object.glslh"
-#include "texture.glslh"
-#include "visibility_resolve.glslh"
-#include "visible_clusters_buffer.glslh"
-#include "mesh_quantization.glslh"
+#include "Common.glslh"
+#include "MeshData.glslh"
+#include "RenderObject.glslh"
+#include "Texture.glslh"
+#include "VisibilityResolve.glslh"
+#include "VisibleClustersBuffer.glslh"
+#include "MeshCompression.glslh"
 
 #extension GL_EXT_nonuniform_qualifier							: require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16		: require

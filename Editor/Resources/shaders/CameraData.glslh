@@ -1,7 +1,7 @@
 #ifndef CAMERA_DATA_GLSLH
 #define CAMERA_DATA_GLSLH
 
-#include "frustum.glslh"
+#include "Frustum.glslh"
 
 #extension GL_EXT_buffer_reference2			: require
 #extension GL_EXT_scalar_block_layout		: require

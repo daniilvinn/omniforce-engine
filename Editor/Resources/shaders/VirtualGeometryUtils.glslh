@@ -1,10 +1,10 @@
 #ifndef VIRTUAL_GEOMETRY_UTILS_GLSLH
 #define VIRTUAL_GEOMETRY_UTILS_GLSLH
 
-#include "mesh_data.glslh"
-#include "camera_data.glslh"
-#include "sphere.glslh"
-#include "render_object.glslh"
+#include "MeshData.glslh"
+#include "CameraData.glslh"
+#include "Sphere.glslh"
+#include "RenderObject.glslh"
 
 float ProjectMeshletError(Sphere sphere, CameraData camera_data) {
     // Early out in case of infinite error

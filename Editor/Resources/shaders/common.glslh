@@ -9,11 +9,10 @@
 #extension GL_EXT_shader_image_int64 : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 
-#include "mesh_data.glslh"
-#include "render_object.glslh"
-#include "frustum.glslh"
-#include "camera_data.glslh"
-
+#include "MeshData.glslh"
+#include "RenderObject.glslh"
+#include "Frustum.glslh"
+#include "CameraData.glslh"
 
 layout(binding = 0) uniform sampler2D texture_bank[65535];
 

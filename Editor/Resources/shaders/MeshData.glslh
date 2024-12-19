@@ -1,11 +1,11 @@
 #ifndef MESH_DATA_GLSLH
 #define MESH_DATA_GLSLH
 
-#include "sphere.glslh"
+#include "Sphere.glslh"
 #include "AABB.glslh"
-#include "bitstream.glslh"
+#include "BitStream.glslh"
 #include "Transform.glslh"
-#include "camera_data.glslh"
+#include "CameraData.glslh"
 
 #extension GL_EXT_shader_explicit_arithmetic_types_int8     : require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16  : require

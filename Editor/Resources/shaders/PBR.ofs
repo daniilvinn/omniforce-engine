@@ -32,9 +32,9 @@ void main() {
 
 #extension GL_EXT_debug_printf : require
 
-#include "common.glslh"
+#include "Common.glslh"
 #include "PBRCommon.glslh"
-#include "lights.glslh"
+#include "Lights.glslh"
 
 layout(push_constant, scalar) uniform PushConstants {
 	CameraData camera_data;

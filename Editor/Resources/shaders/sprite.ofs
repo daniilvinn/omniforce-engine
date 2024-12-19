@@ -1,11 +1,12 @@
 #pragma lang : glsl
 #pragma stage : vertex
 #version 460 core
+
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_buffer_reference2 : require
 
-#include "common.glslh"
-#include "transform.glslh"
+#include "Common.glslh"
+#include "Transform.glslh"
 
 vec3 vertices[6] = {
 	vec3( -1.0f,  -1.0f,  0.0f ),
@@ -55,7 +56,7 @@ layout(location = 0) in vec2 v_TexCoord;
 layout(location = 1) flat in uint v_TextureIndex;
 layout(location = 2) in vec4 v_ColorTint;
 
-#include "common.glslh"
+#include "Common.glslh"
 
 layout(location = 0) out vec4 final_color;
 

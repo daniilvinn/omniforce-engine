@@ -5,11 +5,11 @@
 #extension GL_EXT_buffer_reference2     : require
 #extension GL_EXT_scalar_block_layout   : require
 
-#include "camera_data.glslh"
-#include "render_object.glslh"
-#include "mesh_data.glslh"
-#include "constants.glslh"
-#include "transform.glslh"
+#include "CameraData.glslh"
+#include "RenderObject.glslh"
+#include "MeshData.glslh"
+#include "Constants.glslh"
+#include "Transform.glslh"
 
 layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 

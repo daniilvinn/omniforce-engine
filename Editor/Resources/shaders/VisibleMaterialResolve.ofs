@@ -2,9 +2,9 @@
 #pragma stage : vertex
 #version 460 core
 
-#include "common.glslh"
-#include "render_object.glslh"
-#include "visible_clusters_buffer.glslh"
+#include "Common.glslh"
+#include "RenderObject.glslh"
+#include "VisibleClustersBuffer.glslh"
 
 layout(push_constant, scalar) uniform PushConstants {
 	RenderObjectData render_objects;
@@ -29,10 +29,10 @@ void main() {
 
 #extension GL_EXT_shader_explicit_arithmetic_types_int64	: require
 
-#include "common.glslh"
-#include "render_object.glslh"
-#include "visible_clusters_buffer.glslh"
-#include "vis_buffer_helpers.glslh"
+#include "Common.glslh"
+#include "RenderObject.glslh"
+#include "VisibleClustersBuffer.glslh"
+#include "VisibilityBufferHelpers.glslh"
 
 layout(push_constant, scalar) uniform PushConstants {
 	RenderObjectData render_objects;

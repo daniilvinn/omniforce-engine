@@ -6,8 +6,8 @@
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_debug_printf : require
 
-#include "render_object.glslh"
-#include "mesh_data.glslh"
+#include "RenderObject.glslh"
+#include "MeshData.glslh"
 
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 

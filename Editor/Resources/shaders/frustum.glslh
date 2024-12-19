@@ -1,8 +1,8 @@
 #ifndef FRUSTUM_GLSLH
 #define FRUSTUM_GLSLH
 
-#include "plane.glslh"
-#include "sphere.glslh"
+#include "Plane.glslh"
+#include "Sphere.glslh"
 
 struct Frustum {
 	Plane planes[6];

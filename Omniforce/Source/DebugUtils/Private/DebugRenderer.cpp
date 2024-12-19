@@ -25,8 +25,8 @@ namespace Omni {
 	{
 		// Init pipeline
 		ShaderLibrary* shader_library = ShaderLibrary::Get();
-		shader_library->LoadShader("Resources/Shaders/wireframe.ofs", { {"__OMNI_PIPELINE_LOCAL_HASH", std::to_string(Pipeline::ComputeDeviceID(UUID()))}});
-		shader_library->LoadShader("Resources/Shaders/cluster_debug_view.ofs", { {"__OMNI_PIPELINE_LOCAL_HASH", std::to_string(Pipeline::ComputeDeviceID(UUID()))} });
+		shader_library->LoadShader("Resources/Shaders/Wireframe.ofs", { {"__OMNI_PIPELINE_LOCAL_HASH", std::to_string(Pipeline::ComputeDeviceID(UUID()))}});
+		shader_library->LoadShader("Resources/Shaders/ClusterDebugView.ofs", { {"__OMNI_PIPELINE_LOCAL_HASH", std::to_string(Pipeline::ComputeDeviceID(UUID()))} });
 
 		DeviceBufferLayoutElement element("position", DeviceDataType::FLOAT3);
 		DeviceBufferLayout buffer_layout(std::vector{ element });
@@ -37,7 +37,7 @@ namespace Omni {
 		pipeline_spec.line_width = 3.5f;
 		pipeline_spec.output_attachments_formats = { ImageFormat::RGB32_HDR };
 		pipeline_spec.topology = PipelineTopology::LINES;
-		pipeline_spec.shader = shader_library->GetShader("wireframe.ofs");
+		pipeline_spec.shader = shader_library->GetShader("Wireframe.ofs");
 		pipeline_spec.input_layout = buffer_layout;
 		pipeline_spec.depth_test_enable = true;
 		pipeline_spec.color_blending_enable = false;
@@ -45,9 +45,9 @@ namespace Omni {
 		m_WireframePipeline = Pipeline::Create(pipeline_spec);
 
 		pipeline_spec.culling_mode = PipelineCullingMode::BACK;
-		pipeline_spec.debug_name = "cluster debug view";
+		pipeline_spec.debug_name = "Cluster debug view";
 		pipeline_spec.topology = PipelineTopology::TRIANGLES;
-		pipeline_spec.shader = shader_library->GetShader("cluster_debug_view.ofs");
+		pipeline_spec.shader = shader_library->GetShader("ClusterDebugView.ofs");
 		pipeline_spec.input_layout = {};
 
 		m_DebugViewPipeline = Pipeline::Create(pipeline_spec);

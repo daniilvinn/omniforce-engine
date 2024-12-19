@@ -16,7 +16,7 @@ namespace Omni {
 			auto* container = new std::array<std::string, 2>();
 			includeResult->user_data = container;
 
-			auto file = FileSystem::ReadFile(std::filesystem::path("Resources/shaders") / requested_source, (BitMask)FileReadingFlags::READ_BINARY);
+			auto file = FileSystem::ReadFile(std::filesystem::path("Resources/Shaders") / requested_source, (BitMask)FileReadingFlags::READ_BINARY);
 
 			auto shaderSrc = file->GetData();
 			

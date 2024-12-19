@@ -1,7 +1,7 @@
 #ifndef PBRCOMMON_H
 #define PBRCOMMON_H
 
-#include "constants.glslh"
+#include "Constants.glslh"
 
 float DistributionGGX(vec3 N, vec3 H, float roughness)
 {

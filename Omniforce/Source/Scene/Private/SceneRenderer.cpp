@@ -147,12 +147,13 @@ namespace Omni {
 
 			std::map<std::string, UUID> shader_name_to_uuid_table;
 
-			shader_name_to_uuid_table.emplace("sprite.ofs", UUID());
-			shader_name_to_uuid_table.emplace("cull_indirect.ofs", UUID());
+			shader_name_to_uuid_table.emplace("Sprite.ofs", UUID());
+			shader_name_to_uuid_table.emplace("CullIndirect.ofs", UUID());
 			shader_name_to_uuid_table.emplace("PBR.ofs", UUID());
-			shader_name_to_uuid_table.emplace("vis_buffer.ofs", UUID());
-			shader_name_to_uuid_table.emplace("vis_material_resolve.ofs", UUID());
-			shader_name_to_uuid_table.emplace("sw_raster_micropoly.ofs", UUID());
+			shader_name_to_uuid_table.emplace("VisibilityBuffer.ofs", UUID());
+			shader_name_to_uuid_table.emplace("VisibleMaterialResolve.ofs", UUID());
+			shader_name_to_uuid_table.emplace("SWMicropolyRaster.ofs", UUID());
+
 
 			// helper lambda
 			auto m = [](UUID id) -> auto {
@@ -162,22 +163,22 @@ namespace Omni {
 			};
 
 			tf::Task shaders_load_task = taskflow.emplace([&](tf::Subflow& sf) {
-				sf.emplace([&, shader_name = "sprite.ofs"]() { 
+				sf.emplace([&, shader_name = "Sprite.ofs"]() { 
 					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
 				});
-				sf.emplace([&, shader_name = "cull_indirect.ofs"]() { 
+				sf.emplace([&, shader_name = "CullIndirect.ofs"]() { 
 					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
 				});
 				sf.emplace([&, shader_name = "PBR.ofs"]() { 
 					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
 				});
-				sf.emplace([&, shader_name = "vis_buffer.ofs"]() { 
+				sf.emplace([&, shader_name = "VisibilityBuffer.ofs"]() { 
 					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
 				});
-				sf.emplace([&, shader_name = "vis_material_resolve.ofs"]() { 
+				sf.emplace([&, shader_name = "VisibleMaterialResolve.ofs"]() { 
 					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
 				});
-				sf.emplace([&, shader_name = "sw_raster_micropoly.ofs"]() {
+				sf.emplace([&, shader_name = "SWMicropolyRaster.ofs"]() {
 					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
 				});
 			});
@@ -185,12 +186,12 @@ namespace Omni {
 
 			// 2D pass
 			PipelineSpecification pipeline_spec = PipelineSpecification::Default();
-			pipeline_spec.shader = shader_library->GetShader("sprite.ofs");
-			pipeline_spec.debug_name = "sprite pass";
+			pipeline_spec.shader = shader_library->GetShader("Sprite.ofs");
+			pipeline_spec.debug_name = "Sprite pass";
 			pipeline_spec.output_attachments_formats = { ImageFormat::RGB32_HDR };
 			pipeline_spec.culling_mode = PipelineCullingMode::NONE;
 
-			m_SpritePass = Pipeline::Create(pipeline_spec, shader_name_to_uuid_table["sprite.ofs"]);
+			m_SpritePass = Pipeline::Create(pipeline_spec, shader_name_to_uuid_table["Sprite.ofs"]);
 
 			// PBR full screen
 			pipeline_spec.shader = shader_library->GetShader("PBR.ofs");
@@ -202,29 +203,29 @@ namespace Omni {
 			m_PBRFullscreenPipeline = Pipeline::Create(pipeline_spec, shader_name_to_uuid_table["PBR.ofs"]);
 
 			// Vis buffer pass
-			pipeline_spec.shader = shader_library->GetShader("vis_buffer.ofs");
+			pipeline_spec.shader = shader_library->GetShader("VisibilityBuffer.ofs");
 			pipeline_spec.debug_name = "Vis buffer pass";
 			pipeline_spec.output_attachments_formats = {};
 			pipeline_spec.culling_mode = PipelineCullingMode::BACK;
 			pipeline_spec.depth_test_enable = false;
 			pipeline_spec.color_blending_enable = false;
 
-			m_VisBufferPass = Pipeline::Create(pipeline_spec, shader_name_to_uuid_table["vis_buffer.ofs"]);
+			m_VisBufferPass = Pipeline::Create(pipeline_spec, shader_name_to_uuid_table["VisibilityBuffer.ofs"]);
 
 			// Vis material resolve pass
-			pipeline_spec.shader = shader_library->GetShader("vis_material_resolve.ofs");
+			pipeline_spec.shader = shader_library->GetShader("VisibleMaterialResolve.ofs");
 			pipeline_spec.debug_name = "Vis material resolve";
 			pipeline_spec.depth_write_enable = true;
 			pipeline_spec.depth_test_enable = true;
 
-			m_VisMaterialResolvePass = Pipeline::Create(pipeline_spec, shader_name_to_uuid_table["vis_material_resolve.ofs"]);
+			m_VisMaterialResolvePass = Pipeline::Create(pipeline_spec, shader_name_to_uuid_table["VisibleMaterialResolve.ofs"]);
 
 			// compute frustum culling
 			pipeline_spec.type = PipelineType::COMPUTE;
-			pipeline_spec.shader = shader_library->GetShader("cull_indirect.ofs");
-			pipeline_spec.debug_name = "frustum cull prepass";
+			pipeline_spec.shader = shader_library->GetShader("CullIndirect.ofs");
+			pipeline_spec.debug_name = "Frustum cull prepass";
 
-			m_IndirectFrustumCullPipeline = Pipeline::Create(pipeline_spec, shader_name_to_uuid_table["cull_indirect.ofs"]);
+			m_IndirectFrustumCullPipeline = Pipeline::Create(pipeline_spec, shader_name_to_uuid_table["CullIndirect.ofs"]);
 		}
 		// Initialize device render queue and all buffers for indirect drawing
 		{

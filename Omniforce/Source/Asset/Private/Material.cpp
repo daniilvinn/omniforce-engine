@@ -36,15 +36,15 @@ namespace Omni {
 	{
 		ShaderLibrary* shader_library = ShaderLibrary::Get();
 
-		Shared<Shader> shader = shader_library->GetShader("uber_main.ofs", m_Macros);
+		Shared<Shader> shader = shader_library->GetShader("GBufferOpaque.ofs", m_Macros);
 
 		// add device pipeline id as a macro
 		UUID pipeline_id;
 		m_Macros.emplace("__OMNI_PIPELINE_LOCAL_HASH", std::to_string(Pipeline::ComputeDeviceID(pipeline_id)));
 
 		if (!shader) {
-			shader_library->LoadShader("Resources/shaders/uber_main.ofs", m_Macros);
-			shader = shader_library->GetShader("uber_main.ofs", m_Macros);
+			shader_library->LoadShader("Resources/shaders/GBufferOpaque.ofs", m_Macros);
+			shader = shader_library->GetShader("GBufferOpaque.ofs", m_Macros);
 		}
 
 		PipelineSpecification pipeline_spec = PipelineSpecification::Default();

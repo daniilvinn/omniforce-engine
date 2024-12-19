@@ -18,12 +18,12 @@
 //  8. Write data to visibility buffer using `imageAtomicMax()`
 */
 
-#include "common.glslh"
-#include "camera_data.glslh"
-#include "render_object.glslh"
-#include "mesh_data.glslh"
-#include "visible_clusters_buffer.glslh"
-#include "mesh_quantization.glslh"
+#include "Common.glslh"
+#include "CameraData.glslh"
+#include "RenderObject.glslh"
+#include "MeshData.glslh"
+#include "VisibleClustersBuffer.glslh"
+#include "MeshCompression.glslh"
 
 #extension GL_EXT_scalar_block_layout						: require
 #extension GL_EXT_buffer_reference2							: require
