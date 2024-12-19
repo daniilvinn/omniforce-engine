@@ -457,18 +457,18 @@ public:
 
 		FileSystem::SetWorkingDirectory(m_ProjectPath);
 
-		auto textures_dir = m_ProjectPath.string() + "assets/textures";
-		auto scripts_dir = m_ProjectPath.string() +  "assets/scripts";
-		auto audio_dir = m_ProjectPath.string() + "assets/audio";
-		auto mesh_dir = m_ProjectPath.string() + "assets/meshes";
+		auto textures_dir = m_ProjectPath.string() + "Assets/Textures";
+		auto scripts_dir = m_ProjectPath.string() +  "Assets/Scripts";
+		auto audio_dir = m_ProjectPath.string() + "Assets/Audio";
+		auto mesh_dir = m_ProjectPath.string() + "Assets/Meshes";
 
 		std::filesystem::create_directories(textures_dir);
 		std::filesystem::create_directories(scripts_dir);
 		std::filesystem::create_directories(audio_dir);
 		std::filesystem::create_directories(mesh_dir);
 
-		std::filesystem::copy("resources/scripting/ScriptsProject", m_ProjectPath.string() + "/assets/scripts", std::filesystem::copy_options::recursive);
-		std::filesystem::copy("resources/scripting/bin/ScriptEngine.dll", m_ProjectPath / "assets/scripts/assemblies/ScriptEngine.dll");
+		std::filesystem::copy("Resources/Scripting/ScriptsProject", m_ProjectPath.string() + "/Assets/Scripts", std::filesystem::copy_options::recursive);
+		std::filesystem::copy("Resources/Scripting/Build/ScriptEngine.dll", m_ProjectPath / "Assets/Scripts/Assemblies/ScriptEngine.dll");
 
 		if(m_ProjectPath.string().length())
 			SaveProject();

@@ -165,7 +165,7 @@ namespace Omni {
 
 		OMNIFORCE_CORE_TRACE("[ImGuiRenderer]: Min image count: {} | image count: {}", init_info.MinImageCount, init_info.ImageCount);
 
-		ImFont* m_MainFont = io.Fonts->AddFontFromFileTTF("resources/fonts/roboto.ttf", 16);
+		ImFont* m_MainFont = io.Fonts->AddFontFromFileTTF("Resources/Fonts/roboto.ttf", 16);
 
 		ImGui_ImplVulkan_CreateFontsTexture();
 

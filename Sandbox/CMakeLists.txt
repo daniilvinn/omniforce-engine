@@ -1,9 +1,9 @@
 set(SANDBOX_TARGET Sandbox CACHE INTERNAL "")
 
 file(GLOB_RECURSE SANDBOX_FILES
-	"src/*.h"
-	"src/*.cpp"
-	"src/*.hpp"
+	"Source/*.h"
+	"Source/*.cpp"
+	"Source/*.hpp"
 )
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SANDBOX_FILES})

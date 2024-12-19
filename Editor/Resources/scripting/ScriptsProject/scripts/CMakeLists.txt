@@ -1,5 +1,5 @@
 file(GLOB_RECURSE MY_FILES
-	"src/*.cs"
+	"Source/*.cs"
 )
 
 set(SCRIPT_PROJECT ScriptProject)

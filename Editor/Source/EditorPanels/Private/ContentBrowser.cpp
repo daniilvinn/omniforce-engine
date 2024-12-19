@@ -37,7 +37,7 @@ namespace Omni {
 		m_WorkingDirectory = FileSystem::GetWorkingDirectory();
 		m_CurrentDirectory = m_WorkingDirectory;
 
-		std::filesystem::directory_iterator i("Resources/icons");
+		std::filesystem::directory_iterator i("Resources/Icons");
 
 		for (auto& entry : i) {
 			ImageSourceImporter importer;

@@ -143,7 +143,7 @@ namespace Omni {
 			ShaderLibrary* shader_library = ShaderLibrary::Get();
 			tf::Taskflow taskflow;
 
-			std::string shader_prefix = "Resources/shaders/";
+			std::string shader_prefix = "Resources/Shaders/";
 
 			std::map<std::string, UUID> shader_name_to_uuid_table;
 

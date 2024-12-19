@@ -25,8 +25,8 @@ namespace Omni {
 	{
 		// Init pipeline
 		ShaderLibrary* shader_library = ShaderLibrary::Get();
-		shader_library->LoadShader("Resources/shaders/wireframe.ofs", { {"__OMNI_PIPELINE_LOCAL_HASH", std::to_string(Pipeline::ComputeDeviceID(UUID()))}});
-		shader_library->LoadShader("Resources/shaders/cluster_debug_view.ofs", { {"__OMNI_PIPELINE_LOCAL_HASH", std::to_string(Pipeline::ComputeDeviceID(UUID()))} });
+		shader_library->LoadShader("Resources/Shaders/wireframe.ofs", { {"__OMNI_PIPELINE_LOCAL_HASH", std::to_string(Pipeline::ComputeDeviceID(UUID()))}});
+		shader_library->LoadShader("Resources/Shaders/cluster_debug_view.ofs", { {"__OMNI_PIPELINE_LOCAL_HASH", std::to_string(Pipeline::ComputeDeviceID(UUID()))} });
 
 		DeviceBufferLayoutElement element("position", DeviceDataType::FLOAT3);
 		DeviceBufferLayout buffer_layout(std::vector{ element });

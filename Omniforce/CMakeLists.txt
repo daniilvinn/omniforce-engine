@@ -9,14 +9,14 @@ set(ENGINE_TARGET OmniforceEngine CACHE INTERNAL "")
 set(Vulkan_SDK $ENV{VULKAN_SDK})
 
 file (GLOB_RECURSE ENGINE_FILES
-    "src/*.h"
-    "src/*.cpp"
-    "src/*.hpp"
-    "vendor/ImGuizmo/ImGuizmo.h"
-    "vendor/ImGuizmo/ImGuizmo.cpp"
-    "vendor/taskflow/taskflow/*.h"
-    "vendor/taskflow/taskflow/*.cpp"
-    "vendor/taskflow/taskflow/*.hpp"
+    "Source/*.h"
+    "Source/*.cpp"
+    "Source/*.hpp"
+    "ThirdParty/ImGuizmo/ImGuizmo.h"
+    "ThirdParty/ImGuizmo/ImGuizmo.cpp"
+    "ThirdParty/taskflow/taskflow/*.h"
+    "ThirdParty/taskflow/taskflow/*.cpp"
+    "ThirdParty/taskflow/taskflow/*.hpp"
 )
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ENGINE_FILES})
@@ -25,37 +25,37 @@ add_library(${ENGINE_TARGET} ${ENGINE_FILES})
 
 target_include_directories(${ENGINE_TARGET} 
     PUBLIC 
-        "src/"
+        "Source/"
     SYSTEM PUBLIC
-        "vendor/imgui"
-        "vendor/ImGuizmo"
-        "vendor/taskflow"
-        "vendor/glm"
-        "vendor/spdlog/include"
-        "vendor/EnTT/src"
-        "vendor/nlohmann-json/single_include"
-        "vendor/robin-hood-hashing/src/include"
+        "ThirdParty/imgui"
+        "ThirdParty/ImGuizmo"
+        "ThirdParty/taskflow"
+        "ThirdParty/glm"
+        "ThirdParty/spdlog/include"
+        "ThirdParty/EnTT/src"
+        "ThirdParty/nlohmann-json/single_include"
+        "ThirdParty/robin-hood-hashing/src/include"
     SYSTEM PRIVATE
         "${Vulkan_SDK}\\Include" 
         "${Vulkan_SDK}\\Source" 
-        "vendor/stb"
-        "vendor/Jolt"
-        "vendor/mono/include/mono-2.0"
-        "vendor/bc7enc_rdo/include"
-        "vendor/nv-libdeflate"
-        "vendor/meshoptimizer/src"
-        "vendor/fastgltf/include"
-        "vendor/NVAftermath/include"
-        "vendor/miniball/cpp/main"
-        "vendor/libMETIS/include"
-        "vendor/GLFW/include"
-        "vendor/VulkanMemoryAllocator/include"
+        "ThirdParty/stb"
+        "ThirdParty/Jolt"
+        "ThirdParty/mono/include/mono-2.0"
+        "ThirdParty/bc7enc_rdo/include"
+        "ThirdParty/nv-libdeflate"
+        "ThirdParty/meshoptimizer/src"
+        "ThirdParty/fastgltf/include"
+        "ThirdParty/NVAftermath/include"
+        "ThirdParty/miniball/cpp/main"
+        "ThirdParty/libMETIS/include"
+        "ThirdParty/GLFW/include"
+        "ThirdParty/VulkanMemoryAllocator/include"
 )
 target_link_directories(${ENGINE_TARGET} PUBLIC 
     "${Vulkan_SDK}\\Lib" 
     "${Vulkan_SDK}\\Bin" 
-    "vendor/mono/lib" 
-    "vendor/NVAftermath/lib/x64"
+    "ThirdParty/mono/lib" 
+    "ThirdParty/NVAftermath/lib/x64"
 )
 target_compile_definitions(${ENGINE_TARGET} PUBLIC 
     OMNIFORCE_STATIC 
