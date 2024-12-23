@@ -13,7 +13,7 @@ namespace Omni {
 
 		void* Raw() const override { return (void*)m_WindowHandle; }
 
-		void FlushEventBuffer() { m_Allocator.Free(); }
+		void FlushEventBuffer() { m_Allocator.Clear(); }
 
 		std::vector<Event*>& GetEventBuffer() { return m_EventBuffer; }
 

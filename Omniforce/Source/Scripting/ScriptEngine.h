@@ -5,7 +5,7 @@
 #include <Foundation/Macros.h>
 #include <Foundation/Types.h>
 #include <Scene/Entity.h>
-#include <Memory/Allocator.h>
+#include <Memory/Allocators/TransientAllocator.h>
 #include <Core/Timer.h>
 #include "ScriptClass.h"
 #include "PendingCallbackInfo.h"

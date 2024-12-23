@@ -28,7 +28,7 @@ namespace Omni {
 		template<typename T, typename... Args>
 		T* AllocateEvent(Args&&... args)
 		{
-			auto e = m_Allocator.Allocate<T>(std::forward<Args>(args)...);
+			auto e = m_Allocator.AllocateObject<T>(std::forward<Args>(args)...);
 			m_EventBuffer.push_back(e);
 			return e;
 		}
@@ -36,7 +36,7 @@ namespace Omni {
 		void FlushEventBuffer() { 
 			for (auto& e : m_EventBuffer)
 				m_EventCallback(e);
-			m_Allocator.Free(); 
+			m_Allocator.Clear(); 
 			m_EventBuffer.clear();
 		}
 

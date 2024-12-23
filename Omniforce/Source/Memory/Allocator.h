@@ -3,53 +3,29 @@
 #include <Foundation/Macros.h>
 #include <Foundation/Types.h>
 #include <Threading/ConditionalLock.h>
+#include "MemoryAllocation.h"
 
 namespace Omni {
 
-	/*
-	*	@brief Allocates short-living data, which will be freed in next frame, e.g. events
-	*/
-
-	template<bool ThreadSafe = false>
-	class OMNIFORCE_API TransientAllocator {
+	class OMNIFORCE_API IAllocator {
 	public:
-
-		TransientAllocator(uint64 pool_size = 1024 * 1024) 
-			: m_Size(pool_size)
-		{
-			m_Stack = new byte[pool_size]; // Allocating 1MB
-			m_StackPointer = m_Stack; // bottom of the stack
-		};
-
-		~TransientAllocator() 
-		{
-			delete[] m_Stack;
-		};
+		virtual ~IAllocator() {};
 
 		template<typename T, typename... Args>
-		[[nodiscard]] T* Allocate(Args&&... args)
-		{
-			m_Mutex.Lock();
-			T* ptr = new (m_StackPointer) T(std::forward<Args>(args)...);
-			m_StackPointer += sizeof(T);
-			m_Mutex.Unlock();
+		void Allocate(Args&&... args) {
+			MemoryAllocation Allocation = AllocateBase(sizeof(T));
+			Allocation.InitializeMemory<T>(args);
 
-			return ptr;
-		};
-
-		// Since it is stack-based allocator for transient data (which will be freed in next frame), we simply set back 
-		void Free() 
-		{
-			m_Mutex.Lock();
-			m_StackPointer = m_Stack;
-			memset(m_Stack, 0, m_Size);
-			m_Mutex.Unlock();
+			return Allocation;
 		}
 
-	private:
-		byte* m_Stack;
-		byte* m_StackPointer;
-		uint64 m_Size;
-		ConditionalLock<ThreadSafe> m_Mutex;
+		virtual MemoryAllocation AllocateBase(uint32 InAllocationSize) = 0;
+
+		virtual void Free(MemoryAllocation& InAllocation) = 0;
+		virtual void Clear() = 0;
+
+	protected:
+		IAllocator() {};
 	};
+
 }

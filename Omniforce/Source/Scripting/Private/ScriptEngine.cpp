@@ -142,7 +142,7 @@ namespace Omni {
 		}
 
 		m_PendingCallbacks.clear();
-		m_CallbackArgsAllocator.Free();
+		m_CallbackArgsAllocator.Clear();
 
 		if (m_GCTimer.ElapsedMilliseconds() > 100) {
 			mono_gc_collect(mono_gc_max_generation());

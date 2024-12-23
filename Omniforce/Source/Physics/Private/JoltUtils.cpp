@@ -140,7 +140,7 @@ namespace Omni {
 
 		if (entity1.HasComponent<ScriptComponent>()) {
 			TransientAllocator<false>& args_allocator = m_ScriptEngine->GetCallbackArgsAllocator();
-			UUID* uuid = args_allocator.Allocate<UUID>(body2.GetUserData());
+			UUID* uuid = args_allocator.AllocateObject<UUID>(body2.GetUserData());
 
 			PendingCallbackInfo callback_info = {};
 			callback_info.entity = entity1;
@@ -152,7 +152,7 @@ namespace Omni {
 
 		if (entity2.HasComponent<ScriptComponent>()) {
 			TransientAllocator<false>& args_allocator = m_ScriptEngine->GetCallbackArgsAllocator();
-			UUID* uuid = args_allocator.Allocate<UUID>(body1.GetUserData());
+			UUID* uuid = args_allocator.AllocateObject<UUID>(body1.GetUserData());
 
 			PendingCallbackInfo callback_info = {};
 			callback_info.entity = entity2;
@@ -184,7 +184,7 @@ namespace Omni {
 
 		if (entity1.HasComponent<ScriptComponent>()) {
 			TransientAllocator<false>& args_allocator = m_ScriptEngine->GetCallbackArgsAllocator();
-			UUID* uuid = args_allocator.Allocate<UUID>(body2.GetUserData());
+			UUID* uuid = args_allocator.AllocateObject<UUID>(body2.GetUserData());
 
 			PendingCallbackInfo callback_info = {};
 			callback_info.entity = entity1;
@@ -196,7 +196,7 @@ namespace Omni {
 
 		if (entity2.HasComponent<ScriptComponent>()) {
 			TransientAllocator<false>& args_allocator = m_ScriptEngine->GetCallbackArgsAllocator();
-			UUID* uuid = args_allocator.Allocate<UUID>(body1.GetUserData());
+			UUID* uuid = args_allocator.AllocateObject<UUID>(body1.GetUserData());
 
 			PendingCallbackInfo callback_info = {};
 			callback_info.entity = entity2;
