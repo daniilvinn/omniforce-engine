@@ -1,0 +1,62 @@
+#pragma lang : glsl
+#pragma stage : vertex
+#version 460 core
+
+#extension GL_EXT_scalar_block_layout : require
+
+#include <Source/Common.glslh>
+#include <Source/VisibleClustersBuffer.glslh>
+
+layout(push_constant, scalar) uniform pc_ {
+	uint64_t mode;
+	VisibleClusters visible_clusters;
+} pc;
+
+vec3 vertices[6] = {
+	vec3( -1.0f,  -1.0f,  0.0f ),
+	vec3(  1.0f,  -1.0f,  0.0f ),
+	vec3(  1.0f,   1.0f,  0.0f ),
+	vec3(  1.0f,   1.0f,  0.0f ),
+	vec3( -1.0f,   1.0f,  0.0f ),
+	vec3( -1.0f,  -1.0f,  0.0f )
+};
+
+void main()
+{
+	gl_Position = vec4(vertices[gl_VertexIndex], 1.0f);
+}
+
+#pragma stage : fragment
+#version 460 core
+
+#extension GL_EXT_nonuniform_qualifier							: require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64		: require
+#extension GL_EXT_scalar_block_layout							: require
+
+#include <Source/Common.glslh>
+#include <Source/PCGHash.glslh>
+#include <Source/VisibleClustersBuffer.glslh>
+
+layout(push_constant, scalar) uniform pc_ {
+	uint64_t mode;
+	VisibleClusters visible_clusters;
+} pc;
+
+layout(location = 0) out vec4 out_color;
+
+void main() {
+	uvec2 payload = unpack32(imageLoad(visibility_buffer, ivec2(gl_FragCoord.xy)).r); // unpack to avoid int64 operations (very slow)
+
+	uint seed = pc.visible_clusters.clusters[payload.r >> 7].cluster_index << 7;
+
+	seed |= uint(pc.mode) == 1 ? (payload.r & 0x7F) : 0u;
+
+	vec4 desired_color = vec4(
+		pcg_hash(seed),
+		pcg_hash(seed + 1),
+		pcg_hash(seed + 2),
+		1
+	);
+
+	out_color = payload.g != 0.0f ? normalize(desired_color) : vec4(0.0f);
+}

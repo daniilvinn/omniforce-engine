@@ -8,6 +8,8 @@
 #include <Renderer/Pipeline.h>
 #include <Scene/SceneRendererPrimitives.h>
 
+#include <Shaders/Shared/Transform.glslh>
+
 #include <glm/glm.hpp>
 
 namespace Omni {
@@ -40,7 +42,7 @@ namespace Omni {
 	private:
 		struct WireframePushConstants {
 			uint64 camera_data_bda;
-			TRS trs;
+			GLSL::Transform trs;
 			glm::u8vec3 lines_color;
 		};
 

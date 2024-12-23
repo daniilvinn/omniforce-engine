@@ -1,0 +1,31 @@
+#ifndef RENDER_OBJECT_GLSLH
+#define RENDER_OBJECT_GLSLH
+
+#include <Shared/Transform.glslh>
+
+#ifdef __OMNI_COMPILE_SHADER_FOR_GLSL
+	#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+	#extension GL_EXT_buffer_reference2						 : require
+	#extension GL_EXT_scalar_block_layout					 : require
+#endif // defined __OMNI_COMPILE_SHADER_FOR_GLSL
+
+#ifdef __OMNI_COMPILE_SHADER_FOR_CXX
+#include <glm/glm.hpp>
+
+namespace Omni::GLSL {
+	struct RenderObjectData {
+		using uint = uint32;
+		using Transform = GLSL::Transform;
+#else
+	layout(buffer_reference, scalar, buffer_reference_align = 4) buffer RenderObjectData {
+#endif // defined __OMNI_COMPILE_SHADER_FOR_CXX
+		Transform transform;
+		uint geometry_data_id;
+		uint64_t material_bda;
+	};
+
+#ifdef __OMNI_COMPILE_SHADER_FOR_CXX
+}
+#endif // defined __OMNI_COMPILE_SHADER_FOR_CXX
+
+#endif //!defined RENDER_OBJECT_GLSLH

@@ -28,7 +28,7 @@ namespace Omni {
 		std::vector<byte> attributes;
 		std::vector<RenderableMeshlet> meshlets;
 		std::vector<byte> local_indices;
-		std::vector<MeshletCullBounds> cull_data;
+		std::vector<MeshletBounds> cull_data;
 		int32 quantization_grid_size;
 		Sphere bounding_sphere;
 	};

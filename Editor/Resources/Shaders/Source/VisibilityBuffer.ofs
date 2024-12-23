@@ -1,0 +1,230 @@
+#pragma lang : glsl
+#pragma stage : task
+#version 460 core
+
+#extension GL_EXT_scalar_block_layout						: require
+#extension GL_EXT_buffer_reference2							: require
+#extension GL_EXT_nonuniform_qualifier						: require
+#extension GL_EXT_mesh_shader								: require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64	: require
+#extension GL_KHR_shader_subgroup_arithmetic				: require
+#extension GL_KHR_shader_subgroup_ballot					: require
+
+#include <Shared/MeshData.glslh> // mesh data
+#include <Shared/Transform.glslh>
+#include <Shared/RenderObject.glslh> // common render object data
+#include <Source/Common.glslh>
+#include <Source/TaskPayload.glslh>
+#include <Source/Frustum.glslh>
+#include <Source/VirtualGeometryUtils.glslh>
+#include <Source/VisibleClustersBuffer.glslh>
+#include <Source/SWRasterQueue.glslh>
+
+layout(local_size_x = __OMNI_TASK_SHADER_PREFERRED_WORK_GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
+
+shared uint s_actual_num_meshlets;
+
+layout(push_constant, scalar) uniform pc_ {
+    CameraData camera_data;
+    MeshData mesh_data;
+    RenderObjectData render_objects_data;
+	VisibleClusters output_buffer;
+	SWRasterQueue sw_raster_queue; 
+} pc;
+
+void main()
+{
+	uint lid = gl_LocalInvocationIndex; // lid = lane id
+	
+	RenderObjectData render_object_data = pc.render_objects_data[gl_DrawID];
+
+	Transform transform = render_object_data.transform;
+	MeshData mesh_data = pc.mesh_data[render_object_data.geometry_data_id];
+
+	if(gl_GlobalInvocationID.x >= mesh_data.meshlet_count) { // check if we are out of bounds
+		return;
+	}
+
+	if(lid == 0) { // init shared memory in first lane
+		s_actual_num_meshlets = 0;
+	}
+
+	MeshletCullBounds cull_bounds = mesh_data.meshlets_cull_bounds[gl_GlobalInvocationID.x];
+
+	// Test this code with work groups of 64 threads and more
+	bool is_optimal_lod = TestMeshletLOD(cull_bounds.lod_culling, pc.camera_data, render_object_data);
+	bool is_visible = TestMeshletVisibility(cull_bounds, pc.camera_data, transform);
+
+	// Compute offset using subgroup intrinsics
+	uvec4 ballot = subgroupBallot(is_optimal_lod && is_visible);
+
+	uint subgroup_offset_atomic = 0;
+	uint subgroup_vis_clusters_offset_atomic = 0;
+
+	uint bit_count = subgroupBallotBitCount(ballot);
+
+	if(subgroupElect()) {
+		subgroup_offset_atomic = atomicAdd(s_actual_num_meshlets, bit_count);
+		subgroup_vis_clusters_offset_atomic = atomicAdd(pc.output_buffer.num_clusters, bit_count);
+		task_payload.base_vis_cluster_offset = subgroup_vis_clusters_offset_atomic;
+	}
+
+	uint subgroup_offset = subgroupBroadcastFirst(subgroup_offset_atomic);
+	uint subgroup_vis_clusters_offset = subgroupBroadcastFirst(subgroup_vis_clusters_offset_atomic);
+
+	// Cull
+	if(is_optimal_lod && is_visible) {
+		uint id_index = subgroup_offset + subgroupExclusiveAdd(1);
+		uint vis_clusters_index = subgroup_vis_clusters_offset + id_index;
+
+		pc.output_buffer.clusters[vis_clusters_index] = VisibleCluster(gl_DrawID, gl_GlobalInvocationID.x);
+		task_payload.meshlet_ids[id_index] = uint8_t(gl_GlobalInvocationID.x & (gl_WorkGroupSize.x - 1));
+	}
+
+	// Synchronize access to `s_actual_num_meshlets`
+	subgroupBarrier();
+
+	// Emit mesh work groups
+	if(lid == 0 && s_actual_num_meshlets != 0) {
+		task_payload.base_offset = gl_GlobalInvocationID.x;
+		task_payload.draw_id = gl_DrawID;
+		EmitMeshTasksEXT(s_actual_num_meshlets, 1, 1);
+	}
+}
+
+#pragma stage : mesh
+#version 460 core
+
+#extension GL_EXT_mesh_shader									: require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16		: require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64		: require
+
+#include <Shared/RenderObject.glslh>
+#include <Shared/MeshData.glslh>
+#include <Source/Common.glslh>
+#include <Source/MeshCompression.glslh>
+#include <Source/Sphere.glslh>
+#include <Source/VisibleClustersBuffer.glslh>
+#include <Source/SWRasterQueue.glslh>
+
+layout(local_size_x = __OMNI_MESH_SHADER_PREFERRED_WORK_GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
+layout(triangles, max_vertices = 64, max_primitives = 124) out;
+
+layout(push_constant, scalar) uniform pc_ {
+    CameraData camera_data;
+    MeshData mesh_data;
+    RenderObjectData render_objects_data;
+	VisibleClusters output_buffer;
+	SWRasterQueue sw_raster_queue;
+} pc;
+
+layout(location = 0) flat out uint visible_clusters_indices[];
+
+#include <Source/TaskPayload.glslh>
+
+void main()
+{
+	RenderObjectData render_object_data = pc.render_objects_data[task_payload.draw_id];
+
+	MeshData mesh_data = pc.mesh_data[render_object_data.geometry_data_id];
+
+	Transform transform = render_object_data.transform;
+
+	MeshMeshletsData meshlet_data = mesh_data.meshlets_data[task_payload.base_offset + task_payload.meshlet_ids[gl_WorkGroupID.x]];
+	vec3 meshlet_center = mesh_data.meshlets_cull_bounds[task_payload.base_offset + task_payload.meshlet_ids[gl_WorkGroupID.x]].bounding_sphere.center;
+
+	// Extract counts and bitrate from bit packed data
+	uint meshlet_vertex_count =		ExtractMeshletVertexCount(meshlet_data.metadata);
+	uint meshlet_triangle_count =	ExtractMeshletTriangleCount(meshlet_data.metadata);
+	uint meshlet_bitrate =			ExtractMeshletBitrate(meshlet_data.metadata);
+
+	// Optimization with early memory allocation to hide allocation latency
+	if(gl_LocalInvocationIndex == 0) {
+        SetMeshOutputsEXT(meshlet_vertex_count, meshlet_triangle_count);
+    };
+
+	// vertices
+	uint vertex_processing_iterations = (meshlet_vertex_count + gl_WorkGroupSize.x - 1) / gl_WorkGroupSize.x;
+	int bit_extend_bitmask = 1 << (meshlet_bitrate - 1);
+
+	for(int i = 0; i < vertex_processing_iterations; i++) {
+		if((gl_LocalInvocationIndex * vertex_processing_iterations + i) >= meshlet_vertex_count) {
+			break;
+		}
+
+		// Compute offset
+		uint vtx_offset = gl_LocalInvocationIndex * meshlet_bitrate * 3 * vertex_processing_iterations + (i * 3 * meshlet_bitrate);
+
+		// Fetch vertex
+		ivec3 encoded_vertex = FetchVertexFromStream(mesh_data.vertices, meshlet_bitrate, meshlet_data.vertex_bit_offset + vtx_offset);
+
+		// Restore sign
+		encoded_vertex = (encoded_vertex ^ bit_extend_bitmask) - bit_extend_bitmask;
+
+		// Decode vertex
+		vec3 vertex = DecodeVertex(
+			encoded_vertex,
+			mesh_data.quantization_grid_size, 
+			meshlet_center
+		);
+
+		vertex = TransformPoint(vertex, transform);
+
+		visible_clusters_indices[gl_LocalInvocationIndex * vertex_processing_iterations + i] = task_payload.base_vis_cluster_offset + gl_WorkGroupID.x;
+
+		gl_MeshVerticesEXT[gl_LocalInvocationIndex * vertex_processing_iterations + i].gl_Position = pc.camera_data.view_proj * vec4(vertex, 1.0f);
+	}
+
+	uint index_processing_iterations = (meshlet_triangle_count + gl_WorkGroupSize.x - 1) / gl_WorkGroupSize.x;
+	for(int i = 0; i < index_processing_iterations; i++) {
+		if(gl_LocalInvocationIndex * index_processing_iterations + i >= meshlet_triangle_count) {
+			break;
+		}
+
+		uvec3 offsets = meshlet_data.triangle_offset + ((gl_LocalInvocationIndex * index_processing_iterations + i) * 3 + uvec3(0,1,2));
+
+		uvec3 indices = uvec3(
+			mesh_data.micro_indices[offsets.x].micro_index,
+			mesh_data.micro_indices[offsets.y].micro_index,
+			mesh_data.micro_indices[offsets.z].micro_index
+		);
+
+		// TODO: hide latency here by moving the memory access upper
+		gl_PrimitiveTriangleIndicesEXT[gl_LocalInvocationIndex * index_processing_iterations + i] = indices;
+
+		gl_MeshPrimitivesEXT[gl_LocalInvocationIndex * index_processing_iterations + i].gl_PrimitiveID = int(gl_LocalInvocationIndex * index_processing_iterations + i);
+	}
+
+}
+
+#pragma stage : fragment
+#version 460 core
+
+#extension GL_EXT_nonuniform_qualifier							: require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64		: require
+#extension GL_EXT_debug_printf									: require
+
+#include <Shared/MeshData.glslh>
+#include <Shared/RenderObject.glslh>
+#include <Shared/Texture.glslh>
+#include <Source/Common.glslh>
+#include <Source/VisibleClustersBuffer.glslh>
+#include <Source/SWRasterQueue.glslh>
+
+layout(location = 0) flat in uint v_VisibleClusterIndex;
+
+layout(push_constant, scalar) uniform pc_ {
+    CameraData camera_data;
+    MeshData mesh_data;
+    RenderObjectData render_objects_data;
+	VisibleClusters output_buffer;
+	SWRasterQueue sw_raster_queue;
+} pc;
+
+void main() {
+	uint depth = floatBitsToUint(gl_FragCoord.z);
+	uint value = uint(gl_PrimitiveID);
+	value |= (v_VisibleClusterIndex << 7);
+	
+	imageAtomicMax(visibility_buffer, ivec2(gl_FragCoord.xy), pack64(uvec2(value, depth)));
+}

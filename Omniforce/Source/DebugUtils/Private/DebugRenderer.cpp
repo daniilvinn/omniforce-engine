@@ -5,9 +5,11 @@
 #include <Renderer/Renderer.h>
 #include <Asset/PrimitiveMeshGenerator.h>
 #include <Asset/MeshPreprocessor.h>
+#include <Shaders/Shared/Transform.glslh>
 
 #include <imgui.h>
 #include <glm/gtc/packing.hpp>
+
 
 namespace Omni {
 
@@ -25,8 +27,8 @@ namespace Omni {
 	{
 		// Init pipeline
 		ShaderLibrary* shader_library = ShaderLibrary::Get();
-		shader_library->LoadShader("Resources/Shaders/Wireframe.ofs", { {"__OMNI_PIPELINE_LOCAL_HASH", std::to_string(Pipeline::ComputeDeviceID(UUID()))}});
-		shader_library->LoadShader("Resources/Shaders/ClusterDebugView.ofs", { {"__OMNI_PIPELINE_LOCAL_HASH", std::to_string(Pipeline::ComputeDeviceID(UUID()))} });
+		shader_library->LoadShader("Resources/Shaders/Source/Wireframe.ofs", { {"__OMNI_PIPELINE_LOCAL_HASH", std::to_string(Pipeline::ComputeDeviceID(UUID()))} });
+		shader_library->LoadShader("Resources/Shaders/Source/ClusterDebugView.ofs", { {"__OMNI_PIPELINE_LOCAL_HASH", std::to_string(Pipeline::ComputeDeviceID(UUID()))} });
 
 		DeviceBufferLayoutElement element("position", DeviceDataType::FLOAT3);
 		DeviceBufferLayout buffer_layout(std::vector{ element });
@@ -108,7 +110,7 @@ namespace Omni {
 	void DebugRenderer::RenderWireframeSphere(const glm::vec3& position, float radius, const glm::vec3& color)
 	{
 		renderer->m_DebugRequests.push_back([=]() {
-			TRS trs = {};
+			GLSL::Transform trs = {};
 			trs.translation = position;
 			trs.rotation = glm::packHalf(glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
 			trs.scale = { radius, radius, radius };
@@ -132,7 +134,7 @@ namespace Omni {
 	void DebugRenderer::RenderWireframeBox(const glm::vec3& translation, const glm::quat rotation, const glm::vec3 scale, const glm::vec3& color)
 	{
 		renderer->m_DebugRequests.push_back([=]() {
-			TRS trs = {};
+			GLSL::Transform trs = {};
 			trs.translation = translation;
 			trs.rotation = glm::packHalf(glm::vec4(rotation.x, rotation.y, rotation.z, rotation.w));
 			trs.scale = scale;
@@ -156,7 +158,7 @@ namespace Omni {
 	void DebugRenderer::RenderWireframeLines(Shared<DeviceBuffer> vbo, const glm::vec3& translation, const glm::quat rotation, const glm::vec3 scale, const glm::vec3& color)
 	{
 		renderer->m_DebugRequests.push_back([=]() {
-			TRS trs = {};
+			GLSL::Transform trs = {};
 			trs.translation = translation;
 			trs.rotation = glm::packHalf(glm::vec4( rotation.x, rotation.y, rotation.z, rotation.w ) );
 			trs.scale = scale;

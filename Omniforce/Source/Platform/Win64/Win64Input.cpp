@@ -33,9 +33,9 @@ namespace Omni {
 		return 0.0f;
 	}
 
-	vec2<int32> Win64Input::Impl_MousePosition(const std::string& window_tag) const
+	ivec2 Win64Input::Impl_MousePosition(const std::string& window_tag) const
 	{
-		vec2<float64> pos;
+		glm::f64vec2 pos;
 		glfwGetCursorPos((GLFWwindow*)Application::Get()->GetWindow(window_tag)->Raw(), &pos.x, &pos.y);
 		return { (int32)pos.x, (int32)pos.y };
 	}

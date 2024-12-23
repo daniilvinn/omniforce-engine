@@ -1,0 +1,317 @@
+#pragma lang : glsl
+#pragma stage : vertex
+#version 460 core
+
+#include <Shared/CameraData.glslh>
+#include <Shared/MeshData.glslh>
+#include <Shared/RenderObject.glslh>
+#include <Source/Common.glslh>
+#include <Source/VisibleClustersBuffer.glslh>
+#include <Source/VisibilityBufferHelpers.glslh>
+
+#extension GL_EXT_scalar_block_layout				: require
+#extension GL_EXT_buffer_reference2					: require
+
+layout(push_constant, scalar) uniform pc_ {
+    CameraData camera_data;
+    MeshData mesh_data;
+    RenderObjectData render_objects_data;
+	VisibleClusters visible_clusters;
+} pc;
+
+vec2 vertices[6] = {
+	vec2( -1.0f,  -1.0f ),
+	vec2(  1.0f,  -1.0f ),
+	vec2(  1.0f,   1.0f ),
+	vec2(  1.0f,   1.0f ),
+	vec2( -1.0f,   1.0f ),
+	vec2( -1.0f,  -1.0f )
+};
+
+void main()
+{
+	float fragment_depth = ComputeMaterialResolveFragmentDepth();
+
+	gl_Position = vec4(vertices[gl_VertexIndex], fragment_depth, 1.0f);
+}
+
+#pragma stage : fragment
+#version 460 core
+
+#include <Shared/MeshData.glslh>
+#include <Shared/RenderObject.glslh>
+#include <Shared/Texture.glslh>
+#include <Source/Common.glslh>
+#include <Source/VisibilityResolve.glslh>
+#include <Source/VisibleClustersBuffer.glslh>
+#include <Source/MeshCompression.glslh>
+
+#extension GL_EXT_nonuniform_qualifier							: require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16		: require
+#extension GL_EXT_shader_explicit_arithmetic_types_int8			: require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64		: require
+#extension GL_EXT_debug_printf									: require
+
+layout(early_fragment_tests) in;
+
+layout(push_constant, scalar) uniform pc_ {
+    CameraData camera_data;
+    MeshData mesh_data;
+    RenderObjectData render_objects_data;
+	VisibleClusters visible_clusters;
+} pc;
+
+
+layout(buffer_reference, scalar, buffer_reference_align = 16) readonly buffer Material {
+	uint pipeline_id;
+	#ifdef __OMNI_HAS_ALPHA_CUTOFF
+        float alpha_cutoff;
+    #endif
+    #ifdef __OMNI_HAS_BASE_COLOR_FACTOR
+        vec4 base_color_factor;
+    #endif
+    #ifdef __OMNI_HAS_BASE_COLOR_MAP
+        Texture base_color_map;
+    #endif
+    #ifdef __OMNI_HAS_METALLIC_FACTOR
+        float metallic_factor;
+    #endif
+    #ifdef __OMNI_HAS_METALLIC_ROUGHNESS_MAP
+        Texture metallic_roughness_map;
+    #endif
+    #ifdef __OMNI_HAS_NORMAL_MAP
+        Texture normal_map;
+    #endif
+    #ifdef __OMNI_HAS_OCCLUSION_MAP
+        Texture occlusion_map;
+    #endif
+    #ifdef __OMNI_HAS_ROUGHNESS_FACTOR
+        float roughness_factor;
+    #endif
+};
+
+layout(location = 0) out vec4 out_position;
+layout(location = 1) out vec4 out_color;
+layout(location = 2) out vec4 out_normal;
+layout(location = 3) out vec4 out_metallic_roughness_occlusion;
+
+#ifdef __OMNI_HAS_NORMAL_MAP
+	f16vec3 FetchNormal(Texture normal_map, f16vec2 uv, vec2 ddx, vec2 ddy) {
+	#ifndef __OMNI_HAS_VERTEX_TEXCOORDS
+		return f16vec3(0.0f, 0.0f, 1.0f);
+	#else
+		f16vec3 normal = f16vec3(
+			textureGrad(
+				texture_bank[normal_map.texture_index], 
+				uv,
+				ddx,
+				ddy
+			).rgb
+		);
+		return normal * 2.0hf - 1.0hf;
+	#endif
+	}
+#endif
+
+// Triangle id within a meshlet
+uvec3 LoadTriangleIndices(RenderObjectData instance_data, uint cluster_index, uint triangle_id) {
+	MeshData mesh_data = pc.mesh_data[instance_data.geometry_data_id];
+	uint triangle_offset = mesh_data.meshlets_data[cluster_index].triangle_offset;
+
+	uvec3 indices = triangle_offset + uvec3(0,1,2) + triangle_id * 3;
+
+	uvec3 result = uvec3(
+		mesh_data.micro_indices[indices.x].micro_index,
+		mesh_data.micro_indices[indices.y].micro_index,
+		mesh_data.micro_indices[indices.z].micro_index
+	);
+
+	return result;
+}
+
+void LoadVertexPositions(out vec4 v[3], RenderObjectData instance, uint cluster_index, uvec3 triangle_indices) {
+	MeshData mesh_data = pc.mesh_data[instance.geometry_data_id];
+	MeshMeshletsData meshlet_data = mesh_data.meshlets_data[cluster_index];
+
+	uint meshlet_bitrate = ExtractMeshletBitrate(meshlet_data.metadata);
+	int bit_extend_bitmask = 1 << (meshlet_bitrate - 1);
+
+	vec3 meshlet_center = mesh_data.meshlets_cull_bounds[cluster_index].bounding_sphere.center;
+
+	// Compute vertices bit offset.
+	// Offset is global within bit stream
+	uvec3 meshlet_vtx_offsets = meshlet_data.vertex_bit_offset + triangle_indices * (meshlet_bitrate * 3);
+
+	vec3 result[3];
+
+	// Fetch, decode and transform vertices
+	for(int i = 0; i < 3; i++) {
+		// Fetch encoded vertex
+		ivec3 encoded_vertex = FetchVertexFromStream(mesh_data.vertices, meshlet_bitrate, meshlet_vtx_offsets[i]);
+
+		// Restore sign
+		encoded_vertex = (encoded_vertex ^ bit_extend_bitmask) - bit_extend_bitmask;
+
+		// Decode vertex
+		result[i] = DecodeVertex(encoded_vertex, mesh_data.quantization_grid_size, meshlet_center);
+
+		// Transform vertex
+		v[i] = pc.camera_data.view_proj * vec4(TransformPoint(result[i], instance.transform), 1.0f);
+	}
+
+}
+
+void main() {
+	// No need to allocate register space for depth payload, so load only R component (first 32 bits)
+	uint visibility_payload = unpack32(imageLoad(visibility_buffer, ivec2(gl_FragCoord.xy)).r).r;
+
+	// Move to 7 bits right to discard triangle id and get correct visible cluster ID
+    VisibleCluster visible_cluster = pc.visible_clusters.clusters[visibility_payload.r >> 7];
+
+	RenderObjectData instance_data = pc.render_objects_data[visible_cluster.instance_index];
+	MeshData mesh_data = pc.mesh_data[instance_data.geometry_data_id];
+
+	// Also fetch current pixel's meshlet data
+	MeshMeshletsData meshlet_data = mesh_data.meshlets_data[visible_cluster.cluster_index];
+
+	Material material = Material(instance_data.material_bda);
+
+	// Fetch vertices
+	vec4 triangle_vertices[3];
+	uvec3 triangle_indices = LoadTriangleIndices(instance_data, visible_cluster.cluster_index, visibility_payload & 0x7F);
+
+	LoadVertexPositions(
+		triangle_vertices,
+		instance_data,
+		visible_cluster.cluster_index,
+		triangle_indices
+	);
+
+	vec2 pixel_ndc = (gl_FragCoord.xy / imageSize(visibility_buffer)) * 2.0 - 1.0;
+	pixel_ndc.y = -pixel_ndc.y;
+
+	BarycentricDerivative bary_deriv = CalculateFullBary(
+		triangle_vertices[0],
+		triangle_vertices[1],
+		triangle_vertices[2],
+		pixel_ndc,
+		imageSize(visibility_buffer)
+	);
+
+	// Interpolate and store vertex position
+	{
+		out_position = vec4(
+			InterpolateVertexData(bary_deriv, triangle_vertices[0].xyz, triangle_vertices[1].xyz, triangle_vertices[2].xyz),
+			1.0f
+		);
+	}
+
+	#ifdef __OMNI_HAS_VERTEX_TEXCOORDS
+	// Fetch all UVs and interpolate them. Will be used to fetch texture data
+	f16vec2 uvs[__OMNI_MESH_TEXCOORD_COUNT];
+	vec2	ddx[__OMNI_MESH_TEXCOORD_COUNT];
+	vec2	ddy[__OMNI_MESH_TEXCOORD_COUNT];
+	{
+		// For each channel
+		for(int i = 0; i < __OMNI_MESH_TEXCOORD_COUNT; i++) {
+
+			// Fetch all 3 vertices' uv
+			vec2 vertex_uv[3];
+			for(int j = 0; j < 3; j++) {
+				vertex_uv[j] = vec2(mesh_data.attributes[meshlet_data.vertex_offset + triangle_indices[j]].uv[i]);
+			}
+
+			// Interpolate and get derivatives for texture fetches
+			uvs[i] = f16vec2(InterpolateVertexData(bary_deriv, vertex_uv[0], vertex_uv[1], vertex_uv[2], ddx[i], ddy[i]));
+
+			// Invert Y coordinate
+			uvs[i].y = 1.0hf - uvs[i].y;
+		}
+	}
+	#endif
+
+	// Base color
+	{
+		vec4 color = vec4(1.0f, 0.0f, 1.0f, 1.0f);
+		#ifdef __OMNI_HAS_BASE_COLOR_MAP
+
+		uint uv_channel = material.base_color_map.uv_channel_index;
+		color = textureGrad(nonuniformEXT(texture_bank[material.base_color_map.texture_index]), uvs[uv_channel], ddx[uv_channel], ddy[uv_channel]);
+
+		#endif
+		out_color = color;
+	}
+
+	// Normal
+	{
+	#if defined(__OMNI_HAS_NORMAL_MAP) && defined(__OMNI_HAS_VERTEX_NORMAL) && defined(__OMNI_HAS_VERTEX_TANGENT)
+		uint uv_id = material.normal_map.uv_channel_index;
+
+		// Fetch and interpolate tangents
+		f16vec4 T;
+		{
+			// Fetch all 3 vertices' tangent
+			vec4 vertex_tangent[3];
+			for(int i = 0; i < 3; i++) {
+				vertex_tangent[i] = vec4(DecodeTangent(mesh_data.attributes[meshlet_data.vertex_offset].tangent));
+			}
+
+			// Interpolate and get derivatives for texture fetches
+			T = f16vec4(InterpolateVertexData(bary_deriv, vertex_tangent[0], vertex_tangent[1], vertex_tangent[2]));
+		}
+
+		// Fetch and interpolate normals
+		f16vec3 N;
+		{
+			// Fetch all 3 vertices' tangent
+			vec3 vertex_normal[3];
+			for(int i = 0; i < 3; i++) {
+				vertex_normal[i] = vec3(DecodeNormal(mesh_data.attributes[meshlet_data.vertex_offset].normal));
+			}
+
+			// Interpolate and get derivatives for texture fetches
+			N = f16vec3(InterpolateVertexData(bary_deriv, vertex_normal[0], vertex_normal[1], vertex_normal[2]));
+		}
+		f16vec3 B = cross(N, T.xyz) * T.w;
+
+		N = normalize(f16mat3(T.xyz,B,N) * FetchNormal(material.normal_map, uvs[uv_id], ddx[uv_id], ddy[uv_id]));
+		out_normal = vec4(vec3(N), 1.0f);
+
+	#elif defined(__OMNI_HAS_VERTEX_NORMAL)
+		f16vec3 N;
+		{
+			// Fetch all 3 vertices' tangent
+			vec3 vertex_normal[3];
+			for(int i = 0; i < 3; i++) {
+				vertex_normal[i] = vec3(DecodeNormal(mesh_data.attributes[meshlet_data.vertex_offset].normal));
+			}
+
+			// Interpolate and get derivatives for texture fetches
+			N = f16vec3(InterpolateVertexData(bary_deriv, vertex_normal[0], vertex_normal[1], vertex_normal[2]));
+		}
+		out_normal = vec4(vec3(N), 1.0f);
+
+	#else 
+		out_normal = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	#endif
+	}
+
+	// Metallic roughness occlusion
+	{
+		vec3 metallic_roughness_occlusion = vec3(0.0f, 0.0f, 1.0f);
+
+		#ifdef __OMNI_HAS_METALLIC_ROUGHNESS_MAP
+		uint uv_id = material.metallic_roughness_map.texture_index;
+
+		metallic_roughness_occlusion = textureGrad(
+			texture_bank[material.metallic_roughness_map.texture_index], 
+			uvs[uv_id],
+			ddx[uv_id],
+			ddy[uv_id]
+		).xyz;
+		#endif
+
+		out_metallic_roughness_occlusion = vec4(metallic_roughness_occlusion, 1.0f);
+	}
+
+}

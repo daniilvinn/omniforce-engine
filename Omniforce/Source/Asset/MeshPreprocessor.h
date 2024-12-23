@@ -12,7 +12,7 @@ namespace Omni {
 		std::vector<RenderableMeshlet> meshlets;
 		std::vector<uint32> indices;
 		std::vector<byte> local_indices;
-		std::vector<MeshletCullBounds> cull_bounds;
+		std::vector<MeshletBounds> cull_bounds;
 	};
 
 	class OMNIFORCE_API MeshPreprocessor {

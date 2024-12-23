@@ -1,17 +1,21 @@
 #include "../SceneRenderer.h"
 
+#include <Core/Utils.h>
 #include <Renderer/DescriptorSet.h>
 #include <Renderer/Pipeline.h>
 #include <Renderer/ShaderLibrary.h>
 #include <Renderer/DeviceBuffer.h>
 #include <Renderer/PipelineBarrier.h>
-#include <Core/Utils.h>
 #include <Threading/JobSystem.h>
 #include <Asset/AssetManager.h>
 #include <Asset/AssetCompressor.h>
 #include <Platform/Vulkan/VulkanCommon.h>
 #include <DebugUtils/DebugRenderer.h>
 #include "../SceneRendererPrimitives.h"
+
+#include <Shaders/Shared/CameraData.glslh>
+#include <Shaders/Shared/MeshData.glslh>
+#include <Shaders/Shared/RenderObject.glslh>
 
 #include <taskflow/taskflow.hpp>
 
@@ -24,7 +28,7 @@ namespace Omni {
 
 	SceneRenderer::SceneRenderer(const SceneRendererSpecification& spec)
 		: m_Specification(spec), m_MaterialDataPool(this, 4096 * 256 /* 256Kb of data*/), m_TextureIndexAllocator(VirtualMemoryBlock::Create(4 * UINT16_MAX)),
-		m_MeshResourcesBuffer(4096 * sizeof DeviceMeshData), // allow up to 4096 meshes be allocated at once
+		m_MeshResourcesBuffer(4096 * sizeof GLSL::MeshData), // allow up to 4096 meshes be allocated at once
 		m_StorageImageIndexAllocator(VirtualMemoryBlock::Create(4 * UINT16_MAX))
 	{
 		AssetManager* asset_manager = AssetManager::Get();
@@ -89,7 +93,7 @@ namespace Omni {
 			buffer_spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
 			buffer_spec.heap = DeviceBufferMemoryHeap::DEVICE;
 			buffer_spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
-			buffer_spec.size = sizeof DeviceCameraData * Renderer::GetConfig().frames_in_flight;
+			buffer_spec.size = sizeof GLSL::CameraData * Renderer::GetConfig().frames_in_flight;
 			m_CameraDataBuffer = DeviceBuffer::Create(buffer_spec);
 		}
 
@@ -143,7 +147,7 @@ namespace Omni {
 			ShaderLibrary* shader_library = ShaderLibrary::Get();
 			tf::Taskflow taskflow;
 
-			std::string shader_prefix = "Resources/Shaders/";
+			std::string shader_prefix = "Resources/Shaders/Source/";
 
 			std::map<std::string, UUID> shader_name_to_uuid_table;
 
@@ -236,7 +240,7 @@ namespace Omni {
 			DeviceBufferSpecification spec;
 			
 			// Create initial render queue
-			spec.size = sizeof(DeviceRenderableObject) * std::pow(2, 16) * frames_in_flight;
+			spec.size = sizeof(GLSL::RenderObjectData) * std::pow(2, 16) * frames_in_flight;
 			spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
 			spec.heap = DeviceBufferMemoryHeap::DEVICE;
 			spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
@@ -245,7 +249,7 @@ namespace Omni {
 			m_DeviceRenderQueue = DeviceBuffer::Create(spec);
 
 			// Create post-cull render queue
-			spec.size = sizeof(DeviceRenderableObject) * std::pow(2, 16);
+			spec.size = sizeof(GLSL::RenderObjectData) * std::pow(2, 16);
 			spec.memory_usage = DeviceBufferMemoryUsage::NO_HOST_ACCESS;
 			OMNI_DEBUG_ONLY_CODE(spec.debug_name = "Device culled render queue buffer");
 
@@ -380,7 +384,7 @@ namespace Omni {
 		if (camera) {
 			m_Camera = camera;
 
-			DeviceCameraData camera_data;
+			GLSL::CameraData camera_data;
 			camera_data.view = m_Camera->GetViewMatrix();
 			camera_data.proj = m_Camera->GetProjectionMatrix();
 			camera_data.view_proj = m_Camera->GetViewProjectionMatrix();
@@ -427,7 +431,7 @@ namespace Omni {
 			m_DeviceRenderQueue->UploadData(
 				m_DeviceRenderQueue->GetFrameOffset(),
 				m_HostRenderQueue.data(),
-				m_HostRenderQueue.size() * sizeof DeviceRenderableObject
+				m_HostRenderQueue.size() * sizeof(GLSL::RenderObjectData)
 			);
 
 			Renderer::Submit([=]() {
@@ -749,16 +753,16 @@ namespace Omni {
 	{
 		std::lock_guard lock(m_Mutex);
 
-		DeviceMeshData mesh_data = {};
+		GLSL::MeshData mesh_data = {};
 		mesh_data.lod_distance_multiplier = 1.0f;
 		mesh_data.bounding_sphere = mesh->GetBoundingSphere();
 		mesh_data.meshlet_count = mesh->GetMeshletCount();
 		mesh_data.quantization_grid_size = mesh->GetQuantizationGridSize();
-		mesh_data.geometry_bda = mesh->GetBuffer(MeshBufferKey::GEOMETRY)->GetDeviceAddress();
-		mesh_data.attributes_bda = mesh->GetBuffer(MeshBufferKey::ATTRIBUTES)->GetDeviceAddress();
-		mesh_data.meshlets_bda = mesh->GetBuffer(MeshBufferKey::MESHLETS)->GetDeviceAddress();
-		mesh_data.micro_indices_bda = mesh->GetBuffer(MeshBufferKey::MICRO_INDICES)->GetDeviceAddress();
-		mesh_data.meshlets_cull_data_bda = mesh->GetBuffer(MeshBufferKey::MESHLETS_CULL_DATA)->GetDeviceAddress();
+		mesh_data.vertices = mesh->GetBuffer(MeshBufferKey::GEOMETRY)->GetDeviceAddress();
+		mesh_data.attributes = mesh->GetBuffer(MeshBufferKey::ATTRIBUTES)->GetDeviceAddress();
+		mesh_data.meshlets_data = mesh->GetBuffer(MeshBufferKey::MESHLETS)->GetDeviceAddress();
+		mesh_data.micro_indices = mesh->GetBuffer(MeshBufferKey::MICRO_INDICES)->GetDeviceAddress();
+		mesh_data.meshlets_cull_bounds = mesh->GetBuffer(MeshBufferKey::MESHLETS_CULL_DATA)->GetDeviceAddress();
 
 		return m_MeshResourcesBuffer.Allocate(mesh->Handle, mesh_data);
 	}
@@ -783,7 +787,7 @@ namespace Omni {
 		m_SpriteQueue.push_back(sprite);
 	}
 
-	void SceneRenderer::RenderObject(Shared<Pipeline> pipeline, const DeviceRenderableObject& render_data)
+	void SceneRenderer::RenderObject(Shared<Pipeline> pipeline, const GLSL::RenderObjectData& render_data)
 	{
 		m_ActiveMaterialPipelines.emplace(pipeline);
 		m_HostRenderQueue.emplace_back(render_data);

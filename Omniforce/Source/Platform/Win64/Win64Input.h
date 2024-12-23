@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Foundation/Types.h>
 #include <Core/Input/Input.h>
 
 namespace Omni {
@@ -16,7 +17,7 @@ namespace Omni {
 
 		float32 Impl_MouseScrolledY(const std::string& window_tag) const override;
 
-		vec2<int32> Impl_MousePosition(const std::string& window_tag) const override;
+		ivec2 Impl_MousePosition(const std::string& window_tag) const override;
 
 		void Impl_LockAndHideMouse(const std::string& window_tag) override;
 

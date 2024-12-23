@@ -27,7 +27,7 @@ namespace Omni {
 		float32 parent_error;
 	};
 
-	struct OMNIFORCE_API MeshletCullBounds {
+	struct OMNIFORCE_API MeshletBounds {
 		// Visibility culling data
 		Sphere vis_culling_sphere;
 		glm::vec3 cone_apex;

@@ -13,6 +13,9 @@
 #include <Core/CallbackRHUMap.h>
 #include <Memory/VirtualMemoryBlock.h>
 #include <DebugUtils/DebugRenderer.h>
+#include <Shaders/Shared/RenderObject.glslh>
+#include <Shaders/Shared/MeshData.glslh>
+#include <Shaders/Shared/Lights.glslh>
 
 #include <vector>
 #include <shared_mutex>
@@ -75,10 +78,10 @@ namespace Omni {
 		uint32 GetMeshIndex(const AssetHandle& uuid) const { return m_MeshResourcesBuffer.GetIndex(uuid); }
 
 		void RenderSprite(const Sprite& sprite);
-		void RenderObject(Shared<Pipeline> pipeline, const DeviceRenderableObject& render_data);
+		void RenderObject(Shared<Pipeline> pipeline, const GLSL::RenderObjectData& render_data);
 
 		// Lighting
-		void AddPointLight(const PointLight& point_light) { m_HostPointLights.push_back(point_light); }
+		void AddPointLight(const GLSL::PointLight& point_light) { m_HostPointLights.push_back(point_light); }
 
 	private:
 		Shared<Camera> m_Camera;
@@ -109,11 +112,11 @@ namespace Omni {
 		rhumap<UUID, uint32> m_StorageImageIndices;
 		Shared<DeviceBuffer> m_SpriteDataBuffer;
 
-		DeviceIndexedResourceBuffer<DeviceMeshData> m_MeshResourcesBuffer;
+		DeviceIndexedResourceBuffer<GLSL::MeshData> m_MeshResourcesBuffer;
 		DeviceMaterialPool m_MaterialDataPool;
 
 		rh::unordered_flat_set<Shared<Pipeline>> m_ActiveMaterialPipelines;
-		std::vector<DeviceRenderableObject> m_HostRenderQueue;
+		std::vector<GLSL::RenderObjectData> m_HostRenderQueue;
 		Shared<DeviceBuffer> m_DeviceRenderQueue;
 		Shared<DeviceBuffer> m_CulledDeviceRenderQueue;
 		Shared<DeviceBuffer> m_DeviceIndirectDrawParams;
@@ -134,7 +137,7 @@ namespace Omni {
 		Shared<DeviceBuffer> m_VisibleClusters;
 		Shared<DeviceBuffer> m_SWRasterQueue;
 
-		std::vector<PointLight> m_HostPointLights;
+		std::vector<GLSL::PointLight> m_HostPointLights;
 		Shared<DeviceBuffer> m_DevicePointLights;
 		std::shared_mutex m_Mutex;
 

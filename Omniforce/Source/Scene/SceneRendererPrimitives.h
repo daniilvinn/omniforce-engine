@@ -1,50 +1,11 @@
 #pragma once
 
 #include <Foundation/Types.h>
-
 #include <Renderer/Mesh.h>
 
 #include <glm/glm.hpp>
 
 namespace Omni {
-
-	struct DeviceCameraData {
-		glm::mat4 view;
-		glm::mat4 proj;
-		glm::mat4 view_proj;
-		glm::vec3 position;
-		Frustum frustum;
-		glm::vec3 forward_vector;
-		float32 fov; // In radians
-		float32 viewport_height;
-		float32 viewport_width;
-		float32 near_clip_distance;
-		float32 far_clip_distance;
-	};
-
-	struct DeviceMeshData {
-		float32 lod_distance_multiplier;
-		Sphere bounding_sphere;
-		uint32 meshlet_count;
-		int32 quantization_grid_size;
-		uint64 geometry_bda;
-		uint64 attributes_bda;
-		uint64 meshlets_bda;
-		uint64 micro_indices_bda;
-		uint64 meshlets_cull_data_bda;
-	};
-
-	struct TRS {
-		glm::vec3 translation;
-		glm::u16vec4 rotation;
-		glm::vec3 scale;
-	};
-
-	struct DeviceRenderableObject {
-		TRS trs;
-		uint32 render_data_index;
-		uint64 material_bda;
-	};
 
 	// TODO: here some extreme hackery with alignment
 	struct IndirectFrustumCullPassPushContants {

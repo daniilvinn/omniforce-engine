@@ -11,10 +11,14 @@
 #include <Scripting/ScriptEngine.h>
 #include <Threading/JobSystem.h>
 #include <Core/Utils.h>
+#include <Shaders/Shared/RenderObject.glslh>
+#include <Shaders/Shared/Lights.glslh>
 
 #include <nlohmann/json.hpp>
 
 namespace Omni {
+
+	using namespace Omni::GLSL;
 
 	template<typename Component>
 	static void ExplicitComponentCopy(entt::registry& src_registry, entt::registry& dst_registry, robin_hood::unordered_map<UUID, entt::entity>& map) {
@@ -132,14 +136,14 @@ namespace Omni {
 				Entity entity(e, this);
 				TRSComponent trs_component = entity.GetWorldTransform();
 
-				DeviceRenderableObject renderable_object = {};
-				renderable_object.trs.translation = trs_component.translation;
-				renderable_object.trs.rotation = glm::packHalf(glm::vec4(
+				RenderObjectData renderable_object = {};
+				renderable_object.transform.translation = trs_component.translation;
+				renderable_object.transform.rotation = glm::packHalf(glm::vec4(
 					trs_component.rotation.x, trs_component.rotation.y,
 					trs_component.rotation.z, trs_component.rotation.w
 				));
-				renderable_object.trs.scale = trs_component.scale;
-				renderable_object.render_data_index = m_Renderer->GetMeshIndex(mesh_data.mesh_handle);
+				renderable_object.transform.scale = trs_component.scale;
+				renderable_object.geometry_data_id = m_Renderer->GetMeshIndex(mesh_data.mesh_handle);
 				renderable_object.material_bda = m_Renderer->GetMaterialBDA(mesh_data.material_handle);
 				m_Renderer->RenderObject(asset_manager->GetAsset<Material>(mesh_data.material_handle)->GetPipeline(), renderable_object);
 			});
@@ -149,7 +153,7 @@ namespace Omni {
 				Entity entity(e, this);
 				TRSComponent trs_component = entity.GetWorldTransform();
 
-				PointLight light_data = {};
+				GLSL::PointLight light_data = {};
 				light_data.position = trs_component.translation;
 				light_data.color = point_light.color;
 				light_data.intensity = point_light.intensity;

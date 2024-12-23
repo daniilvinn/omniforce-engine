@@ -7,14 +7,14 @@ namespace Omni {
 	class OMNIFORCE_API MouseMovedEvent : public Event {
 	public:
 		MouseMovedEvent() = delete;
-		MouseMovedEvent(vec2<float32> pos) : m_Position(pos), Event(Event::Type::MouseMoved) {};
+		MouseMovedEvent(fvec2 pos) : m_Position(pos), Event(Event::Type::MouseMoved) {};
 
 		REGISTER_EVENT(MouseMoved, Mouse)
 
-		vec2<float32> GetPosition() const { return m_Position; }
+		fvec2 GetPosition() const { return m_Position; }
 
 	private:
-		vec2<float32> m_Position;
+		fvec2 m_Position;
 	};
 
 	class OMNIFORCE_API MouseButtonPressedEvent : public Event {
@@ -45,14 +45,14 @@ namespace Omni {
 	class OMNIFORCE_API MouseScrolledEvent : public Event {
 	public:
 		MouseScrolledEvent() = delete;
-		MouseScrolledEvent(vec2<float32> axis) : m_Axis(axis), Event(Event::Type::MouseScrolled) {};
+		MouseScrolledEvent(fvec2 axis) : m_Axis(axis), Event(Event::Type::MouseScrolled) {};
 
 		REGISTER_EVENT(MouseScrolled, Mouse)
 
-		inline const vec2<float32> GetAxis() const { return m_Axis; }
+		inline const fvec2 GetAxis() const { return m_Axis; }
 
 	private:
-		vec2<float32> m_Axis;
+		fvec2 m_Axis;
 	};
 
 }

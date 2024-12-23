@@ -43,7 +43,7 @@ namespace Omni {
 		m_Macros.emplace("__OMNI_PIPELINE_LOCAL_HASH", std::to_string(Pipeline::ComputeDeviceID(pipeline_id)));
 
 		if (!shader) {
-			shader_library->LoadShader("Resources/shaders/GBufferOpaque.ofs", m_Macros);
+			shader_library->LoadShader("Resources/Shaders/Source/GBufferOpaque.ofs", m_Macros);
 			shader = shader_library->GetShader("GBufferOpaque.ofs", m_Macros);
 		}
 
