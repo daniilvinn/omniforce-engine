@@ -52,3 +52,6 @@
 [submodule "Omniforce/ThirdParty/VulkanMemoryAllocator"]
 	path = Omniforce/ThirdParty/VulkanMemoryAllocator
 	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+[submodule "Omniforce/ThirdParty/miniaudio"]
+	path = Omniforce/ThirdParty/miniaudio
+	url = https://github.com/mackron/miniaudio.git

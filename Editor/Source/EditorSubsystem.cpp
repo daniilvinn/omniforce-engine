@@ -381,7 +381,7 @@ public:
 	{
 		const char* filters[] = { "*.omni" };
 
-		char* filepath = tinyfd_openFileDialog(
+		const char* filepath = tinyfd_openFileDialog(
 			"Open project",
 			std::filesystem::current_path().string().c_str(),
 			1,
@@ -440,7 +440,7 @@ public:
 	void NewProject() {
 		const char* filters[] = { "*.omni" };
 
-		char* filepath = tinyfd_saveFileDialog(
+		const char* filepath = tinyfd_saveFileDialog(
 			"New project",
 			std::filesystem::current_path().string().c_str(),
 			1,

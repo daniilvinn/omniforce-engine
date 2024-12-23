@@ -1,6 +1,7 @@
 #include "../AudioSource.h"
 #include "../AudioEngine.h"
-#include "../miniaudio.h"
+
+#include <miniaudio.h>
 
 namespace Omni {
 

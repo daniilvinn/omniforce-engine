@@ -17,6 +17,8 @@ file (GLOB_RECURSE ENGINE_FILES
     "ThirdParty/taskflow/taskflow/*.h"
     "ThirdParty/taskflow/taskflow/*.cpp"
     "ThirdParty/taskflow/taskflow/*.hpp"
+    "ThirdParty/tinyfiledialogs/tinyfiledialogs.c"
+    "ThirdParty/tinyfiledialogs/more_dialogs/tinyfd_moredialogs.c"
 )
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ENGINE_FILES})
@@ -37,6 +39,8 @@ target_include_directories(${ENGINE_TARGET}
         "ThirdParty/robin-hood-hashing/src/include"
         "${CMAKE_CURRENT_SOURCE_DIR}"
         "${CMAKE_CURRENT_SOURCE_DIR}/Shaders"
+        "ThirdParty/tinyfiledialogs"
+        "ThirdParty/miniaudio"
     SYSTEM PRIVATE
         "${Vulkan_SDK}\\Include" 
         "${Vulkan_SDK}\\Source" 

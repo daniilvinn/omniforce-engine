@@ -6,7 +6,6 @@ file(GLOB_RECURSE EDITOR_FILES
 	"Source/*.h"
 	"Source/*.cpp"
 	"Source/*.hpp"
-	"Source/*.c"
 )
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${EDITOR_FILES})
