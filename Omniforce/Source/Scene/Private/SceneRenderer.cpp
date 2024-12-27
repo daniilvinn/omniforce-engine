@@ -345,7 +345,6 @@ namespace Omni {
 
 	SceneRenderer::~SceneRenderer()
 	{
-
 	}
 
 	void SceneRenderer::Destroy()
@@ -356,10 +355,15 @@ namespace Omni {
 		m_SpritePass->Destroy();
 		m_SpriteDataBuffer->Destroy();
 		m_CameraDataBuffer->Destroy();
+		m_DeviceRenderQueue->Destroy();
+		m_SWRasterQueue->Destroy();
 		for (auto set : m_SceneDescriptorSet)
 			set->Destroy();
 		for (auto& output : m_RendererOutputs)
 			output->Destroy();
+		m_MeshResourcesBuffer.Destroy();
+		m_DevicePointLights->Destroy();
+		m_VisibleClusters->Destroy();
 	}
 
 	void SceneRenderer::BeginScene(Shared<Camera> camera)

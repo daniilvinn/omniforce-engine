@@ -29,6 +29,11 @@ namespace Omni {
 			m_StagingForCopy = DeviceBuffer::Create(buffer_spec);
 		}
 
+		void Destroy() {
+			m_DeviceBuffer->Destroy();
+			m_StagingForCopy->Destroy();
+		}
+
 		uint32 Allocate(const UUID& id, const T& data) {
 			uint32 offset = m_IndexAllocator->Allocate(sizeof(T), alignof(T));
 			uint32 index = offset / sizeof (T);

@@ -99,7 +99,8 @@ namespace Omni {
 
 	DebugRenderer::~DebugRenderer()
 	{
-
+		m_IcosphereMesh->Destroy();
+		m_CubeMesh->Destroy();
 	}
 
 	void DebugRenderer::SetCameraBuffer(Shared<DeviceBuffer> buffer)

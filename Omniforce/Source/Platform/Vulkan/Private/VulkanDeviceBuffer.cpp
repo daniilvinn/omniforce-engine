@@ -36,6 +36,7 @@ namespace Omni {
 	VulkanDeviceBuffer::VulkanDeviceBuffer(const DeviceBufferSpecification& spec)
 		: m_Buffer(VK_NULL_HANDLE), m_Specification(spec), m_Data(nullptr)
 	{
+
 		VulkanMemoryAllocator* alloc = VulkanMemoryAllocator::Get();
 		uint64 vma_flags = convert(spec.memory_usage);
 
@@ -67,6 +68,7 @@ namespace Omni {
 	VulkanDeviceBuffer::VulkanDeviceBuffer(const DeviceBufferSpecification& spec, void* data, uint64 data_size)
 		: m_Buffer(VK_NULL_HANDLE), m_Specification(spec), m_Data(nullptr)
 	{
+
 		VulkanMemoryAllocator* alloc = VulkanMemoryAllocator::Get();
 		uint64 vma_flags = convert(spec.memory_usage);
 
