@@ -65,10 +65,6 @@ namespace Omni {
 		std::map<uint32, std::vector<VkDescriptorSetLayoutBinding>> bindings;
 		VkPushConstantRange push_constant_range = {};
 
-		OMNIFORCE_CORE_TRACE("=======================");
-		OMNIFORCE_CORE_TRACE("Reflecting shader - {0}", path.filename().string());
-		OMNIFORCE_CORE_TRACE("=======================");
-
 		for (auto& stage_data : binaries) {
 			VkShaderModule shader_module;
 
@@ -150,17 +146,8 @@ namespace Omni {
 			spvReflectDestroyShaderModule(&reflect_module);
 		}
 
-		if(push_constant_range.size)
+		if (push_constant_range.size) {
 			m_Ranges.push_back(push_constant_range);
-
-		if (OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG) {
-			for (auto& set : bindings) {
-				OMNIFORCE_CORE_TRACE("\tSet #{0}: ", set.first);
-				for (auto& binding : set.second) {
-					OMNIFORCE_CORE_TRACE("\t\t Binding #{0}: {1}[{2}]", binding.binding, DescriptorToString(binding.descriptorType), binding.descriptorCount);
-				}
-			}
-			printf("\n");
 		}
 
 		if (bindings.size()) {

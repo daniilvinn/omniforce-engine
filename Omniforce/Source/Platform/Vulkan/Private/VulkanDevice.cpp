@@ -96,7 +96,7 @@ namespace Omni {
 
 		vkGetPhysicalDeviceProperties2(m_PhysicalDevice, &m_DeviceProps);
 
-		OMNIFORCE_CORE_TRACE("Selected Vulkan device: {0}", m_DeviceProps.properties.deviceName);
+		OMNIFORCE_CORE_TRACE("Selected rendering device: {0}", m_DeviceProps.properties.deviceName);
 	}
 
 	VulkanPhysicalDevice::~VulkanPhysicalDevice()
@@ -104,7 +104,7 @@ namespace Omni {
 		// TODO: test this code
 		void* node = &m_DeviceProps;
 		while (node != nullptr) {
-			intptr_t offset_ptr = ((intptr_t)node + 4); // offsetting to pNext
+			intptr_t offset_ptr = ((intptr_t)node + sizeof(VkStructureType)); // offsetting to pNext
 			void* next_node = (void*)offset_ptr;
 
 			delete node;

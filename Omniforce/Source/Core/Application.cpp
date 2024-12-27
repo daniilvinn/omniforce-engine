@@ -2,7 +2,6 @@
 
 #include <Core/Events/ApplicationEvents.h>
 #include <Core/Input/Input.h>
-#include <Core/Input/Input.h>
 #include <Log/Logger.h>
 #include <Renderer/Renderer.h>
 #include <Renderer/ShaderLibrary.h>
@@ -27,10 +26,10 @@ namespace Omni
 
 	void Application::Launch(Options& options)
 	{
+		OMNIFORCE_CORE_INFO("Engine startup initiated");
+
 		s_Instance = this;
 		m_RootSystem = options.root_system;
-
-		OMNIFORCE_INITIALIZE_LOG_SYSTEM(Logger::Level::LEVEL_TRACE);
 
 		m_WindowSystem = WindowSystem::Init();
 
@@ -76,12 +75,14 @@ namespace Omni
 	void Application::Run()
 	{
 		m_RootSystem->Launch();
+		OMNIFORCE_CORE_INFO("Entering engine loop");
 		while (m_Running) {
 			PreFrame();
 			if (!m_WindowSystem->GetWindow("main")->Minimized())
 				m_RootSystem->OnUpdate(m_DeltaTimeData.delta_time);
 			PostFrame();
 		}
+		OMNIFORCE_CORE_INFO("Exiting engine loop");
 		m_RootSystem->Destroy();
 	}
 

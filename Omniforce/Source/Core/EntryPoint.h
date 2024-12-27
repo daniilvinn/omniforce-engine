@@ -11,7 +11,7 @@ extern Omni::Subsystem* ConstructRootSystem();
 
 using namespace Omni;
 
-bool g_EngineRunning;
+bool GEngineRunning;
 
 #ifdef OMNIFORCE_RELEASE
 INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
@@ -20,9 +20,12 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 int main()
 #endif
 {
-	g_EngineRunning = true;
+	GEngineRunning = true;
 
-	while (g_EngineRunning) 
+	OMNIFORCE_INITIALIZE_LOG_SYSTEM(Logger::Level::LEVEL_TRACE);
+	OMNIFORCE_CORE_INFO("Entering `main` function");
+
+	while (GEngineRunning) 
 	{
 		Scope<Application> app = std::make_unique<Application>();
 	
@@ -34,6 +37,6 @@ int main()
 		app->Run();
 		app->Destroy();
 
-		g_EngineRunning = false;
+		GEngineRunning = false;
 	}
 }

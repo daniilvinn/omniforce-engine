@@ -59,6 +59,8 @@ namespace Omni {
 
 	ShaderCompilationResult ShaderCompiler::Compile(std::string& source, const std::string& filename, const ShaderMacroTable& macros)
 	{
+		OMNIFORCE_CORE_INFO("Compiling shader {}", filename);
+
 		ShaderCompilationResult compilation_result = { .valid = true };
 		shaderc::CompileOptions local_options = m_GlobalOptions;
 

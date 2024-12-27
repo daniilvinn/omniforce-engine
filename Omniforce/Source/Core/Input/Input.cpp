@@ -18,6 +18,8 @@ namespace Omni {
 			std::unreachable();
 			break;
 		}
+
+		OMNIFORCE_CORE_INFO("Initialized input engine");
 	}
 
 	void Input::Shutdown()

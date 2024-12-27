@@ -18,7 +18,7 @@ namespace Omni {
 
 	VulkanImGuiRenderer::VulkanImGuiRenderer()
 	{
-		OMNIFORCE_CORE_TRACE("Create ImGui renderer");
+
 	}
 
 	VulkanImGuiRenderer::~VulkanImGuiRenderer()
@@ -28,7 +28,6 @@ namespace Omni {
 
 	void VulkanImGuiRenderer::Launch(void* window_handle)
 	{
-		OMNIFORCE_CORE_TRACE("Launching ImGui renderer...");
 		auto device = VulkanGraphicsContext::Get()->GetDevice();
 		auto context = VulkanGraphicsContext::Get();
 		auto glfw_window = (GLFWwindow*)window_handle;
@@ -62,8 +61,6 @@ namespace Omni {
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-
-		OMNIFORCE_CORE_TRACE("Created ImGui context");
 
 		ImGui::StyleColorsDark();
 
@@ -126,8 +123,6 @@ namespace Omni {
 		style.Colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
 		style.GrabRounding = style.FrameRounding = 2.3f;
 
-		OMNIFORCE_CORE_TRACE("Setted ImGui styles");
-
 		VkInstance inst = context->GetVulkanInstance();
 
 		ImGui_ImplVulkan_LoadFunctions([](const char* function_name, void* vk_instance) {
@@ -135,11 +130,7 @@ namespace Omni {
 			&inst
 		);
 
-		OMNIFORCE_CORE_TRACE("Loaded vulkan functions for imgui renderer");
-
 		ImGui_ImplGlfw_InitForVulkan(glfw_window, true);
-
-		OMNIFORCE_CORE_TRACE("Initialized ImGui GLFW implementation for Vulkan");
 
 		VkFormat format[1] = { VK_FORMAT_B8G8R8A8_UNORM };
 
@@ -163,13 +154,13 @@ namespace Omni {
 
 		ImGui_ImplVulkan_Init(&init_info);
 
-		OMNIFORCE_CORE_TRACE("[ImGuiRenderer]: Min image count: {} | image count: {}", init_info.MinImageCount, init_info.ImageCount);
-
 		ImFont* m_MainFont = io.Fonts->AddFontFromFileTTF("Resources/Fonts/roboto.ttf", 16);
-
 		ImGui_ImplVulkan_CreateFontsTexture();
 
-		OMNIFORCE_CORE_TRACE("Launched ImGui renderer");
+		if (m_MainFont == nullptr)
+			OMNIFORCE_CORE_CRITICAL("Failed to load font for ImGui renderer");
+
+		OMNIFORCE_CORE_INFO("Initialized ImGui renderer");
 	}
 
 	void VulkanImGuiRenderer::Destroy()

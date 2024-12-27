@@ -7,7 +7,6 @@ namespace Omni {
 	void AudioEngine::Init()
 	{
 		s_Instance = new AudioEngine;
-		OMNIFORCE_CORE_TRACE("Initialized audio engine");
 	}
 
 	void AudioEngine::Shutdown()
@@ -25,7 +24,9 @@ namespace Omni {
 		m_Engine = new ma_engine;
 		ma_result result = ma_engine_init(NULL, m_Engine);
 		if (result != MA_SUCCESS)
-			OMNIFORCE_CORE_CRITICAL("[AudioEngine]: failed to initialize");
+			OMNIFORCE_CORE_CRITICAL("Failed to initialize audio engine");
+
+		OMNIFORCE_CORE_INFO("Initialized audio engine");
 		
 	}
 

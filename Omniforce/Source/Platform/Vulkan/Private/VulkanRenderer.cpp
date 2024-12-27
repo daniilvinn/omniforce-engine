@@ -56,6 +56,8 @@ namespace Omni {
 			descriptor_pool_create_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 
 			vkCreateDescriptorPool(m_Device->Raw(), &descriptor_pool_create_info, nullptr, &s_DescriptorPool);
+
+			OMNIFORCE_CORE_INFO("Initialized global renderer descriptor pool");
 		}
 	}
 
@@ -65,6 +67,8 @@ namespace Omni {
 		for (auto& cmd_buffer : m_CmdBuffers)
 			cmd_buffer->Destroy();
 		vkDestroyDescriptorPool(m_Device->Raw(), s_DescriptorPool, nullptr);
+
+		OMNIFORCE_CORE_INFO("Destroyed global renderer descriptor pool");
 	}
 
 	void VulkanRenderer::BeginFrame()

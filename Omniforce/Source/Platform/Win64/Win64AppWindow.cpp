@@ -22,6 +22,9 @@ namespace Omni {
 			nullptr
 		);
 
+		if (m_WindowHandle == nullptr)
+			OMNIFORCE_CORE_CRITICAL("Failed to create application window");
+
 		glfwSetWindowUserPointer(m_WindowHandle, this);
 
 		glfwSetWindowSizeCallback(m_WindowHandle, [](GLFWwindow* window, int width, int height) {
@@ -85,6 +88,8 @@ namespace Omni {
 			auto impl_window = (Win64AppWindow*)glfwGetWindowUserPointer(window);
 			impl_window->AllocateEvent<KeyTypedEvent>(code);
 		});
+
+		OMNIFORCE_CORE_INFO("Created application window");
 	}
 
 	Win64AppWindow::~Win64AppWindow()

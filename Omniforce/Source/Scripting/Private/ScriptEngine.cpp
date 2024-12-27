@@ -54,13 +54,15 @@ namespace Omni {
 
 		// Root domain
 		mRootDomain = mono_jit_init("OmniScriptEngine");
+
 		if (mRootDomain == nullptr)
-			OMNIFORCE_CORE_INFO("[ScriptEngine]: failed to initialize root domain");
-		else
-			OMNIFORCE_CORE_INFO("[ScriptEngine]: initialized root domain");
+			OMNIFORCE_CORE_CRITICAL("Failed to initialize script engine root domain");
+
 		ResetData(); // initialize
 
 		ScriptAPI::AddInternalCalls();
+
+		OMNIFORCE_CORE_INFO("Initialized script engine");
 	}
 
 	MonoImage* ScriptEngine::GetCoreImage()

@@ -80,11 +80,7 @@ namespace Omni {
 			std::thread::hardware_concurrency() - 1
 		);
 
-		OMNIFORCE_CORE_INFO("Initialized physics engine: ");
-		OMNIFORCE_CORE_INFO("\tMax rigid bodies: {}", m_Limits.MAX_BODIES);
-		OMNIFORCE_CORE_INFO("\tMax body mutexes: {} {}", m_Limits.MAX_BODY_MUTEXES, m_Limits.MAX_BODY_MUTEXES ? "" : "(default)");
-		OMNIFORCE_CORE_INFO("\tMax broad phase body pairs: {}", m_Limits.MAX_BROAD_PHASE_BODY_PAIRS);
-		OMNIFORCE_CORE_INFO("\tMax contact constraints: {}", m_Limits.MAX_CONTACT_CONSTRAINTS);
+		OMNIFORCE_CORE_INFO("Initialized physics engine");
 	}
 
 	PhysicsEngine::~PhysicsEngine()

@@ -32,7 +32,7 @@ namespace Omni {
 				&m_Surface
 			)
 		);
-		OMNIFORCE_CORE_TRACE("Created window surface");
+		OMNIFORCE_CORE_INFO("Initialized application window surface");
 
 		// Looking for available presentation modes.
 		// FIFO (aka v-synced) is guaranteed to be available, so only looking for Mailbox (non v-synced) mode.
@@ -47,6 +47,9 @@ namespace Omni {
 			if (mode == VK_PRESENT_MODE_MAILBOX_KHR) m_SupportsMailboxPresentation = true;
 		}
 
+		if (!m_SupportsMailboxPresentation && !spec.vsync)
+			OMNIFORCE_CORE_WARNING("Mailbox presentation mode is requested but not supporeted. Falling back to FIFO mode");
+
 		// Looking for suitable surface color space
 		uint32 surface_format_count = 0;
 		vkGetPhysicalDeviceSurfaceFormatsKHR(device->GetPhysicalDevice()->Raw(), m_Surface, &surface_format_count, nullptr);
@@ -58,9 +61,11 @@ namespace Omni {
 		m_SurfaceFormat = surface_formats[0];
 
 		for (auto& format : surface_formats) {
-			if (format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+			if (format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
 				m_SurfaceFormat = format;
+			}
 		}
+
 	}
 
 	void VulkanSwapchain::CreateSwapchain(const SwapchainSpecification& spec)
@@ -216,8 +221,8 @@ namespace Omni {
 			m_Fences.push_back(fence);
 		}
 		
-		OMNIFORCE_CORE_TRACE(
-			"Created renderer swapchain. Spec - extent: {0}x{1}, VSync: {2}, image count: {3}",
+		OMNIFORCE_CORE_INFO(
+			"Created window swapchain with extent: {0}x{1}, VSync: {2}, image count: {3}",
 			spec.extent.x,
 			spec.extent.y,
 			spec.vsync ? "on" : "off",
@@ -236,6 +241,7 @@ namespace Omni {
 
 		OMNIFORCE_ASSERT_TAGGED(!m_Swapchain, "Attempted to destroy window surface, but associated swapchain was not destroyed yet");
 		vkDestroySurfaceKHR(ctx->GetVulkanInstance(), m_Surface, nullptr);
+		OMNIFORCE_CORE_INFO("Destroyed application window surface");
 	}
 
 	void VulkanSwapchain::DestroySwapchain()
@@ -259,6 +265,8 @@ namespace Omni {
 		}
 
 		m_Swapchain = VK_NULL_HANDLE;
+
+		OMNIFORCE_CORE_INFO("Destroyed swapchain and sync primitives");
 	}
 
 	void VulkanSwapchain::SetVSync(bool vsync)

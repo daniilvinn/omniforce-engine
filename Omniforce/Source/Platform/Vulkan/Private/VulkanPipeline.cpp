@@ -294,7 +294,7 @@ namespace Omni {
 			return;
 		}
 
-		OMNIFORCE_CORE_TRACE("Pipeline \"{0}\" created successfully", m_Specification.debug_name);
+		OMNIFORCE_CORE_TRACE("Created pipeline \"{0}\"", m_Specification.debug_name);
 
 	}
 

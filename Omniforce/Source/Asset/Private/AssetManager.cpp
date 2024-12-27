@@ -13,6 +13,7 @@ namespace Omni {
 
 	AssetManager::AssetManager()
 	{
+		OMNIFORCE_CORE_INFO("Initialized asset manager");
 	}
 
 	AssetManager::~AssetManager()
@@ -24,7 +25,6 @@ namespace Omni {
 	{
 		stbi_set_flip_vertically_on_load(true);
 		s_Instance = new AssetManager;
-		OMNIFORCE_CORE_TRACE("Initialized asset manager");
 	}
 
 	void AssetManager::Shutdown()
