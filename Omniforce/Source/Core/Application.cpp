@@ -12,6 +12,8 @@
 #include <Threading/JobSystem.h>
 #include <DebugUtils/DebugRenderer.h>
 
+#include "Memory/Allocators/DedicatedMemoryAllocator.h"
+
 #include <chrono>
 
 namespace Omni 

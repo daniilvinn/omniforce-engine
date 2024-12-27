@@ -1,6 +1,8 @@
 #pragma once
 
 #include "../Allocator.h"
+#include "../InternalSetup.h"
+#include "../Pointers.h"
 
 namespace Omni {
 
@@ -25,6 +27,10 @@ namespace Omni {
 			InAllocation.Invalidate();
 		}
 
+		void Clear() override {};
+
 	};
+
+	inline DedicatedMemoryAllocator GDedicatedMemoryAllocator = IAllocator::Setup<DedicatedMemoryAllocator>();
 
 }

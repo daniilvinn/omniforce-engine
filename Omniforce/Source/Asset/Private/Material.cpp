@@ -1,8 +1,8 @@
 #include "../Material.h"
 
-#include <Log/Logger.h>
 #include <Foundation/Macros.h>
-#include <Memory/Pointers.hpp>
+#include <Foundation/Types.h>
+#include <Log/Logger.h>
 #include <Renderer/ShaderLibrary.h>
 #include <Scene/PipelineLibrary.h>
 

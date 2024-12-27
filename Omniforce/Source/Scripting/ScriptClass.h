@@ -4,7 +4,6 @@
 
 #include <Foundation/Macros.h>
 #include <Foundation/Types.h>
-#include <Memory/Pointers.hpp>
 #include <Core/UUID.h>
 #include "RuntimeScriptInstance.h"
 

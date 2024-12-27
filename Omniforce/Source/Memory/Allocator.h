@@ -1,8 +1,6 @@
 #pragma once
 
 #include <Foundation/Macros.h>
-#include <Foundation/Types.h>
-#include <Threading/ConditionalLock.h>
 #include "MemoryAllocation.h"
 
 namespace Omni {
@@ -11,20 +9,26 @@ namespace Omni {
 	public:
 		virtual ~IAllocator() {};
 
-		template<typename T, typename... Args>
-		void Allocate(Args&&... args) {
+		template<typename T, typename... TArgs>
+		MemoryAllocation Allocate(TArgs&&... args) {
 			MemoryAllocation Allocation = AllocateBase(sizeof(T));
-			Allocation.InitializeMemory<T>(args);
+			Allocation.InitializeMemory<T>(std::forward<TArgs>(args)...);
 
 			return Allocation;
 		}
 
-		virtual MemoryAllocation AllocateBase(uint32 InAllocationSize) = 0;
 
 		virtual void Free(MemoryAllocation& InAllocation) = 0;
 		virtual void Clear() = 0;
 
+		template<typename TAlloc, typename... TArgs>
+		static TAlloc Setup(TArgs&&... InArgs) {
+			return TAlloc(std::forward<TArgs>(InArgs)...);
+		}
+
 	protected:
+		virtual MemoryAllocation AllocateBase(uint32 InAllocationSize) = 0;
+
 		IAllocator() {};
 	};
 

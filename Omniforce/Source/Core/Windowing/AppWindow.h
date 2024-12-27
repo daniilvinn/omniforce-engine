@@ -2,11 +2,11 @@
 
 #include <Foundation/Macros.h>
 #include <Foundation/Types.h>
-#include <Memory/Pointers.hpp>
 #include <Core/Events/Event.h>
 
 #include <string>
 #include <functional>
+#include <shared_mutex>
 
 namespace Omni {
 

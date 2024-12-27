@@ -1,13 +1,14 @@
 #pragma once
 
-#include "Core/UUID.h"
-#include <cstdint>
-#include <glm/glm.hpp>
-#include <filesystem>
-#include <Memory/Pointers.hpp>
+#include <Core/UUID.h>
+#include <Memory/Pointers.h>
 
+#include <filesystem>
+#include <cstdint>
 #include <map>
 #include <limits>
+
+#include <glm/glm.hpp>
 
 namespace Omni {
 

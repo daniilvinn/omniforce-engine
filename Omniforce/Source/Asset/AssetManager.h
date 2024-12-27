@@ -3,7 +3,6 @@
 #include "Foundation/Macros.h"
 #include "Foundation/Types.h"
 #include <Renderer/Image.h>
-#include <Memory/Pointers.hpp>
 
 #include <filesystem>
 #include <shared_mutex>
