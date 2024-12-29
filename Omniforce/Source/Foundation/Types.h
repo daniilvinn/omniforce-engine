@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <map>
 #include <limits>
+#include <atomic>
 
 #include <glm/glm.hpp>
 
@@ -29,6 +30,9 @@ namespace Omni {
 	using BitMask = uint64;
 	using Flag = uint64;
 	using AssetHandle = UUID;
+
+	template <typename T>
+	using Atomic = std::atomic<T>;
 
 	namespace rh = robin_hood;
 	namespace stdfs = std::filesystem;

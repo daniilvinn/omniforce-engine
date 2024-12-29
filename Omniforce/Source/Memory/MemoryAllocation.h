@@ -4,16 +4,20 @@
 
 namespace Omni {
 
-	typedef uint32_t uint32;
+	typedef uint64_t uint64;
+	typedef uint8_t  byte;
 
 	struct MemoryAllocation {
-		void* Memory;
-		uint32 Size;
+		byte* Memory;
+		uint64 Size;
 
-		const uint32 INVALID_ALLOCATION_SIZE = UINT32_MAX;
+		const uint64 INVALID_ALLOCATION_SIZE = 0;
 
 		MemoryAllocation()
 			: Memory(nullptr), Size(INVALID_ALLOCATION_SIZE) {}
+
+		MemoryAllocation(byte* memory, uint64 size)
+			: Memory(memory), Size(size) {}
 
 		MemoryAllocation& operator=(const MemoryAllocation& other) {
 			Memory = other.Memory;
@@ -23,7 +27,7 @@ namespace Omni {
 		}
 
 		template<typename T>
-		inline T* As() const {
+		inline constexpr T* As() const {
 			return (T*)Memory;
 		}
 
@@ -40,6 +44,9 @@ namespace Omni {
 		inline bool IsValid() const {
 			return Memory != nullptr;
 		}
+		
+		inline static MemoryAllocation InvalidAllocation() { return MemoryAllocation(); }
+
 	};
 
 }

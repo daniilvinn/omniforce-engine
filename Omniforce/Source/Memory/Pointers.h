@@ -55,66 +55,68 @@ namespace Omni {
 	class OMNIFORCE_API Ptr {
 
 		template<typename... TArgs>
-		Ptr(IAllocator& InAllocator, TArgs&&... InArgs)
-			: mAllocator(InAllocator) {
-			mAllocation = mAllocator.Allocate<T>(std::forward<TArgs>(InArgs)...);
+		Ptr(IAllocator* allocator, TArgs&&... args)
+			: m_Allocator(allocator) {
+			m_Allocation = m_Allocator.Allocate<T>(std::forward<TArgs>(args)...);
 		};
 
 	public:
 		~Ptr() {
-			mAllocator.Free(mAllocation);
+			if (m_Allocation.IsValid()) {
+				m_Allocator.Free<T>(m_Allocation);
+			}
 		}
 
 		template <typename TAlloc, typename... TArgs>
-		static auto Create(TAlloc& allocator, TArgs&&... args) {
+		static auto Create(TAlloc* allocator, TArgs&&... args) {
 			return Ptr<T>(allocator, std::forward<TArgs>(args)...);
 		}
 
-		Ptr(const Ptr& InOther) = delete;
-		Ptr(Ptr&& InOther) noexcept
-			: mAllocator(InOther.mAllocator)
-			, mAllocation(InOther.mAllocation)
+		Ptr(const Ptr& other) = delete;
+		Ptr(Ptr&& other) noexcept
+			: m_Allocator(other.m_Allocator)
+			, m_Allocation(other.m_Allocation)
 		{
-			InOther.mAllocation.Invalidate();
+			other.m_Allocation.Invalidate();
 		}
 
-		Ptr<T>& operator=(const Ptr<T>& InOther) = delete;
-		Ptr<T>& operator=(Ptr<T>&& InOther) noexcept {
-			if (mAllocation.IsValid())
-				mAllocator->Free(mAllocation);
+		Ptr<T>& operator=(const Ptr<T>& other) = delete;
+		Ptr<T>& operator=(Ptr<T>&& other) noexcept {
+			if (m_Allocation.IsValid())
+				m_Allocator.FreeBase(m_Allocation);
 
-			mAllocator = InOther.mAllocator;
-			mAllocation = InOther.mAllocation;
+			m_Allocator = other.mAllocator;
+			m_Allocation = other.mAllocation;
 
-			InOther.mAllocation.Invalidate();
+			other.mAllocation.Invalidate();
 
 			return *this;
 		};
 
-		T* operator->() {
-			return mAllocation.As<T>();
+		inline T* operator->() {
+			return m_Allocation.As<T>();
 		}
 
 		inline T& operator*() {
-			return *mAllocation.As<T>();
+			return *m_Allocation.As<T>();
+		}
+
+		inline operator bool() const {
+			return m_Allocation.IsValid();
 		}
 
 		inline const T* Raw() const {
-			return (const T*)mAllocation.Memory;
+			return (const T*)m_Allocation.Memory;
 		}
 
 		template<typename NewType>
 		inline WeakPtr<NewType> As() const {
-			return WeakPtr<NewType>(mAllocation);
-		}
-
-		inline operator bool() const { 
-			return mAllocation.IsValid(); 
+			return WeakPtr<NewType>(m_Allocation);
 		}
 
 	private:
-		MemoryAllocation mAllocation;
-		IAllocator& mAllocator;
+		MemoryAllocation m_Allocation;
+		IAllocator* m_Allocator;
 
 	};
 

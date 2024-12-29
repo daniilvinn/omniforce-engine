@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../Allocator.h"
-#include "../InternalSetup.h"
 #include "../Pointers.h"
 
 namespace Omni {
@@ -14,7 +13,7 @@ namespace Omni {
 	public:
 		DedicatedMemoryAllocator() {};
 
-		MemoryAllocation AllocateBase(uint32 InAllocationSize) override {
+		MemoryAllocation AllocateBase(SizeType InAllocationSize) override {
 			MemoryAllocation Allocation;
 			Allocation.Memory = new byte[InAllocationSize];
 			Allocation.Size = InAllocationSize;
@@ -22,7 +21,7 @@ namespace Omni {
 			return Allocation;
 		}
 
-		void Free(MemoryAllocation& InAllocation) override {
+		void FreeBase(MemoryAllocation& InAllocation) override {
 			delete[] InAllocation.Memory;
 			InAllocation.Invalidate();
 		}
@@ -31,6 +30,6 @@ namespace Omni {
 
 	};
 
-	inline DedicatedMemoryAllocator GDedicatedMemoryAllocator = IAllocator::Setup<DedicatedMemoryAllocator>();
+	inline DedicatedMemoryAllocator g_DedicatedMemoryAllocator = IAllocator::Setup<DedicatedMemoryAllocator>();
 
 }

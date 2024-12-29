@@ -7,6 +7,13 @@ namespace Omni {
 
 	class OMNIFORCE_API IAllocator {
 	public:
+		using SizeType = uint64_t;
+
+		struct Stats {
+			SizeType frame_memory_usage;
+			SizeType a;
+		};
+
 		virtual ~IAllocator() {};
 
 		template<typename T, typename... TArgs>
@@ -17,18 +24,35 @@ namespace Omni {
 			return Allocation;
 		}
 
+		template<typename T>
+		void Free(MemoryAllocation allocation) {
+			allocation.As<T>()->~T();
+			FreeBase(allocation);
+		}
 
-		virtual void Free(MemoryAllocation& InAllocation) = 0;
+		template<typename T>
+		void Free(MemoryAllocation allocation, SizeType num_elements) {
+			T* typed_array = allocation.As<T>();
+
+			for (SizeType i = 0; i < num_elements; i++) {
+				typed_array[i].~T();
+			}
+
+			FreeBase(allocation);
+		}
+
+		virtual MemoryAllocation AllocateBase(SizeType size) = 0;
+
+		virtual void FreeBase(MemoryAllocation& allocation) = 0;
+
 		virtual void Clear() = 0;
 
 		template<typename TAlloc, typename... TArgs>
-		static TAlloc Setup(TArgs&&... InArgs) {
-			return TAlloc(std::forward<TArgs>(InArgs)...);
+		static TAlloc Setup(TArgs&&... args) {
+			return TAlloc(std::forward<TArgs>(args)...);
 		}
 
 	protected:
-		virtual MemoryAllocation AllocateBase(uint32 InAllocationSize) = 0;
-
 		IAllocator() {};
 	};
 
