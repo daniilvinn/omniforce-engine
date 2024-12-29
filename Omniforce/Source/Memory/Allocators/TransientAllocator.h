@@ -4,30 +4,32 @@
 #include <Threading/ConditionalLock.h>
 #include "../Allocator.h"
 
-
-
 namespace Omni {
 
 	/*
-	*	@brief Allocates short-living data, which will be freed in next frame, e.g. events
+	*	@brief Allocates short-living data, which will be freed in next frame, e.g. events.
+	*   Has two variants - with- and without thread safety.
+	*   The variant with thread safety has nearly free allocation cost
 	*/
 	template<bool ThreadSafe = false>
-	class OMNIFORCE_API TransientAllocator : public IAllocator {
+	class OMNIFORCE_API TransientAllocator;
+
+	template<>
+	class OMNIFORCE_API TransientAllocator<false> : public IAllocator {
 	public:
 
-		TransientAllocator(uint64 pool_size = 1024 * 1024)
+		TransientAllocator(SizeType pool_size = 1024 * 1024)
 			: m_Size(pool_size)
 		{
-			m_Stack = new byte[pool_size]; // Allocating 1MB
-			m_StackPointer = m_Stack; // bottom of the stack
+			m_MemoryPool = new byte[pool_size];
 		};
 
 		~TransientAllocator()
 		{
-			delete[] m_Stack;
+			delete[] m_MemoryPool;
 		};
 
-		MemoryAllocation AllocateBase(uint32 InAllocationSize) override {
+		MemoryAllocation AllocateBase(SizeType InAllocationSize) override {
 			MemoryAllocation Alloc;
 			Alloc.Size = InAllocationSize;
 			Alloc.Memory = AllocateMemory(InAllocationSize);
@@ -38,42 +40,94 @@ namespace Omni {
 		template<typename T, typename... Args>
 		[[nodiscard]] T* AllocateObject(Args&&... args)
 		{
-			m_Mutex.Lock();
-			T* ptr = new (m_StackPointer) T(std::forward<Args>(args)...);
-			m_StackPointer += sizeof(T);
-			m_Mutex.Unlock();
+			T* ptr = new (m_MemoryPool + m_Size) T(std::forward<Args>(args)...);
+			m_Size += sizeof(T);
 
 			return ptr;
 		};
 
-		[[nodiscard]] byte* AllocateMemory(uint32 InSize)
+		[[nodiscard]] byte* AllocateMemory(SizeType size)
 		{
-			m_Mutex.Lock();
-			byte* ptr = m_StackPointer;
-			m_StackPointer += sizeof(InSize);
-			m_Mutex.Unlock();
+			byte* ptr = m_MemoryPool + m_Size;
+			m_Size += sizeof(size);
 
 			return ptr;
 		};
 
-		void Free(MemoryAllocation& InAllocation) override {
-			
+		void FreeBase(MemoryAllocation& InAllocation) override {
+
 		}
 
 		// Since it is stack-based allocator for transient data (which will be freed in next frame), we simply set back 
 		void Clear() override
 		{
-			m_Mutex.Lock();
-			m_StackPointer = m_Stack;
-			memset(m_Stack, 0, m_Size);
-			m_Mutex.Unlock();
+			m_Size = 0;
 		}
 
 	private:
-		byte* m_Stack;
-		byte* m_StackPointer;
-		uint64 m_Size;
-		ConditionalLock<ThreadSafe> m_Mutex;
+		byte* m_MemoryPool = nullptr;
+		SizeType m_Size = 0;
 	};
+
+	template<>
+	class OMNIFORCE_API TransientAllocator<true> : public IAllocator {
+	public:
+
+		TransientAllocator(SizeType pool_size = 1024 * 1024)
+			: m_Size(pool_size)
+		{
+			m_MemoryPool = new byte[pool_size];
+		};
+
+		~TransientAllocator()
+		{
+			delete[] m_MemoryPool;
+		};
+
+		MemoryAllocation AllocateBase(SizeType InAllocationSize) override {
+			MemoryAllocation Alloc;
+
+			Alloc.Size = InAllocationSize;
+			Alloc.Memory = AllocateMemory(InAllocationSize);
+
+			return Alloc;
+		}
+
+		template<typename T, typename... Args>
+		[[nodiscard]] T* AllocateObject(Args&&... args)
+		{
+			SizeType ptr_offset = m_Size.fetch_add(sizeof(T));
+			T* ptr = new (m_MemoryPool + ptr_offset) T(std::forward<Args>(args)...);
+
+			return ptr;
+		};
+
+		[[nodiscard]] byte* AllocateMemory(SizeType size)
+		{
+			SizeType ptr_offset = m_Size.fetch_add(size);
+			byte* ptr = m_MemoryPool + ptr_offset;
+
+			return ptr;
+		};
+
+		void FreeBase(MemoryAllocation& InAllocation) override {
+
+		}
+
+		// Since it is stack-based allocator for transient data (which will be freed in next frame), we simply set back 
+		void Clear() override
+		{
+			m_Size = 0;
+		}
+
+	private:
+		byte* m_MemoryPool = nullptr;
+		Atomic<SizeType> m_Size = 0;
+	};
+
+	/*
+	*  @brief Global allocator for data that lives one frame. Managed by the engine. Do not call `Clear()`
+	*/
+	inline TransientAllocator<true> g_TransientAllocator = IAllocator::Setup<TransientAllocator<true>>();
 
 }
