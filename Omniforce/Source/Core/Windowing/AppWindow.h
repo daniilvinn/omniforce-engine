@@ -3,6 +3,8 @@
 #include <Foundation/Macros.h>
 #include <Foundation/Types.h>
 #include <Core/Events/Event.h>
+#include <Core/Array.h>
+#include <Memory/Allocators/TransientAllocator.h>
 
 #include <string>
 #include <functional>
@@ -12,6 +14,7 @@ namespace Omni {
 
 	class OMNIFORCE_API AppWindow {
 	public:
+
 		struct Config {
 			EventCallback event_callback = nullptr;
 			std::string title = "Blank";
@@ -28,28 +31,32 @@ namespace Omni {
 		template<typename T, typename... Args>
 		T* AllocateEvent(Args&&... args)
 		{
-			auto e = m_Allocator.AllocateObject<T>(std::forward<Args>(args)...);
-			m_EventBuffer.push_back(e);
+			auto e = m_EventAllocator->AllocateObject<T>(std::forward<Args>(args)...);
+			m_EventBuffer.Add(e);
 			return e;
 		}
 
 		void FlushEventBuffer() { 
-			for (auto& e : m_EventBuffer)
+			for (const auto& e : m_EventBuffer)
 				m_EventCallback(e);
-			m_Allocator.Clear(); 
-			m_EventBuffer.clear();
+			m_EventBuffer.Clear();
 		}
 
 		bool Minimized() const { return m_Minimized; }
 		void SetMinimized(bool minimized) { m_Minimized = minimized; }
 
 	protected:
-		AppWindow() : m_Allocator(32768) { m_EventBuffer.reserve(2048); };
+		AppWindow() 
+			: m_EventAllocator(&g_TransientAllocator)
+			, m_EventBuffer(&g_TransientAllocator)
+		{ 
+			m_EventBuffer.Preallocate(2048); 
+		};
 		AppWindow(const AppWindow&) = delete;
 
+		TransientAllocator<true>* m_EventAllocator;
 		EventCallback m_EventCallback;
-		std::vector<Event*> m_EventBuffer;
-		EventAlloc m_Allocator;
+		Array<Event*> m_EventBuffer;
 		std::shared_mutex m_EventMutex;
 		bool m_Minimized = false;
 	};

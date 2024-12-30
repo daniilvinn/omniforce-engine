@@ -2,6 +2,7 @@
 
 #include <Foundation/Macros.h>
 #include <Foundation/Types.h>
+#include <Log/Logger.h>
 #include "Memory/Allocator.h"
 #include "Memory/MemoryAllocation.h"
 
@@ -203,7 +204,7 @@ namespace Omni {
 			m_Size = new_size;
 		}
 
-		inline void	Preallocate(uint32 new_capacity) { 
+		inline void	Preallocate(SizeType new_capacity) { 
 			Reallocate(new_capacity); 
 		}
 

@@ -17,7 +17,6 @@ namespace Omni {
 	template<>
 	class OMNIFORCE_API TransientAllocator<false> : public IAllocator {
 	public:
-
 		TransientAllocator(SizeType pool_size = 1024 * 1024)
 			: m_Size(pool_size)
 		{
@@ -111,10 +110,12 @@ namespace Omni {
 		};
 
 		void FreeBase(MemoryAllocation& InAllocation) override {
-
+			// Don't do anything;
+			// All data will be freed once `Clear()` is called
 		}
 
-		// Since it is stack-based allocator for transient data (which will be freed in next frame), we simply set back 
+		// Since it is stack-based allocator for transient data (which will be freed in next frame), 
+		// we simply set back pointer offset
 		void Clear() override
 		{
 			m_Size = 0;

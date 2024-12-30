@@ -15,6 +15,8 @@
 #include <Renderer/Mesh.h>
 #include <Renderer/Image.h>
 #include <Threading/JobSystem.h>
+#include <Memory/Pointers.h>
+#include <Memory/Allocators/PersistentAllocator.h>
 #include <Platform/Vulkan/Private/VulkanMemoryAllocator.h>
 #include <Core/BitStream.h>
 

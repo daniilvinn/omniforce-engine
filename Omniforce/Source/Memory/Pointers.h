@@ -61,6 +61,13 @@ namespace Omni {
 		};
 
 	public:
+		Ptr() 
+			: m_Allocator(nullptr)
+			, m_Allocation(MemoryAllocation::InvalidAllocation())
+		{
+			
+		}
+
 		~Ptr() {
 			if (m_Allocation.IsValid()) {
 				m_Allocator.Free<T>(m_Allocation);
@@ -114,10 +121,18 @@ namespace Omni {
 			return WeakPtr<NewType>(m_Allocation);
 		}
 
+		template<typename T, typename... TArgs>
+		friend Ptr<T> CreatePtr(IAllocator* allocator, TArgs&&... args);
+
 	private:
-		MemoryAllocation m_Allocation;
 		IAllocator* m_Allocator;
+		MemoryAllocation m_Allocation;
 
 	};
+
+	template<typename T, typename... TArgs>
+	Ptr<T> CreatePtr(IAllocator* allocator, TArgs&&... args) {
+		return Ptr<T>(allocator, std::forward<TArgs>(args)...);
+	}
 
 }

@@ -2,6 +2,7 @@
 
 #include <Core/Windowing/AppWindow.h>
 #include <Core/Events/Event.h>
+#include <Core/Array.h>
 #include <GLFW/glfw3.h>
 
 namespace Omni {
@@ -13,9 +14,7 @@ namespace Omni {
 
 		void* Raw() const override { return (void*)m_WindowHandle; }
 
-		void FlushEventBuffer() { m_Allocator.Clear(); }
-
-		std::vector<Event*>& GetEventBuffer() { return m_EventBuffer; }
+		Array<Event*>& GetEventBuffer() { return m_EventBuffer; }
 
 	private:
 		GLFWwindow* m_WindowHandle = nullptr;

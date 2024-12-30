@@ -12,7 +12,7 @@
 #include <Threading/JobSystem.h>
 #include <DebugUtils/DebugRenderer.h>
 
-#include "Memory/Allocators/DedicatedMemoryAllocator.h"
+#include "Memory/Allocators/TransientAllocator.h"
 
 #include <chrono>
 
@@ -117,6 +117,9 @@ namespace Omni
 
 			m_ImGuiRenderer->BeginFrame();
 		}
+
+		g_TransientAllocator.Clear();
+
 	}
 
 	void Application::PostFrame()
