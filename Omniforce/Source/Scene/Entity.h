@@ -1,7 +1,9 @@
 #pragma once
 
-#include "SceneCommon.h"
-#include "Scene.h"
+#include <Foundation/Common.h>
+#include <Scene/SceneCommon.h>
+
+#include <Scene/Scene.h>
 #include <Core/Serializable.h>
 
 #include <entt/entt.hpp>

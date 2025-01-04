@@ -1,21 +1,16 @@
 #pragma once
 
-#include <Foundation/Types.h>
+#include <Foundation/Common.h>
 
-#include <string>
 #include <ctime>
-#include <iostream>
 #include <type_traits>
-#include <vector>
+#include <omp.h>
 
 #include <spdlog/fmt/fmt.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
-#include <omp.h>
-
-#include <Log/Logger.h>
 
 namespace Omni {
 

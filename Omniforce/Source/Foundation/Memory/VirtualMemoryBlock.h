@@ -1,6 +1,7 @@
 #pragma once
 
-#include <Foundation/Types.h>
+#include "../BasicTypes.h"
+#include "Ptr.h"
 
 namespace Omni {
 

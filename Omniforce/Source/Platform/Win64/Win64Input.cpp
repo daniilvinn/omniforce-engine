@@ -1,9 +1,9 @@
-#include "Win64Input.h"
+#include <Foundation/Common.h>
+#include <Platform/Win64/Win64Input.h>
 
 #include <Core/Application.h>
 
 #include <GLFW/glfw3.h>
-#include <assert.h>
 
 namespace Omni {
 
@@ -28,8 +28,7 @@ namespace Omni {
 
 	float32 Win64Input::Impl_MouseScrolledY(const std::string& window_tag) const
 	{
-		// Method not implemented.
-		assert(false);
+		OMNIFORCE_ASSERT_TAGGED(false, "Method not implemented");
 		return 0.0f;
 	}
 

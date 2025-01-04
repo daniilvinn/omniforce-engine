@@ -1,10 +1,10 @@
-#include "../VulkanDescriptorSet.h"
+#include <Foundation/Common.h>
+#include <Platform/Vulkan/VulkanDescriptorSet.h>
 
-#include "../VulkanGraphicsContext.h"
-#include "../VulkanRenderer.h"
-
-#include "../VulkanImage.h"
-#include "../VulkanDeviceBuffer.h"
+#include <Platform/Vulkan/VulkanGraphicsContext.h>
+#include <Platform/Vulkan/VulkanRenderer.h>
+#include <Platform/Vulkan/VulkanImage.h>
+#include <Platform/Vulkan/VulkanDeviceBuffer.h>
 
 namespace Omni {
 

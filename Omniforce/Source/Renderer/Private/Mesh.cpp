@@ -1,10 +1,7 @@
-#include "../Mesh.h"
-
-#include <Log/Logger.h>
+#include <Foundation/Common.h>
+#include <Renderer/Mesh.h>
 
 #include <memory>
-#include <vector>
-#include <iostream>
 
 
 namespace Omni {

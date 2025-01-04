@@ -1,11 +1,12 @@
 #pragma once
 
+#include <Foundation/Common.h>
+
 #include <Renderer/Shader.h>
 
-#include <volk.h>
-
 #include <map>
-#include <filesystem>
+
+#include <volk.h>
 
 namespace Omni {
 

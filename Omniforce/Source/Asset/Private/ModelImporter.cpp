@@ -1,8 +1,7 @@
-#include "../Importers/ModelImporter.h"
+#include <Foundation/Common.h>
+#include <Asset/Importers/ModelImporter.h>
 
-#include <Log/Logger.h>
 #include <Core/Utils.h>
-#include <Core/Timer.h>
 #include <Asset/AssetManager.h>
 #include <Asset/MeshPreprocessor.h>
 #include <Asset/AssetCompressor.h>
@@ -15,13 +14,10 @@
 #include <Renderer/Mesh.h>
 #include <Renderer/Image.h>
 #include <Threading/JobSystem.h>
-#include <Memory/Pointers.h>
-#include <Memory/Allocators/PersistentAllocator.h>
 #include <Platform/Vulkan/Private/VulkanMemoryAllocator.h>
 #include <Core/BitStream.h>
 
 #include <map>
-#include <array>
 #include <atomic>
 
 #include <glm/gtc/type_precision.hpp>

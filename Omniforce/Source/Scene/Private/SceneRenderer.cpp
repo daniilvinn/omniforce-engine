@@ -1,4 +1,5 @@
-#include "../SceneRenderer.h"
+#include <Foundation/Common.h>
+#include <Scene/SceneRenderer.h>
 
 #include <Core/Utils.h>
 #include <Renderer/DescriptorSet.h>
@@ -11,7 +12,7 @@
 #include <Asset/AssetCompressor.h>
 #include <Platform/Vulkan/VulkanCommon.h>
 #include <DebugUtils/DebugRenderer.h>
-#include "../SceneRendererPrimitives.h"
+#include <Scene/SceneRendererPrimitives.h>
 
 #include <Shaders/Shared/CameraData.glslh>
 #include <Shaders/Shared/MeshData.glslh>

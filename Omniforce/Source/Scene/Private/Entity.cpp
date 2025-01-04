@@ -1,7 +1,7 @@
-#include "../Entity.h"
-#include "../Component.h"
+#include <Foundation/Common.h>
+#include <Scene/Entity.h>
 
-#include <stdfloat>
+#include <Scene/Component.h>
 
 #include <array>
 

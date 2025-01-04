@@ -1,14 +1,9 @@
 #pragma once
 
-#include "MonoForwardDecl.h"
+#include <Foundation/Common.h>
+#include <Scripting/MonoForwardDecl.h>
 
-#include <Foundation/Macros.h>
-#include <Foundation/Types.h>
-#include <Core/UUID.h>
-#include "RuntimeScriptInstance.h"
-
-#include <string>
-#include <string_view>
+#include <Scripting/RuntimeScriptInstance.h>
 
 namespace Omni {
 

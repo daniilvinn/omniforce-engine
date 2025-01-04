@@ -1,23 +1,23 @@
 #pragma once
 
-#include "SceneCommon.h"
-#include "Sprite.h"
-#include "Camera.h"
-#include "DeviceMaterialPool.h"
-#include "SceneRendererPrimitives.h"
-#include "DeviceIndexedResourceBuffer.h"
-#include "Lights.h"
+#include <Foundation/Common.h>
+#include <Scene/SceneCommon.h>
+
+#include <Scene/Sprite.h>
+#include <Scene/Camera.h>
+#include <Scene/DeviceMaterialPool.h>
+#include <Scene/SceneRendererPrimitives.h>
+#include <Scene/DeviceIndexedResourceBuffer.h>
+#include <Scene/Lights.h>
 #include <Renderer/Renderer.h>
 #include <Renderer/Image.h>
 #include <Renderer/Mesh.h>
 #include <Core/CallbackRHUMap.h>
-#include <Memory/VirtualMemoryBlock.h>
 #include <DebugUtils/DebugRenderer.h>
 #include <Shaders/Shared/RenderObject.glslh>
 #include <Shaders/Shared/MeshData.glslh>
 #include <Shaders/Shared/Lights.glslh>
 
-#include <vector>
 #include <shared_mutex>
 
 #include <robin_hood.h>

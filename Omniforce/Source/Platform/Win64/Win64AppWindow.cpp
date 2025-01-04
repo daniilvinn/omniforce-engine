@@ -1,5 +1,5 @@
-﻿#include "Win64AppWindow.h"
-#include <Log/Logger.h>
+﻿#include <Foundation/Common.h>
+#include <Platform/Win64/Win64AppWindow.h>
 
 #include <Core/Events/ApplicationEvents.h>
 #include <Core/Events/KeyEvents.h>

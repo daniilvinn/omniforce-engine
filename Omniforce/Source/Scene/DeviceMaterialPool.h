@@ -1,9 +1,10 @@
 #pragma once
 
-#include "SceneCommon.h"
-#include "Renderer/DeviceBuffer.h"
-#include "Memory/VirtualMemoryBlock.h"
-#include "Asset/Material.h"
+#include <Foundation/Common.h>
+#include <Scene/SceneCommon.h>
+
+#include <Renderer/DeviceBuffer.h>
+#include <Asset/Material.h>
 
 namespace Omni {
 

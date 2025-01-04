@@ -1,17 +1,13 @@
 #pragma once
 
-#include <Foundation/Macros.h>
-#include <Foundation/Types.h>
+#include <Foundation/Common.h>
 
 #include <Asset/AssetBase.h>
 #include <Renderer/DeviceBuffer.h>
 #include <Renderer/Meshlet.h>
 #include <Core/BitStream.h>
 
-#include <Log/Logger.h>
-
 #include <map>
-#include <array>
 
 namespace Omni {
 

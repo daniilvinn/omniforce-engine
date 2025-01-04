@@ -1,11 +1,10 @@
 #pragma once
 
-#include "Core/UUID.h"
-#include "Asset/AssetBase.h"
-#include "RendererCommon.h"
-#include "PipelineStage.h"
+#include <Foundation/Common.h>
+#include <Renderer/RendererCommon.h>
 
-#include <filesystem>
+#include <Asset/AssetBase.h>
+#include <Renderer/PipelineStage.h>
 
 namespace Omni {
 

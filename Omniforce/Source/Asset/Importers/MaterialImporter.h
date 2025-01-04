@@ -1,7 +1,6 @@
 #pragma once
 
-#include <Foundation/Macros.h>
-#include <Foundation/Types.h>
+#include <Foundation/Common.h>
 #include <Asset/Material.h>
 
 #include <shared_mutex>

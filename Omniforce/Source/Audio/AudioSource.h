@@ -1,10 +1,7 @@
 #pragma once
 
-#include <Foundation/Macros.h>
-#include <Foundation/Types.h>
-#include "AudioSourceFlags.h"
-
-#include <filesystem>
+#include <Foundation/Common.h>
+#include <Audio/AudioSourceFlags.h>
 
 #include <miniaudio.h>
 

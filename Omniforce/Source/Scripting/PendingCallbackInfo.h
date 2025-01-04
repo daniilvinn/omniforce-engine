@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Foundation/Common.h>
 #include <Scene/Entity.h>
 
 namespace Omni {

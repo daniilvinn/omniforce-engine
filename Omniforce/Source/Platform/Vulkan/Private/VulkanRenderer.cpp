@@ -1,18 +1,17 @@
-#include "../VulkanRenderer.h"
+#include <Foundation/Common.h>
+#include <Platform/Vulkan/VulkanRenderer.h>
 
-#include "../VulkanGraphicsContext.h"
-#include "../VulkanDevice.h"
-#include "../VulkanPipeline.h"
-#include "../VulkanDeviceBuffer.h"
-#include "../VulkanImage.h"
-#include "../VulkanDescriptorSet.h"
-
+#include <Platform/Vulkan/VulkanGraphicsContext.h>
+#include <Platform/Vulkan/VulkanDevice.h>
+#include <Platform/Vulkan/VulkanPipeline.h>
+#include <Platform/Vulkan/VulkanDeviceBuffer.h>
+#include <Platform/Vulkan/VulkanImage.h>
+#include <Platform/Vulkan/VulkanDescriptorSet.h>
 #include <Renderer/PipelineBarrier.h>
 #include <Renderer/ShaderLibrary.h>
 #include <Threading/JobSystem.h>
 
 #include <imgui.h>
-
 #include "backends/imgui_impl_vulkan.h"
 
 namespace Omni {

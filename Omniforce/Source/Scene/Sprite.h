@@ -1,6 +1,7 @@
 #pragma once
 
-#include "SceneCommon.h"
+#include <Foundation/Common.h>
+#include <Scene/SceneCommon.h>
 
 #include <glm/gtc/packing.hpp>
 

@@ -1,6 +1,7 @@
-#include "../RuntimeScriptInstance.h"
+#include <Foundation/Common.h>
+#include <Scripting/RuntimeScriptInstance.h>
 
-#include "../ScriptEngine.h"
+#include <Scripting/ScriptEngine.h>
 
 #include <mono/jit/jit.h>
 

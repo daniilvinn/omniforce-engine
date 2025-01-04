@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Foundation/Types.h"
-#include "AssetType.h"
+#include <Foundation/Common.h>
+#include <Asset/AssetType.h>
 
 namespace Omni {
 

@@ -1,9 +1,6 @@
 #pragma once
 
-#include <Foundation/Macros.h>
-#include <Foundation/Types.h>
-
-#include <filesystem>
+#include <Foundation/Common.h>
 
 #include <miniaudio.h>
 

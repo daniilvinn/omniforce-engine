@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Foundation/Types.h>
+#include <Foundation/Common.h>
 #include <Core/Input/Input.h>
 
 namespace Omni {

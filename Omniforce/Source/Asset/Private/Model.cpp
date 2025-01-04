@@ -1,4 +1,5 @@
-#include "../Model.h"
+#include <Foundation/Common.h>
+#include <Asset/Model.h>
 
 namespace Omni {
 

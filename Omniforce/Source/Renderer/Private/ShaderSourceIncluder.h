@@ -1,9 +1,11 @@
 #pragma once
 
+#include <Foundation/Common.h>
 #include <Filesystem/Filesystem.h>
 
-#include <shaderc/shaderc.hpp>
 #include <array>
+
+#include <shaderc/shaderc.hpp>
 
 namespace Omni {
 

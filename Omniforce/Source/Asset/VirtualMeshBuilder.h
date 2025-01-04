@@ -1,10 +1,10 @@
 #pragma once
 
-#include <Foundation/Macros.h>
-#include <Foundation/Types.h>
+#include <Foundation/Common.h>
 #include <Renderer/Meshlet.h>
+
 #include <Core/KDTree.h>
-#include "Importers/ModelImporter.h"
+#include <Asset/Importers/ModelImporter.h>
 
 #include <span>
 #include <shared_mutex>

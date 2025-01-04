@@ -1,9 +1,11 @@
-#include "../Scene.h"
-#include "../Camera.h"
-#include "../SceneRenderer.h"
-#include "../Entity.h"
-#include "../Component.h"
-#include "../Lights.h"
+#include <Foundation/Common.h>
+#include <Scene/Scene.h>
+
+#include <Scene/Camera.h>
+#include <Scene/SceneRenderer.h>
+#include <Scene/Entity.h>
+#include <Scene/Component.h>
+#include <Scene/Lights.h>
 #include <Asset/AssetManager.h>
 #include <Asset/OFRController.h>
 #include <Physics/PhysicsEngine.h>

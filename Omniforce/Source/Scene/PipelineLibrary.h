@@ -1,8 +1,9 @@
 #pragma once 
 
-#include "Foundation/Types.h"
-#include "Renderer/Pipeline.h"
-#include "Renderer/Shader.h"
+#include <Foundation/Common.h>
+
+#include <Renderer/Pipeline.h>
+#include <Renderer/Shader.h>
 
 #include <shared_mutex>
 

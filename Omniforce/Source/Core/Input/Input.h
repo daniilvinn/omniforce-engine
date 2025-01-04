@@ -1,10 +1,7 @@
 #pragma once
 
-#include <Foundation/Macros.h>
-#include <Foundation/Types.h>
+#include <Foundation/Common.h>
 #include <Core/Input/KeyCode.h>
-
-#include <string>
 
 namespace Omni 
 {

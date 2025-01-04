@@ -1,4 +1,5 @@
-#include "../Image.h"
+#include <Foundation/Common.h>
+#include <Renderer/Image.h>
 
 #include <Platform/Vulkan/VulkanImage.h>
 

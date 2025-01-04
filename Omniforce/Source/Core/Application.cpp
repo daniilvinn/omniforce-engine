@@ -1,8 +1,8 @@
-#include "Application.h"
+#include <Foundation/Common.h>
+#include <Core/Application.h>
 
 #include <Core/Events/ApplicationEvents.h>
 #include <Core/Input/Input.h>
-#include <Log/Logger.h>
 #include <Renderer/Renderer.h>
 #include <Renderer/ShaderLibrary.h>
 #include <Asset/AssetManager.h>
@@ -12,8 +12,6 @@
 #include <Threading/JobSystem.h>
 #include <DebugUtils/DebugRenderer.h>
 
-#include "Memory/Allocators/TransientAllocator.h"
-
 #include <chrono>
 
 namespace Omni 
@@ -22,7 +20,7 @@ namespace Omni
 	Application* Application::s_Instance = nullptr;
 
 	Application::Application() 
-		: m_RootSystem(nullptr), m_Running(true), m_WindowSystem(nullptr), m_ImGuiRenderer(nullptr) {}
+		: m_RootSystem(nullptr), m_Running(true), m_WindowSystem(), m_ImGuiRenderer(nullptr) {}
 
 	Application::~Application() {}
 
@@ -33,7 +31,7 @@ namespace Omni
 		s_Instance = this;
 		m_RootSystem = options.root_system;
 
-		m_WindowSystem = WindowSystem::Init();
+		m_WindowSystem = std::move(WindowSystem::Init());
 
 		WindowSystem::WindowConfig main_window_config = {};
 		main_window_config.event_callback = OMNIFORCE_BIND_EVENT_FUNCTION(Application::OnEvent);

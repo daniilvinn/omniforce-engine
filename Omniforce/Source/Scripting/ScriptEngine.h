@@ -1,16 +1,11 @@
 #pragma once
 
-#include "MonoForwardDecl.h"
+#include <Foundation/Common.h>
+#include <Scripting/MonoForwardDecl.h>
 
-#include <Foundation/Macros.h>
-#include <Foundation/Types.h>
 #include <Scene/Entity.h>
-#include <Memory/Allocators/TransientAllocator.h>
-#include <Core/Timer.h>
-#include "ScriptClass.h"
-#include "PendingCallbackInfo.h"
-
-#include <filesystem>
+#include <Scripting/ScriptClass.h>
+#include <Scripting/PendingCallbackInfo.h>
 
 #include <robin_hood.h>
 

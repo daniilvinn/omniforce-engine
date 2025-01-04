@@ -1,13 +1,13 @@
 #pragma once
 
-#include <cstdint>
+#include "../BasicTypes.h"
 
 namespace Omni {
 
-	typedef uint64_t uint64;
-	typedef uint8_t  byte;
-
 	struct MemoryAllocation {
+		using byte = uint8_t;
+		using uint64 = uint64_t;
+
 		byte* Memory;
 		uint64 Size;
 
@@ -24,6 +24,10 @@ namespace Omni {
 			Size   = other.Size;
 
 			return *this;
+		}
+
+		bool operator==(const MemoryAllocation& other) {
+			return (Memory == other.Memory) && (Size == other.Size);
 		}
 
 		template<typename T>

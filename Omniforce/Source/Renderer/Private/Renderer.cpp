@@ -1,9 +1,9 @@
-#include "../Renderer.h"
+#include <Foundation/Common.h>
+#include <Renderer/Renderer.h>
 
 #include <Threading/JobSystem.h>
 #include <Platform/Vulkan/VulkanRenderer.h>
-#include "../ShaderLibrary.h"
-
+#include <Renderer/ShaderLibrary.h>
 #include <Core/Windowing/WindowSystem.h>
 
 namespace Omni {

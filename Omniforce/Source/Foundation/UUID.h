@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Foundation/Macros.h"
+#include <Foundation/Platform.h>
 
 #include <atomic>
 #include <unordered_map>

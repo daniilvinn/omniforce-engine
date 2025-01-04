@@ -1,10 +1,9 @@
 #pragma once 
 
-#include <Renderer/DeviceBuffer.h>
-#include <Memory/VirtualMemoryBlock.h>
-#include <Renderer/DeviceCmdBuffer.h>
+#include <Foundation/Common.h>
 
-#include <Log/Logger.h>
+#include <Renderer/DeviceBuffer.h>
+#include <Renderer/DeviceCmdBuffer.h>
 
 namespace Omni {
 

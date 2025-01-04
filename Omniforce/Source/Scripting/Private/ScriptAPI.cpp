@@ -1,9 +1,8 @@
-#include "ScriptAPI.h"
+#include <Foundation/Common.h>
+#include <Scripting/Private/ScriptAPI.h>
 
 #include <Core/Application.h>
 #include <Core/Input/Input.h>
-#include <Core/UUID.h>
-#include <Log/Logger.h>
 #include <Scene/Component.h>
 #include <Scripting/ScriptEngine.h>
 #include <Physics/PhysicsEngine.h>

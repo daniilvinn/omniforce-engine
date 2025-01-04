@@ -1,4 +1,5 @@
-#include "../DebugRenderer.h"
+#include <Foundation/Common.h>
+#include <DebugUtils/DebugRenderer.h>
 
 #include <Core/Utils.h>
 #include <Renderer/ShaderLibrary.h>
@@ -9,7 +10,6 @@
 
 #include <imgui.h>
 #include <glm/gtc/packing.hpp>
-
 
 namespace Omni {
 

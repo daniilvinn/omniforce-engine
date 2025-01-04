@@ -1,7 +1,7 @@
 #pragma once
 #if 0
 
-#include <Foundation/Types.h>
+#include <Foundation/Common.h>
 #include <Renderer/Pipeline.h>
 
 #include <Jolt/Jolt.h>

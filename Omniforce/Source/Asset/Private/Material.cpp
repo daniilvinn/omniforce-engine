@@ -1,8 +1,6 @@
-#include "../Material.h"
+#include <Foundation/Common.h>
+#include <Asset/Material.h>
 
-#include <Foundation/Macros.h>
-#include <Foundation/Types.h>
-#include <Log/Logger.h>
 #include <Renderer/ShaderLibrary.h>
 #include <Scene/PipelineLibrary.h>
 

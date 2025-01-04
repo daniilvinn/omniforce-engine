@@ -1,6 +1,7 @@
 #pragma once
 
-#include "VulkanCommon.h"
+#include <Foundation/Common.h>
+#include <Platform/Vulkan/VulkanCommon.h>
 
 #include <shared_mutex>
 

@@ -1,12 +1,14 @@
+#include <Foundation/Common.h>
+#include <Platform/Vulkan/Private/VulkanMemoryAllocator.h>
+
 #include <Core/Utils.h>
-#include "VulkanMemoryAllocator.h"
-#include "../VulkanGraphicsContext.h"
-#include "../VulkanDeviceBuffer.h"
+#include <Platform/Vulkan/VulkanGraphicsContext.h>
+#include <Platform/Vulkan/VulkanDeviceBuffer.h>
 
 #if OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG
-#define OMNIFORCE_TRACE_DEVICE_ALLOCATIONS 0
+	#define OMNIFORCE_TRACE_DEVICE_ALLOCATIONS 0
 #else
-#define OMNIFORCE_TRACE_DEVICE_ALLOCATIONS 0
+	#define OMNIFORCE_TRACE_DEVICE_ALLOCATIONS 0
 #endif
 
 #undef VMA_LEAK_LOG_FORMAT(format, ...)

@@ -1,13 +1,8 @@
 #pragma once
 
-#include <Foundation/Macros.h>
-#include <Foundation/Types.h>
-#include "AssetCompressor.h"
-#include "AssetFile.h"
-
-#include <filesystem>
-#include <fstream>
-#include <array>
+#include <Foundation/Common.h>
+#include <Asset/AssetCompressor.h>
+#include <Asset/AssetFile.h>
 
 namespace Omni {
 

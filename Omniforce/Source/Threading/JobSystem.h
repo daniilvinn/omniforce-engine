@@ -1,12 +1,10 @@
 #pragma once
 
-#include <Foundation/Types.h>
+#include <Foundation/Common.h>
 
 #include <thread>
 #include <queue>
-#include <functional>
 #include <shared_mutex>
-#include <assert.h>
 #include <atomic>
 
 #include <taskflow/taskflow.hpp>

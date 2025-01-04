@@ -1,7 +1,9 @@
 #pragma once
 
+#include <Foundation/Common.h>
+#include <Platform/Vulkan/VulkanCommon.h>
+
 #include <Renderer/DeviceCmdBuffer.h>
-#include "VulkanCommon.h"
 
 #include <shared_mutex>
 

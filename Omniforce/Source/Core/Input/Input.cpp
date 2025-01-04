@@ -1,7 +1,7 @@
-#include "Input.h"
+#include <Foundation/Common.h>
+#include <Core/Input/Input.h>
 
 #include <Platform/Win64/Win64Input.h>
-#include <Log/Logger.h>
 
 namespace Omni {
 

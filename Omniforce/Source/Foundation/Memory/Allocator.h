@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Foundation/Macros.h>
+#include "../Platform.h"
 #include "MemoryAllocation.h"
 
 namespace Omni {
@@ -25,7 +25,7 @@ namespace Omni {
 		}
 
 		template<typename T>
-		void Free(MemoryAllocation allocation) {
+		void Free(MemoryAllocation& allocation) {
 			allocation.As<T>()->~T();
 			FreeBase(allocation);
 		}
@@ -46,6 +46,17 @@ namespace Omni {
 		virtual void FreeBase(MemoryAllocation& allocation) = 0;
 
 		virtual void Clear() = 0;
+
+		virtual SizeType ComputeAlignedSize(SizeType size) { 
+			return size; 
+		};
+
+		void RebaseAllocation(MemoryAllocation& allocation, IAllocator* allocator) {
+			MemoryAllocation new_allocation = allocator->AllocateBase(allocation.Size);
+			memcpy(new_allocation.Memory, allocation.Memory, allocation.Size);
+
+			FreeBase(allocation);
+		}
 
 		template<typename TAlloc, typename... TArgs>
 		static TAlloc Setup(TArgs&&... args) {

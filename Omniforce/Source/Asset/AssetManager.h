@@ -1,13 +1,12 @@
 #pragma once
 
-#include "Foundation/Macros.h"
-#include "Foundation/Types.h"
+#include <Foundation/Common.h>
 #include <Renderer/Image.h>
 
 #include <filesystem>
 #include <shared_mutex>
 
-#include "robin_hood.h"
+#include <robin_hood.h>
 
 namespace Omni {
 

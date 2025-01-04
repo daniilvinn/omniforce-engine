@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Foundation/Macros.h>
+#include <Foundation/Common.h>
 #include <Core/Windowing/AppWindow.h>
 
 #include <Renderer/Image.h>

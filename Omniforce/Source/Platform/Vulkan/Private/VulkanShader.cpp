@@ -1,4 +1,5 @@
-#include "../VulkanShader.h"
+#include <Foundation/Common.h>
+#include <Platform/Vulkan/VulkanShader.h>
 
 #include <Platform/Vulkan/VulkanGraphicsContext.h>
 

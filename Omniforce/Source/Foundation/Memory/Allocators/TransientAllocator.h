@@ -1,7 +1,7 @@
 #pragma once
 
-#include <Foundation/Types.h>
-#include <Threading/ConditionalLock.h>
+#include "../../Platform.h"
+#include "../../BasicTypes.h"
 #include "../Allocator.h"
 
 namespace Omni {
@@ -110,16 +110,21 @@ namespace Omni {
 		};
 
 		void FreeBase(MemoryAllocation& InAllocation) override {
-			// Don't do anything;
+			// Do nothing except allocation invalidation;
 			// All data will be freed once `Clear()` is called
+
+			InAllocation.Invalidate();
 		}
 
 		// Since it is stack-based allocator for transient data (which will be freed in next frame), 
 		// we simply set back pointer offset
-		void Clear() override
-		{
+		void Clear() override {
 			m_Size = 0;
 		}
+
+		SizeType ComputeAlignedSize(SizeType size) override { 
+			return size; 
+		};
 
 	private:
 		byte* m_MemoryPool = nullptr;

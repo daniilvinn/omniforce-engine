@@ -1,12 +1,11 @@
 #pragma once
 
-#include <Foundation/Macros.h>
-#include <Foundation/Types.h>
-#include <Log/Logger.h>
-#include <Core/Array.h>
-#include "DedicatedMemoryAllocator.h"
+#include "../../Platform.h"
+#include "../../BasicTypes.h"
+#include "../../Log/Logger.h"
+#include "../../Array.h"
 #include "../Allocator.h"
-
+#include "DedicatedMemoryAllocator.h"
 
 #include <shared_mutex>
 #include <limits>
@@ -123,6 +122,10 @@ namespace Omni {
 
 			OMNIFORCE_CORE_INFO("PersistentAllocator has been cleared and reset to its initial state.");
 		}
+
+		SizeType ComputeAlignedSize(SizeType size) override { 
+			return Align(size); 
+		};
 
 	private:
 		SizeType Align(SizeType n) const {

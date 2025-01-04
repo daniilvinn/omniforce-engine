@@ -1,21 +1,18 @@
-#include "../ScriptEngine.h"
+#include <Foundation/Common.h>
+#include <Scripting/ScriptEngine.h>
 
-#include <Log/Logger.h>
-#include <Core/UUID.h>
 #include <Filesystem/Filesystem.h>
+#include <Scripting/ScriptClass.h>
 #include <Scene/Scene.h>
 #include <Scene/Component.h>
 #include <Scene/Entity.h>
 
-#include "ScriptAPI.h"
-#include "../ScriptClass.h"
+#include <Scripting/Private/ScriptAPI.h>
 
 #include <mono/jit/jit.h>
 #include <mono/metadata/assembly.h>
 #include <mono/metadata/reflection.h>
 #include <mono/metadata/mono-gc.h>
-
-#include <fstream>
 
 namespace Omni {
 

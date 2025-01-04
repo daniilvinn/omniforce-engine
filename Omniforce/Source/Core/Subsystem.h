@@ -1,8 +1,7 @@
 #pragma once
 
-#include <Foundation/Macros.h>
-
-#include "Core/Events/Event.h"
+#include <Foundation/Common.h>
+#include <Core/Events/Event.h>
 
 namespace Omni {
 

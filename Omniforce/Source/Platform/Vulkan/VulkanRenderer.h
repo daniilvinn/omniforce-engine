@@ -1,11 +1,12 @@
 #pragma once
 
-#include <Renderer/RendererAPI.h>
-#include "VulkanCommon.h"
+#include <Foundation/Common.h>
+#include <Platform/Vulkan/VulkanCommon.h>
 
+#include <Platform/Vulkan/VulkanDeviceCmdBuffer.h>
+#include <Renderer/RendererAPI.h>
 #include <Renderer/Swapchain.h>
 #include <Platform/Vulkan/VulkanSwapchain.h>
-#include "VulkanDeviceCmdBuffer.h"
 
 #include <Renderer/Renderer.h>
 

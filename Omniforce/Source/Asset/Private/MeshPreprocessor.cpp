@@ -1,11 +1,9 @@
-#include "../MeshPreprocessor.h"
+#include <Foundation/Common.h>
+#include <Asset/MeshPreprocessor.h>
 
 #include <glm/gtx/norm.hpp>
 #include <meshoptimizer.h>
 #include <ranges>
-
-#include <Seb.h>
-#include <Seb_point.h>
 
 namespace Omni {
 

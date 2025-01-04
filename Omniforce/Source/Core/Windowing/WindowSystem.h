@@ -1,7 +1,9 @@
 #pragma once
 
+#include <Foundation/Common.h>
 #include <Core/Windowing/AppWindow.h>
 #include <Core/Events/Event.h>
+
 #include <unordered_map>
 
 namespace Omni {
@@ -17,10 +19,9 @@ namespace Omni {
 			bool fs_exclusive;
 		};
 
-		static WindowSystem* Init();
-
-		void Shutdown() { delete s_Instance; };
-		static WindowSystem* Get() { return s_Instance; }
+		static Ptr<WindowSystem>& Init();
+		static void Shutdown() { s_Instance.ForceRelease(); };
+		static Ptr<WindowSystem>& Get() { return s_Instance; }
 
 		virtual void AddWindow(const WindowConfig& config) = 0;
 		virtual void RemoveWindow(const std::string& tag) = 0;
@@ -31,7 +32,7 @@ namespace Omni {
 		virtual void ProcessEvents() = 0;
 
 	protected:
-		static WindowSystem* s_Instance;
+		static Ptr<WindowSystem> s_Instance;
 		std::unordered_map<std::string, Shared<AppWindow>> m_ActiveWindows;
 	};
 

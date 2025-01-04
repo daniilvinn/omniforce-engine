@@ -1,9 +1,8 @@
 #pragma once 
 
-#include <Foundation/Macros.h>
-#include <Foundation/Types.h>
+#include <Foundation/Common.h>
 
-#include "miniaudio.h"
+#include <miniaudio.h>
 
 namespace Omni {
 

@@ -1,9 +1,10 @@
-#include "../VulkanImage.h"
-#include "../VulkanDeviceBuffer.h"
-#include "../VulkanGraphicsContext.h"
-#include "../VulkanDeviceCmdBuffer.h"
-#include "VulkanMemoryAllocator.h"
+#include <Foundation/Common.h>
+#include <Platform/Vulkan/VulkanImage.h>
 
+#include <Platform/Vulkan/VulkanDeviceBuffer.h>
+#include <Platform/Vulkan/VulkanGraphicsContext.h>
+#include <Platform/Vulkan/VulkanDeviceCmdBuffer.h>
+#include <Platform/Vulkan/Private/VulkanMemoryAllocator.h>
 #include <Renderer/Renderer.h>
 
 #include <stb_image.h>

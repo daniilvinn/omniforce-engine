@@ -2,7 +2,7 @@
 #define CAMERA_DATA_GLSLH
 
 #ifdef __OMNI_COMPILE_SHADER_FOR_CXX
-	#include <Foundation/Types.h>
+	#include <Foundation/BasicTypes.h>
 	#include <glm/glm.hpp>
 #else
 	#include <Source/Frustum.glslh>

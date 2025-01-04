@@ -1,7 +1,8 @@
-#include "../VulkanDeviceBuffer.h"
-#include "../VulkanDeviceCmdBuffer.h"
+#include <Foundation/Common.h>
+#include <Platform/Vulkan/VulkanDeviceBuffer.h>
 
-#include "VulkanMemoryAllocator.h"
+#include <Platform/Vulkan/Private/VulkanMemoryAllocator.h>
+#include <Platform/Vulkan/VulkanDeviceCmdBuffer.h>
 #include <Platform/Vulkan/VulkanGraphicsContext.h>
 
 namespace Omni {

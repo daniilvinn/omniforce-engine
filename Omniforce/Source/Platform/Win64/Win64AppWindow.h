@@ -1,8 +1,10 @@
 #pragma once
 
+#include <Foundation/Common.h>
+
 #include <Core/Windowing/AppWindow.h>
 #include <Core/Events/Event.h>
-#include <Core/Array.h>
+
 #include <GLFW/glfw3.h>
 
 namespace Omni {

@@ -1,13 +1,8 @@
 #pragma once
 
-#include <Foundation/Macros.h>
-#include <Foundation/Types.h>
+#include <Foundation/Common.h>
 #include <Core/Events/Event.h>
-#include <Core/Array.h>
-#include <Memory/Allocators/TransientAllocator.h>
 
-#include <string>
-#include <functional>
 #include <shared_mutex>
 
 namespace Omni {

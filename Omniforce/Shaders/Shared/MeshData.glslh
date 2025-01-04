@@ -105,7 +105,7 @@ bool TestMeshletVisibility(MeshletCullBounds cull_bounds, CameraData camera_data
 
 #ifdef __OMNI_COMPILE_SHADER_FOR_CXX
 
-#include <Foundation/Types.h>
+#include <Foundation/BasicTypes.h>
 
 namespace Omni::GLSL {
     struct MeshData {

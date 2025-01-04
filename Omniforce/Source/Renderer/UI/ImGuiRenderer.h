@@ -1,6 +1,8 @@
 #pragma once
 
-#include "../RendererCommon.h"
+#include <Foundation/Common.h>
+
+#include <Renderer/RendererCommon.h>
 #include <Renderer/Image.h>
 
 #include <imgui.h>

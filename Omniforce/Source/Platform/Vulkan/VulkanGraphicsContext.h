@@ -1,12 +1,11 @@
 #pragma once
 
+#include <Foundation/Common.h>
+#include <Platform/Vulkan/VulkanCommon.h>
+
+#include <Platform/Vulkan/VulkanSwapchain.h>
 #include <Renderer/GraphicsContext.h>
 #include <Renderer/Renderer.h>
-#include "VulkanCommon.h"
-#include "VulkanSwapchain.h"
-
-#include <vector>
-
 
 namespace Omni {
 

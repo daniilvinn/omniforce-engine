@@ -1,5 +1,6 @@
 #if 0
-#include "PhysicsDebugRenderer.h"
+#include <Foundation/Common.h>
+#include <Physics/Private/PhysicsDebugRenderer.h>
 
 namespace Omni {
 

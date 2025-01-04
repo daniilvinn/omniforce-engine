@@ -1,9 +1,8 @@
 #pragma once
 
-#include "Foundation/Macros.h"
-#include "Foundation/Types.h"
-#include "Asset/AssetBase.h"
-#include "Renderer/Pipeline.h"
+#include <Foundation/Common.h>
+#include <Asset/AssetBase.h>
+#include <Renderer/Pipeline.h>
 
 #include <variant>
 #include <map>

@@ -1,4 +1,5 @@
-#include "Logger.h"
+#include <Foundation/Log/Logger.h>
+
 #include <Core/Utils.h>
 
 #include <spdlog/sinks/ringbuffer_sink.h>

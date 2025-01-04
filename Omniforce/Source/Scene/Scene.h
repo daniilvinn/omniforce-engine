@@ -1,18 +1,17 @@
 #pragma once
 
-#include "SceneCommon.h"
-#include "SceneRenderer.h"
-#include "Sprite.h"
-#include "Core/UUID.h"
-#include "Core/Serializable.h"
-#include "Physics/PhysicsSettings.h"
-#include "Component.h"
+#include <Foundation/Common.h>
+#include <Scene/SceneCommon.h>
+
+#include <Scene/SceneRenderer.h>
+#include <Scene/Sprite.h>
+#include <Scene/Component.h>
+#include <Core/Serializable.h>
+#include <Physics/PhysicsSettings.h>
 
 #include <entt/entt.hpp>
 #include <nlohmann/json_fwd.hpp>
 #include <robin_hood.h>
-
-#include <Core/UUID.h>
 
 namespace Omni {
 

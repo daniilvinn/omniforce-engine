@@ -1,5 +1,7 @@
-#include "../Importers/ImageImporter.h"
-#include "../AssetType.h"
+#include <Foundation/Common.h>
+#include <Asset/Importers/ImageImporter.h>
+
+#include <Asset/AssetType.h>
 
 #include <stb_image.h>
 

@@ -1,6 +1,7 @@
 #pragma once
 
-#include <Foundation/Types.h>
+#include <Foundation/Common.h>
+
 #include <Renderer/Mesh.h>
 
 #include <glm/glm.hpp>

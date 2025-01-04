@@ -1,5 +1,7 @@
-#include "../ScriptClass.h"
-#include "../ScriptEngine.h"
+#include <Foundation/Common.h>
+
+#include <Scripting/ScriptClass.h>
+#include <Scripting/ScriptEngine.h>
 
 #include <mono/jit/jit.h>
 #include <spdlog/fmt/fmt.h>

@@ -1,12 +1,10 @@
-#include "../ShaderLibrary.h"
+#include <Foundation/Common.h>
+#include <Renderer/ShaderLibrary.h>
 
-#include <Log/Logger.h>
+#include <Renderer/ShaderCompiler.h>
+#include <Renderer/Renderer.h>
 #include <Filesystem/Filesystem.h>
 #include <Threading/JobSystem.h>
-#include "../ShaderCompiler.h"
-#include "../Renderer.h"
-
-#include <fstream>
 
 namespace Omni {
 

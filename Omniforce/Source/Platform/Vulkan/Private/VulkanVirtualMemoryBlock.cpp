@@ -1,11 +1,9 @@
-#include "../VulkanVirtualMemoryBlock.h"
+#include <Foundation/Common.h>
+#include <Platform/Vulkan/VulkanVirtualMemoryBlock.h>
 
-#include <Log/Logger.h>
 #include <Core/Utils.h>
 
 namespace Omni {
-
-
 
 	VulkanVirtualMemoryBlock::VulkanVirtualMemoryBlock(uint32 size)
 	{

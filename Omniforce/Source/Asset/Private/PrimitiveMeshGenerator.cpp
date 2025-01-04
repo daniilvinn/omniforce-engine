@@ -1,10 +1,6 @@
 // Implementation from https://schneide.blog/2016/07/15/generating-an-icosphere-in-c/
-
-#include "../PrimitiveMeshGenerator.h"
-
-#include <Log/Logger.h>
-
-#include <array>
+#include <Foundation/Common.h>
+#include <Asset/PrimitiveMeshGenerator.h>
 
 namespace Omni {
 

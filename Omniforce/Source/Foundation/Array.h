@@ -1,10 +1,10 @@
 #pragma once
 
-#include <Foundation/Macros.h>
-#include <Foundation/Types.h>
-#include <Log/Logger.h>
-#include "Memory/Allocator.h"
-#include "Memory/MemoryAllocation.h"
+#include <Foundation/Platform.h>
+#include <Foundation/BasicTypes.h>
+#include <Foundation/Log/Logger.h>
+#include <Foundation/Memory/Allocator.h>
+#include <Foundation/Memory/MemoryAllocation.h>
 
 namespace Omni {
 

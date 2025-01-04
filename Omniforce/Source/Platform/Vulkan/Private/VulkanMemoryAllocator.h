@@ -1,10 +1,12 @@
 #pragma once
 
-#include "../VulkanCommon.h"
+#include <Foundation/Common.h>
+#include <Platform/Vulkan/VulkanCommon.h>
+#include <Platform/Vulkan/VulkanDeviceBuffer.h>
+
+#include <shared_mutex>
 
 #include <vk_mem_alloc.h>
-#include <shared_mutex>
-#include "../VulkanDeviceBuffer.h"
 
 namespace Omni {
 

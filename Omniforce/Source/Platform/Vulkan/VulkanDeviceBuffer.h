@@ -1,9 +1,11 @@
 #pragma once
 
-#include "VulkanCommon.h"
+#include <Foundation/Common.h>
+#include <Platform/Vulkan/VulkanCommon.h>
 
 #include <Renderer/DeviceBuffer.h>
 #include <Renderer/Renderer.h>
+
 #include <vk_mem_alloc.h>
 
 namespace Omni {

@@ -1,6 +1,5 @@
-#include "../Filesystem.h"
-
-#include <fstream>
+#include <Foundation/Common.h>
+#include <Filesystem/Filesystem.h>
 
 #include <stb_image.h>
 

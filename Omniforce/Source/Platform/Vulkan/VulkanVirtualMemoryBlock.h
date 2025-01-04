@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Memory/VirtualMemoryBlock.h>
+#include <Foundation/Common.h>
 
 #include <vk_mem_alloc.h>
 

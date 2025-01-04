@@ -1,4 +1,5 @@
-#include "../DeviceBuffer.h"
+#include <Foundation/Common.h>
+#include <Renderer/DeviceBuffer.h>
 
 #include <Platform/Vulkan/VulkanDeviceBuffer.h>
 

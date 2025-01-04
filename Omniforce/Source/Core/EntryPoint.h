@@ -1,8 +1,5 @@
 #pragma once
 
-#include <exception>
-#include <fstream>
-
 #if (OMNIFORCE_PLATFORM == OMNIFORCE_PLATFORM_WIN64)
 	#include <Windows.h>
 #endif
@@ -11,7 +8,7 @@ extern Omni::Subsystem* ConstructRootSystem();
 
 using namespace Omni;
 
-bool GEngineRunning;
+bool g_EngineRunning;
 
 #ifdef OMNIFORCE_RELEASE
 INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
@@ -20,14 +17,14 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 int main()
 #endif
 {
-	GEngineRunning = true;
+	g_EngineRunning = true;
 
 	OMNIFORCE_INITIALIZE_LOG_SYSTEM(Logger::Level::LEVEL_TRACE);
 	OMNIFORCE_CORE_INFO("Entering `main` function");
 
-	while (GEngineRunning) 
+	while (g_EngineRunning) 
 	{
-		Scope<Application> app = std::make_unique<Application>();
+		Ptr<Application> app = CreatePtr<Application>(&g_PersistentAllocator);
 	
 		Application::Options options;
 		options.root_system = ConstructRootSystem();
@@ -37,6 +34,6 @@ int main()
 		app->Run();
 		app->Destroy();
 
-		GEngineRunning = false;
+		g_EngineRunning = false;
 	}
 }

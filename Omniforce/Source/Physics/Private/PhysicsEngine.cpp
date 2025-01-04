@@ -1,11 +1,12 @@
-#include "../PhysicsEngine.h"
-#include "../PhysicsMaterial.h"
+#include <Foundation/Common.h>
+#include <Physics/PhysicsEngine.h>
+
+#include <Physics/PhysicsMaterial.h>
 #include <Scene/Scene.h>
 #include <Scene/Component.h>
 #include <Scene/Entity.h>
 #include <Core/Input/Input.h>
-
-#include "JoltUtils.h"
+#include <Physics/Private/JoltUtils.h>
 
 #include <Jolt/Core/Factory.h>
 #include <Jolt/RegisterTypes.h>

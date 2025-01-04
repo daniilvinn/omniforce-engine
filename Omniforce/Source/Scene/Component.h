@@ -1,12 +1,12 @@
 #pragma once
 
-#include "SceneCommon.h"
-#include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
-#include <Core/UUID.h>
+#include <Foundation/Common.h>
+#include <Scene/SceneCommon.h>
+
 #include <Scripting/RuntimeScriptInstance.h>
 
-#include <filesystem>
+#include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 namespace Omni {
 

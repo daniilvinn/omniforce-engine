@@ -1,9 +1,10 @@
 #pragma once
 
-#include "RendererCommon.h"
+#include <Foundation/Common.h>
+#include <Renderer/RendererCommon.h>
 
-#include "PipelineStage.h"
-#include "Image.h"
+#include <Renderer/PipelineStage.h>
+#include <Renderer/Image.h>
 
 namespace Omni {
 

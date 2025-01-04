@@ -1,11 +1,13 @@
+#include <Foundation/Common.h>
+#include <Platform/Vulkan/VulkanGraphicsContext.h>
+
 #define VOLK_IMPLEMENTATION
 #include <volk.h>
 
-#include "../VulkanGraphicsContext.h"
-#include "../VulkanDevice.h"
-#include "../VulkanDebugUtils.h"
-#include "../VulkanSwapchain.h"
-#include "VulkanMemoryAllocator.h"
+#include <Platform/Vulkan/VulkanDevice.h>
+#include <Platform/Vulkan/VulkanDebugUtils.h>
+#include <Platform/Vulkan/VulkanSwapchain.h>
+#include <Platform/Vulkan/Private/VulkanMemoryAllocator.h>
 
 #include <vector>
 

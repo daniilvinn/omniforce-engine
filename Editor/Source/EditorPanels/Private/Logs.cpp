@@ -1,7 +1,7 @@
+#include <Foundation/Common.h>
 #include "../Logs.h"
 
 #include "../../EditorLogsSinks.h"
-#include <Log/Logger.h>
 
 #include <imgui.h>
 

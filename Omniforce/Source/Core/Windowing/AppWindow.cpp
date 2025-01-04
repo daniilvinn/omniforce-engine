@@ -1,4 +1,5 @@
-#include "AppWindow.h"
+#include <Foundation/Common.h>
+#include <Core/Windowing/AppWindow.h>
 
 #include <Platform/Win64/Win64AppWindow.h>
 

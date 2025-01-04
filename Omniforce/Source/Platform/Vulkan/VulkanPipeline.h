@@ -1,8 +1,9 @@
 #pragma once
 
-#include <Renderer/Pipeline.h>
+#include <Foundation/Common.h>
+#include <Platform/Vulkan/VulkanCommon.h>
 
-#include "VulkanCommon.h"
+#include <Renderer/Pipeline.h>
 
 namespace Omni {
 

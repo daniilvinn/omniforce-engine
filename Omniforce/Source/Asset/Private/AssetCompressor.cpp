@@ -1,6 +1,7 @@
-#include "../AssetCompressor.h"
-#include "Core/Utils.h"
-#include "Log/Logger.h"
+#include <Foundation/Common.h>
+#include <Asset/AssetCompressor.h>
+
+#include <Core/Utils.h>
 
 #include <glm/glm.hpp>
 #include <rdo_bc_encoder.h>

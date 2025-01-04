@@ -1,12 +1,7 @@
 #pragma once
 
-#include "MonoForwardDecl.h"
-
-#include <Core/UUID.h>
-#include <Foundation/Macros.h>
-#include <Foundation/Types.h>
-
-
+#include <Foundation/Common.h>
+#include <Scripting/MonoForwardDecl.h>
 
 namespace Omni {
 

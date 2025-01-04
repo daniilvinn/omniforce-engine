@@ -1,7 +1,9 @@
-#include "../VulkanPipeline.h"
-#include "../VulkanGraphicsContext.h"
-#include "../VulkanShader.h"
-#include "../VulkanImage.h"
+#include <Foundation/Common.h>
+#include <Platform/Vulkan/VulkanPipeline.h>
+
+#include <Platform/Vulkan/VulkanGraphicsContext.h>
+#include <Platform/Vulkan/VulkanShader.h>
+#include <Platform/Vulkan/VulkanImage.h>
 
 namespace Omni {
 

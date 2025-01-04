@@ -1,9 +1,8 @@
 #pragma once
 
-#include <iostream>
-
-#include <Foundation/Macros.h>
-#include <Foundation/Types.h>
+#include <Foundation/Platform.h>
+#include <Foundation/BasicTypes.h>
+#include <Foundation/Memory/Ptr.h>
 
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/base_sink.h>

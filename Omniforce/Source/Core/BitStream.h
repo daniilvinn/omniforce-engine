@@ -1,8 +1,6 @@
 #pragma once
 
-#include <Log/Logger.h>
-#include <Foundation/Macros.h>
-#include <Foundation/Types.h>
+#include <Foundation/Common.h>
 #include <Core/Utils.h>
 
 namespace Omni {

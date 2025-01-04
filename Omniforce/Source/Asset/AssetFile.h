@@ -1,8 +1,7 @@
 #pragma once 
 
-#include <Foundation/Macros.h>
-#include <Foundation/Types.h>
-#include "Asset/AssetType.h"
+#include <Foundation/Common.h>
+#include <Asset/AssetType.h>
 
 #include <array>
 #include <ostream>

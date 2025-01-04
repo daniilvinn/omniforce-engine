@@ -1,12 +1,11 @@
 #pragma once
 
-#include <Foundation/Macros.h>
-#include <Foundation/Types.h>
+#include <Foundation/Common.h>
 
 #include <Core/Windowing/AppWindow.h>
 
 #include <Renderer/ForwardDecl.h>
-#include "DeviceCmdBuffer.h"
+#include <Renderer/DeviceCmdBuffer.h>
 
 namespace Omni {
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Foundation/Common.h>
 #include <Core/Windowing/WindowSystem.h>
 #include <Windows.h>
 

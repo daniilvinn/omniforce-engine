@@ -1,13 +1,11 @@
 #pragma once
 
-#include <Foundation/Macros.h>
-#include <Foundation/Types.h>
+#include <Foundation/Common.h>
 
 #include <Renderer/DeviceBuffer.h>
 #include <Renderer/Image.h>
 #include <Renderer/Pipeline.h>
 #include <Scene/SceneRendererPrimitives.h>
-
 #include <Shaders/Shared/Transform.glslh>
 
 #include <glm/glm.hpp>

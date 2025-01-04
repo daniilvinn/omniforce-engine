@@ -1,7 +1,6 @@
 #pragma once
 
-#include <Foundation/Macros.h>
-#include <Foundation/Types.h>
+#include <Foundation/Common.h>
 #include <Core/Utils.h>
 
 #include <glm/gtc/type_precision.hpp>

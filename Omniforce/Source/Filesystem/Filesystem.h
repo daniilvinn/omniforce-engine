@@ -1,10 +1,8 @@
 #pragma once
 
-#include <Foundation/Macros.h>
-#include <Foundation/Types.h>
+#include <Foundation/Common.h>
 
-#include "File.h"
-#include <filesystem>
+#include <Filesystem/File.h>
 
 namespace Omni {
 

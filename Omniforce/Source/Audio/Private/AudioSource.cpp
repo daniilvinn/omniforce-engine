@@ -1,5 +1,7 @@
-#include "../AudioSource.h"
-#include "../AudioEngine.h"
+#include <Foundation/Common.h>
+#include <Audio/AudioSource.h>
+
+#include <Audio/AudioEngine.h>
 
 #include <miniaudio.h>
 

@@ -1,8 +1,8 @@
 #pragma once
 
-#include <Log/Logger.h>
+#include <Foundation/Common.h>
 #include <Renderer/RendererCommon.h>
-#include "ForwardDecl.h"
+#include <Platform/Vulkan/ForwardDecl.h>
 
 #include <volk.h>
 

@@ -1,6 +1,5 @@
-#include "Win64WindowSystem.h"
-#include "Memory/Pointers.h"
-#include <Log/Logger.h>
+#include <Foundation/Common.h>
+#include <Platform/Win64/Win64WindowSystem.h>
 
 #include <Threading/JobSystem.h>
 
@@ -10,7 +9,6 @@ namespace Omni {
 
 	Win64WindowSystem::Win64WindowSystem()
 	{
-		s_Instance = this;
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 		glfwInit();
 		glfwSetErrorCallback(GLFWErrorCallback);

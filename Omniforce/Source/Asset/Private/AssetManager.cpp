@@ -1,9 +1,10 @@
-﻿#include "../AssetManager.h"
-#include "../AssetCompressor.h"
-#include "Core/Utils.h"
-#include "Filesystem/Filesystem.h"
-#include "Threading/JobSystem.h"
-#include "Log/Logger.h"
+﻿#include <Foundation/Common.h>
+#include <Asset/AssetManager.h>
+
+#include <Asset/AssetCompressor.h>
+#include <Core/Utils.h>
+#include <Filesystem/Filesystem.h>
+#include <Threading/JobSystem.h>
 
 #include <fstream>
 

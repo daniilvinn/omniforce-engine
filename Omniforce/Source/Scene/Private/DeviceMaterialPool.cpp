@@ -1,8 +1,9 @@
-#include "../DeviceMaterialPool.h"
+#include <Foundation/Common.h>
+#include <Scene/DeviceMaterialPool.h>
 
 #include <Asset/AssetManager.h>
 #include <Renderer/DeviceCmdBuffer.h>
-#include "Scene/SceneRenderer.h"
+#include <Scene/SceneRenderer.h>
 
 namespace Omni {
 

@@ -1,7 +1,6 @@
 #pragma once
 
-#include <Core/UUID.h>
-#include <Memory/Pointers.h>
+#include <Foundation/UUID.h>
 
 #include <filesystem>
 #include <cstdint>
@@ -46,6 +45,7 @@ namespace Omni {
 	inline constexpr float32 FP32_MIN = std::numeric_limits<float32>::min();
 	inline constexpr float64 FP64_MIN = std::numeric_limits<float64>::min();
 
+	// Deprecated
 	using ivec2 = glm::ivec2;
 	using ivec3 = glm::ivec3;
 	using ivec4 = glm::ivec4;
@@ -57,6 +57,7 @@ namespace Omni {
 	using fvec2 = glm::vec2;
 	using fvec3 = glm::vec3;
 	using fvec4 = glm::vec4;
+	// End deprecated
 
 	struct MiscData {
 		byte* data;

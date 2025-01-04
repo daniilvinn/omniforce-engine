@@ -1,10 +1,8 @@
 #pragma once 
 
+#include <Foundation/Common.h>
 #include "EditorPanel.h"
 
-#include <Foundation/Types.h>
-
-#include <Log/Logger.h>
 #include <spdlog/spdlog.h>
 
 namespace Omni {

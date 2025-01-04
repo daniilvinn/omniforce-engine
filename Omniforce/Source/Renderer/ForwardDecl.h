@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Foundation/Common.h>
+
 namespace Omni 
 {
 	class Renderer;

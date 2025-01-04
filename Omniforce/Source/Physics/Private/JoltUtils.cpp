@@ -1,12 +1,11 @@
-#include "JoltUtils.h"
+#include <Foundation/Common.h>
+#include <Physics/Private/JoltUtils.h>
 
-#include <Foundation/Types.h>
-#include <Log/Logger.h>
+#include <Physics/PhysicsMaterial.h>
 #include <Scripting/ScriptEngine.h>
 #include <Scripting/PendingCallbackInfo.h>
 #include <Scene/Scene.h>
 #include <Scene/Component.h>
-#include "../PhysicsMaterial.h"
 
 #include <cstdarg>
 

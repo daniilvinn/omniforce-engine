@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Foundation/Types.h>
+#include <Foundation/Common.h>
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Physics/Collision/PhysicsMaterial.h>

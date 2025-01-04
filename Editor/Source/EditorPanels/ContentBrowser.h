@@ -1,8 +1,7 @@
 #pragma once
 
+#include <Foundation/Common.h>
 #include "EditorPanel.h"
-
-#include <Core/Timer.h>
 
 #include <filesystem>
 

@@ -1,4 +1,5 @@
-#include "../DeviceCmdBuffer.h"
+#include <Foundation/Common.h>
+#include <Renderer/DeviceCmdBuffer.h>
 
 #include <Platform/Vulkan/VulkanDeviceCmdBuffer.h>
 

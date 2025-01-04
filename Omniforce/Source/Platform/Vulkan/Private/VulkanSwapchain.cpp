@@ -1,8 +1,10 @@
-#include "../VulkanSwapchain.h"
-#include "../VulkanGraphicsContext.h"
-#include "../VulkanDevice.h"
-#include "../VulkanImage.h"
-#include "../VulkanDeviceCmdBuffer.h"
+#include <Foundation/Common.h>
+#include <Platform/Vulkan/VulkanSwapchain.h>
+
+#include <Platform/Vulkan/VulkanGraphicsContext.h>
+#include <Platform/Vulkan/VulkanDevice.h>
+#include <Platform/Vulkan/VulkanImage.h>
+#include <Platform/Vulkan/VulkanDeviceCmdBuffer.h>
 
 #include <GLFW/glfw3.h>
 

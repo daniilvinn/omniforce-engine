@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../Allocator.h"
-#include "../Pointers.h"
+#include "../Ptr.h"
 
 namespace Omni {
 
@@ -27,6 +27,10 @@ namespace Omni {
 		}
 
 		void Clear() override {};
+
+		SizeType ComputeAlignedSize(SizeType size) override { 
+			return size; 
+		};
 
 	};
 

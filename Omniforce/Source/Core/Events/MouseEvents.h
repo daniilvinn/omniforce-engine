@@ -1,5 +1,8 @@
 #pragma once
 
+#include <Foundation/Common.h>
+#include <Core/Events/Event.h>
+
 #include <Core/Input/KeyCode.h>
 
 namespace Omni {

@@ -1,4 +1,4 @@
 #pragma once
 
-#include <Foundation/Types.h>
-#include "VulkanCommon.h"
+#include <Foundation/Common.h>
+#include <Platform/Vulkan/VulkanCommon.h>

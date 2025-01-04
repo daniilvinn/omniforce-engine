@@ -1,10 +1,9 @@
-#include "../VirtualMeshBuilder.h"
-#include "../MeshPreprocessor.h"
-#include <Log/Logger.h>
+#include <Foundation/Common.h>
+#include <Asset/VirtualMeshBuilder.h>
+
+#include <Foundation/RandomNumberGenerator.h>
 #include <Asset/MeshPreprocessor.h>
-#include <Core/RandomNumberGenerator.h>
 #include <Core/KDTree.h>
-#include <Core/Timer.h>
 
 #include <unordered_map>
 #include <fstream>

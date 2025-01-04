@@ -1,13 +1,14 @@
 #pragma once
 
-#include "RendererCommon.h"
-#include "Shader.h"
-#include <robin_hood.h>
+#include <Foundation/Common.h>
+#include <Renderer/RendererCommon.h>
+#include <Renderer/Shader.h>
+
 #include <shared_mutex>
 
+#include <robin_hood.h>
 
 // TODO: move shader library to Scene directory
-
 namespace Omni {
 	/*
 	*	@brief provides tools to store all shaders in centralized manner. Also gives toolset to load / unload shader if necessary.

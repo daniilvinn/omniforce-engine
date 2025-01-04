@@ -1,10 +1,10 @@
 #pragma once
 
-#include "RendererCommon.h"
-#include "DeviceBufferLayout.h"
-#include "Image.h"
+#include <Foundation/Common.h>
+#include <Renderer/RendererCommon.h>
 
-#include <string>
+#include <Renderer/DeviceBufferLayout.h>
+#include <Renderer/Image.h>
 
 #include <robin_hood.h>
 

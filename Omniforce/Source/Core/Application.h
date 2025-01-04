@@ -1,12 +1,10 @@
 #pragma once
 
-#include <Foundation/Macros.h>
+#include <Foundation/Common.h>
 #include <Core/Subsystem.h>
 #include <Core/Windowing/WindowSystem.h>
-
 #include <Core/Events/ApplicationEvents.h>
 #include <Core/Events/MouseEvents.h>
-
 #include <Renderer/UI/ImGuiRenderer.h>
 
 namespace Omni {
@@ -54,7 +52,7 @@ namespace Omni {
 		bool m_Running;
 
 		Subsystem* m_RootSystem;
-		WindowSystem* m_WindowSystem;
+		Ptr<WindowSystem> m_WindowSystem;
 		ImGuiRenderer* m_ImGuiRenderer;
 
 		struct DeltaTimeData {

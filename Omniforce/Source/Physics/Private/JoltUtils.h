@@ -1,8 +1,6 @@
 #pragma once
 
-#include <Foundation/Types.h>
-#include <Log/Logger.h>
-#include <Foundation/Macros.h>
+#include <Foundation/Common.h>
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Core/TempAllocator.h>

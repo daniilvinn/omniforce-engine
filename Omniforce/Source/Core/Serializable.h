@@ -1,7 +1,8 @@
 #pragma once
 
+#include <Foundation/Common.h>
+
 #include <nlohmann/json.hpp>
-#include <Foundation/Macros.h>
 
 namespace Omni {
 

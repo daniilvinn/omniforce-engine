@@ -1,4 +1,5 @@
-#include "../Importers/MaterialImporter.h">
+#include <Foundation/Common.h>
+#include <Asset/Importers/MaterialImporter.h>
 
 #include <Asset/AssetManager.h>
 #include <Asset/Material.h>
@@ -6,7 +7,6 @@
 #include <Asset/AssetCompressor.h>
 #include <Core/Utils.h>
 #include <Threading/JobSystem.h>
-#include <Log/Logger.h>
 
 namespace Omni {
 

@@ -1,10 +1,8 @@
 #pragma once
 
-#include <Foundation/Macros.h>
-#include <Foundation/Types.h>
-#include <Core/Timer.h>
+#include <Foundation/Common.h>
 #include <Scene/Entity.h>
-#include "PhysicsSettings.h"
+#include <Physics/PhysicsSettings.h>
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Physics/PhysicsSystem.h>

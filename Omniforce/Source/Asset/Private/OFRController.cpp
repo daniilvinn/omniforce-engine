@@ -1,4 +1,5 @@
-#include "../OFRController.h"
+#include <Foundation/Common.h>
+#include <Asset/OFRController.h>
 
 namespace Omni {
 

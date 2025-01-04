@@ -2,20 +2,19 @@
 
 // Engine API
 
+// Foundation
+#include <Foundation/Common.h>
+
 // Core
 #include <Core/Application.h>
 #include <Core/Subsystem.h>
 #include <Core/Utils.h>
-#include <Log/Logger.h>
-#include <Threading/JobSystem.h>
-#include <Threading/ConditionalLock.h>
-
 #include <Core/Events/ApplicationEvents.h>
 #include <Core/Events/KeyEvents.h>
 #include <Core/Events/MouseEvents.h>
-
 #include <Core/Input/Input.h>
-#include <Core/Timer.h>
+
+#include <Threading/JobSystem.h>
 
 // Renderer
 #include <Renderer/Renderer.h>

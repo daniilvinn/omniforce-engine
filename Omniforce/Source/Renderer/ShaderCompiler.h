@@ -1,13 +1,13 @@
 #pragma once
 
-#include "RendererCommon.h"
-#include <sstream>
-#include <filesystem>
+#include <Foundation/Common.h>
+#include <Renderer/RendererCommon.h>
+
+#include <Renderer/Shader.h>
+
 #include <map>
 
 #include <shaderc/shaderc.hpp>
-
-#include "Shader.h"
 
 namespace Omni {
 

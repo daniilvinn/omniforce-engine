@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Foundation/Common.h>
+
 namespace Omni {
 
 	enum class PipelineStage : uint64 {

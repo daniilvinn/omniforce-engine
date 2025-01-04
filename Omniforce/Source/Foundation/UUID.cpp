@@ -1,6 +1,6 @@
-#include "UUID.h"
+#include <Foundation/UUID.h>
 
-#include <Core/RandomNumberGenerator.h>
+#include <Foundation/RandomNumberGenerator.h>
 
 namespace Omni {
 
