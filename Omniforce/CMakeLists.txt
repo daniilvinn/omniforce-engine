@@ -117,6 +117,8 @@ target_compile_options(
         /W1
 )
 
+target_precompile_headers(${ENGINE_TARGET} PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/Source/Foundation/Common.h>")
+
 set_property(TARGET ${ENGINE_TARGET} PROPERTY CXX_STANDARD 23)
 
 omni_set_project_ide_folder(${ENGINE_TARGET} ${CMAKE_CURRENT_SOURCE_DIR})
