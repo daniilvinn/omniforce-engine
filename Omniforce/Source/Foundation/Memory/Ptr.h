@@ -23,8 +23,10 @@ namespace Omni {
 		return std::static_pointer_cast<T1>(ptr);
 	};
 
-	// A pointer that only holds a reference to an object,
-	// but doesn't perform deallocation once it is out of the scope
+	/*
+	*  @brief A pointer that only holds a weak reference to an object, e.g. it doesn't
+	*  own the object so it cannot perform object deallocation
+	*/
 	template<typename T>
 	class OMNIFORCE_API WeakPtr {
 	public:
