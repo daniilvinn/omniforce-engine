@@ -52,8 +52,10 @@ namespace Omni {
 		MemoryAllocation m_Allocation;
 	};
 
-	// Smart pointer that performs auto-deletion of an object
-	// once pointer is out of the scope and destructor is invoked
+	/*
+	*  @brief Smart pointer that performs auto-deletion of an object
+	*  once pointer is out of the scope the destructor is invoked
+	*/
 	template<typename T>
 	class OMNIFORCE_API Ptr {
 
@@ -75,14 +77,15 @@ namespace Omni {
 			}
 		}
 
+		// Forbid copying
 		Ptr(const Ptr& other) = delete;
 
 		template<typename U>
 		Ptr(Ptr<U>&& other) noexcept
-			: m_Allocator(other.GetAllocator())
-			, m_Allocation(other.GetAllocation())
+			: m_Allocator(other.m_Allocator)
+			, m_Allocation(other.m_Allocation)
 		{
-			static_assert(std::is_base_of_v<T, U>, "Types are not related to each other");
+			static_assert(std::is_same_v<T, U> || std::is_base_of_v<T, U> || std::is_base_of_v<U, T>, "Types are not related to each other");
 
 			other.ReleaseNoFree();
 		}
@@ -104,28 +107,24 @@ namespace Omni {
 			return (const T*)m_Allocation.Memory;
 		}
 
-		inline MemoryAllocation GetAllocation() const {
-			return m_Allocation;
-		}
-
-		inline IAllocator* GetAllocator() const {
-			return m_Allocator;
-		}
-
 		template<typename NewType>
 		inline WeakPtr<NewType> As() const {
 			return WeakPtr<NewType>(m_Allocation);
 		}
 
 		Ptr<T>& operator=(const Ptr<T>& other) = delete;
-		Ptr<T>& operator=(Ptr<T>&& other) noexcept {
+
+		template<typename U>
+		Ptr<T>& operator=(Ptr<U>&& other) noexcept {
+			static_assert(std::is_same_v<T, U> || std::is_base_of_v<T, U> || std::is_base_of_v<U, T>, "Types are not related to each other");
+
 			if (m_Allocation.IsValid())
-				m_Allocator->FreeBase(m_Allocation);
+				m_Allocator->Free<T>(m_Allocation);
 
 			m_Allocator = other.m_Allocator;
 			m_Allocation = other.m_Allocation;
 
-			other.m_Allocation.Invalidate();
+			other.ReleaseNoFree();
 
 			return *this;
 		};
@@ -149,6 +148,9 @@ namespace Omni {
 		template<typename T, typename... TArgs>
 		friend Ptr<T> CreatePtr(IAllocator* allocator, TArgs&&... args);
 
+		template<typename U>
+		friend class Ptr;
+
 	private:
 		IAllocator* m_Allocator;
 		MemoryAllocation m_Allocation;
@@ -165,7 +167,6 @@ namespace Omni {
 		return Ptr<T>();
 	};
 
-#if 0
 	/*
 	*  @brief Ref-counted pointer
 	*/
@@ -188,11 +189,23 @@ namespace Omni {
 		Ref(IAllocator* allocator, TArgs&&... args)
 			: m_Allocator(allocator) 
 		{
-			// Make one allocation for both counter and object if size will be the same 
-			// (it is likely that transient or dedicated allocators are used)
-			if (m_Allocator->ComputeAlignedSize(sizeof(StorageType)) == m_Allocator->ComputeAlignedSize(sizeof(T)) 
+			// Split allocations if size will be different if we don't split them.
+			// In this case, it is likely that persistent allocator is used and it will be able to make additional splits
+			// that may be used for other counters as well
+			if (m_Allocator->ComputeAlignedSize(sizeof(StorageType)) != m_Allocator->ComputeAlignedSize(sizeof(T)) 
 				+ m_Allocator->ComputeAlignedSize(sizeof(CounterType)))
 			{
+				m_Allocation = m_Allocator->Allocate<T>(std::forward<TArgs>(args)...);
+				m_CounterAllocation = m_Allocator->Allocate<CounterType>(1);
+
+				// Cache pointers
+				m_CachedObject = (m_Allocation.Memory + sizeof(CounterType));
+				m_CachedCounter = m_CounterAllocation.As<Atomic<CounterType>>();
+
+			}
+			// Otherwise, make one allocation for both counter and object if size will be the same 
+			// (it is likely that transient or dedicated allocators are used)
+			else {
 				m_Allocation = m_Allocator->Allocate<StorageType>(std::forward<TArgs>(args)...);
 				m_CounterAllocation = m_Allocation;
 
@@ -200,18 +213,6 @@ namespace Omni {
 				m_CachedObject = (m_Allocation.Memory + sizeof(CounterType));
 				m_CachedCounter = m_Allocation.As<Atomic<CounterType>>();
 			}
-			// Otherwise, split allocations.
-			// In this case, it is likely that persistent allocator is used and it will be able to make additional splits
-			// that may be used for other counters as well
-			else {
-				m_Allocation = m_Allocator->Allocate<T>(std::forward<TArgs>(args)...);
-				m_CounterAllocation = m_Allocator->Allocate<CounterType>(1);
-
-				// Cache pointers
-				m_CachedObject = (m_Allocation.Memory + sizeof(CounterType));
-				m_CachedCounter = m_CounterAllocation.As<Atomic<CounterType>>();
-			}
-
 		};
 
 	public:
@@ -242,7 +243,7 @@ namespace Omni {
 			, m_CachedObject(other.m_CachedObject)
 			, m_CachedCounter(other.m_CachedCounter)
 		{
-			static_assert(std::is_base_of_v<T, U> || std::is_base_of_v<U, T>, "Types are not related to each other");
+			static_assert(std::is_same_v<T, U> || std::is_base_of_v<T, U> || std::is_base_of_v<U, T>, "Types are not related to each other");
 
 			IncrementRefCounter();
 		};
@@ -256,13 +257,9 @@ namespace Omni {
 			, m_CachedCounter(other.m_CachedCounter)
 		{
 			static_assert(std::is_base_of_v<T, U>, "Types are not related to each other");
+			IncrementRefCounter();
 
-			// Reset other's data
-			other.m_Allocator = nullptr;
-			other.m_Allocation = MemoryAllocation::InvalidAllocation();
-			other.m_CounterAllocation = MemoryAllocation::InvalidAllocation();
-			other.m_CachedObject = nullptr;
-			other.m_CachedCounter = nullptr;
+			other.Reset();
 		}
 
 		inline const T* Raw() const {
@@ -274,8 +271,26 @@ namespace Omni {
 			return WeakPtr<NewType>(m_Allocation);
 		}
 
+		void Reset() {
+			if (m_Allocation.IsValid()) [[likely]] {
+				DecrementRefCounter();
+
+				m_Allocator = nullptr;
+				m_Allocation = MemoryAllocation::InvalidAllocation();
+				m_CounterAllocation = MemoryAllocation::InvalidAllocation();
+				m_CachedObject = nullptr;
+				m_CachedCounter = nullptr;
+
+				if (CanReleaseAllocation()) {
+					ReleaseAllocation();
+				}
+			}
+		}
+
 		template<typename U>
 		Ref<T>& operator=(const Ref<U>& other) noexcept {
+			static_assert(std::is_same_v<T, U> || std::is_base_of_v<T, U> || std::is_base_of_v<U, T>, "Types are not related to each other");
+
 			// Early out in case if two pointers are referencing the same resource
 			if (m_Allocation == other.m_Allocation) [[unlikely]] {
 				return *this;
@@ -319,11 +334,9 @@ namespace Omni {
 			m_CachedObject = other.m_CachedObject;
 			m_CachedCounter = other.m_CachedCounter;
 
-			other.m_Allocator = nullptr;
-			other.m_Allocation = MemoryAllocation::InvalidAllocation();
-			other.m_CounterAllocation = MemoryAllocation::InvalidAllocation();
-			other.m_CachedObject = nullptr;
-			other.m_CachedCounter = nullptr;
+			IncrementRefCounter();
+
+			other.Reset();
 
 			return *this;
 		};
@@ -357,7 +370,7 @@ namespace Omni {
 				return false;
 			}
 
-			if (m_Allocation.As<Atomic<CounterType>>() != 0) {
+			if (*(m_Allocation.As<Atomic<CounterType>>()) != 0) {
 				return false;
 			}
 
@@ -400,6 +413,5 @@ namespace Omni {
 	Ref<T> CreateRef(IAllocator* allocator, TArgs&&... args) {
 		return Ref<T>(allocator, std::forward<TArgs>(args)...);
 	}
-#endif
 
 }
