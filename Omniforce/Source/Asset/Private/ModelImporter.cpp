@@ -80,7 +80,7 @@ namespace Omni {
 					});
 
 					// 3. Process mesh data - generate lods, optimize mesh, generate meshlets etc.
-					Ref<Mesh> mesh = nullptr;
+					Ref<Mesh> mesh;
 					AABB lod0_aabb = {};
 
 					auto mesh_process_task = subflow.emplace([&, this]() {
@@ -91,7 +91,7 @@ namespace Omni {
 					// 4. Process material data - load textures, generate mip-maps, compress. Also copies scalar material properties
 					//    Material processing requires additional steps in order to make sure that no duplicates will be created.
 					const ftf::Material& ftf_material = ftf_asset.materials[primitive.materialIndex.value()];
-					Ref<Material> material = nullptr;
+					Ref<Material> material;
 
 					auto material_process_task = subflow.emplace([&, this](tf::Subflow& sf) {
 						bool material_requires_processing = false;

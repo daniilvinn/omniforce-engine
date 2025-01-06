@@ -168,11 +168,13 @@ namespace Omni {
 		struct StorageType {
 			template<typename... TArgs>
 			StorageType(TArgs&&... args)
-				: object(std::forward<TArgs>(args)...), ref_counter(1) {
+				: object({}), ref_counter(1) 
+			{
+				
 			}
 
 			Atomic<CounterType> ref_counter;
-			T object;
+			byte object[sizeof(T)];
 		};
 
 		template<typename... TArgs>
@@ -246,7 +248,7 @@ namespace Omni {
 			, m_CachedObject(other.m_CachedObject)
 			, m_CachedCounter(other.m_CachedCounter)
 		{
-			static_assert(std::is_base_of_v<T, U>, "Types are not related to each other");
+			static_assert(std::is_same_v<T, U> || std::is_base_of_v<T, U> || std::is_base_of_v<U, T>, "Types are not related to each other");
 
 			IncrementRefCounter();
 
@@ -399,6 +401,7 @@ namespace Omni {
 	};
 
 	template<typename T, typename... TArgs>
+	requires (!std::is_abstract_v<T>)
 	Ref<T> CreateRef(IAllocator* allocator, TArgs&&... args) {
 		return Ref<T>(allocator, std::forward<TArgs>(args)...);
 	}

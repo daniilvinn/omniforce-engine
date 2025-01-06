@@ -3,6 +3,7 @@
 #include <Foundation/Common.h>
 #include <Platform/Vulkan/VulkanCommon.h>
 
+#include <Platform/Vulkan/VulkanDebugUtils.h>
 #include <Platform/Vulkan/VulkanSwapchain.h>
 #include <Renderer/GraphicsContext.h>
 #include <Renderer/Renderer.h>
@@ -30,9 +31,9 @@ namespace Omni {
 		static VulkanGraphicsContext* s_Instance;
 
 		VkInstance m_VulkanInstance = VK_NULL_HANDLE;
-		Ref<VulkanDevice> m_Device = nullptr;
-		Ref<VulkanDebugUtils> m_DebugUtils = nullptr;
-		Ref<VulkanSwapchain> m_Swapchain = nullptr;
+		Ref<VulkanDevice> m_Device;
+		Ref<VulkanDebugUtils> m_DebugUtils;
+		Ref<VulkanSwapchain> m_Swapchain;
 
 	};
 

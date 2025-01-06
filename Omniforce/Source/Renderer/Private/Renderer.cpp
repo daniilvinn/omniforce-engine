@@ -4,6 +4,9 @@
 #include <Threading/JobSystem.h>
 #include <Platform/Vulkan/VulkanRenderer.h>
 #include <Renderer/ShaderLibrary.h>
+#include <Renderer/DeviceBuffer.h>
+#include <Renderer/Pipeline.h>
+#include <Renderer/DescriptorSet.h>
 #include <Core/Windowing/WindowSystem.h>
 
 namespace Omni {

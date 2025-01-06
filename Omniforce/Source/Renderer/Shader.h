@@ -46,7 +46,7 @@ namespace Omni {
 	public:
 		static Ref<Shader> Create(IAllocator* allocator, std::map<ShaderStage, std::vector<uint32>> binaries, std::filesystem::path path);
 		virtual ~Shader() {};
-		virtual void Destroy() = 0;
+		virtual void Destroy() {};
 
 		UUID GetID() const { return m_ID; }
 

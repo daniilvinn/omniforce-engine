@@ -36,9 +36,14 @@ namespace Omni {
 		}
 
 		template<typename T, typename... Args>
+		requires (!std::is_abstract_v<T>)
 		inline void InitializeMemory(Args&&... args) {
 			new (Memory) T(std::forward<Args>(args)...);
 		}
+
+		template<typename T, typename... Args>
+		requires std::is_abstract_v<T>
+		inline void InitializeMemory(Args&&... args) {}
 
 		inline void Invalidate() {
 			Memory = nullptr;

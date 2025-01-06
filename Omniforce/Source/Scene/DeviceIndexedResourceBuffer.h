@@ -19,13 +19,13 @@ namespace Omni {
 			buffer_spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
 			buffer_spec.heap = DeviceBufferMemoryHeap::DEVICE;
 
-			m_DeviceBuffer = DeviceBuffer::Create(buffer_spec);
+			m_DeviceBuffer = DeviceBuffer::Create(&g_PersistentAllocator, buffer_spec);
 			
 			buffer_spec.size = sizeof(T);
 			buffer_spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
 			buffer_spec.buffer_usage = DeviceBufferUsage::STAGING_BUFFER;
 
-			m_StagingForCopy = DeviceBuffer::Create(buffer_spec);
+			m_StagingForCopy = DeviceBuffer::Create(&g_PersistentAllocator, buffer_spec);
 		}
 
 		void Destroy() {
