@@ -1,8 +1,9 @@
 #pragma once
 
-#include "../../Platform.h"
-#include "../../BasicTypes.h"
-#include "../Allocator.h"
+#include <Foundation/Platform.h>
+#include <Foundation/BasicTypes.h>
+#include <Foundation/Memory/Allocator.h>
+#include <Foundation/Log/Logger.h>
 
 namespace Omni {
 
@@ -18,7 +19,8 @@ namespace Omni {
 	class OMNIFORCE_API TransientAllocator<false> : public IAllocator {
 	public:
 		TransientAllocator(SizeType pool_size = 1024 * 1024)
-			: m_Size(pool_size)
+			: m_Size(0)
+			, m_MaxSize(pool_size)
 		{
 			m_MemoryPool = new byte[pool_size];
 		};
@@ -29,6 +31,8 @@ namespace Omni {
 		};
 
 		MemoryAllocation AllocateBase(SizeType InAllocationSize) override {
+			OMNIFORCE_ASSERT_TAGGED(m_MaxSize >= m_Size + InAllocationSize, "Transient allocator: out of memory");
+
 			MemoryAllocation Alloc;
 			Alloc.Size = InAllocationSize;
 			Alloc.Memory = AllocateMemory(InAllocationSize);
@@ -39,6 +43,8 @@ namespace Omni {
 		template<typename T, typename... Args>
 		[[nodiscard]] T* AllocateObject(Args&&... args)
 		{
+			OMNIFORCE_ASSERT_TAGGED(m_MaxSize >= m_Size + sizeof(T), "Transient allocator: out of memory");
+
 			T* ptr = new (m_MemoryPool + m_Size) T(std::forward<Args>(args)...);
 			m_Size += sizeof(T);
 
@@ -47,6 +53,8 @@ namespace Omni {
 
 		[[nodiscard]] byte* AllocateMemory(SizeType size)
 		{
+			OMNIFORCE_ASSERT_TAGGED(m_MaxSize >= m_Size + size, "Transient allocator: out of memory");
+
 			byte* ptr = m_MemoryPool + m_Size;
 			m_Size += sizeof(size);
 
@@ -54,7 +62,9 @@ namespace Omni {
 		};
 
 		void FreeBase(MemoryAllocation& InAllocation) override {
-
+			// Do nothing except allocation invalidation;
+			// All data will be freed once `Clear()` is called
+			InAllocation.Invalidate();
 		}
 
 		// Since it is stack-based allocator for transient data (which will be freed in next frame), we simply set back 
@@ -66,6 +76,7 @@ namespace Omni {
 	private:
 		byte* m_MemoryPool = nullptr;
 		SizeType m_Size = 0;
+		SizeType m_MaxSize = 0;
 	};
 
 	template<>
@@ -73,7 +84,8 @@ namespace Omni {
 	public:
 
 		TransientAllocator(SizeType pool_size = 1024 * 1024)
-			: m_Size(pool_size)
+			: m_Size(0)
+			, m_MaxSize(pool_size)
 		{
 			m_MemoryPool = new byte[pool_size];
 		};
@@ -95,6 +107,8 @@ namespace Omni {
 		template<typename T, typename... Args>
 		[[nodiscard]] T* AllocateObject(Args&&... args)
 		{
+			OMNIFORCE_ASSERT_TAGGED(m_MaxSize >= m_Size + sizeof(T), "Transient allocator: out of memory");
+
 			SizeType ptr_offset = m_Size.fetch_add(sizeof(T));
 			T* ptr = new (m_MemoryPool + ptr_offset) T(std::forward<Args>(args)...);
 
@@ -103,6 +117,8 @@ namespace Omni {
 
 		[[nodiscard]] byte* AllocateMemory(SizeType size)
 		{
+			OMNIFORCE_ASSERT_TAGGED(m_MaxSize >= m_Size + size, "Transient allocator: out of memory");
+
 			SizeType ptr_offset = m_Size.fetch_add(size);
 			byte* ptr = m_MemoryPool + ptr_offset;
 
@@ -112,7 +128,6 @@ namespace Omni {
 		void FreeBase(MemoryAllocation& InAllocation) override {
 			// Do nothing except allocation invalidation;
 			// All data will be freed once `Clear()` is called
-
 			InAllocation.Invalidate();
 		}
 
@@ -129,6 +144,7 @@ namespace Omni {
 	private:
 		byte* m_MemoryPool = nullptr;
 		Atomic<SizeType> m_Size = 0;
+		SizeType m_MaxSize = 0;
 	};
 
 	/*

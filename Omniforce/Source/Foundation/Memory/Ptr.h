@@ -167,11 +167,15 @@ namespace Omni {
 
 		struct StorageType {
 			template<typename... TArgs>
+			requires (!std::is_abstract_v<T>)
 			StorageType(TArgs&&... args)
 				: object({}), ref_counter(1) 
-			{
-				
-			}
+			{ new (object) T(std::forward<TArgs>(args)...); }
+
+			template<typename... TArgs>
+			requires std::is_abstract_v<T>
+			StorageType(TArgs&&... args)
+				: object({}), ref_counter(1) {}
 
 			Atomic<CounterType> ref_counter;
 			byte object[sizeof(T)];
@@ -191,7 +195,7 @@ namespace Omni {
 				m_CounterAllocation = m_Allocator->Allocate<CounterType>(1);
 
 				// Cache pointers
-				m_CachedObject = (T*)(m_Allocation.Memory + sizeof(CounterType));
+				m_CachedObject = m_Allocation.As<T>();
 				m_CachedCounter = m_CounterAllocation.As<Atomic<CounterType>>();
 
 			}
@@ -217,9 +221,25 @@ namespace Omni {
 		{
 		}
 
+		// Make it only possible to accept nullptr
+		Ref(std::nullptr_t)
+			: m_Allocator(nullptr)
+			, m_Allocation(MemoryAllocation::InvalidAllocation())
+			, m_CounterAllocation(MemoryAllocation::InvalidAllocation())
+			, m_CachedObject(nullptr)
+			, m_CachedCounter(nullptr) 
+		{
+		}
+
+		// Delete all other variations except nullptr
+		template<typename U>
+		Ref(U*) = delete;
+
 		~Ref() {
 			// Decrement ref counter
-			DecrementRefCounter();
+			if (m_CounterAllocation.IsValid()) {
+				DecrementRefCounter();
+			}
 
 			// Check if allocation is valid (e.g. if this pointer references some object)
 			if (CanReleaseAllocation()) {
@@ -248,9 +268,11 @@ namespace Omni {
 			, m_CachedObject(other.m_CachedObject)
 			, m_CachedCounter(other.m_CachedCounter)
 		{
-			static_assert(std::is_same_v<T, U> || std::is_base_of_v<T, U> || std::is_base_of_v<U, T>, "Types are not related to each other");
+			static_assert(std::is_same_v<T, U> || std::is_base_of_v<T, U>, "Types are not related to each other");
 
-			IncrementRefCounter();
+			if (m_Allocation.IsValid()) {
+				IncrementRefCounter();
+			}
 
 			other.Reset();
 		}
@@ -337,11 +359,11 @@ namespace Omni {
 		};
 
 		inline T* operator->() const {
-			return m_Allocation.As<T>();
+			return m_CachedObject;
 		}
 
 		inline T& operator*() {
-			return *m_Allocation.As<T>();
+			return *m_CachedObject;
 		}
 
 		inline operator bool() const {

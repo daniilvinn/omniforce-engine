@@ -334,7 +334,7 @@ namespace Omni {
 
 		void Reallocate(SizeType new_size = 256 / sizeof(T)) {
 
-			MemoryAllocation new_allocation = m_Allocator->AllocateBase(new_size);
+			MemoryAllocation new_allocation = m_Allocator->AllocateBase(new_size * sizeof(T));
 			if (m_Allocation.IsValid()) [[likely]] 
 			{
 				memcpy(new_allocation.Memory, m_Allocation.Memory, std::min(new_size, m_Size) * sizeof(T));
