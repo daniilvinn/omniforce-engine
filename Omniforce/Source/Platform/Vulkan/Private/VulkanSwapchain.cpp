@@ -154,7 +154,7 @@ namespace Omni {
 			swapchain_image_spec.type = ImageType::TYPE_2D;
 			swapchain_image_spec.format = convert(m_SurfaceFormat.format);
 
-			m_Images.push_back(std::make_shared<VulkanImage>(swapchain_image_spec, image, image_view));
+			m_Images.push_back(CreateRef<VulkanImage>(&g_PersistentAllocator, swapchain_image_spec, image, image_view));
 
 			VkImageMemoryBarrier image_memory_barrier = {};
 			image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -248,7 +248,7 @@ namespace Omni {
 
 	void VulkanSwapchain::DestroySwapchain()
 	{
-		Shared<VulkanDevice> device = VulkanGraphicsContext::Get()->GetDevice();
+		Ref<VulkanDevice> device = VulkanGraphicsContext::Get()->GetDevice();
 
 		vkDeviceWaitIdle(device->Raw());
 		for (auto& image : m_Images) {

@@ -40,14 +40,14 @@ namespace Omni {
 
 	class OMNIFORCE_API SceneRenderer {
 	public:
-		static Shared<SceneRenderer> Create(const SceneRendererSpecification& spec);
+		static Ref<SceneRenderer> Create(IAllocator* allocator, SceneRendererSpecification& spec);
 
 		SceneRenderer(const SceneRendererSpecification& spec);
 		~SceneRenderer();
 
 		void Destroy();
 
-		void BeginScene(Shared<Camera> camera);
+		void BeginScene(Ref<Camera> camera);
 		void EndScene();
 
 		void EnterDebugMode(DebugSceneView mode) { m_CurrentDebugMode = mode; };
@@ -55,90 +55,90 @@ namespace Omni {
 		bool IsInDebugMode() const { return m_CurrentDebugMode != DebugSceneView::NONE; }
 		DebugSceneView GetCurrentDebugMode() const { return m_CurrentDebugMode; }
 
-		Shared<Image> GetFinalImage();
-		static Shared<ImageSampler> GetSamplerNearest() { return s_SamplerNearest; }
-		static Shared<ImageSampler> GetSamplerLinear() { return s_SamplerLinear; }
+		Ref<Image> GetFinalImage();
+		static Ref<ImageSampler> GetSamplerNearest() { return s_SamplerNearest; }
+		static Ref<ImageSampler> GetSamplerLinear() { return s_SamplerLinear; }
 		AssetHandle GetDummyWhiteTexture() const { return m_DummyWhiteTexture->Handle; }
 		/*
 		* @brief Adds resource to a global renderer data
 		* @return returns an index the resource can be accessed with
 		*/
-		uint32 AcquireResourceIndex(Shared<Image> image, SamplerFilteringMode filtering_mode);
-		uint32 AcquireResourceIndex(Shared<Image> image);
-		uint32 AcquireResourceIndex(Shared<Mesh> mesh);
-		uint32 AcquireResourceIndex(Shared<Material> material); // WARNING: this returns offset in material pool, not index
+		uint32 AcquireResourceIndex(Ref<Image> image, SamplerFilteringMode filtering_mode);
+		uint32 AcquireResourceIndex(Ref<Image> image);
+		uint32 AcquireResourceIndex(Ref<Mesh> mesh);
+		uint32 AcquireResourceIndex(Ref<Material> material); // WARNING: this returns offset in material pool, not index
 
 		/*
 		* @brief Removes resource to a global renderer data
 		* @return true if successful, false if no resource found
 		*/
-		bool ReleaseResourceIndex(Shared<Image> image);
+		bool ReleaseResourceIndex(Ref<Image> image);
 		uint32 GetTextureIndex(const AssetHandle& uuid) const { return m_TextureIndices.at(uuid); }
 		uint64 GetMaterialBDA(const AssetHandle& id) const { return m_MaterialDataPool.GetStorageBufferAddress() + m_MaterialDataPool.GetOffset(id); }
 		uint32 GetMeshIndex(const AssetHandle& uuid) const { return m_MeshResourcesBuffer.GetIndex(uuid); }
 
 		void RenderSprite(const Sprite& sprite);
-		void RenderObject(Shared<Pipeline> pipeline, const GLSL::RenderObjectData& render_data);
+		void RenderObject(Ref<Pipeline> pipeline, const GLSL::RenderObjectData& render_data);
 
 		// Lighting
 		void AddPointLight(const GLSL::PointLight& point_light) { m_HostPointLights.push_back(point_light); }
 
 	private:
-		Shared<Camera> m_Camera;
+		Ref<Camera> m_Camera;
 		SceneRendererSpecification m_Specification;
 
-		std::vector<Shared<Image>> m_RendererOutputs;
-		std::vector<Shared<Image>> m_DepthAttachments;
-		Shared<Image> m_CurrectMainRenderTarget;
-		Shared<Image> m_CurrentDepthAttachment;
+		std::vector<Ref<Image>> m_RendererOutputs;
+		std::vector<Ref<Image>> m_DepthAttachments;
+		Ref<Image> m_CurrectMainRenderTarget;
+		Ref<Image> m_CurrentDepthAttachment;
 
-		std::vector<Shared<DescriptorSet>> m_SceneDescriptorSet;
-		inline static Shared<ImageSampler> s_SamplerNearest;
-		inline static Shared<ImageSampler> s_SamplerLinear;
-		Shared<Image> m_DummyWhiteTexture;
+		std::vector<Ref<DescriptorSet>> m_SceneDescriptorSet;
+		inline static Ref<ImageSampler> s_SamplerNearest;
+		inline static Ref<ImageSampler> s_SamplerLinear;
+		Ref<Image> m_DummyWhiteTexture;
 		uint32 m_SpriteBufferSize; // size in bytes per frame in flight, not overall size
 		std::vector<Sprite> m_SpriteQueue;
 
-		Shared<Pipeline> m_SpritePass;
-		Shared<Pipeline> m_LinePass;
-		Shared<Pipeline> m_ClearPass;
+		Ref<Pipeline> m_SpritePass;
+		Ref<Pipeline> m_LinePass;
+		Ref<Pipeline> m_ClearPass;
 
 		// ~ Omni 2024 ~
-		Shared<DeviceBuffer> m_CameraDataBuffer;
+		Ref<DeviceBuffer> m_CameraDataBuffer;
 
-		Scope<VirtualMemoryBlock> m_TextureIndexAllocator;
-		Scope<VirtualMemoryBlock> m_StorageImageIndexAllocator;
+		Ptr<VirtualMemoryBlock> m_TextureIndexAllocator;
+		Ptr<VirtualMemoryBlock> m_StorageImageIndexAllocator;
 		rhumap<UUID, uint32> m_TextureIndices;
 		rhumap<UUID, uint32> m_StorageImageIndices;
-		Shared<DeviceBuffer> m_SpriteDataBuffer;
+		Ref<DeviceBuffer> m_SpriteDataBuffer;
 
 		DeviceIndexedResourceBuffer<GLSL::MeshData> m_MeshResourcesBuffer;
 		DeviceMaterialPool m_MaterialDataPool;
 
-		rh::unordered_flat_set<Shared<Pipeline>> m_ActiveMaterialPipelines;
+		rh::unordered_flat_set<Ref<Pipeline>> m_ActiveMaterialPipelines;
 		std::vector<GLSL::RenderObjectData> m_HostRenderQueue;
-		Shared<DeviceBuffer> m_DeviceRenderQueue;
-		Shared<DeviceBuffer> m_CulledDeviceRenderQueue;
-		Shared<DeviceBuffer> m_DeviceIndirectDrawParams;
+		Ref<DeviceBuffer> m_DeviceRenderQueue;
+		Ref<DeviceBuffer> m_CulledDeviceRenderQueue;
+		Ref<DeviceBuffer> m_DeviceIndirectDrawParams;
 
-		Shared<Pipeline> m_IndirectFrustumCullPipeline;
+		Ref<Pipeline> m_IndirectFrustumCullPipeline;
 
 		struct GBuffer {
-			Shared<Image> positions;
-			Shared<Image> normals;
-			Shared<Image> base_color;
-			Shared<Image> metallic_roughness_occlusion;
+			Ref<Image> positions;
+			Ref<Image> normals;
+			Ref<Image> base_color;
+			Ref<Image> metallic_roughness_occlusion;
 		} m_GBuffer;
-		Shared<Pipeline> m_PBRFullscreenPipeline;
+		Ref<Pipeline> m_PBRFullscreenPipeline;
 
-		Shared<Image> m_VisibilityBuffer;
-		Shared<Pipeline> m_VisBufferPass;
-		Shared<Pipeline> m_VisMaterialResolvePass;
-		Shared<DeviceBuffer> m_VisibleClusters;
-		Shared<DeviceBuffer> m_SWRasterQueue;
+		Ref<Image> m_VisibilityBuffer;
+		Ref<Pipeline> m_VisBufferPass;
+		Ref<Pipeline> m_VisMaterialResolvePass;
+		Ref<DeviceBuffer> m_VisibleClusters;
+		Ref<DeviceBuffer> m_SWRasterQueue;
 
 		std::vector<GLSL::PointLight> m_HostPointLights;
-		Shared<DeviceBuffer> m_DevicePointLights;
+		Ref<DeviceBuffer> m_DevicePointLights;
 		std::shared_mutex m_Mutex;
 
 		DebugSceneView m_CurrentDebugMode = DebugSceneView::NONE;

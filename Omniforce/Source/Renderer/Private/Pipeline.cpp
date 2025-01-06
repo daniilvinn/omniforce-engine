@@ -6,9 +6,9 @@
 
 namespace Omni {
 
-	Shared<Pipeline> Pipeline::Create(const PipelineSpecification& spec, UUID id)
+	Ref<Pipeline> Pipeline::Create(IAllocator* allocator, const PipelineSpecification& spec, UUID id)
 	{
-		auto pipeline = std::make_shared<VulkanPipeline>(spec);
+		auto pipeline = CreateRef<VulkanPipeline>(allocator, spec);
 		pipeline->m_ID = id;
 
 		PipelineLibrary::AddPipeline(pipeline);

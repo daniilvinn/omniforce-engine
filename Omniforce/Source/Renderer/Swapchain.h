@@ -30,7 +30,7 @@ namespace Omni {
 		virtual bool IsVSync() const = 0;
 		virtual void SetVSync(bool vsync) = 0;
 
-		virtual Shared<Image> GetCurrentImage() = 0;
+		virtual Ref<Image> GetCurrentImage() = 0;
 
 		virtual SwapchainSpecification GetSpecification() = 0;
 

@@ -19,8 +19,8 @@ namespace Omni {
 	};
 
 	struct PipelineBarrierInfo {
-		std::vector<std::pair<Shared<DeviceBuffer>, PipelineResourceBarrierInfo>> buffer_barriers;
-		std::vector<std::pair<Shared<Image>, PipelineResourceBarrierInfo>> image_barriers;
+		std::vector<std::pair<Ref<DeviceBuffer>, PipelineResourceBarrierInfo>> buffer_barriers;
+		std::vector<std::pair<Ref<Image>, PipelineResourceBarrierInfo>> image_barriers;
 	};
 
 }

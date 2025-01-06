@@ -51,7 +51,7 @@ namespace Omni {
 	struct OMNIFORCE_API PipelineSpecification {
 		std::string debug_name;
 		DeviceBufferLayout input_layout;
-		Shared<Shader> shader;
+		Ref<Shader> shader;
 		float32 line_width;
 		PipelineType type;
 		PipelineCullingMode culling_mode;
@@ -112,7 +112,7 @@ namespace Omni {
 	class OMNIFORCE_API Pipeline {
 	public:
 		// NOTE: automatically(!!!) adds pipeline to pipeline library
-		static Shared<Pipeline> Create(const PipelineSpecification& spec, UUID id = UUID());
+		static Ref<Pipeline> Create(IAllocator* allocator, const PipelineSpecification& spec, UUID id = UUID());
 		virtual void Destroy() = 0;
 
 		virtual const PipelineSpecification& GetSpecification() const = 0;
@@ -134,8 +134,8 @@ namespace Omni {
 namespace robin_hood {
 
 	template<>
-	struct hash<Omni::Shared<Omni::Pipeline>> {
-		size_t operator()(const Omni::Shared<Omni::Pipeline>& pipeline) const {
+	struct hash<Omni::Ref<Omni::Pipeline>> {
+		size_t operator()(const Omni::Ref<Omni::Pipeline>& pipeline) const {
 			return hash<Omni::uint64>()(pipeline->GetID().Get());
 		}
 	};

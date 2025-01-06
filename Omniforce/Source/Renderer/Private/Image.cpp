@@ -5,19 +5,19 @@
 
 namespace Omni {
 
-	Shared<Image> Image::Create(const ImageSpecification& spec, const AssetHandle& id /* = UUID()*/)
+	Ref<Image> Image::Create(IAllocator* allocator, const ImageSpecification& spec, const AssetHandle& id /* = UUID()*/)
 	{
-		return std::make_shared<VulkanImage>(spec, id);
+		return CreateRef<VulkanImage>(allocator, spec, id);
 	}
 
-	Shared<Image> Image::Create(const ImageSpecification& spec, const std::vector<RGBA32> data, const AssetHandle& id)
+	Ref<Image> Image::Create(IAllocator* allocator, const ImageSpecification& spec, const std::vector<RGBA32> data, const AssetHandle& id)
 	{
-		return std::make_shared<VulkanImage>(spec, data, id);
+		return CreateRef<VulkanImage>(allocator, spec, data, id);
 	}
 
-	Shared<ImageSampler> ImageSampler::Create(const ImageSamplerSpecification& spec)
+	Ref<ImageSampler> ImageSampler::Create(IAllocator* allocator, const ImageSamplerSpecification& spec)
 	{
-		return std::make_shared<VulkanImageSampler>(spec);
+		return CreateRef<VulkanImageSampler>(allocator, spec);
 	}
 
 }

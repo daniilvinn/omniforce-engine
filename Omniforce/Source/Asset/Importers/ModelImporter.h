@@ -55,7 +55,7 @@ namespace Omni {
 		*  Process vertex data: optimize, generate lods, meshlets and create Mesh objects
 		*/
 		void ProcessMeshData(
-			Shared<Mesh>* out_mesh, 
+			Ref<Mesh>* out_mesh, 
 			AABB* out_lod0_aabb, 
 			const std::vector<byte>* vertex_data, 
 			const std::vector<uint32>* index_data, 
@@ -67,7 +67,7 @@ namespace Omni {
 		/*
 		*  Process material data. Load image, generate mip-maps, compress data and create Material objects
 		*/
-		void ProcessMaterialData(tf::Subflow& properties_load_subflow, Shared<Material>* out_material, const ftf::Asset* asset, 
+		void ProcessMaterialData(tf::Subflow& properties_load_subflow, Ref<Material>* out_material, const ftf::Asset* asset, 
 			const ftf::Material* material, const VertexAttributeMetadataTable* vertex_macro_table, std::shared_mutex* mtx);
 	};
 

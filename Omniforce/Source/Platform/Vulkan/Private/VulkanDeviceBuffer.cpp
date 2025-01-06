@@ -122,7 +122,7 @@ namespace Omni {
 	{
 		if (m_Specification.memory_usage == DeviceBufferMemoryUsage::NO_HOST_ACCESS) 
 		{
-			Shared<VulkanDevice> device = VulkanGraphicsContext::Get()->GetDevice();
+			Ref<VulkanDevice> device = VulkanGraphicsContext::Get()->GetDevice();
 
 			DeviceBufferSpecification staging_buffer_spec = {};
 			staging_buffer_spec.size = data_size;
@@ -204,22 +204,22 @@ namespace Omni {
 		
 	}
 
-	void VulkanDeviceBuffer::CopyRegionTo(Shared<DeviceCmdBuffer> cmd_buffer, Shared<DeviceBuffer> dst_buffer, uint64 src_offset, uint64 dst_offset, uint64 size)
+	void VulkanDeviceBuffer::CopyRegionTo(Ref<DeviceCmdBuffer> cmd_buffer, Ref<DeviceBuffer> dst_buffer, uint64 src_offset, uint64 dst_offset, uint64 size)
 	{
-		Shared<VulkanDeviceCmdBuffer> vk_cmd_buffer = ShareAs<VulkanDeviceCmdBuffer>(cmd_buffer);
-		Shared<VulkanDeviceBuffer> vk_buffer = ShareAs<VulkanDeviceBuffer>(dst_buffer);
+		WeakPtr<VulkanDeviceCmdBuffer> vk_cmd_buffer = cmd_buffer.As<VulkanDeviceCmdBuffer>();
+		WeakPtr<VulkanDeviceBuffer> vk_buffer = dst_buffer.As<VulkanDeviceBuffer>();
 
 		VkBufferCopy params = {};
 		params.srcOffset = src_offset;
 		params.dstOffset = dst_offset;
 		params.size = size;
 
-		vkCmdCopyBuffer(*vk_cmd_buffer, m_Buffer, vk_buffer->Raw(), 1, &params);
+		vkCmdCopyBuffer(vk_cmd_buffer->Raw(), m_Buffer, vk_buffer->Raw(), 1, &params);
 	}
 
-	void VulkanDeviceBuffer::Clear(Shared<DeviceCmdBuffer> cmd_buffer, uint64 offset, uint64 size, uint32 value)
+	void VulkanDeviceBuffer::Clear(Ref<DeviceCmdBuffer> cmd_buffer, uint64 offset, uint64 size, uint32 value)
 	{
-		Shared<VulkanDeviceCmdBuffer> device_cmd_buffer = ShareAs<VulkanDeviceCmdBuffer>(cmd_buffer);
+		WeakPtr<VulkanDeviceCmdBuffer> device_cmd_buffer = cmd_buffer.As<VulkanDeviceCmdBuffer>();
 		vkCmdFillBuffer(device_cmd_buffer->Raw(), m_Buffer, offset, size, value);
 	}
 

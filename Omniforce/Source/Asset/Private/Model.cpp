@@ -9,9 +9,9 @@ namespace Omni {
 		
 	}
 
-	Shared<Model> Model::Create(const std::vector<std::pair<AssetHandle, AssetHandle>>& meshes)
+	Ref<Model> Model::Create(IAllocator* allocator, std::vector<std::pair<AssetHandle, AssetHandle>>& meshes)
 	{
-		return std::make_shared<Model>(meshes);
+		return CreateRef<Model>(allocator, meshes);
 	}
 
 }

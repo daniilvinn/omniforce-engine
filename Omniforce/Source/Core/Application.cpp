@@ -47,7 +47,7 @@ namespace Omni
 		ScriptEngine::Init();
 
 		RendererConfig renderer_config = {};
-		renderer_config.main_window = m_WindowSystem->GetWindow("main").get();
+		renderer_config.main_window = m_WindowSystem->GetWindow("main").Raw();
 		renderer_config.frames_in_flight = 2;
 		renderer_config.vsync = false;
 
@@ -134,7 +134,7 @@ namespace Omni
 		m_DeltaTimeData.current_frame_time = Input::Time();
 	}
 
-	Shared<AppWindow> Application::GetWindow(const std::string& tag) const
+	Ref<AppWindow> Application::GetWindow(const std::string& tag) const
 	{
 		return m_WindowSystem->GetWindow(tag);
 	}

@@ -17,7 +17,7 @@ namespace Omni {
 
 		void RemoveWindow(const std::string& tag) override;
 
-		Shared<AppWindow> GetWindow(const std::string& tag) const override;
+		Ref<AppWindow> GetWindow(const std::string& tag) const override;
 
 		void ProcessEvents() override;
 

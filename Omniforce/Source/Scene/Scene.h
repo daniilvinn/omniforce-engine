@@ -46,9 +46,9 @@ namespace Omni {
 		auto&					GetEntities() { return m_Entities; }
 		Entity					GetEntity(UUID id);
 		Entity					GetEntity(std::string_view tag);
-		Shared<Image>			GetFinalImage() const { return m_Renderer->GetFinalImage(); }
-		Shared<Camera>			GetCamera() const { return m_Camera; };
-		Shared<SceneRenderer>	GetRenderer() const { return m_Renderer; }
+		Ref<Image>			GetFinalImage() const { return m_Renderer->GetFinalImage(); }
+		Ref<Camera>			GetCamera() const { return m_Camera; };
+		Ref<SceneRenderer>	GetRenderer() const { return m_Renderer; }
 		UUID					GetID() const { return m_Id; }
 		PhysicsSettings			GetPhysicsSettings() const { return m_PhysicsSettings; }
 		void					SetPhysicsSettings(const PhysicsSettings& settings);
@@ -59,14 +59,14 @@ namespace Omni {
 		/*
 		*	Editor only
 		*/
-		void EditorSetCamera(Shared<Camera> camera) { m_Camera = camera; }
+		void EditorSetCamera(Ref<Camera> camera) { m_Camera = camera; }
 
 	private:
 		UUID m_Id;
 
-		Shared<SceneRenderer> m_Renderer;
+		Ref<SceneRenderer> m_Renderer;
 		SceneType m_Type;
-		Shared<Camera> m_Camera = nullptr;
+		Ref<Camera> m_Camera = nullptr;
 		bool m_InRuntime = false;
 
 		entt::registry m_Registry;

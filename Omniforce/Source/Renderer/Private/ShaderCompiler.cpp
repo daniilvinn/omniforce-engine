@@ -39,7 +39,7 @@ namespace Omni {
 
 	bool ShaderCompiler::ReadShaderFile(std::filesystem::path path, std::stringstream* out)
 	{
-		Shared<File> file = FileSystem::ReadFile(path, 0);
+		Ref<File> file = FileSystem::ReadFile(&g_TransientAllocator, path, 0);
 		if (!file->GetData() && file->GetSize())
 			return false;
 

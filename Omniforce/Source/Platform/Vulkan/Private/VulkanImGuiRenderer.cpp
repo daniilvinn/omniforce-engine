@@ -205,13 +205,14 @@ namespace Omni {
 	}
 
 	namespace UI {
-		void UnregisterImage(Shared<Image> image) {
+		void UnregisterImage(Ref<Image> image) {
 			imgui_image_descriptor_sets.erase(image->Handle);
 		}
 
-		void RenderImage(Shared<Image> image, Shared<ImageSampler> sampler, ImVec2 size, uint32 image_layer, bool flip) {
-			Shared<VulkanImage> vk_image = ShareAs<VulkanImage>(image);
-			Shared<VulkanImageSampler> vk_sampler = ShareAs<VulkanImageSampler>(sampler);
+		void RenderImage(Ref<Image> image, Ref<ImageSampler> sampler, ImVec2 size, uint32 image_layer, bool flip) {
+			Ref<VulkanImage> vk_image = image;
+			Ref<VulkanImageSampler> vk_sampler = sampler;
+
 			if (imgui_image_descriptor_sets.find(image->Handle) == imgui_image_descriptor_sets.end()) {
 
 				VkDescriptorSet imgui_image_id = ImGui_ImplVulkan_AddTexture(
@@ -224,9 +225,10 @@ namespace Omni {
 			ImGui::Image(imgui_image_descriptor_sets[image->Handle], size, { 0, (float32)!flip }, { 1, (float32)flip });
 		};
 
-		bool RenderImageButton(Shared<Image> image, Shared<ImageSampler> sampler, ImVec2 size, uint32 image_layer, bool flip) {
-			Shared<VulkanImage> vk_image = ShareAs<VulkanImage>(image);
-			Shared<VulkanImageSampler> vk_sampler = ShareAs<VulkanImageSampler>(sampler);
+		bool RenderImageButton(Ref<Image> image, Ref<ImageSampler> sampler, ImVec2 size, uint32 image_layer, bool flip) {
+			Ref<VulkanImage> vk_image = image;
+			Ref<VulkanImageSampler> vk_sampler = sampler;
+
 			if (imgui_image_descriptor_sets.find(image->Handle) == imgui_image_descriptor_sets.end()) {
 
 				VkDescriptorSet imgui_image_id = ImGui_ImplVulkan_AddTexture(

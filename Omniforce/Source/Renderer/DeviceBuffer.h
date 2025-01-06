@@ -53,8 +53,8 @@ namespace Omni {
 	class OMNIFORCE_API DeviceBuffer 
 	{
 	public:
-		static Shared<DeviceBuffer> Create(const DeviceBufferSpecification& spec);
-		static Shared<DeviceBuffer> Create(const DeviceBufferSpecification& spec, void* data, uint64 data_size);
+		static Ref<DeviceBuffer> Create(IAllocator* allocator, const DeviceBufferSpecification& spec);
+		static Ref<DeviceBuffer> Create(IAllocator* allocator, const DeviceBufferSpecification& spec, void* data, uint64 data_size);
 
 		virtual ~DeviceBuffer() {};
 
@@ -65,9 +65,9 @@ namespace Omni {
 		virtual uint64 GetPerFrameSize() = 0;
 		virtual uint64 GetFrameOffset() = 0;
 
-		virtual void CopyRegionTo(Shared<DeviceCmdBuffer> cmd_buffer, Shared<DeviceBuffer> dst_buffer, uint64 src_offset, uint64 dst_offset, uint64 size) = 0;
+		virtual void CopyRegionTo(Ref<DeviceCmdBuffer> cmd_buffer, Ref<DeviceBuffer> dst_buffer, uint64 src_offset, uint64 dst_offset, uint64 size) = 0;
 		virtual void UploadData(uint64 offset, void* data, uint64 data_size) = 0;
-		virtual void Clear(Shared<DeviceCmdBuffer> cmd_buffer, uint64 offset, uint64 size, uint32 value) = 0;
+		virtual void Clear(Ref<DeviceCmdBuffer> cmd_buffer, uint64 offset, uint64 size, uint32 value) = 0;
 	};
 
 }

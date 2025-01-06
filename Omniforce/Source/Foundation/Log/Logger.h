@@ -17,6 +17,9 @@ namespace Omni {
 	class OMNIFORCE_API Logger 
 	{
 	public:
+		template<typename T>
+		using LogPtr = std::shared_ptr<T>;
+
 		enum class Level : uint8_t 
 		{
 			LEVEL_TRACE			= BIT(0),
@@ -44,12 +47,11 @@ namespace Omni {
 		static void Init(Level level);
 		static void Shutdown();
 		static Logger* Get() { return s_Instance; }
-		static Shared<spdlog::logger> GetCoreLogger() { return s_Instance->m_CoreLogger; };
-		static Shared<spdlog::logger> GetClientLogger() { return s_Instance->m_ClientLogger; };
-		static Shared<spdlog::logger> GetLoggerByName(std::string_view name) { return spdlog::get(name.data()); }
-		//static Shared<spdlog::logger> GetLoggerByName(std::string_view name) { return s_Instance->m_AdditionalLoggers.at(name.data()); }
-		static void AddLogger(Shared<spdlog::logger> logger) { spdlog::register_logger(logger); }
-		static void SetClientLoggerSink(Shared<spdlog::sinks::base_sink<std::mutex>> sink) { s_Instance->m_ClientLogger->sinks().push_back(sink); }
+		static LogPtr<spdlog::logger> GetCoreLogger() { return s_Instance->m_CoreLogger; };
+		static LogPtr<spdlog::logger> GetClientLogger() { return s_Instance->m_ClientLogger; };
+		static LogPtr<spdlog::logger> GetLoggerByName(std::string_view name) { return spdlog::get(name.data()); }
+		static void AddLogger(LogPtr<spdlog::logger> logger) { spdlog::register_logger(logger); }
+		static void SetClientLoggerSink(LogPtr<spdlog::sinks::base_sink<std::mutex>> sink) { s_Instance->m_ClientLogger->sinks().push_back(sink); }
 		
 		// Core logging API
 		template<typename... Args>
@@ -94,9 +96,9 @@ namespace Omni {
 
 	
 		static Logger* s_Instance;
-		Shared<spdlog::logger> m_CoreLogger;
-		Shared<spdlog::logger> m_ClientLogger;
-		Shared<spdlog::logger> m_FileLogger;
+		LogPtr<spdlog::logger> m_CoreLogger;
+		LogPtr<spdlog::logger> m_ClientLogger;
+		LogPtr<spdlog::logger> m_FileLogger;
 		std::string m_LogBuffer;
 	};
 

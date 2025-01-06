@@ -92,9 +92,9 @@ namespace Omni {
 		m_ImageView = VK_NULL_HANDLE;
 	}
 
-	void VulkanImage::SetLayout(Shared<DeviceCmdBuffer> cmd_buffer, ImageLayout new_layout, PipelineStage src_stage, PipelineStage dst_stage, BitMask src_access, BitMask dst_access)
+	void VulkanImage::SetLayout(Ref<DeviceCmdBuffer> cmd_buffer, ImageLayout new_layout, PipelineStage src_stage, PipelineStage dst_stage, BitMask src_access, BitMask dst_access)
 	{
-		Shared<VulkanDeviceCmdBuffer> vk_cmd_buffer = ShareAs<VulkanDeviceCmdBuffer>(cmd_buffer);
+		WeakPtr<VulkanDeviceCmdBuffer> vk_cmd_buffer = cmd_buffer.As<VulkanDeviceCmdBuffer>();
 
 		VkImageMemoryBarrier2 image_memory_barrier = {};
 		image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
@@ -295,7 +295,8 @@ namespace Omni {
 
 		VK_CHECK_RESULT(vkCreateImageView(device->Raw(), &image_view_create_info, nullptr, &m_ImageView));
 
-		Shared<DeviceCmdBuffer> cmd_buffer = DeviceCmdBuffer::Create(
+		Ref<DeviceCmdBuffer> cmd_buffer = DeviceCmdBuffer::Create(
+			&g_TransientAllocator,
 			DeviceCmdBufferLevel::PRIMARY, 
 			DeviceCmdBufferType::TRANSIENT, 
 			DeviceCmdType::GENERAL
@@ -352,7 +353,8 @@ namespace Omni {
 
 		VK_CHECK_RESULT(vkCreateImageView(device->Raw(), &image_view_create_info, nullptr, &m_ImageView));
 
-		Shared<DeviceCmdBuffer> cmd_buffer = DeviceCmdBuffer::Create(
+		Ref<DeviceCmdBuffer> cmd_buffer = DeviceCmdBuffer::Create(
+			&g_TransientAllocator,
 			DeviceCmdBufferLevel::PRIMARY,
 			DeviceCmdBufferType::TRANSIENT,
 			DeviceCmdType::GENERAL
@@ -409,7 +411,8 @@ namespace Omni {
 
 		VK_CHECK_RESULT(vkCreateImageView(device->Raw(), &image_view_create_info, nullptr, &m_ImageView));
 
-		Shared<DeviceCmdBuffer> cmd_buffer = DeviceCmdBuffer::Create(
+		Ref<DeviceCmdBuffer> cmd_buffer = DeviceCmdBuffer::Create(
+			&g_TransientAllocator,
 			DeviceCmdBufferLevel::PRIMARY,
 			DeviceCmdBufferType::TRANSIENT,
 			DeviceCmdType::GENERAL

@@ -26,14 +26,14 @@ namespace Omni {
 		virtual void AddWindow(const WindowConfig& config) = 0;
 		virtual void RemoveWindow(const std::string& tag) = 0;
 
-		virtual Shared<AppWindow> GetWindow(const std::string& tag) const = 0;
+		virtual Ref<AppWindow> GetWindow(const std::string& tag) const = 0;
 
 		virtual void PollEvents() = 0;
 		virtual void ProcessEvents() = 0;
 
 	protected:
 		static Ptr<WindowSystem> s_Instance;
-		std::unordered_map<std::string, Shared<AppWindow>> m_ActiveWindows;
+		std::unordered_map<std::string, Ref<AppWindow>> m_ActiveWindows;
 	};
 
 }

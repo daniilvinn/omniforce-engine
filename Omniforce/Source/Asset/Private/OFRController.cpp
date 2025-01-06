@@ -3,7 +3,7 @@
 
 namespace Omni {
 
-	std::unique_ptr<AssetFile> OFRController::Build(std::array<AssetFileSubresourceMetadata, 16> metadata, std::vector<byte> data, uint64 additional_data) {
+	Ptr<AssetFile> OFRController::Build(std::array<AssetFileSubresourceMetadata, 16> metadata, std::vector<byte> data, uint64 additional_data) {
 		m_Dirty = true;
 
 		AssetFileHeader file_header = {};
@@ -44,7 +44,7 @@ namespace Omni {
 		uint32 tellp = subresource_data_stream.tellp();
 		subresource_data_stream.read((char*)subresources_data_vector.data(), tellp);
 
-		std::unique_ptr<AssetFile> file = std::make_unique<AssetFile>();
+		Ptr<AssetFile> file = CreatePtr<AssetFile>(&g_PersistentAllocator);
 		file->header = file_header;
 		memcpy(file->subresources_metadata.data(), metadata.data(), sizeof AssetFileSubresourceMetadata * file->subresources_metadata.size());
 		file->subresources_data = new byte[file_header.subresources_size];
@@ -52,7 +52,7 @@ namespace Omni {
 
 		m_FileStream << *file;
 
-		return file;
+		return std::move(file);
 	}
 
 	bool OFRController::DestroyOfflineStorage()

@@ -17,7 +17,7 @@ public:
 
 	void OnUpdate(float32 step) override
 	{
-		Shared<Image> swapchain_image = Renderer::GetSwapchainImage();
+		Ref<Image> swapchain_image = Renderer::GetSwapchainImage();
 
 		{
 		if (Input::KeyPressed(KeyCode::KEY_W))
@@ -66,9 +66,9 @@ public:
 		SceneRendererSpecification renderer_spec = {};
 		renderer_spec.anisotropic_filtering = 16;
 
-		m_Renderer = SceneRenderer::Create(renderer_spec);
+		m_Renderer = SceneRenderer::Create(&g_PersistentAllocator, renderer_spec);
 
-		m_Camera = std::make_shared<Camera3D>();
+		m_Camera = CreateRef<Camera3D>(&g_PersistentAllocator);
 		m_Camera->SetProjection( glm::radians(90.0f), 16.0 / 9.0, 0.0f, 100.0f );
 
 		m_Scene = new Scene(SceneType::SCENE_TYPE_2D);
@@ -77,8 +77,8 @@ public:
 	/*
 	*	DATA
 	*/
-	Shared<Camera3D> m_Camera;
-	Shared<SceneRenderer> m_Renderer;
+	Ref<Camera3D> m_Camera;
+	Ref<SceneRenderer> m_Renderer;
 	Scene* m_Scene;
 	uint32 m_SelectedEntity = 0;
 	bool m_EntitySelected = false;

@@ -246,7 +246,7 @@ namespace Omni {
 		multisample_state.sampleShadingEnable = m_Specification.multisampling_enable;
 		multisample_state.rasterizationSamples = (VkSampleCountFlagBits)m_Specification.sample_count;
 
-		Shared<VulkanShader> vk_shader = ShareAs<VulkanShader>(m_Specification.shader);
+		Ref<VulkanShader> vk_shader = m_Specification.shader;
 		std::vector<VkDescriptorSetLayout> descriptor_set_layouts = vk_shader->GetLayouts();
 		std::vector<VkPushConstantRange> push_constant_ranges = vk_shader->GetRanges();
 
@@ -304,7 +304,7 @@ namespace Omni {
 	{
 		auto device = VulkanGraphicsContext::Get()->GetDevice();
 
-		Shared<VulkanShader> vk_shader = ShareAs<VulkanShader>(m_Specification.shader);
+		Ref<VulkanShader> vk_shader = m_Specification.shader;
 		std::vector<VkDescriptorSetLayout> descriptor_set_layouts = vk_shader->GetLayouts();
 		std::vector<VkPushConstantRange> push_constant_ranges = vk_shader->GetRanges();
 

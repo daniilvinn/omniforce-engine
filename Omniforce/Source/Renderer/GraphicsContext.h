@@ -8,10 +8,10 @@ namespace Omni {
 
 	class OMNIFORCE_API GraphicsContext {
 	public:
-		static Shared<GraphicsContext> Create();
+		static Ref<GraphicsContext> Create();
 		
 		virtual void Destroy() = 0;
-		virtual Shared<Swapchain> GetSwapchain() = 0;
+		virtual Ref<Swapchain> GetSwapchain() = 0;
 
 	};
 

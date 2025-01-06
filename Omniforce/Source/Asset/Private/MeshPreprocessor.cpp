@@ -7,9 +7,9 @@
 
 namespace Omni {
 
-	Scope<ClusterizedMesh> MeshPreprocessor::GenerateMeshlets(const std::vector<byte>* vertices, const std::vector<uint32>* indices, uint32 vertex_stride)
+	Ptr<ClusterizedMesh> MeshPreprocessor::GenerateMeshlets(const std::vector<byte>* vertices, const std::vector<uint32>* indices, uint32 vertex_stride)
 	{
-		Scope<ClusterizedMesh> meshlets_data = std::make_unique<ClusterizedMesh>();
+		Ptr<ClusterizedMesh> meshlets_data = CreatePtr<ClusterizedMesh>(&g_PersistentAllocator);
 
 		uint64 num_meshlets = meshopt_buildMeshletsBound(indices->size(), 64, 124);
 
@@ -67,7 +67,7 @@ namespace Omni {
 		meshlets_data->indices.resize(meshlets_data->meshlets[meshlets_data->meshlets.size() - 1].vertex_offset + meshlets_data->meshlets[meshlets_data->meshlets.size() - 1].metadata.vertex_count);
 		meshlets_data->local_indices.resize(meshlets_data->meshlets[meshlets_data->meshlets.size() - 1].triangle_offset + meshlets_data->meshlets[meshlets_data->meshlets.size() - 1].metadata.triangle_count * 3);
 
-		return meshlets_data;
+		return std::move(meshlets_data);
 	}
 
 	Bounds MeshPreprocessor::GenerateMeshBounds(const std::vector<glm::vec3>* points)

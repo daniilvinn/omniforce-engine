@@ -83,7 +83,7 @@ namespace Omni {
 			auto& camera_component = GetComponent<CameraComponent>();
 
 			nlohmann::json camera_component_node = nlohmann::json::object();
-			Shared<Camera> camera = camera_component.camera;
+			Ref<Camera> camera = camera_component.camera;
 			camera_component_node.emplace("Primary", camera_component.primary);
 			camera_component_node.emplace("ProjectionType", camera_component.camera->GetType());
 			
@@ -93,11 +93,11 @@ namespace Omni {
 			camera_component_node.emplace("FarClip", camera->GetFarClip());
 
 			if (camera->GetType() == CameraProjectionType::PROJECTION_3D) {
-				Shared<Camera3D> camera_3D = ShareAs<Camera3D>(camera);
+				Ref<Camera3D> camera_3D = camera;
 				fov = camera_3D->GetFOV();
 			}
 			else if (camera->GetType() == CameraProjectionType::PROJECTION_2D) {
-				Shared<Camera2D> camera_2D = ShareAs<Camera2D>(camera);
+				Ref<Camera2D> camera_2D = camera;
 				orthographic_scale = camera_2D->GetScale();
 			}
 			camera_component_node.emplace("FOV", glm::degrees(fov));
@@ -195,7 +195,7 @@ namespace Omni {
 		if (node.contains(CameraComponent::GetSerializableKey())) {
 			CameraComponent& camera_component = AddComponent<CameraComponent>();
 			if (node[CameraComponent::GetSerializableKey()]["ProjectionType"] == CameraProjectionType::PROJECTION_3D) {
-				Shared<Camera3D> camera_3D = std::make_shared<Camera3D>();
+				Ref<Camera3D> camera_3D = CreateRef<Camera3D>(&g_PersistentAllocator);
 				camera_3D->SetProjection(
 					glm::radians(node[CameraComponent::GetSerializableKey()]["FOV"].get<float32>()),
 					16.0f / 90.0f, // HACK: fix this later
@@ -205,7 +205,7 @@ namespace Omni {
 				camera_component.camera = camera_3D;
 			}
 			else if (node[CameraComponent::GetSerializableKey()]["ProjectionType"] == CameraProjectionType::PROJECTION_2D) {
-				Shared<Camera2D> camera_2D = std::make_shared<Camera2D>();
+				Ref<Camera2D> camera_2D = CreateRef<Camera2D>(&g_PersistentAllocator);
 				float32 aspect_ratio = 16.0f / 9.0f; // HACK: fix it as well
 				float32 scale = node[CameraComponent::GetSerializableKey()]["OrthographicScale"].get<float32>();
 				camera_2D->SetScale(scale);

@@ -28,7 +28,7 @@ namespace Omni {
 		window_config.height = config.height;
 		window_config.fullscreen = config.fs_exclusive;
 
-		Shared<AppWindow> window = AppWindow::Create(window_config);
+		Ref<AppWindow> window = AppWindow::Create(&g_PersistentAllocator, window_config);
 		m_ActiveWindows.emplace(config.tag, window);
 	}
 
@@ -37,7 +37,7 @@ namespace Omni {
 		m_ActiveWindows.erase(tag);
 	}
 
-	Shared<AppWindow> Win64WindowSystem::GetWindow(const std::string& tag) const
+	Ref<AppWindow> Win64WindowSystem::GetWindow(const std::string& tag) const
 	{
 		auto found_value = m_ActiveWindows.find(tag);
 		if (found_value == m_ActiveWindows.end()) [[unlikely]]

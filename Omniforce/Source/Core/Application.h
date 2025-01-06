@@ -41,7 +41,7 @@ namespace Omni {
 		void PreFrame();
 		void PostFrame();
 
-		Shared<AppWindow> GetWindow(const std::string& tag) const;
+		Ref<AppWindow> GetWindow(const std::string& tag) const;
 
 	private:
 		bool OnExit(WindowCloseEvent* e);

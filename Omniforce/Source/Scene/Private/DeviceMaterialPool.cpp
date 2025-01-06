@@ -10,7 +10,7 @@ namespace Omni {
 	DeviceMaterialPool::DeviceMaterialPool(SceneRenderer* context, uint64 size)
 		: m_Context(context)
 	{
-		m_VirtualAllocator = VirtualMemoryBlock::Create(size);
+		m_VirtualAllocator = VirtualMemoryBlock::Create(&g_PersistentAllocator, size);
 
 		DeviceBufferSpecification buffer_spec = {};
 		buffer_spec.size = size;
@@ -18,14 +18,14 @@ namespace Omni {
 		buffer_spec.memory_usage = DeviceBufferMemoryUsage::NO_HOST_ACCESS;
 		buffer_spec.heap = DeviceBufferMemoryHeap::DEVICE;
 
-		m_PoolBuffer = DeviceBuffer::Create(buffer_spec);
+		m_PoolBuffer = DeviceBuffer::Create(&g_PersistentAllocator, buffer_spec);
 
 		buffer_spec.size = 512;
 		buffer_spec.buffer_usage = DeviceBufferUsage::STAGING_BUFFER;
 		buffer_spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
 		buffer_spec.heap = DeviceBufferMemoryHeap::HOST;
 
-		m_StagingForCopy = DeviceBuffer::Create(buffer_spec);
+		m_StagingForCopy = DeviceBuffer::Create(&g_PersistentAllocator, buffer_spec);
 	}
 
 	DeviceMaterialPool::~DeviceMaterialPool()
@@ -38,7 +38,7 @@ namespace Omni {
 	uint64 DeviceMaterialPool::Allocate(AssetHandle material)
 	{
 		AssetManager* asset_manager = AssetManager::Get();
-		Shared<Material> m = asset_manager->GetAsset<Material>(material);
+		Ref<Material> m = asset_manager->GetAsset<Material>(material);
 
 		auto material_table = m->GetTable();
 
@@ -82,7 +82,7 @@ namespace Omni {
 		OMNIFORCE_ASSERT_TAGGED(dst_offset != UINT32_MAX, "Failed to allocate material data. Exceeded limit?");
 		m_OffsetsMap.emplace(material, dst_offset);
 
-		Shared<DeviceCmdBuffer> cmd_buffer = DeviceCmdBuffer::Create(DeviceCmdBufferLevel::PRIMARY, DeviceCmdBufferType::TRANSIENT, DeviceCmdType::GENERAL);
+		Ref<DeviceCmdBuffer> cmd_buffer = DeviceCmdBuffer::Create(&g_TransientAllocator, DeviceCmdBufferLevel::PRIMARY, DeviceCmdBufferType::TRANSIENT, DeviceCmdType::GENERAL);
 		cmd_buffer->Begin();
 		m_StagingForCopy->CopyRegionTo(cmd_buffer, m_PoolBuffer, 0, dst_offset, material_size);
 		cmd_buffer->End();

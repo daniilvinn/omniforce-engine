@@ -16,7 +16,7 @@ namespace Omni {
 
 	class OMNIFORCE_API MeshPreprocessor {
 	public:
-		Scope<ClusterizedMesh> GenerateMeshlets(const std::vector<byte>* vertices, const std::vector<uint32>* indices, uint32 vertex_stride);
+		Ptr<ClusterizedMesh> GenerateMeshlets(const std::vector<byte>* vertices, const std::vector<uint32>* indices, uint32 vertex_stride);
 		Bounds GenerateMeshBounds(const std::vector<glm::vec3>* points);
 		void OptimizeMesh(std::vector<byte>* out_vertices, std::vector<uint32>* out_indices, const std::vector<byte>* vertices, const std::vector<uint32>* indices, uint8 vertex_stride);
 		void RemapVertices(std::vector<byte>* out_vertices, const std::vector<byte>* in_vertices, uint32 vertex_stride, const std::vector<uint32>* remap_table);

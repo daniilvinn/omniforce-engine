@@ -11,7 +11,7 @@ namespace Omni {
 
 	class PipelineLibrary {
 	public:
-		static Shared<Pipeline> GetPipeline(const PipelineSpecification& spec) {
+		static Ref<Pipeline> GetPipeline(const PipelineSpecification& spec) {
 			for (auto& pipeline : m_Pipelines) {
 				if (pipeline->GetSpecification() == spec)
 					return pipeline;
@@ -27,13 +27,13 @@ namespace Omni {
 			return false;
 		}
 
-		static void AddPipeline(Shared<Pipeline> pipeline) { 
+		static void AddPipeline(Ref<Pipeline> pipeline) { 
 			std::lock_guard lock(m_Mutex);
 			m_Pipelines.push_back(pipeline); 
 		}
 
 	private:
-		inline static std::vector<Shared<Pipeline>> m_Pipelines;
+		inline static std::vector<Ref<Pipeline>> m_Pipelines;
 		inline static std::shared_mutex m_Mutex;
 
 	};

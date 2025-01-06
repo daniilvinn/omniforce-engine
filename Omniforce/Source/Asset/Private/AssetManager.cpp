@@ -58,7 +58,7 @@ namespace Omni {
 		return 0;
 	}
 
-	AssetHandle AssetManager::RegisterAsset(Shared<AssetBase> asset, const AssetHandle& id /*= AssetHandle()*/)
+	AssetHandle AssetManager::RegisterAsset(Ref<AssetBase> asset, const AssetHandle& id /*= AssetHandle()*/)
 	{
 		asset->Handle = id;
 		m_Mutex.lock();
@@ -168,7 +168,7 @@ namespace Omni {
 		texture_spec.mip_levels = Utils::ComputeNumMipLevelsBC7(image_width, image_height) + 1;
 		texture_spec.path = path;
 
-		Shared<Image> image = Image::Create(texture_spec, handle);
+		Ref<Image> image = Image::Create(&g_PersistentAllocator, texture_spec, handle);
 
 		m_AssetRegistry.emplace(image->Handle, image);
 		m_UUIDs.emplace(path.string(), image->Handle);

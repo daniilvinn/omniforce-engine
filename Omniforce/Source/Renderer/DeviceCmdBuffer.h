@@ -23,7 +23,7 @@ namespace Omni {
 
 	class OMNIFORCE_API DeviceCmdBuffer {
 	public:
-		static Shared<DeviceCmdBuffer> Create(DeviceCmdBufferLevel level, DeviceCmdBufferType buffer_type, DeviceCmdType cmd_type);
+		static Ref<DeviceCmdBuffer> Create(IAllocator* allocator, DeviceCmdBufferLevel level, DeviceCmdBufferType buffer_type, DeviceCmdType cmd_type);
 
 		virtual void Destroy() = 0;
 

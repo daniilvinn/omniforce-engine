@@ -85,8 +85,8 @@ namespace Omni {
 	class OMNIFORCE_API Image : public AssetBase
 	{
 	public:
-		static Shared<Image> Create(const ImageSpecification& spec, const AssetHandle& id = AssetHandle());
-		static Shared<Image> Create(const ImageSpecification& spec, const std::vector<RGBA32> data, const AssetHandle& id = AssetHandle());
+		static Ref<Image> Create(IAllocator* allocator, const ImageSpecification& spec, const AssetHandle& id = AssetHandle());
+		static Ref<Image> Create(IAllocator* allocator, const ImageSpecification& spec, const std::vector<RGBA32> data, const AssetHandle& id = AssetHandle());
 
 		virtual ~Image() {}
 
@@ -94,7 +94,7 @@ namespace Omni {
 
 		virtual ImageSpecification GetSpecification() const = 0;
 		virtual void SetLayout(
-			Shared<DeviceCmdBuffer> cmd_buffer,
+			Ref<DeviceCmdBuffer> cmd_buffer,
 			ImageLayout new_layout,
 			PipelineStage src_stage,
 			PipelineStage dst_stage,
@@ -138,7 +138,7 @@ namespace Omni {
 
 	class OMNIFORCE_API ImageSampler {
 	public:
-		static Shared<ImageSampler> Create(const ImageSamplerSpecification& spec);
+		static Ref<ImageSampler> Create(IAllocator* allocator, const ImageSamplerSpecification& spec);
 
 		virtual void Destroy() = 0;
 	};

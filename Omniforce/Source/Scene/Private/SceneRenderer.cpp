@@ -22,15 +22,15 @@
 
 namespace Omni {
 
-	Shared<SceneRenderer> SceneRenderer::Create(const SceneRendererSpecification& spec)
+	Ref<SceneRenderer> SceneRenderer::Create(IAllocator* allocator, SceneRendererSpecification& spec)
 	{
-		return std::make_shared<SceneRenderer>(spec);
+		return CreateRef<SceneRenderer>(allocator, spec);
 	}
 
 	SceneRenderer::SceneRenderer(const SceneRendererSpecification& spec)
-		: m_Specification(spec), m_MaterialDataPool(this, 4096 * 256 /* 256Kb of data*/), m_TextureIndexAllocator(VirtualMemoryBlock::Create(4 * UINT16_MAX)),
+		: m_Specification(spec), m_MaterialDataPool(this, 4096 * 256 /* 256Kb of data*/), m_TextureIndexAllocator(VirtualMemoryBlock::Create(&g_PersistentAllocator, 4 * UINT16_MAX)),
 		m_MeshResourcesBuffer(4096 * sizeof GLSL::MeshData), // allow up to 4096 meshes be allocated at once
-		m_StorageImageIndexAllocator(VirtualMemoryBlock::Create(4 * UINT16_MAX))
+		m_StorageImageIndexAllocator(VirtualMemoryBlock::Create(&g_PersistentAllocator, 4 * UINT16_MAX))
 	{
 		AssetManager* asset_manager = AssetManager::Get();
 
@@ -46,7 +46,7 @@ namespace Omni {
 			global_set_spec.bindings = std::move(bindings);
 
 			for (int i = 0; i < Renderer::GetConfig().frames_in_flight; i++) {
-				auto set = DescriptorSet::Create(global_set_spec);
+				auto set = DescriptorSet::Create(&g_PersistentAllocator, global_set_spec);
 				m_SceneDescriptorSet.push_back(set);
 			}
 
@@ -60,7 +60,7 @@ namespace Omni {
 				buffer_spec.buffer_usage = DeviceBufferUsage::STORAGE_BUFFER;
 				buffer_spec.heap = DeviceBufferMemoryHeap::DEVICE;
 
-				m_SpriteDataBuffer = DeviceBuffer::Create(buffer_spec);
+				m_SpriteDataBuffer = DeviceBuffer::Create(&g_PersistentAllocator, buffer_spec);
 
 				for (uint32 i = 0; i < Renderer::GetConfig().frames_in_flight; i++) {
 					m_SceneDescriptorSet[i]->Write(1, 0, m_SpriteDataBuffer, per_frame_size, i * per_frame_size);
@@ -76,13 +76,13 @@ namespace Omni {
 				attachment_spec.extent = Renderer::GetSwapchainImage()->GetSpecification().extent;
 				attachment_spec.format = ImageFormat::RGB32_HDR;
 				for (int i = 0; i < Renderer::GetConfig().frames_in_flight; i++)
-					m_RendererOutputs.push_back(Image::Create(attachment_spec));
+					m_RendererOutputs.push_back(Image::Create(&g_PersistentAllocator, attachment_spec));
 
 				attachment_spec.usage = ImageUsage::DEPTH_BUFFER;
 				attachment_spec.format = ImageFormat::D32;
 
 				for (int i = 0; i < Renderer::GetConfig().frames_in_flight; i++)
-					m_DepthAttachments.push_back(Image::Create(attachment_spec));
+					m_DepthAttachments.push_back(Image::Create(&g_PersistentAllocator, attachment_spec));
 
 			}
 
@@ -95,7 +95,7 @@ namespace Omni {
 			buffer_spec.heap = DeviceBufferMemoryHeap::DEVICE;
 			buffer_spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
 			buffer_spec.size = sizeof GLSL::CameraData * Renderer::GetConfig().frames_in_flight;
-			m_CameraDataBuffer = DeviceBuffer::Create(buffer_spec);
+			m_CameraDataBuffer = DeviceBuffer::Create(&g_PersistentAllocator, buffer_spec);
 		}
 
 		// Initialize nearest filtration sampler
@@ -110,7 +110,7 @@ namespace Omni {
 			sampler_spec.lod_bias = 0.0f;
 			sampler_spec.anisotropic_filtering_level = m_Specification.anisotropic_filtering;
 
-			s_SamplerNearest = ImageSampler::Create(sampler_spec);
+			s_SamplerNearest = ImageSampler::Create(&g_PersistentAllocator, sampler_spec);
 		}
 		// Initializing linear filtration sampler
 		{
@@ -124,7 +124,7 @@ namespace Omni {
 			sampler_spec.lod_bias = 0.0f;
 			sampler_spec.anisotropic_filtering_level = m_Specification.anisotropic_filtering;
 
-			s_SamplerLinear = ImageSampler::Create(sampler_spec);
+			s_SamplerLinear = ImageSampler::Create(&g_PersistentAllocator, sampler_spec);
 		}
 		// Load dummy white texture
 		{
@@ -139,7 +139,7 @@ namespace Omni {
 			image_spec.mip_levels = 1;
 			image_spec.array_layers = 1;
 
-			m_DummyWhiteTexture = Image::Create(image_spec, 0);
+			m_DummyWhiteTexture = Image::Create(&g_PersistentAllocator, image_spec, 0);
 			AcquireResourceIndex(m_DummyWhiteTexture, SamplerFilteringMode::LINEAR);
 		}
 		// Initialize pipelines
@@ -196,7 +196,7 @@ namespace Omni {
 			pipeline_spec.output_attachments_formats = { ImageFormat::RGB32_HDR };
 			pipeline_spec.culling_mode = PipelineCullingMode::NONE;
 
-			m_SpritePass = Pipeline::Create(pipeline_spec, shader_name_to_uuid_table["Sprite.ofs"]);
+			m_SpritePass = Pipeline::Create(&g_PersistentAllocator, pipeline_spec, shader_name_to_uuid_table["Sprite.ofs"]);
 
 			// PBR full screen
 			pipeline_spec.shader = shader_library->GetShader("PBR.ofs");
@@ -205,7 +205,7 @@ namespace Omni {
 			pipeline_spec.depth_test_enable = false;
 			pipeline_spec.depth_write_enable = false;
 
-			m_PBRFullscreenPipeline = Pipeline::Create(pipeline_spec, shader_name_to_uuid_table["PBR.ofs"]);
+			m_PBRFullscreenPipeline = Pipeline::Create(&g_PersistentAllocator, pipeline_spec, shader_name_to_uuid_table["PBR.ofs"]);
 
 			// Vis buffer pass
 			pipeline_spec.shader = shader_library->GetShader("VisibilityBuffer.ofs");
@@ -215,7 +215,7 @@ namespace Omni {
 			pipeline_spec.depth_test_enable = false;
 			pipeline_spec.color_blending_enable = false;
 
-			m_VisBufferPass = Pipeline::Create(pipeline_spec, shader_name_to_uuid_table["VisibilityBuffer.ofs"]);
+			m_VisBufferPass = Pipeline::Create(&g_PersistentAllocator, pipeline_spec, shader_name_to_uuid_table["VisibilityBuffer.ofs"]);
 
 			// Vis material resolve pass
 			pipeline_spec.shader = shader_library->GetShader("VisibleMaterialResolve.ofs");
@@ -223,14 +223,14 @@ namespace Omni {
 			pipeline_spec.depth_write_enable = true;
 			pipeline_spec.depth_test_enable = true;
 
-			m_VisMaterialResolvePass = Pipeline::Create(pipeline_spec, shader_name_to_uuid_table["VisibleMaterialResolve.ofs"]);
+			m_VisMaterialResolvePass = Pipeline::Create(&g_PersistentAllocator, pipeline_spec, shader_name_to_uuid_table["VisibleMaterialResolve.ofs"]);
 
 			// compute frustum culling
 			pipeline_spec.type = PipelineType::COMPUTE;
 			pipeline_spec.shader = shader_library->GetShader("CullIndirect.ofs");
 			pipeline_spec.debug_name = "Frustum cull prepass";
 
-			m_IndirectFrustumCullPipeline = Pipeline::Create(pipeline_spec, shader_name_to_uuid_table["CullIndirect.ofs"]);
+			m_IndirectFrustumCullPipeline = Pipeline::Create(&g_PersistentAllocator, pipeline_spec, shader_name_to_uuid_table["CullIndirect.ofs"]);
 		}
 		// Initialize device render queue and all buffers for indirect drawing
 		{
@@ -247,21 +247,21 @@ namespace Omni {
 			spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
 			OMNI_DEBUG_ONLY_CODE(spec.debug_name = "Device render queue buffer");
 
-			m_DeviceRenderQueue = DeviceBuffer::Create(spec);
+			m_DeviceRenderQueue = DeviceBuffer::Create(&g_PersistentAllocator, spec);
 
 			// Create post-cull render queue
 			spec.size = sizeof(GLSL::RenderObjectData) * std::pow(2, 16);
 			spec.memory_usage = DeviceBufferMemoryUsage::NO_HOST_ACCESS;
 			OMNI_DEBUG_ONLY_CODE(spec.debug_name = "Device culled render queue buffer");
 
-			m_CulledDeviceRenderQueue = DeviceBuffer::Create(spec);
+			m_CulledDeviceRenderQueue = DeviceBuffer::Create(&g_PersistentAllocator, spec);
 
 			// Create indirect params buffer
 			spec.size = 4 + sizeof(glm::uvec3) * std::pow(2, 16);
 			spec.buffer_usage = DeviceBufferUsage::INDIRECT_PARAMS;
 			OMNI_DEBUG_ONLY_CODE(spec.debug_name = "Device indirect draw params buffer");
 
-			m_DeviceIndirectDrawParams = DeviceBuffer::Create(spec);
+			m_DeviceIndirectDrawParams = DeviceBuffer::Create(&g_PersistentAllocator, spec);
 		}
 		// Init G-Buffer
 		{
@@ -271,18 +271,18 @@ namespace Omni {
 			image_spec.extent = Renderer::GetSwapchainImage()->GetSpecification().extent;
 			OMNI_DEBUG_ONLY_CODE(image_spec.debug_name = "G-Buffer positions attachment");
 
-			m_GBuffer.positions = Image::Create(image_spec);
+			m_GBuffer.positions = Image::Create(&g_PersistentAllocator, image_spec);
 
 			OMNI_DEBUG_ONLY_CODE(image_spec.debug_name = "G-Buffer normals attachment");
-			m_GBuffer.normals = Image::Create(image_spec);
+			m_GBuffer.normals = Image::Create(&g_PersistentAllocator, image_spec);
 
 			image_spec.format = ImageFormat::RGBA32_UNORM;
 
 			OMNI_DEBUG_ONLY_CODE(image_spec.debug_name = "G-Buffer base color attachment");
-			m_GBuffer.base_color = Image::Create(image_spec);
+			m_GBuffer.base_color = Image::Create(&g_PersistentAllocator, image_spec);
 
 			OMNI_DEBUG_ONLY_CODE(image_spec.debug_name = "G-Buffer MRO attachment");
-			m_GBuffer.metallic_roughness_occlusion = Image::Create(image_spec);
+			m_GBuffer.metallic_roughness_occlusion = Image::Create(&g_PersistentAllocator, image_spec);
 
 			// Acquire indices
 			AcquireResourceIndex(m_GBuffer.positions, SamplerFilteringMode::LINEAR);
@@ -298,7 +298,7 @@ namespace Omni {
 			image_spec.extent = Renderer::GetSwapchainImage()->GetSpecification().extent;
 			OMNI_DEBUG_ONLY_CODE(image_spec.debug_name = "Vis-buffer attachment");
 
-			m_VisibilityBuffer = Image::Create(image_spec);
+			m_VisibilityBuffer = Image::Create(&g_PersistentAllocator, image_spec);
 
 			for (auto& set : m_SceneDescriptorSet) {
 				set->Write(2, 0, m_VisibilityBuffer, nullptr);
@@ -316,7 +316,7 @@ namespace Omni {
 			// + 4 bytes for size
 			buffer_spec.size = 4 + glm::pow(2, 25) * sizeof(SceneVisibleCluster) ; 
 
-			m_VisibleClusters = DeviceBuffer::Create(buffer_spec);
+			m_VisibleClusters = DeviceBuffer::Create(&g_PersistentAllocator, buffer_spec);
 		}
 		// Init SW raster queue
 		{
@@ -328,7 +328,7 @@ namespace Omni {
 			// Assume that only a half of visible clusters at most will be SW rasterized
 			buffer_spec.size = m_VisibleClusters->GetSpecification().size / 2;
 
-			m_SWRasterQueue = DeviceBuffer::Create(buffer_spec);
+			m_SWRasterQueue = DeviceBuffer::Create(&g_PersistentAllocator, buffer_spec);
 		}
 		// Init host light source storage
 		{
@@ -340,7 +340,7 @@ namespace Omni {
 			buffer_spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
 			buffer_spec.size = sizeof(PointLight) * 256 * Renderer::GetConfig().frames_in_flight;
 
-			m_DevicePointLights = DeviceBuffer::Create(buffer_spec);
+			m_DevicePointLights = DeviceBuffer::Create(&g_PersistentAllocator, buffer_spec);
 		}
 	}
 
@@ -367,7 +367,7 @@ namespace Omni {
 		m_VisibleClusters->Destroy();
 	}
 
-	void SceneRenderer::BeginScene(Shared<Camera> camera)
+	void SceneRenderer::BeginScene(Ref<Camera> camera)
 	{
 		// Clear host render queue
 		m_HostRenderQueue.clear();
@@ -397,7 +397,7 @@ namespace Omni {
 			camera_data.frustum = m_Camera->GenerateFrustum();
 			camera_data.forward_vector = m_Camera->GetForwardVector();
 			// If camera is 3D (very likely to be truth though) cast it to 3D camera and get FOV, otherwise use fixed 90 degree FOV
-			camera_data.fov = m_Camera->GetType() == CameraProjectionType::PROJECTION_3D ? ShareAs<Camera3D>(m_Camera)->GetFOV() : glm::radians(90.0f);
+			camera_data.fov = m_Camera->GetType() == CameraProjectionType::PROJECTION_3D ? m_Camera.As<Camera3D>()->GetFOV() : glm::radians(90.0f);
 			camera_data.viewport_width = m_CurrectMainRenderTarget->GetSpecification().extent.r;
 			camera_data.viewport_height = m_CurrectMainRenderTarget->GetSpecification().extent.g;
 			camera_data.near_clip_distance = m_Camera->GetNearClip();
@@ -432,7 +432,7 @@ namespace Omni {
 
 		// Copy data to render queues and clear culling pipeline output buffers
 		{
-			std::vector<std::pair<Shared<DeviceBuffer>, PipelineResourceBarrierInfo>> buffers_clear_barriers;
+			std::vector<std::pair<Ref<DeviceBuffer>, PipelineResourceBarrierInfo>> buffers_clear_barriers;
 			m_DeviceRenderQueue->UploadData(
 				m_DeviceRenderQueue->GetFrameOffset(),
 				m_HostRenderQueue.data(),
@@ -491,7 +491,7 @@ namespace Omni {
 
 		// Cull 3D
 		{
-			std::vector<std::pair<Shared<DeviceBuffer>, PipelineResourceBarrierInfo>> culling_buffers_barriers;
+			std::vector<std::pair<Ref<DeviceBuffer>, PipelineResourceBarrierInfo>> culling_buffers_barriers;
 
 			// Prepare push constants
 			IndirectFrustumCullPassPushContants* compute_push_constants_data = new IndirectFrustumCullPassPushContants;
@@ -723,17 +723,17 @@ namespace Omni {
 		});
 	}
 
-	Shared<Image> SceneRenderer::GetFinalImage()
+	Ref<Image> SceneRenderer::GetFinalImage()
 	{
 		return m_RendererOutputs[Renderer::GetCurrentFrameIndex()];
 	}
 
-	uint32 SceneRenderer::AcquireResourceIndex(Shared<Image> image, SamplerFilteringMode filtering_mode)
+	uint32 SceneRenderer::AcquireResourceIndex(Ref<Image> image, SamplerFilteringMode filtering_mode)
 	{
 		std::lock_guard lock(m_Mutex);
 		uint32 index = m_TextureIndexAllocator->Allocate(4, 1) / sizeof uint32;
 
-		Shared<ImageSampler> sampler;
+		Ref<ImageSampler> sampler;
 
 		switch (filtering_mode)
 		{
@@ -749,12 +749,12 @@ namespace Omni {
 		return index;
 	}
 
-	uint32 SceneRenderer::AcquireResourceIndex(Shared<Material> material)
+	uint32 SceneRenderer::AcquireResourceIndex(Ref<Material> material)
 	{
 		return m_MaterialDataPool.Allocate(material->Handle);
 	}
 
-	uint32 SceneRenderer::AcquireResourceIndex(Shared<Mesh> mesh)
+	uint32 SceneRenderer::AcquireResourceIndex(Ref<Mesh> mesh)
 	{
 		std::lock_guard lock(m_Mutex);
 
@@ -772,13 +772,13 @@ namespace Omni {
 		return m_MeshResourcesBuffer.Allocate(mesh->Handle, mesh_data);
 	}
 
-	uint32 SceneRenderer::AcquireResourceIndex(Shared<Image> image)
+	uint32 SceneRenderer::AcquireResourceIndex(Ref<Image> image)
 	{
 		OMNIFORCE_ASSERT_TAGGED(false, "Not implemented");
 		std::unreachable();
 	}
 
-	bool SceneRenderer::ReleaseResourceIndex(Shared<Image> image)
+	bool SceneRenderer::ReleaseResourceIndex(Ref<Image> image)
 	{
 		uint16 index = m_TextureIndices.at(image->Handle);
 		m_TextureIndexAllocator->Free(sizeof(uint32) * index);
@@ -792,7 +792,7 @@ namespace Omni {
 		m_SpriteQueue.push_back(sprite);
 	}
 
-	void SceneRenderer::RenderObject(Shared<Pipeline> pipeline, const GLSL::RenderObjectData& render_data)
+	void SceneRenderer::RenderObject(Ref<Pipeline> pipeline, const GLSL::RenderObjectData& render_data)
 	{
 		m_ActiveMaterialPipelines.emplace(pipeline);
 		m_HostRenderQueue.emplace_back(render_data);

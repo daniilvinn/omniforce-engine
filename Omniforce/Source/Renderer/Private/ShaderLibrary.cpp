@@ -70,7 +70,7 @@ namespace Omni {
 
 		if (!compilation_result.valid) return false;
 
-		Shared<Shader> shader = Shader::Create(compilation_result.bytecode, path);
+		Ref<Shader> shader = Shader::Create(&g_PersistentAllocator, compilation_result.bytecode, path);
 
 		m_Mutex.lock();
 		auto shader_filename = path.filename().string();
@@ -79,7 +79,7 @@ namespace Omni {
 			m_Library[shader_filename].push_back({ shader, macros });
 		}
 		else {
-			std::vector<std::pair<Shared<Shader>, ShaderMacroTable>> permutations;
+			std::vector<std::pair<Ref<Shader>, ShaderMacroTable>> permutations;
 			permutations.push_back({ shader, macros });
 			m_Library.emplace(shader_filename, permutations);
 		}
@@ -138,7 +138,7 @@ namespace Omni {
 		return false;
 	}
 
-	Omni::Shared<Omni::Shader> ShaderLibrary::GetShader(std::string key, ShaderMacroTable macros) {
+	Omni::Ref<Omni::Shader> ShaderLibrary::GetShader(std::string key, ShaderMacroTable macros) {
 		if (!m_Library.contains(key))
 			return nullptr;
 

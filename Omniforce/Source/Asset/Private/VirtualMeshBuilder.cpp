@@ -24,7 +24,7 @@ namespace Omni {
 		MeshPreprocessor mesh_preprocessor = {};
 
 		// Clusterize initial mesh, basically build LOD 0
-		Scope<ClusterizedMesh> meshlets_data = mesh_preprocessor.GenerateMeshlets(&vertices, &indices, vertex_stride);
+		Ptr<ClusterizedMesh> meshlets_data = mesh_preprocessor.GenerateMeshlets(&vertices, &indices, vertex_stride);
 
 		// All mesh's meshlet groups
 		// Init with source meshlets, 1 meshlet per group
@@ -266,7 +266,7 @@ namespace Omni {
 				mtx.unlock_shared();
 
 				// Split back
-				Scope<ClusterizedMesh> simplified_meshlets = mesh_preprocessor.GenerateMeshlets(&vertices, &simplified_group_indices, vertex_stride);
+				Ptr<ClusterizedMesh> simplified_meshlets = mesh_preprocessor.GenerateMeshlets(&vertices, &simplified_group_indices, vertex_stride);
 
 				for (auto& bounds : simplified_meshlets->cull_bounds) {
 					bounds.lod_culling.error = mesh_space_error;

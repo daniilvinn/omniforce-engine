@@ -66,11 +66,11 @@ namespace Omni {
 	};
 
 	struct OMNIFORCE_API CameraComponent {
-		Shared<Camera> camera = nullptr;
+		Ref<Camera> camera = nullptr;
 		bool primary = false;
 
 		CameraComponent() {}
-		CameraComponent(Shared<Camera> value, bool is_primary) : camera(value), primary(is_primary) {}
+		CameraComponent(Ref<Camera> value, bool is_primary) : camera(value), primary(is_primary) {}
 
 		static const char* GetSerializableKey() { return "CameraComponent"; }
 	};
@@ -108,7 +108,7 @@ namespace Omni {
 
 	struct OMNIFORCE_API ScriptComponent {
 		std::string class_name;
-		Shared<RuntimeScriptInstance> script_object;
+		Ref<RuntimeScriptInstance> script_object;
 
 		ScriptComponent()
 		{

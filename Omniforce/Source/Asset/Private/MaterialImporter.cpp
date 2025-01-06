@@ -15,7 +15,7 @@ namespace Omni {
 	}
 
 	template<>
-	void MaterialImporter::HandleProperty<ftf::Optional<ftf::TextureInfo>>(std::string_view key, const ftf::Optional<ftf::TextureInfo>& property, Shared<Material> material, const ftf::Asset* root, std::shared_mutex& mutex)
+	void MaterialImporter::HandleProperty<ftf::Optional<ftf::TextureInfo>>(std::string_view key, const ftf::Optional<ftf::TextureInfo>& property, Ref<Material> material, const ftf::Asset* root, std::shared_mutex& mutex)
 	{
 		if (!property.has_value())
 			return;
@@ -29,7 +29,7 @@ namespace Omni {
 	}
 
 	template<>
-	void MaterialImporter::HandleProperty<ftf::Optional<ftf::NormalTextureInfo>>(std::string_view key, const ftf::Optional<ftf::NormalTextureInfo>& property, Shared<Material> material, const ftf::Asset* root, std::shared_mutex& mutex)
+	void MaterialImporter::HandleProperty<ftf::Optional<ftf::NormalTextureInfo>>(std::string_view key, const ftf::Optional<ftf::NormalTextureInfo>& property, Ref<Material> material, const ftf::Asset* root, std::shared_mutex& mutex)
 	{
 		if (!property.has_value())
 			return;
@@ -48,7 +48,7 @@ namespace Omni {
 	}
 
 	template<>
-	void MaterialImporter::HandleProperty<ftf::Optional<ftf::OcclusionTextureInfo>>(std::string_view key, const ftf::Optional<ftf::OcclusionTextureInfo>& property, Shared<Material> material, const ftf::Asset* root, std::shared_mutex& mutex)
+	void MaterialImporter::HandleProperty<ftf::Optional<ftf::OcclusionTextureInfo>>(std::string_view key, const ftf::Optional<ftf::OcclusionTextureInfo>& property, Ref<Material> material, const ftf::Asset* root, std::shared_mutex& mutex)
 	{
 		if (!property.has_value())
 			return;
@@ -139,7 +139,7 @@ namespace Omni {
 		image_spec.pixels = std::move(image_data);
 		image_spec.mip_levels = mip_levels_count;
 
-		AssetHandle asset_handle = AssetManager::Get()->RegisterAsset(Image::Create(image_spec));
+		AssetHandle asset_handle = AssetManager::Get()->RegisterAsset(Image::Create(&g_PersistentAllocator, image_spec));
 
 		return asset_handle;
 	}
@@ -149,7 +149,7 @@ namespace Omni {
 		// Check if such material is already loaded.
 		// Check under mutex lock, if two threads are attemping to load exact same material
 		AssetHandle id = rh::hash<std::string>()(in_material->name.c_str());
-		Shared<Material> material = Material::Create(in_material->name.c_str(), id);
+		Ref<Material> material = Material::Create(&g_PersistentAllocator, in_material->name.c_str(), id);
 
 		AssetManager::Get()->RegisterAsset(material, id);
 

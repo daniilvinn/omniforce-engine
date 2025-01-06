@@ -62,7 +62,7 @@ namespace Omni {
 						ImGui::BeginDisabled(m_Entity.HasComponent<CameraComponent>());
 						if (ImGui::MenuItem("Camera component")) {
 							CameraComponent& camera_component = m_Entity.AddComponent<CameraComponent>();
-							Shared<Camera3D> camera = std::make_shared<Camera3D>();
+							Ref<Camera3D> camera = CreateRef<Camera3D>(&g_PersistentAllocator);
 							camera_component.camera = camera;
 							camera_component.primary = false;
 						}
@@ -174,7 +174,7 @@ namespace Omni {
 									AssetManager* am = AssetManager::Get();
 
 									if (sc.texture) {
-										Shared<Image> img = am->GetAsset<Image>(sc.texture);
+										Ref<Image> img = am->GetAsset<Image>(sc.texture);
 										UI::RenderImage(img, m_Context->GetRenderer()->GetSamplerLinear(), { 50.0f, 50.0f / sc.aspect_ratio});
 									}
 									else {
@@ -248,20 +248,20 @@ namespace Omni {
 											switch (current_item)
 											{
 											case (int32)CameraProjectionType::PROJECTION_2D: {
-												Shared<Camera>& camera = camera_component.camera;
-												Shared<Camera2D> camera_2D = std::make_shared<Camera2D>();
+												Ref<Camera>& camera = camera_component.camera;
+												Ref<Camera2D> camera_2D = CreateRef<Camera2D>(&g_PersistentAllocator);
 												camera_2D->SetProjection(-1.0f, 1.0f, -1.0f, 1.0f, -1.0f);
 
 												camera_2D->SetType(CameraProjectionType::PROJECTION_2D);
-												camera = ShareAs<Camera>(camera_2D);
+												camera = camera_2D;
 												break;
 											}
 											case (int32)CameraProjectionType::PROJECTION_3D: {
-												Shared<Camera>& camera = camera_component.camera;
-												Shared<Camera3D> camera_3D = std::make_shared<Camera3D>();
+												Ref<Camera>& camera = camera_component.camera;
+												Ref<Camera3D> camera_3D = CreateRef<Camera3D>(&g_PersistentAllocator);
 
 												camera->SetType(CameraProjectionType::PROJECTION_3D);
-												camera = ShareAs<Camera>(camera_3D);
+												camera = camera_3D;
 												break;
 											}
 
@@ -278,7 +278,7 @@ namespace Omni {
 								}
 
 								if (projection_type == CameraProjectionType::PROJECTION_3D) {
-									Shared<Camera3D> camera_3D = ShareAs<Camera3D>(camera_component.camera);
+									Ref<Camera3D> camera_3D = camera_component.camera;
 
 									ImGui::TableNextRow();
 
@@ -292,7 +292,7 @@ namespace Omni {
 
 								}
 								else if (projection_type == CameraProjectionType::PROJECTION_2D) {
-									Shared<Camera2D> camera_2D = ShareAs<Camera2D>(camera_component.camera);
+									Ref<Camera2D> camera_2D = camera_component.camera;
 
 									ImGui::TableNextRow();
 

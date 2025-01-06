@@ -31,7 +31,6 @@ namespace Omni {
 		void PushMessage(const EditorLogPanelEntry& msg);
 
 	private:
-		Shared<spdlog::logger> m_Logger;
 
 		// The simplest implementation, though probably the worst one
 		// TODO: implement ring buffer

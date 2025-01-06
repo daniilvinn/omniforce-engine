@@ -91,11 +91,11 @@ namespace Omni {
 		vkDestroyDescriptorSetLayout(device->Raw(), m_Layout, nullptr);
 	}
 
-	void VulkanDescriptorSet::Write(uint16 binding, uint16 array_element, Shared<Image> image, Shared<ImageSampler> sampler)
+	void VulkanDescriptorSet::Write(uint16 binding, uint16 array_element, Ref<Image> image, Ref<ImageSampler> sampler)
 	{
 		auto device = VulkanGraphicsContext::Get()->GetDevice();
-		Shared<VulkanImage> vk_image = ShareAs<VulkanImage>(image);
-		Shared<VulkanImageSampler> vk_sampler = ShareAs<VulkanImageSampler>(sampler);
+		WeakPtr<VulkanImage> vk_image = image.As<VulkanImage>();
+		WeakPtr<VulkanImageSampler> vk_sampler = sampler.As<VulkanImageSampler>();
 
 		VkDescriptorImageInfo descriptor_image_info = {};
 		descriptor_image_info.imageView = vk_image->RawView();
@@ -114,10 +114,10 @@ namespace Omni {
 		vkUpdateDescriptorSets(device->Raw(), 1, &write_descriptor_set, 0, nullptr);
 	}
 
-	void VulkanDescriptorSet::Write(uint16 binding, uint16 array_element, Shared<DeviceBuffer> buffer, uint64 size, uint64 offset)
+	void VulkanDescriptorSet::Write(uint16 binding, uint16 array_element, Ref<DeviceBuffer> buffer, uint64 size, uint64 offset)
 	{
 		auto device = VulkanGraphicsContext::Get()->GetDevice();
-		Shared<VulkanDeviceBuffer> vk_buffer = ShareAs<VulkanDeviceBuffer>(buffer);
+		WeakPtr<VulkanDeviceBuffer> vk_buffer = buffer.As<VulkanDeviceBuffer>();
 
 		VkDescriptorBufferInfo descriptor_buffer_info = {};
 		descriptor_buffer_info.buffer = vk_buffer->Raw();

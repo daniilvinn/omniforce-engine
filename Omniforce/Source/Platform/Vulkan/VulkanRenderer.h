@@ -25,25 +25,25 @@ namespace Omni {
 		uint32 GetDeviceOptimalTaskWorkGroupSize() const override;
 		uint32 GetDeviceOptimalMeshWorkGroupSize() const override;
 		uint32 GetDeviceOptimalComputeWorkGroupSize() const override;
-		Shared<DeviceCmdBuffer> GetCmdBuffer() override { return m_CurrentCmdBuffer; };
-		Shared<Swapchain> GetSwapchain() override { return m_Swapchain; };
+		Ref<DeviceCmdBuffer> GetCmdBuffer() override { return m_CurrentCmdBuffer; };
+		Ref<Swapchain> GetSwapchain() override { return m_Swapchain; };
 
 		void BeginFrame() override;
 		void EndFrame() override;
-		void BeginRender(const std::vector<Shared<Image>> attachments, uvec3 render_area, ivec2 render_offset, fvec4 clear_color, bool clear_depth) override;
-		void EndRender(Shared<Image> target) override;
+		void BeginRender(const std::vector<Ref<Image>> attachments, uvec3 render_area, ivec2 render_offset, fvec4 clear_color, bool clear_depth) override;
+		void EndRender(Ref<Image> target) override;
 		void WaitDevice() override;
-		void BindSet(Shared<DescriptorSet> set, Shared<Pipeline> pipeline, uint8 index) override;
-		void CopyToSwapchain(Shared<Image> image) override;
+		void BindSet(Ref<DescriptorSet> set, Ref<Pipeline> pipeline, uint8 index) override;
+		void CopyToSwapchain(Ref<Image> image) override;
 		void InsertBarrier(const PipelineBarrierInfo& barrier) override;
 
-		void ClearImage(Shared<Image> image, const fvec4& value) override;
-		void RenderMeshTasks(Shared<Pipeline> pipeline, const glm::uvec3& dimensions, MiscData data) override;
-		void RenderMeshTasksIndirect(Shared<Pipeline> pipeline, Shared<DeviceBuffer> params, MiscData data) override;
-		void RenderQuad(Shared<Pipeline> pipeline, MiscData data) override;
-		void RenderQuad(Shared<Pipeline> pipeline, uint32 amount, MiscData data) override;
-		void DispatchCompute(Shared<Pipeline> pipeline, const glm::uvec3& dimensions, MiscData data) override;
-		void RenderUnindexed(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vertex_buffer, MiscData data) override;
+		void ClearImage(Ref<Image> image, const fvec4& value) override;
+		void RenderMeshTasks(Ref<Pipeline> pipeline, const glm::uvec3& dimensions, MiscData data) override;
+		void RenderMeshTasksIndirect(Ref<Pipeline> pipeline, Ref<DeviceBuffer> params, MiscData data) override;
+		void RenderQuad(Ref<Pipeline> pipeline, MiscData data) override;
+		void RenderQuad(Ref<Pipeline> pipeline, uint32 amount, MiscData data) override;
+		void DispatchCompute(Ref<Pipeline> pipeline, const glm::uvec3& dimensions, MiscData data) override;
+		void RenderUnindexed(Ref<Pipeline> pipeline, Ref<DeviceBuffer> vertex_buffer, MiscData data) override;
 
 		void RenderImGui() override;
 
@@ -56,12 +56,12 @@ namespace Omni {
 	private:
 		RendererConfig m_Config;
 
-		Shared<VulkanGraphicsContext> m_GraphicsContext;
-		Shared<VulkanDevice> m_Device;
-		Shared<VulkanSwapchain> m_Swapchain;
+		Ref<VulkanGraphicsContext> m_GraphicsContext;
+		Ref<VulkanDevice> m_Device;
+		Ref<VulkanSwapchain> m_Swapchain;
 
-		std::vector<Shared<VulkanDeviceCmdBuffer>> m_CmdBuffers;
-		Shared<VulkanDeviceCmdBuffer> m_CurrentCmdBuffer;
+		std::vector<Ref<VulkanDeviceCmdBuffer>> m_CmdBuffers;
+		Ref<VulkanDeviceCmdBuffer> m_CurrentCmdBuffer;
 
 		static VkDescriptorPool s_DescriptorPool;
 

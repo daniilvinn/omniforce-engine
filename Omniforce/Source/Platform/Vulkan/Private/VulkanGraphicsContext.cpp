@@ -59,7 +59,7 @@ namespace Omni {
 		volkLoadInstance(m_VulkanInstance);
 
 		if (OMNIFORCE_BUILD_CONFIG != OMNIFORCE_RELEASE_CONFIG)
-			m_DebugUtils = std::make_shared<VulkanDebugUtils>(this);
+			m_DebugUtils = CreateRef<VulkanDebugUtils>(&g_PersistentAllocator, this);
 
 		VkPhysicalDeviceFeatures device_features = {};
 		device_features.samplerAnisotropy = true;
@@ -70,8 +70,8 @@ namespace Omni {
 		device_features.shaderInt16 = true;
 		device_features.fragmentStoresAndAtomics = true;
 
-		Shared<VulkanPhysicalDevice> device = VulkanPhysicalDevice::Select(this);
-		m_Device = std::make_shared<VulkanDevice>(device, std::forward<VkPhysicalDeviceFeatures>(device_features));
+		Ref<VulkanPhysicalDevice> device = VulkanPhysicalDevice::Select(this);
+		m_Device = CreateRef<VulkanDevice>(&g_PersistentAllocator, device, std::forward<VkPhysicalDeviceFeatures>(device_features));
 		volkLoadDevice(m_Device->Raw());
 
 		GLFWwindow* window_handle = (GLFWwindow*)config.main_window->Raw();
@@ -84,7 +84,7 @@ namespace Omni {
 		swapchain_spec.extent = window_size;
 		swapchain_spec.vsync = config.vsync;
 
-		m_Swapchain = std::make_shared<VulkanSwapchain>(swapchain_spec);
+		m_Swapchain = CreateRef<VulkanSwapchain>(&g_PersistentAllocator, swapchain_spec);
 		m_Swapchain->CreateSurface(swapchain_spec);
 		m_Swapchain->CreateSwapchain(swapchain_spec);
 

@@ -32,11 +32,7 @@ namespace Omni {
 
 	MonoMethod* ScriptClass::GetMethod(const std::string& name, uint32 param_count)
 	{
-#if 1
 		return mMethodList.find(name) != mMethodList.end() ? mMethodList.at(name) : nullptr;
-#else 
-		return mono_class_get_method_from_name(m_Class, name.c_str(), param_count);
-#endif
 	}
 
 	std::string ScriptClass::GetFullName() const
@@ -47,9 +43,9 @@ namespace Omni {
 		return full_name;
 	}
 
-	Shared<RuntimeScriptInstance> ScriptClass::AllocateObject(UUID id)
+	Ref<RuntimeScriptInstance> ScriptClass::AllocateObject(UUID id)
 	{
-		return std::make_shared<RuntimeScriptInstance>(this, id);
+		return Ref<RuntimeScriptInstance>(&g_PersistentAllocator, this, id);
 	}
 
 }

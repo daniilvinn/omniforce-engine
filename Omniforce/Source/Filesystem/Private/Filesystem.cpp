@@ -9,7 +9,7 @@ namespace Omni {
 		std::filesystem::path working_directory = std::filesystem::current_path();
 	} s_FileSystemData;
 
-	Omni::Shared<File> FileSystem::ReadFile(std::filesystem::path path, const BitMask& flags)
+	Ref<File> FileSystem::ReadFile(IAllocator* allocator, std::filesystem::path path, const BitMask& flags)
 	{
 		byte* data;
 		uint64 file_size = 0;
@@ -23,7 +23,7 @@ namespace Omni {
 		reader.read((char*)data, file_size);
 		reader.close();
 
-		return std::make_shared<File>(data, file_size, flags, path);;
+		return CreateRef<File>(allocator, data, file_size, flags, path);;
 	}
 
 	uint64 FileSystem::FileSize(std::filesystem::path path)
@@ -39,7 +39,7 @@ namespace Omni {
 
 	
 
-	void FileSystem::WriteFile(Shared<File> file, std::filesystem::path path, const BitMask& flags)
+	void FileSystem::WriteFile(Ref<File> file, std::filesystem::path path, const BitMask& flags)
 	{
 
 	}

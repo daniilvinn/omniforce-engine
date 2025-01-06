@@ -6,9 +6,9 @@
 
 namespace Omni {
 
-	Shared<Material> Material::Create(std::string name, AssetHandle id /*= AssetHandle()*/)
+	Ref<Material> Material::Create(IAllocator* allocator, std::string name, AssetHandle id /*= AssetHandle()*/)
 	{
-		return std::make_shared<Material>(name, id);
+		return CreateRef<Material>(allocator, name, id);
 	}
 
 	uint8 Material::GetRuntimeEntrySize(uint8 variant_index)
@@ -34,7 +34,7 @@ namespace Omni {
 	{
 		ShaderLibrary* shader_library = ShaderLibrary::Get();
 
-		Shared<Shader> shader = shader_library->GetShader("GBufferOpaque.ofs", m_Macros);
+		Ref<Shader> shader = shader_library->GetShader("GBufferOpaque.ofs", m_Macros);
 
 		// add device pipeline id as a macro
 		UUID pipeline_id;
@@ -53,7 +53,7 @@ namespace Omni {
 		pipeline_spec.depth_test_op = PipelineDepthTestOp::EQUALS;
 		pipeline_spec.depth_write_enable = false;
 
-		m_Pipeline = PipelineLibrary::HasPipeline(pipeline_spec) ? PipelineLibrary::GetPipeline(pipeline_spec) : m_Pipeline = Pipeline::Create(pipeline_spec, pipeline_id);
+		m_Pipeline = PipelineLibrary::HasPipeline(pipeline_spec) ? PipelineLibrary::GetPipeline(pipeline_spec) : m_Pipeline = Pipeline::Create(&g_PersistentAllocator, pipeline_spec, pipeline_id);
 
 		m_Macros.clear();
 	}

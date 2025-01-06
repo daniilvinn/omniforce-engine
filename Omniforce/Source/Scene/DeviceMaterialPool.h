@@ -30,9 +30,9 @@ namespace Omni {
 		}
 
 	private:
-		Shared<DeviceBuffer> m_PoolBuffer;
-		Shared<DeviceBuffer> m_StagingForCopy;
-		Scope<VirtualMemoryBlock> m_VirtualAllocator;
+		Ref<DeviceBuffer> m_PoolBuffer;
+		Ref<DeviceBuffer> m_StagingForCopy;
+		Ptr<VirtualMemoryBlock> m_VirtualAllocator;
 		rh::unordered_map<AssetHandle, uint32> m_OffsetsMap; // material id - offset map
 		SceneRenderer* m_Context;
 	};

@@ -23,15 +23,15 @@ namespace Omni {
 		static void Init();
 		static void Shutdown();
 
-		static void SetCameraBuffer(Shared<DeviceBuffer> buffer);
+		static void SetCameraBuffer(Ref<DeviceBuffer> buffer);
 
 		static void RenderWireframeSphere(const glm::vec3& position, float radius, const glm::vec3& color);
 		static void RenderWireframeBox(const glm::vec3& translation, const glm::quat rotation, const glm::vec3 scale, const glm::vec3& color);
-		static void RenderWireframeLines(Shared<DeviceBuffer> vbo, const glm::vec3& translation, const glm::quat rotation, const glm::vec3 scale, const glm::vec3& color);
+		static void RenderWireframeLines(Ref<DeviceBuffer> vbo, const glm::vec3& translation, const glm::quat rotation, const glm::vec3 scale, const glm::vec3& color);
 
-		static void Render(Shared<Image> target, Shared<Image> depth_target, fvec4 clear_value);
+		static void Render(Ref<Image> target, Ref<Image> depth_target, fvec4 clear_value);
 
-		static void RenderSceneDebugView(Shared<DeviceBuffer> visible_clusters, DebugSceneView mode, Shared<DescriptorSet> descriptor_set);
+		static void RenderSceneDebugView(Ref<DeviceBuffer> visible_clusters, DebugSceneView mode, Ref<DescriptorSet> descriptor_set);
 
 	private:
 		DebugRenderer();
@@ -46,11 +46,11 @@ namespace Omni {
 
 		inline static DebugRenderer* renderer;
 
-		Shared<Pipeline> m_WireframePipeline;
-		Shared<Pipeline> m_DebugViewPipeline;
-		Shared<DeviceBuffer> m_CameraBuffer;
-		Shared<DeviceBuffer> m_IcosphereMesh;
-		Shared<DeviceBuffer> m_CubeMesh;
+		Ref<Pipeline> m_WireframePipeline;
+		Ref<Pipeline> m_DebugViewPipeline;
+		Ref<DeviceBuffer> m_CameraBuffer;
+		Ref<DeviceBuffer> m_IcosphereMesh;
+		Ref<DeviceBuffer> m_CubeMesh;
 
 		std::vector<std::function<void()>> m_DebugRequests;
 

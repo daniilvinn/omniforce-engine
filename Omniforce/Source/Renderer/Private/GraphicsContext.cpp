@@ -5,9 +5,9 @@
 
 namespace Omni {
 
-	Shared<GraphicsContext> GraphicsContext::Create()
+	Ref<GraphicsContext> GraphicsContext::Create()
 	{
-		return std::make_shared<VulkanGraphicsContext>();
+		return CreateRef<VulkanGraphicsContext>(&g_PersistentAllocator);
 	}
 
 }

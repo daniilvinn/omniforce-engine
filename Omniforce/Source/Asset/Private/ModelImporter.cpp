@@ -80,7 +80,7 @@ namespace Omni {
 					});
 
 					// 3. Process mesh data - generate lods, optimize mesh, generate meshlets etc.
-					Shared<Mesh> mesh = nullptr;
+					Ref<Mesh> mesh = nullptr;
 					AABB lod0_aabb = {};
 
 					auto mesh_process_task = subflow.emplace([&, this]() {
@@ -91,7 +91,7 @@ namespace Omni {
 					// 4. Process material data - load textures, generate mip-maps, compress. Also copies scalar material properties
 					//    Material processing requires additional steps in order to make sure that no duplicates will be created.
 					const ftf::Material& ftf_material = ftf_asset.materials[primitive.materialIndex.value()];
-					Shared<Material> material = nullptr;
+					Ref<Material> material = nullptr;
 
 					auto material_process_task = subflow.emplace([&, this](tf::Subflow& sf) {
 						bool material_requires_processing = false;
@@ -129,7 +129,7 @@ namespace Omni {
 		OMNIFORCE_CORE_TRACE("Successfully imported model \"{}\". Time taken: {}s", path.string(), timer.ElapsedMilliseconds() / 1000.0f);
 
 		// Create from loaded submeshes
-		return AssetManager::Get()->RegisterAsset(Model::Create(submeshes));
+		return AssetManager::Get()->RegisterAsset(Model::Create(&g_PersistentAllocator, submeshes));
 	}
 
 	void ModelImporter::ExtractAsset(ftf::Asset* asset, std::filesystem::path path)
@@ -289,7 +289,7 @@ namespace Omni {
 		}
 	}
 
-	void ModelImporter::ProcessMeshData(Shared<Mesh>* out_mesh, AABB* out_lod0_aabb, const std::vector<byte>* vertex_data, const std::vector<uint32>* index_data, uint32 vertex_stride, const VertexAttributeMetadataTable& vertex_metadata, std::shared_mutex* mtx)
+	void ModelImporter::ProcessMeshData(Ref<Mesh>* out_mesh, AABB* out_lod0_aabb, const std::vector<byte>* vertex_data, const std::vector<uint32>* index_data, uint32 vertex_stride, const VertexAttributeMetadataTable& vertex_metadata, std::shared_mutex* mtx)
 	{
 		// Init crucial data
 		MeshData mesh_data;
@@ -361,7 +361,7 @@ namespace Omni {
 		// byte size is aligned by 4 bytes. So if we have 17 bits worth of data, we create a 4 bytes long bit stream. 
 		// if we have 67 bits worth of data, we create 12 bytes long bit stream
 		// We reserve worse case memory size
-		Scope<BitStream> vertex_stream = std::make_unique<BitStream>((vertex_bitstream_bit_size + BitStream::StorageTypeBitSize - 1) / BitStream::StorageTypeBitSize * 4u);
+		Ptr<BitStream> vertex_stream = CreatePtr<BitStream>(&g_PersistentAllocator, (vertex_bitstream_bit_size + BitStream::StorageTypeBitSize - 1) / BitStream::StorageTypeBitSize * 4u);
 		uint32 meshlet_idx = 0;
 
 		for (auto& meshlet_bounds : mesh_data.cull_data) {
@@ -400,15 +400,16 @@ namespace Omni {
 		{
 			std::lock_guard lock(*mtx);
 			*out_mesh = Mesh::Create(
+				&g_PersistentAllocator,
 				mesh_data,
 				lod0_aabb
 			);
 		}
 
-		AssetManager::Get()->RegisterAsset(ShareAs<AssetBase>(*out_mesh));
+		AssetManager::Get()->RegisterAsset(*out_mesh);
 	}
 
-	void ModelImporter::ProcessMaterialData(tf::Subflow& subflow, Shared<Material>* out_material, const ftf::Asset* asset, 
+	void ModelImporter::ProcessMaterialData(tf::Subflow& subflow, Ref<Material>* out_material, const ftf::Asset* asset, 
 		const ftf::Material* material, const VertexAttributeMetadataTable* vertex_macro_table, std::shared_mutex* mtx)
 	{
 		MaterialImporter material_importer;

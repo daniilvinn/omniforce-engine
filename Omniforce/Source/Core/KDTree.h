@@ -13,15 +13,15 @@ namespace Omni {
 	struct KDTreeNode {
 		glm::vec3 point;
 		uint32_t index;
-		Scope<KDTreeNode> left;
-		Scope<KDTreeNode> right;
+		Ptr<KDTreeNode> left;
+		Ptr<KDTreeNode> right;
 
-		KDTreeNode(const glm::vec3& pt, uint32_t idx) : point(pt), index(idx), left(nullptr), right(nullptr) {}
+		KDTreeNode(const glm::vec3& pt, uint32_t idx) : point(pt), index(idx) {}
 	};
 
 	class KDTree {
 	public:
-		KDTree() : root(nullptr) {}
+		KDTree() : root() {}
 
 		void BuildFromPointSet(const std::vector<std::pair<glm::vec3, uint32_t>>& points) {
 			std::vector<std::pair<glm::vec3, uint32_t>> pointsCopy = points;
@@ -29,21 +29,21 @@ namespace Omni {
 		}
 
 		uint32_t ClosestPoint(const glm::vec3& target, uint32_t targetIndex) const {
-			return nearestNeighborRec(root.get(), target, targetIndex, 0, std::numeric_limits<float>::max(), 0);
+			return nearestNeighborRec(root.Raw(), target, targetIndex, 0, std::numeric_limits<float>::max(), 0);
 		}
 
 		std::vector<uint32_t> ClosestPointSet(const glm::vec3& target, float maxDistance, uint32_t targetIndex) const {
 			std::vector<uint32_t> result;
-			findPointsWithinDistanceRec(root.get(), target, maxDistance, targetIndex, 0, result);
+			findPointsWithinDistanceRec(root.Raw(), target, maxDistance, targetIndex, 0, result);
 			return result;
 		}
 
 	private:
-		Scope<KDTreeNode> root;
+		Ptr<KDTreeNode> root;
 
-		Scope<KDTreeNode> BuildFromPointSetRecursive(std::vector<std::pair<glm::vec3, uint32_t>>& points, int depth) {
+		Ptr<KDTreeNode> BuildFromPointSetRecursive(std::vector<std::pair<glm::vec3, uint32_t>>& points, int depth) {
 			if (points.empty()) {
-				return nullptr;
+				return Ptr<KDTreeNode>();
 			}
 
 			int axis = depth % 3;
@@ -53,7 +53,7 @@ namespace Omni {
 				});
 
 			size_t medianIndex = points.size() / 2;
-			Scope<KDTreeNode> node = std::make_unique<KDTreeNode>(points[medianIndex].first, points[medianIndex].second);
+			Ptr<KDTreeNode> node = CreatePtr<KDTreeNode>(&g_PersistentAllocator, points[medianIndex].first, points[medianIndex].second);
 
 			std::vector<std::pair<glm::vec3, uint32_t>> leftPoints(points.begin(), points.begin() + medianIndex);
 			std::vector<std::pair<glm::vec3, uint32_t>> rightPoints(points.begin() + medianIndex + 1, points.end());
@@ -61,7 +61,7 @@ namespace Omni {
 			node->left = BuildFromPointSetRecursive(leftPoints, depth + 1);
 			node->right = BuildFromPointSetRecursive(rightPoints, depth + 1);
 
-			return node;
+			return std::move(node);
 		}
 
 		uint32_t nearestNeighborRec(KDTreeNode* node, const glm::vec3& target, uint32_t targetIndex, int depth, float bestDist, uint32_t bestIndex) const {
@@ -76,8 +76,8 @@ namespace Omni {
 			}
 
 			int axis = depth % 3;
-			KDTreeNode* nextNode = (target[axis] < node->point[axis]) ? node->left.get() : node->right.get();
-			KDTreeNode* otherNode = (target[axis] < node->point[axis]) ? node->right.get() : node->left.get();
+			KDTreeNode* nextNode = (target[axis] < node->point[axis]) ? node->left.Raw() : node->right.Raw();
+			KDTreeNode* otherNode = (target[axis] < node->point[axis]) ? node->right.Raw() : node->left.Raw();
 
 			bestIndex = nearestNeighborRec(nextNode, target, targetIndex, depth + 1, bestDist, bestIndex);
 			if (std::fabs(target[axis] - node->point[axis]) < bestDist) {
@@ -98,8 +98,8 @@ namespace Omni {
 			}
 
 			int axis = depth % 3;
-			KDTreeNode* nextNode = (target[axis] < node->point[axis]) ? node->left.get() : node->right.get();
-			KDTreeNode* otherNode = (target[axis] < node->point[axis]) ? node->right.get() : node->left.get();
+			KDTreeNode* nextNode = (target[axis] < node->point[axis]) ? node->left.Raw() : node->right.Raw();
+			KDTreeNode* otherNode = (target[axis] < node->point[axis]) ? node->right.Raw() : node->left.Raw();
 
 			findPointsWithinDistanceRec(nextNode, target, maxDistance, targetIndex, depth + 1, result);
 			if (std::fabs(target[axis] - node->point[axis]) < maxDistance) {

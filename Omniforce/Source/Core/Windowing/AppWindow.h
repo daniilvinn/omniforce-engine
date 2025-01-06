@@ -19,7 +19,7 @@ namespace Omni {
 		};
 
 		virtual ~AppWindow() {};
-		static Shared<AppWindow> Create(const Config& config);
+		static Ref<AppWindow> Create(IAllocator* allocator, const Config& config);
 
 		virtual void* Raw() const = 0;
 

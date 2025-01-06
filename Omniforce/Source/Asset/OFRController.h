@@ -24,7 +24,7 @@ public:
 
 	}
 
-	Scope<AssetFile> Build(std::array<AssetFileSubresourceMetadata, 16> metadata, std::vector<byte> data, uint64 additional_data);
+	Ptr<AssetFile> Build(std::array<AssetFileSubresourceMetadata, 16> metadata, std::vector<byte> data, uint64 additional_data);
 
 	bool DestroyOfflineStorage();
 

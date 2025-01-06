@@ -21,7 +21,7 @@ namespace Omni {
 		}
 
 		~Material() {}
-		static Shared<Material> Create(std::string name, AssetHandle id = AssetHandle());
+		static Ref<Material> Create(IAllocator* allocator, std::string name, AssetHandle id = AssetHandle());
 		void Destroy() override;
 
 		template<typename T>
@@ -35,7 +35,7 @@ namespace Omni {
 		static uint8 GetRuntimeEntrySize(uint8 variant_index);
 		const auto& GetName() const { return m_Name; }
 		const auto& GetTable() const { return m_Properties; }
-		const Shared<Pipeline> GetPipeline() const { return m_Pipeline; }
+		const Ref<Pipeline> GetPipeline() const { return m_Pipeline; }
 
 		void CompilePipeline();
 		
@@ -43,7 +43,7 @@ namespace Omni {
 		std::string m_Name;
 		std::map<std::string, MaterialProperty> m_Properties;
 		ShaderMacroTable m_Macros;
-		Shared<Pipeline> m_Pipeline;
+		Ref<Pipeline> m_Pipeline;
 
 	};
 

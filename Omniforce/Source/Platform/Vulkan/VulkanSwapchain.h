@@ -40,7 +40,7 @@ namespace Omni {
 
 		SwapchainSemaphores GetSemaphores() const { return m_Semaphores[m_CurrentFrameIndex]; }
 		VkFence GetCurrentFence() const { return m_Fences[m_CurrentFrameIndex]; }
-		Shared<Image> GetCurrentImage() override { return ShareAs<Image>(m_Images[m_CurrentImageIndex]); };
+		Ref<Image> GetCurrentImage() override { return m_Images[m_CurrentImageIndex]; };
 
 	private:
 		SwapchainSpecification m_Specification;
@@ -51,7 +51,7 @@ namespace Omni {
 		VkPresentModeKHR m_CurrentPresentMode;
 		bool m_SupportsMailboxPresentation;
 
-		std::vector<Shared<VulkanImage>> m_Images;
+		std::vector<Ref<VulkanImage>> m_Images;
 
 		std::vector<SwapchainSemaphores> m_Semaphores;
 		std::vector<VkFence> m_Fences;

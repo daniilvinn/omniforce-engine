@@ -19,7 +19,7 @@ namespace Omni {
 		std::string GetFullName() const;
 		bool IsValid() const { return m_Class != nullptr; }
 
-		Shared<RuntimeScriptInstance> AllocateObject(UUID id);
+		Ref<RuntimeScriptInstance> AllocateObject(UUID id);
 
 	private:
 		MonoClass* m_Class;

@@ -22,11 +22,11 @@ namespace Omni {
 		static AssetManager* Get() { return s_Instance; }
 
 		AssetHandle LoadAssetSource(std::filesystem::path path, const AssetHandle& id = AssetHandle());
-		AssetHandle RegisterAsset(Shared<AssetBase> asset, const AssetHandle& id = AssetHandle());
+		AssetHandle RegisterAsset(Ref<AssetBase> asset, const AssetHandle& id = AssetHandle());
 		bool HasAsset(AssetHandle id) { return m_AssetRegistry.contains(id); }
 
 		template<typename ResourceType> // where ResourceType is child of AssetType: Image, Mesh, Material etc.
-		Shared<ResourceType> GetAsset(AssetHandle id) { return ShareAs<ResourceType>(m_AssetRegistry.at(id)); }
+		Ref<ResourceType> GetAsset(AssetHandle id) { return m_AssetRegistry.at(id); }
 		AssetHandle GetHandle(std::filesystem::path path) const { return m_UUIDs.at(path.string()); }
 		auto* GetAssetRegistry() const { return &m_AssetRegistry; }
 
@@ -37,7 +37,7 @@ namespace Omni {
 
 	private:
 		inline static AssetManager* s_Instance;
-		robin_hood::unordered_map<AssetHandle, Shared<AssetBase>> m_AssetRegistry;
+		robin_hood::unordered_map<AssetHandle, Ref<AssetBase>> m_AssetRegistry;
 		robin_hood::unordered_map<std::filesystem::path, UUID> m_UUIDs;
 		std::shared_mutex m_Mutex;
 	};

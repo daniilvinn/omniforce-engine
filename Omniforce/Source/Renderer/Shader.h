@@ -44,7 +44,7 @@ namespace Omni {
 
 	class OMNIFORCE_API Shader {
 	public:
-		static Shared<Shader> Create(std::map<ShaderStage, std::vector<uint32>> binaries, std::filesystem::path path);
+		static Ref<Shader> Create(IAllocator* allocator, std::map<ShaderStage, std::vector<uint32>> binaries, std::filesystem::path path);
 		virtual ~Shader() {};
 		virtual void Destroy() = 0;
 
@@ -56,7 +56,7 @@ namespace Omni {
 
 		virtual void RestoreShaderModule(std::filesystem::path path) = 0;
 
-		bool operator==(Shared<Shader> other) { return m_ID == other->m_ID; }
+		bool operator==(Ref<Shader> other) { return m_ID == other->m_ID; }
 
 	protected:
 		UUID m_ID;

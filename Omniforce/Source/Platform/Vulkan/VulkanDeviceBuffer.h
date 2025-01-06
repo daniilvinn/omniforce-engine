@@ -49,8 +49,8 @@ namespace Omni {
 		void* GetAdditionalData() const { return m_Data; }
 
 		void UploadData(uint64 offset, void* data, uint64 data_size) override;
-		void CopyRegionTo(Shared<DeviceCmdBuffer> cmd_buffer, Shared<DeviceBuffer> dst_buffer, uint64 src_offset, uint64 dst_offset, uint64 size) override;
-		void Clear(Shared<DeviceCmdBuffer> cmd_buffer, uint64 offset, uint64 size, uint32 value) override;
+		void CopyRegionTo(Ref<DeviceCmdBuffer> cmd_buffer, Ref<DeviceBuffer> dst_buffer, uint64 src_offset, uint64 dst_offset, uint64 size) override;
+		void Clear(Ref<DeviceCmdBuffer> cmd_buffer, uint64 offset, uint64 size, uint32 value) override;
 
 	private:
 		VkBuffer m_Buffer;

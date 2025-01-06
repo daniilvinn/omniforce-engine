@@ -34,7 +34,7 @@ namespace Omni {
 			auto* container = new std::array<std::string, 2>();
 			include_result->user_data = container;
 
-			auto file = FileSystem::ReadFile(resolved_path, (BitMask)FileReadingFlags::READ_BINARY);
+			auto file = FileSystem::ReadFile(&g_TransientAllocator, resolved_path, (BitMask)FileReadingFlags::READ_BINARY);
 
 			auto shaderSrc = file->GetData();
 			

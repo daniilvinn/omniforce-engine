@@ -69,7 +69,7 @@ namespace Omni {
 
 	void Logger::WriteLogFile() const
 	{
-		std::string filename = std::string("logs/crash_log_") + Utils::EvaluateDatetime() + ".txt";
+		std::string filename = fmt::format("logs/crash_log_{}.txt", Utils::EvaluateDatetime());
 		auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(filename);
 
 		auto distribute_sink = std::static_pointer_cast<spdlog::sinks::dist_sink_mt>(m_FileLogger->sinks()[0]);

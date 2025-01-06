@@ -19,7 +19,7 @@ namespace Omni {
 		AssetHandle Import(tf::Subflow& subflow, const ftf::Asset* root, const ftf::Material* in_material);
 
 	private:
-		template<typename T> void HandleProperty(std::string_view key, const T& property, Shared<Material> material, const ftf::Asset* root, std::shared_mutex& mutex)
+		template<typename T> void HandleProperty(std::string_view key, const T& property, Ref<Material> material, const ftf::Asset* root, std::shared_mutex& mutex)
 		{
 			mutex.lock();
 			material->AddProperty(key, property);

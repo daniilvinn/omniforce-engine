@@ -5,9 +5,9 @@
 
 namespace Omni {
 
-	Shared<DescriptorSet> DescriptorSet::Create(const DescriptorSetSpecification& spec)
+	Ref<DescriptorSet> DescriptorSet::Create(IAllocator* allocator, const DescriptorSetSpecification& spec)
 	{
-		return std::make_shared<VulkanDescriptorSet>(spec);
+		return CreateRef<VulkanDescriptorSet>(allocator, spec);
 	}
 
 }

@@ -133,7 +133,7 @@ public:
 					const TRSComponent trs = entity.GetWorldTransform();
 					const MeshComponent& mesh_component = entity.GetComponent<MeshComponent>();
 
-					Shared<Mesh> mesh = AssetManager::Get()->GetAsset<Mesh>(mesh_component.mesh_handle);
+					Ref<Mesh> mesh = AssetManager::Get()->GetAsset<Mesh>(mesh_component.mesh_handle);
 					Sphere bounding_sphere = mesh->GetBoundingSphere();
 					AABB aabb = mesh->GetAABB();
 
@@ -248,7 +248,7 @@ public:
 			ImVec2 viewport_frame_size = ImGui::GetContentRegionAvail();
 			UI::RenderImage(m_EditorScene->GetFinalImage(), SceneRenderer::GetSamplerLinear(), viewport_frame_size, 0, true);
 
-			if(auto camera = m_CurrentScene->GetCamera(); camera != nullptr)
+			if(auto camera = m_CurrentScene->GetCamera(); camera)
 				camera->SetAspectRatio(viewport_frame_size.x / viewport_frame_size.y);
 			
 			if (ImGui::BeginDragDropTarget()) {
@@ -260,7 +260,7 @@ public:
 					if (filename.extension() == ".gltf" || filename.extension() == ".glb") {
 						AssetManager* asset_manager = AssetManager::Get();
 						ModelImporter importer;
-						Shared<Model> model = AssetManager::Get()->GetAsset<Model>(importer.Import(filename));
+						Ref<Model> model = AssetManager::Get()->GetAsset<Model>(importer.Import(filename));
 
 						Entity root_entity = m_CurrentScene->CreateEntity();
 
@@ -309,8 +309,8 @@ public:
 
 		m_ProjectPath = "";
 
-		m_EditorCamera = std::make_shared<EditorCamera>(16.0 / 9.0);
-		m_EditorScene->EditorSetCamera(ShareAs<Camera>(m_EditorCamera));
+		m_EditorCamera = CreateRef<EditorCamera>(&g_PersistentAllocator, 16.0 / 9.0);
+		m_EditorScene->EditorSetCamera(m_EditorCamera);
 		m_CurrentScene = m_EditorScene;
 
 		ImGuizmo::SetOrthographic(false);
@@ -416,12 +416,12 @@ public:
 
 		// unloading textures from memory and releasing their indices
 		AssetManager* asset_manager = AssetManager::Get();
-		Shared<SceneRenderer> renderer = m_EditorScene->GetRenderer();
+		Ref<SceneRenderer> renderer = m_EditorScene->GetRenderer();
 		auto& texture_registry = *asset_manager->GetAssetRegistry();
 		for (auto [id, asset] : texture_registry) {
 			if(asset->Type != AssetType::OMNI_IMAGE)
 				continue;
-			renderer->ReleaseResourceIndex(ShareAs<Image>(asset));
+			renderer->ReleaseResourceIndex(asset);
 		}
 		asset_manager->FullUnload();
 
@@ -542,7 +542,7 @@ public:
 	Scene* m_EditorScene;
 	Scene* m_RuntimeScene = nullptr;
 	Scene* m_CurrentScene;
-	Shared<EditorCamera> m_EditorCamera;
+	Ref<EditorCamera> m_EditorCamera;
 	Entity m_SelectedEntity;
 	bool m_EntitySelected = false;
 	bool m_ViewportFocused = false;

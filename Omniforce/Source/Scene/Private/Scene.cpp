@@ -39,7 +39,7 @@ namespace Omni {
 		SceneRendererSpecification renderer_spec = {};
 		renderer_spec.anisotropic_filtering = 16;
 
-		m_Renderer = SceneRenderer::Create(renderer_spec);
+		m_Renderer = SceneRenderer::Create(&g_PersistentAllocator, renderer_spec);
 	}
 
 	Scene::Scene(Scene* other)
@@ -97,7 +97,7 @@ namespace Omni {
 				camera_component.camera->SetPosition(world_transform.translation);
 
 				if (camera_component.camera->GetType() == CameraProjectionType::PROJECTION_3D) {
-					Shared<Camera3D> camera_3D = ShareAs<Camera3D>(camera_component.camera);
+					WeakPtr<Camera3D> camera_3D = camera_component.camera.As<Camera3D>();
 					glm::vec3 euler_angles = glm::degrees(glm::eulerAngles(world_transform.rotation));
 					camera_3D->SetRotation(euler_angles.y, euler_angles.x);
 				}
@@ -112,7 +112,7 @@ namespace Omni {
 		// Begin rendering
 		m_Renderer->BeginScene(m_Camera);
 		// If primary camera was not found, then it is nullptr and we cannot render
-		if (m_Camera != nullptr) {
+		if (m_Camera) {
 			m_Registry.view<SpriteComponent>().each([&, scene = this](auto e, auto& sprite_component) {
 				Entity entity(e, this);
 				TRSComponent trs_component = entity.GetWorldTransform();
@@ -337,7 +337,7 @@ namespace Omni {
 
 		auto tex_registry = *AssetManager::Get()->GetAssetRegistry();
 		for (auto& [id, texture] : tex_registry) {
-			auto image = ShareAs<Image>(texture);
+			Ref<Image> image = texture;
 			texture_node.emplace(std::to_string(texture->Handle), image->GetSpecification().path.string());
 		}
 
@@ -397,11 +397,11 @@ namespace Omni {
 				image_spec.format = ImageFormat::BC7;
 				image_spec.mip_levels = Utils::ComputeNumMipLevelsBC7(image_width, image_height) + 1;
 
-				Shared<AssetBase> image = Image::Create(image_spec, 0);
+				Ref<AssetBase> image = Image::Create(&g_PersistentAllocator, image_spec, 0);
 
 				AssetHandle id = AssetManager::Get()->RegisterAsset(image, std::stoull(i.key()));
 
-				Shared<Image> texture = AssetManager::Get()->GetAsset<Image>(id);
+				Ref<Image> texture = AssetManager::Get()->GetAsset<Image>(id);
 
 				renderer_mtx.lock();
 				m_Renderer->AcquireResourceIndex(texture, SamplerFilteringMode::NEAREST);

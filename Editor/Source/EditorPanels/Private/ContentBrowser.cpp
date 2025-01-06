@@ -51,7 +51,7 @@ namespace Omni {
 			spec.pixels = std::move(data);
 			spec.mip_levels = 1;
 
-			Shared<Image> image = Image::Create(spec);
+			Ref<Image> image = Image::Create(&g_PersistentAllocator, spec);
 
 			m_IconMap.emplace(entry.path().filename().string(), image);
 			

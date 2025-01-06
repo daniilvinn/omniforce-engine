@@ -26,7 +26,7 @@ namespace Omni {
 			return *this;
 		}
 
-		bool operator==(const MemoryAllocation& other) {
+		bool operator==(const MemoryAllocation& other) const {
 			return (Memory == other.Memory) && (Size == other.Size);
 		}
 

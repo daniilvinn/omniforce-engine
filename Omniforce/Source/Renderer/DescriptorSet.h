@@ -35,12 +35,12 @@ namespace Omni {
 
 	class OMNIFORCE_API DescriptorSet {
 	public:
-		static Shared<DescriptorSet> Create(const DescriptorSetSpecification& spec);
+		static Ref<DescriptorSet> Create(IAllocator* allocator, const DescriptorSetSpecification& spec);
 
 		virtual void Destroy() = 0;
 
-		virtual void Write(uint16 binding, uint16 array_element, Shared<Image> image, Shared<ImageSampler> sampler) = 0;
-		virtual void Write(uint16 binding, uint16 array_element, Shared<DeviceBuffer> buffer, uint64 size, uint64 offset) = 0;
+		virtual void Write(uint16 binding, uint16 array_element, Ref<Image> image, Ref<ImageSampler> sampler) = 0;
+		virtual void Write(uint16 binding, uint16 array_element, Ref<DeviceBuffer> buffer, uint64 size, uint64 offset) = 0;
 
 	private:
 

@@ -5,9 +5,9 @@
 
 namespace Omni {
 
-	Shared<DeviceCmdBuffer> DeviceCmdBuffer::Create(DeviceCmdBufferLevel level, DeviceCmdBufferType buffer_type, DeviceCmdType cmd_type)
+	Ref<DeviceCmdBuffer> DeviceCmdBuffer::Create(IAllocator* allocator, DeviceCmdBufferLevel level, DeviceCmdBufferType buffer_type, DeviceCmdType cmd_type)
 	{
-		return std::make_shared<VulkanDeviceCmdBuffer>(level, buffer_type, cmd_type);
+		return CreateRef<VulkanDeviceCmdBuffer>(allocator, level, buffer_type, cmd_type);
 	}
 
 }

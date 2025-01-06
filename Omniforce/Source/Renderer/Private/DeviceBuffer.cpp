@@ -5,14 +5,14 @@
 
 namespace Omni {
 
-	Shared<DeviceBuffer> DeviceBuffer::Create(const DeviceBufferSpecification& spec)
+	Ref<DeviceBuffer> DeviceBuffer::Create(IAllocator* allocator, const DeviceBufferSpecification& spec)
 	{
-		return std::make_shared<VulkanDeviceBuffer>(spec);
+		return CreateRef<VulkanDeviceBuffer>(allocator, spec);
 	}
 
-	Shared<DeviceBuffer> DeviceBuffer::Create(const DeviceBufferSpecification& spec, void* data, uint64 data_size)
+	Ref<DeviceBuffer> DeviceBuffer::Create(IAllocator* allocator, const DeviceBufferSpecification& spec, void* data, uint64 data_size)
 	{
-		return std::make_shared<VulkanDeviceBuffer>(spec, data, data_size);
+		return CreateRef<VulkanDeviceBuffer>(allocator, spec, data, data_size);
 	}
 
 }

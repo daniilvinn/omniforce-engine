@@ -23,7 +23,7 @@ namespace Omni {
 		std::filesystem::path m_WorkingDirectory;
 		std::filesystem::path m_CurrentDirectory;
 
-		robin_hood::unordered_map<std::string, Shared<Image>> m_IconMap;
+		robin_hood::unordered_map<std::string, Ref<Image>> m_IconMap;
 		Timer m_DirectoryFetchTimer;
 		std::vector<std::filesystem::path> m_CurrentDirectoryEntries;
 

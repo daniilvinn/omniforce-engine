@@ -32,7 +32,7 @@ namespace EditorUtils {
 		image_spec.format = ImageFormat::BC7;
 		image_spec.array_layers = 1;
 
-		Shared<AssetBase> image = Image::Create(image_spec, 0);
+		Ref<AssetBase> image = Image::Create(&g_PersistentAllocator, image_spec, 0);
 
 		auto executor = JobSystem::GetExecutor();
 

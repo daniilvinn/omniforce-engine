@@ -21,17 +21,17 @@ namespace Omni {
 	VulkanRenderer::VulkanRenderer(const RendererConfig& config)
 		: m_Config(config)
 	{
-		m_GraphicsContext = std::make_shared<VulkanGraphicsContext>(config);
+		m_GraphicsContext = CreateRef<VulkanGraphicsContext>(&g_PersistentAllocator, config);
 		m_Device = m_GraphicsContext->GetDevice();
 
 		auto base_swapchain = m_GraphicsContext->GetSwapchain();
-		m_Swapchain = ShareAs<VulkanSwapchain>(base_swapchain);
+		m_Swapchain = base_swapchain;
 
 		m_CmdBuffers.resize(m_Swapchain->GetSpecification().frames_in_flight);
 		m_CmdBuffers.shrink_to_fit();
 
 		for (auto& buf : m_CmdBuffers) {
-			buf = std::make_shared<VulkanDeviceCmdBuffer>(DeviceCmdBufferLevel::PRIMARY, DeviceCmdBufferType::GENERAL, DeviceCmdType::GENERAL);
+			buf = CreateRef<VulkanDeviceCmdBuffer>(&g_PersistentAllocator, DeviceCmdBufferLevel::PRIMARY, DeviceCmdBufferType::GENERAL, DeviceCmdType::GENERAL);
 		}
 
 		if (s_DescriptorPool == VK_NULL_HANDLE) {
@@ -104,7 +104,7 @@ namespace Omni {
 				// Execution code
 				VkPipelineStageFlags stagemasks[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
-				Shared<VulkanDeviceCmdBuffer> vk_cmd_buffer = ShareAs<VulkanDeviceCmdBuffer>(m_CurrentCmdBuffer);
+				WeakPtr<VulkanDeviceCmdBuffer> vk_cmd_buffer = m_CurrentCmdBuffer.As<VulkanDeviceCmdBuffer>();
 				VkCommandBuffer raw_buffer = vk_cmd_buffer->Raw();
 				auto semaphores = m_Swapchain->GetSemaphores();
 
@@ -124,7 +124,7 @@ namespace Omni {
 		});
 	}
 
-	void VulkanRenderer::ClearImage(Shared<Image> image, const fvec4& value)
+	void VulkanRenderer::ClearImage(Ref<Image> image, const fvec4& value)
 	{
 		Renderer::Submit([=]() mutable {
 			bool is_storage_image = image->GetSpecification().usage == ImageUsage::STORAGE_IMAGE;
@@ -138,8 +138,7 @@ namespace Omni {
 				);
 			}
 
-
-			Shared<VulkanImage> vk_image = ShareAs<VulkanImage>(image);
+			WeakPtr<VulkanImage> vk_image = image.As<VulkanImage>();
 
 			VkClearColorValue clear_color_value = {};
 			clear_color_value.float32[0] = value.r;
@@ -166,10 +165,10 @@ namespace Omni {
 		});
 	}
 
-	void VulkanRenderer::RenderMeshTasks(Shared<Pipeline> pipeline, const glm::uvec3& dimensions, MiscData data)
+	void VulkanRenderer::RenderMeshTasks(Ref<Pipeline> pipeline, const glm::uvec3& dimensions, MiscData data)
 	{
 		Renderer::Submit([=]() mutable {
-			Shared<VulkanPipeline> vk_pipeline = ShareAs<VulkanPipeline>(pipeline);
+			WeakPtr<VulkanPipeline> vk_pipeline = pipeline.As<VulkanPipeline>();
 
 			if (data.size) {
 				vkCmdPushConstants(m_CurrentCmdBuffer->Raw(), vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
@@ -180,11 +179,11 @@ namespace Omni {
 		});
 	}
 
-	void VulkanRenderer::RenderMeshTasksIndirect(Shared<Pipeline> pipeline, Shared<DeviceBuffer> params, MiscData data)
+	void VulkanRenderer::RenderMeshTasksIndirect(Ref<Pipeline> pipeline, Ref<DeviceBuffer> params, MiscData data)
 	{
 		Renderer::Submit([=]() mutable {
-			Shared<VulkanPipeline> vk_pipeline = ShareAs<VulkanPipeline>(pipeline);
-			Shared<VulkanDeviceBuffer> vk_buffer = ShareAs<VulkanDeviceBuffer>(params);
+			WeakPtr<VulkanPipeline> vk_pipeline = pipeline.As<VulkanPipeline>();
+			WeakPtr<VulkanDeviceBuffer> vk_buffer = params.As<VulkanDeviceBuffer>();
 
 			vkCmdBindPipeline(m_CurrentCmdBuffer->Raw(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
 			if (data.size) {
@@ -277,10 +276,10 @@ namespace Omni {
 		return 0;
 	}
 
-	void VulkanRenderer::RenderQuad(Shared<Pipeline> pipeline, MiscData data)
+	void VulkanRenderer::RenderQuad(Ref<Pipeline> pipeline, MiscData data)
 	{
 		Renderer::Submit([=]() mutable {
-			Shared<VulkanPipeline> vk_pipeline = ShareAs<VulkanPipeline>(pipeline);
+			WeakPtr<VulkanPipeline> vk_pipeline = pipeline.As<VulkanPipeline>();
 
 			vkCmdPushConstants(m_CurrentCmdBuffer->Raw(), vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
 			vkCmdBindPipeline(m_CurrentCmdBuffer->Raw(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
@@ -291,10 +290,10 @@ namespace Omni {
 		});
 	}
 
-	void VulkanRenderer::RenderQuad(Shared<Pipeline> pipeline, uint32 amount, MiscData data)
+	void VulkanRenderer::RenderQuad(Ref<Pipeline> pipeline, uint32 amount, MiscData data)
 	{
 		Renderer::Submit([=]() mutable {
-			Shared<VulkanPipeline> vk_pipeline = ShareAs<VulkanPipeline>(pipeline);
+			WeakPtr<VulkanPipeline> vk_pipeline = pipeline.As<VulkanPipeline>();
 
 			if (data.size)
 			{
@@ -306,10 +305,10 @@ namespace Omni {
 		});
 	}
 
-	void VulkanRenderer::DispatchCompute(Shared<Pipeline> pipeline, const glm::uvec3& dimensions, MiscData data)
+	void VulkanRenderer::DispatchCompute(Ref<Pipeline> pipeline, const glm::uvec3& dimensions, MiscData data)
 	{
 		Renderer::Submit([=]() mutable {
-			Shared<VulkanPipeline> vk_pipeline = ShareAs<VulkanPipeline>(pipeline);
+			WeakPtr<VulkanPipeline> vk_pipeline = pipeline.As<VulkanPipeline>();
 			
 			if (data.size) {
 				vkCmdPushConstants(m_CurrentCmdBuffer->Raw(), vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
@@ -320,17 +319,17 @@ namespace Omni {
 		});
 	}
 
-	void VulkanRenderer::RenderUnindexed(Shared<Pipeline> pipeline, Shared<DeviceBuffer> vertex_buffer, MiscData data)
+	void VulkanRenderer::RenderUnindexed(Ref<Pipeline> pipeline, Ref<DeviceBuffer> vertex_buffer, MiscData data)
 	{
 		Renderer::Submit([=]() mutable {
-			Shared<VulkanPipeline> vk_pipeline = ShareAs<VulkanPipeline>(pipeline);
+			WeakPtr<VulkanPipeline> vk_pipeline = pipeline.As<VulkanPipeline>();
 
 			if (data.size) {
 				vkCmdPushConstants(m_CurrentCmdBuffer->Raw(), vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
 				delete[] data.data;
 			}
 
-			Shared<VulkanDeviceBuffer> vk_buffer = ShareAs<VulkanDeviceBuffer>(vertex_buffer);
+			WeakPtr<VulkanDeviceBuffer> vk_buffer = vertex_buffer.As<VulkanDeviceBuffer>();
 			VkBuffer vb = vk_buffer->Raw();
 			VkDeviceSize offset = 0;
 
@@ -363,11 +362,12 @@ namespace Omni {
 		EndRender(image);
 	}
 
-	void VulkanRenderer::CopyToSwapchain(Shared<Image> image)
+	void VulkanRenderer::CopyToSwapchain(Ref<Image> image)
 	{
 		Renderer::Submit([=]() mutable {
-			Shared<VulkanImage> vk_image = ShareAs<VulkanImage>(image);
-			Shared<Image> swapchain_image = m_Swapchain->GetCurrentImage();
+			WeakPtr<VulkanImage> vk_image = image.As<VulkanImage>();
+			Ref<Image> swapchain_image = m_Swapchain->GetCurrentImage();
+
 			uvec3 swapchain_resolution = swapchain_image->GetSpecification().extent;
 			uvec3 src_image_resolution = image->GetSpecification().extent;
 
@@ -398,7 +398,7 @@ namespace Omni {
 				m_CurrentCmdBuffer->Raw(),
 				vk_image->Raw(),
 				(VkImageLayout)vk_image->GetCurrentLayout(),
-				ShareAs<VulkanImage>(image)->Raw(),
+				image.As<VulkanImage>()->Raw(),
 				(VkImageLayout)VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 				1,
 				&image_blit,
@@ -429,8 +429,8 @@ namespace Omni {
 			}
 
 			for (auto& image_barrier : barrier.image_barriers) {
-				Shared<Image> image = image_barrier.first;
-				Shared<VulkanImage> vk_image = ShareAs<VulkanImage>(image);
+				Ref<Image> image = image_barrier.first;
+				WeakPtr<VulkanImage> vk_image = image.As<VulkanImage>();
 
 				VkImageMemoryBarrier2 vk_barrier = {};
 				vk_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
@@ -464,7 +464,7 @@ namespace Omni {
 		});
 	}
 
-	void VulkanRenderer::BeginRender(const std::vector<Shared<Image>> attachments, uvec3 render_area, ivec2 render_offset, fvec4 clear_color, bool clear_depth)
+	void VulkanRenderer::BeginRender(const std::vector<Ref<Image>> attachments, uvec3 render_area, ivec2 render_offset, fvec4 clear_color, bool clear_depth)
 	{
 		Renderer::Submit([=]() mutable {
 
@@ -473,7 +473,7 @@ namespace Omni {
 			std::vector<VkRenderingAttachmentInfo> color_attachments = {};
 
 			for (auto attachment : attachments) {
-				Shared<VulkanImage> vk_target = ShareAs<VulkanImage>(attachment);
+				WeakPtr<VulkanImage> vk_target = attachment.As<VulkanImage>();
 				ImageSpecification target_spec = vk_target->GetSpecification();
 
 				if (target_spec.usage == ImageUsage::RENDER_TARGET) {
@@ -553,7 +553,7 @@ namespace Omni {
 		});
 	}
 
-	void VulkanRenderer::EndRender(Shared<Image> target)
+	void VulkanRenderer::EndRender(Ref<Image> target)
 	{
 		Renderer::Submit([=]() mutable {
 			vkCmdEndRendering(m_CurrentCmdBuffer->Raw());
@@ -565,12 +565,14 @@ namespace Omni {
 		vkDeviceWaitIdle(m_Device->Raw());
 	}
 
-	void VulkanRenderer::BindSet(Shared<DescriptorSet> set, Shared<Pipeline> pipeline, uint8 index)
+	void VulkanRenderer::BindSet(Ref<DescriptorSet> set, Ref<Pipeline> pipeline, uint8 index)
 	{
 		Renderer::Submit([=]() mutable {
 			PipelineSpecification pipeline_spec = pipeline->GetSpecification();
-			Shared<VulkanPipeline> vk_pipeline = ShareAs<VulkanPipeline>(pipeline);
-			Shared<VulkanDescriptorSet> vk_set = ShareAs<VulkanDescriptorSet>(set);
+
+			WeakPtr<VulkanPipeline> vk_pipeline = pipeline.As<VulkanPipeline>();
+			WeakPtr<VulkanDescriptorSet> vk_set = set.As<VulkanDescriptorSet>();
+
 			VkDescriptorSet raw_set = vk_set->Raw();
 
 			VkPipelineBindPoint bind_point;

@@ -136,7 +136,7 @@ namespace Omni {
 	void ScriptEngine::OnUpdate()
 	{
 		for (auto& callback_info : m_PendingCallbacks) {
-			Shared<RuntimeScriptInstance> object = callback_info.entity.GetComponent<ScriptComponent>().script_object;
+			Ref<RuntimeScriptInstance> object = callback_info.entity.GetComponent<ScriptComponent>().script_object;
 			object->InvokeMethod(callback_info.method, callback_info.args.data());
 		}
 
@@ -196,7 +196,7 @@ namespace Omni {
 		for (entt::entity e : view) {
 			Entity entity(e, m_Context);
 			ScriptComponent& script_component = entity.GetComponent<ScriptComponent>();
-			script_component.script_object.reset();
+			script_component.script_object.Reset();
 		}
 
 		mono_gc_collect(mono_gc_max_generation());

@@ -10,9 +10,9 @@ namespace Omni {
 	// PHYSICAL DEVICE
 	// ===============
 
-	Shared<VulkanPhysicalDevice> VulkanPhysicalDevice::Select(VulkanGraphicsContext* ctx)
+	Ref<VulkanPhysicalDevice> VulkanPhysicalDevice::Select(VulkanGraphicsContext* ctx)
 	{
-		return std::make_shared<VulkanPhysicalDevice>(ctx);
+		return CreateRef<VulkanPhysicalDevice>(&g_PersistentAllocator, ctx);
 	}
 
 	// TODO: check for device surface support
@@ -146,7 +146,7 @@ namespace Omni {
 	// ==============
 	// LOGICAL DEVICE
 	// ==============
-	VulkanDevice::VulkanDevice(Shared<VulkanPhysicalDevice> physical_device, const VkPhysicalDeviceFeatures& enabled_features)
+	VulkanDevice::VulkanDevice(Ref<VulkanPhysicalDevice> physical_device, const VkPhysicalDeviceFeatures& enabled_features)
 		: m_Device(VK_NULL_HANDLE), m_PhysicalDevice(physical_device), m_GeneralQueue(VK_NULL_HANDLE), m_AsyncComputeQueue(VK_NULL_HANDLE)
 	{
 		const float prioriry = 1.0f;

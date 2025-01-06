@@ -12,11 +12,11 @@ namespace Omni {
 	{
 		m_IsOpen = true;
 		
-		Shared<EditorConsoleEngineSink> engine_sink = std::make_shared<EditorConsoleEngineSink>(this);
-		Shared<EditorConsoleClientSink> game_sink = std::make_shared<EditorConsoleClientSink>(this);
+		std::shared_ptr<EditorConsoleEngineSink> engine_sink = std::make_shared<EditorConsoleEngineSink>(this);
+		std::shared_ptr<EditorConsoleClientSink> game_sink = std::make_shared<EditorConsoleClientSink>(this);
 
-		Shared<spdlog::logger> editor_logger = std::make_shared<spdlog::logger>("OmniEditor", engine_sink);
-		Shared<spdlog::logger> game_logger = std::make_shared<spdlog::logger>("Game", game_sink);
+		std::shared_ptr<spdlog::logger> editor_logger = std::make_shared<spdlog::logger>("OmniEditor", engine_sink);
+		std::shared_ptr<spdlog::logger> game_logger = std::make_shared<spdlog::logger>("Game", game_sink);
 
 		editor_logger->set_pattern("%v%$");
 		game_logger->set_pattern("%v%$");

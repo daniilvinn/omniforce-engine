@@ -21,7 +21,7 @@ namespace Omni {
 		static void Init();
 		static void Destroy();
 		static ShaderLibrary* Get() { return s_Instance; };
-		using InternalStorage = rhumap<std::string, std::vector<std::pair<Shared<Shader>, ShaderMacroTable>>>;
+		using InternalStorage = rhumap<std::string, std::vector<std::pair<Ref<Shader>, ShaderMacroTable>>>;
 
 		// @return true if loaded successfully, false if not. It can happen due to incorrect shader path or invalid shader code
 		bool LoadShader(const std::filesystem::path& path, const ShaderMacroTable& macros = {});
@@ -42,7 +42,7 @@ namespace Omni {
 		*  @brief Acquire shader from library. Read-only.
 		*  @return a shared pointer to shader. If shader is not present, returns nullptr.
 		*/
-		Shared<Shader> GetShader(std::string key, ShaderMacroTable macros = {});
+		Ref<Shader> GetShader(std::string key, ShaderMacroTable macros = {});
 
 		/*
 		*  @return a whole shader library. Can be used to iterate through, e.g. for using with ImGui to list all shaders

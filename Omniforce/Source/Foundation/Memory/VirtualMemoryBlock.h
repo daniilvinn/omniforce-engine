@@ -10,7 +10,7 @@ namespace Omni {
 		VirtualMemoryBlock() {};
 
 	public:
-		static Scope<VirtualMemoryBlock> Create(uint32 size);
+		static Ptr<VirtualMemoryBlock> Create(IAllocator* allocator, uint32 size);
 
 		virtual void Clear() = 0;
 		virtual void Destroy() = 0;

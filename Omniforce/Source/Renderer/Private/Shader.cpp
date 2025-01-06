@@ -5,9 +5,9 @@
 
 namespace Omni {
 
-	Shared<Shader> Shader::Create(std::map<ShaderStage, std::vector<uint32>> binaries, std::filesystem::path path)
+	Ref<Shader> Shader::Create(IAllocator* allocator, std::map<ShaderStage, std::vector<uint32>> binaries, std::filesystem::path path)
 	{
-		return std::make_shared<VulkanShader>(binaries, path);
+		return CreateRef<VulkanShader>(allocator, binaries, path);
 	}
 
 }

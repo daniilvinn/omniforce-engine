@@ -11,18 +11,6 @@
 
 namespace Omni {
 
-	template <typename T>
-	using Scope = std::unique_ptr<T>;
-
-	template <typename T>
-	using Shared = std::shared_ptr<T>;
-
-	template <typename T1, typename T2>
-	Shared<T1> ShareAs(Shared<T2>& ptr)
-	{
-		return std::static_pointer_cast<T1>(ptr);
-	};
-
 	/*
 	*  @brief A pointer that only holds a weak reference to an object, e.g. it doesn't
 	*  own the object so it cannot perform object deallocation
@@ -34,11 +22,11 @@ namespace Omni {
 		: m_Allocation(InAllocation) {}
 
 		inline T* operator->() const {
-			return m_Allocation.As<T*>();
+			return m_Allocation.As<T>();
 		}
 
-		inline const T* Raw() const {
-			return (const T*)m_Allocation.Memory;
+		inline T* Raw() const {
+			return m_Allocation.As<T>();
 		}
 
 		template<typename NewType>
@@ -105,8 +93,8 @@ namespace Omni {
 			m_Allocator = nullptr;
 		}
 
-		inline const T* Raw() const {
-			return (const T*)m_Allocation.Memory;
+		inline T* Raw() const {
+			return (T*)m_Allocation.Memory;
 		}
 
 		template<typename NewType>
@@ -201,7 +189,7 @@ namespace Omni {
 				m_CounterAllocation = m_Allocator->Allocate<CounterType>(1);
 
 				// Cache pointers
-				m_CachedObject = (m_Allocation.Memory + sizeof(CounterType));
+				m_CachedObject = (T*)(m_Allocation.Memory + sizeof(CounterType));
 				m_CachedCounter = m_CounterAllocation.As<Atomic<CounterType>>();
 
 			}
@@ -212,7 +200,7 @@ namespace Omni {
 				m_CounterAllocation = m_Allocation;
 
 				// Cache object and counter pointers so we don't need to add `sizeof(CounterType)` each time we access an object
-				m_CachedObject = (m_Allocation.Memory + sizeof(CounterType));
+				m_CachedObject = (T*)(m_Allocation.Memory + sizeof(CounterType));
 				m_CachedCounter = m_Allocation.As<Atomic<CounterType>>();
 			}
 		};
@@ -238,11 +226,11 @@ namespace Omni {
 		}
 
 		template<typename U>
-		Ref(const Ref& other) 
+		Ref(const Ref<U>& other) 
 			: m_Allocator(other.m_Allocator)
 			, m_Allocation(other.m_Allocation)
 			, m_CounterAllocation(other.m_CounterAllocation)
-			, m_CachedObject(other.m_CachedObject)
+			, m_CachedObject((T*)other.m_CachedObject)
 			, m_CachedCounter(other.m_CachedCounter)
 		{
 			static_assert(std::is_same_v<T, U> || std::is_base_of_v<T, U> || std::is_base_of_v<U, T>, "Types are not related to each other");
@@ -251,7 +239,7 @@ namespace Omni {
 		};
 
 		template<typename U>
-		Ref(Ptr<U>&& other) noexcept
+		Ref(Ref<U>&& other) noexcept
 			: m_Allocator(other.m_Allocator)
 			, m_Allocation(other.m_Allocation)
 			, m_CounterAllocation(other.m_CounterAllocation)
@@ -259,13 +247,14 @@ namespace Omni {
 			, m_CachedCounter(other.m_CachedCounter)
 		{
 			static_assert(std::is_base_of_v<T, U>, "Types are not related to each other");
+
 			IncrementRefCounter();
 
 			other.Reset();
 		}
 
-		inline const T* Raw() const {
-			return (const T*)m_Allocation.Memory;
+		inline T* Raw() const {
+			return m_Allocation.As<T>();
 		}
 
 		template<typename NewType>
@@ -309,7 +298,7 @@ namespace Omni {
 			m_Allocator = other.m_Allocator;
 			m_Allocation = other.m_Allocation;
 			m_CounterAllocation = other.m_CounterAllocation;
-			m_CachedObject = other.m_CachedObject;
+			m_CachedObject = (T*)other.m_CachedObject;
 			m_CachedCounter = other.m_CachedCounter;
 
 			IncrementRefCounter();
@@ -317,6 +306,8 @@ namespace Omni {
 
 		template<typename U>
 		Ref<T>& operator=(Ref<U>&& other) noexcept {
+			static_assert(std::is_same_v<T, U> || std::is_base_of_v<T, U> || std::is_base_of_v<U, T>, "Types are not related to each other");
+
 			// Early out in case if two pointers are referencing the same resource
 			if (m_Allocation == other.m_Allocation) [[unlikely]] {
 				return *this;
@@ -343,11 +334,7 @@ namespace Omni {
 			return *this;
 		};
 
-		inline T* operator->() {
-			return m_Allocation.As<T>();
-		}
-
-		inline const T* operator->() const {
+		inline T* operator->() const {
 			return m_Allocation.As<T>();
 		}
 

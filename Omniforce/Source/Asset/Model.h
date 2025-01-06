@@ -13,7 +13,7 @@ namespace Omni {
 		Model(const std::vector<std::pair<AssetHandle, AssetHandle>>& meshes);
 		~Model() {};
 
-		static Shared<Model> Create(const std::vector<std::pair<AssetHandle, AssetHandle>>& meshes);
+		static Ref<Model> Create(IAllocator* allocator, std::vector<std::pair<AssetHandle, AssetHandle>>& meshes);
 
 		void Destroy() override {};
 		

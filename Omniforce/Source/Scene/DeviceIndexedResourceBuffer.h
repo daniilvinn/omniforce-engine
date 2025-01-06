@@ -11,7 +11,7 @@ namespace Omni {
 	class DeviceIndexedResourceBuffer {
 	public:
 		DeviceIndexedResourceBuffer(uint32 buffer_size)
-			: m_IndexAllocator(VirtualMemoryBlock::Create(buffer_size))
+			: m_IndexAllocator(VirtualMemoryBlock::Create(&g_PersistentAllocator, buffer_size))
 		{
 			DeviceBufferSpecification buffer_spec = {};
 			buffer_spec.size = buffer_size;
@@ -41,7 +41,7 @@ namespace Omni {
 
 			m_StagingForCopy->UploadData(0, (void*)&data, sizeof (T));
 
-			Shared<DeviceCmdBuffer> cmd_buffer = DeviceCmdBuffer::Create(DeviceCmdBufferLevel::PRIMARY, DeviceCmdBufferType::TRANSIENT, DeviceCmdType::GENERAL);
+			Ref<DeviceCmdBuffer> cmd_buffer = DeviceCmdBuffer::Create(&g_PersistentAllocator, DeviceCmdBufferLevel::PRIMARY, DeviceCmdBufferType::TRANSIENT, DeviceCmdType::GENERAL);
 			cmd_buffer->Begin();
 			m_StagingForCopy->CopyRegionTo(cmd_buffer, m_DeviceBuffer, 0, offset, sizeof (T));
 			cmd_buffer->End();
@@ -61,13 +61,13 @@ namespace Omni {
 		uint32 GetIndex(const AssetHandle& id) const { return m_Indices.at(id); }
 
 		uint64 GetStorageBDA() const { return m_DeviceBuffer->GetDeviceAddress(); }
-		Shared<DeviceBuffer> GetStorage() const { return m_DeviceBuffer; }
+		Ref<DeviceBuffer> GetStorage() const { return m_DeviceBuffer; }
 
 	private:
-		Scope<VirtualMemoryBlock> m_IndexAllocator;
+		Ptr<VirtualMemoryBlock> m_IndexAllocator;
 		rhumap<UUID, uint32> m_Indices;
-		Shared<DeviceBuffer> m_DeviceBuffer;
-		Shared<DeviceBuffer> m_StagingForCopy;
+		Ref<DeviceBuffer> m_DeviceBuffer;
+		Ref<DeviceBuffer> m_StagingForCopy;
 	};
 
 }

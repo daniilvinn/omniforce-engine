@@ -20,7 +20,7 @@ namespace Omni {
 		VulkanPhysicalDevice(VulkanGraphicsContext* ctx);
 		~VulkanPhysicalDevice();
 
-		static Shared<VulkanPhysicalDevice> Select(VulkanGraphicsContext* ctx);
+		static Ref<VulkanPhysicalDevice> Select(VulkanGraphicsContext* ctx);
 		static std::vector<VkPhysicalDevice> List(VulkanGraphicsContext* ctx);
 
 		VkPhysicalDevice Raw() const { return m_PhysicalDevice; }
@@ -37,12 +37,12 @@ namespace Omni {
 
 	class VulkanDevice {
 	public:
-		VulkanDevice(Shared<VulkanPhysicalDevice> physical_device, const VkPhysicalDeviceFeatures& features);
+		VulkanDevice(Ref<VulkanPhysicalDevice> physical_device, const VkPhysicalDeviceFeatures& features);
 		~VulkanDevice();
 		void Destroy();
 
 		VkDevice Raw() const { return m_Device; }
-		Shared<VulkanPhysicalDevice> GetPhysicalDevice() const { return m_PhysicalDevice; }
+		Ref<VulkanPhysicalDevice> GetPhysicalDevice() const { return m_PhysicalDevice; }
 		VkQueue GetGeneralQueue() const { return m_GeneralQueue; }
 		VkQueue GetAsyncComputeQueue() const { return m_GeneralQueue; }
 
@@ -54,7 +54,7 @@ namespace Omni {
 
 	private:
 		VkDevice m_Device;
-		Shared<VulkanPhysicalDevice> m_PhysicalDevice;
+		Ref<VulkanPhysicalDevice> m_PhysicalDevice;
 		VkQueue m_GeneralQueue;
 		VkQueue m_AsyncComputeQueue;
 

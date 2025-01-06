@@ -12,8 +12,8 @@ namespace Omni {
 
 	class OMNIFORCE_API FileSystem {
 	public:
-		static Shared<File> ReadFile(std::filesystem::path path, const BitMask& flags);
-		static void WriteFile(Shared<File> file, std::filesystem::path path, const BitMask& flags);
+		static Ref<File> ReadFile(IAllocator* allocator, std::filesystem::path path, const BitMask& flags);
+		static void WriteFile(Ref<File> file, std::filesystem::path path, const BitMask& flags);
 		static uint64 FileSize(std::filesystem::path path);
 
 		static bool CheckDirectory(std::filesystem::path path);

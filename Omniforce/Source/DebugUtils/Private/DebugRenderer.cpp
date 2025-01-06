@@ -44,7 +44,7 @@ namespace Omni {
 		pipeline_spec.depth_test_enable = true;
 		pipeline_spec.color_blending_enable = false;
 
-		m_WireframePipeline = Pipeline::Create(pipeline_spec);
+		m_WireframePipeline = Pipeline::Create(&g_PersistentAllocator, pipeline_spec);
 
 		pipeline_spec.culling_mode = PipelineCullingMode::BACK;
 		pipeline_spec.debug_name = "Cluster debug view";
@@ -52,7 +52,7 @@ namespace Omni {
 		pipeline_spec.shader = shader_library->GetShader("ClusterDebugView.ofs");
 		pipeline_spec.input_layout = {};
 
-		m_DebugViewPipeline = Pipeline::Create(pipeline_spec);
+		m_DebugViewPipeline = Pipeline::Create(&g_PersistentAllocator, pipeline_spec);
 
 		PrimitiveMeshGenerator mesh_generator;
 		MeshPreprocessor mesh_preprocessor;
@@ -77,7 +77,7 @@ namespace Omni {
 		buffer_spec.memory_usage = DeviceBufferMemoryUsage::NO_HOST_ACCESS;
 		buffer_spec.size = vertex_data.size();
 
-		m_IcosphereMesh = DeviceBuffer::Create(buffer_spec, vertex_data.data(), buffer_spec.size);
+		m_IcosphereMesh = DeviceBuffer::Create(&g_PersistentAllocator, buffer_spec, vertex_data.data(), buffer_spec.size);
 
 		// Cube
 		auto cube_data = mesh_generator.GenerateCube();
@@ -94,7 +94,7 @@ namespace Omni {
 
 		buffer_spec.size = vertex_data.size();
 
-		m_CubeMesh = DeviceBuffer::Create(buffer_spec, vertex_data.data(), buffer_spec.size);
+		m_CubeMesh = DeviceBuffer::Create(&g_PersistentAllocator, buffer_spec, vertex_data.data(), buffer_spec.size);
 	}
 
 	DebugRenderer::~DebugRenderer()
@@ -103,7 +103,7 @@ namespace Omni {
 		m_CubeMesh->Destroy();
 	}
 
-	void DebugRenderer::SetCameraBuffer(Shared<DeviceBuffer> buffer)
+	void DebugRenderer::SetCameraBuffer(Ref<DeviceBuffer> buffer)
 	{
 		renderer->m_CameraBuffer = buffer;
 	}
@@ -156,7 +156,7 @@ namespace Omni {
 		});
 	};
 
-	void DebugRenderer::RenderWireframeLines(Shared<DeviceBuffer> vbo, const glm::vec3& translation, const glm::quat rotation, const glm::vec3 scale, const glm::vec3& color)
+	void DebugRenderer::RenderWireframeLines(Ref<DeviceBuffer> vbo, const glm::vec3& translation, const glm::quat rotation, const glm::vec3 scale, const glm::vec3& color)
 	{
 		renderer->m_DebugRequests.push_back([=]() {
 			GLSL::Transform trs = {};
@@ -180,7 +180,7 @@ namespace Omni {
 		});
 	}
 
-	void DebugRenderer::RenderSceneDebugView(Shared<DeviceBuffer> visible_clusters, DebugSceneView mode, Shared<DescriptorSet> descriptor_set)
+	void DebugRenderer::RenderSceneDebugView(Ref<DeviceBuffer> visible_clusters, DebugSceneView mode, Ref<DescriptorSet> descriptor_set)
 	{
 		renderer->m_DebugRequests.push_back([=]() {
 
@@ -198,7 +198,7 @@ namespace Omni {
 		});
 	}
 
-	void DebugRenderer::Render(Shared<Image> target, Shared<Image> depth_target, fvec4 clear_value)
+	void DebugRenderer::Render(Ref<Image> target, Ref<Image> depth_target, fvec4 clear_value)
 	{
 		Renderer::BeginRender({ target, depth_target }, target->GetSpecification().extent, { 0,0 }, clear_value);
 
