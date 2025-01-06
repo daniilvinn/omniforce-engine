@@ -7,7 +7,12 @@ namespace Omni {
 	class OMNIFORCE_API File {
 	public:
 		File(byte* data, uint64 size, BitMask flags,std::filesystem::path path = "")
-			: m_Data(data), m_Size(size), m_Path(path), m_Flags(flags) {}
+			: m_Data(data)
+			, m_Size(size)
+			, m_Path(path)
+			, m_Flags(flags) 
+		{
+		}
 
 		void Release() { delete[] m_Data; };
 
