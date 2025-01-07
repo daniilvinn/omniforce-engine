@@ -147,6 +147,6 @@ namespace Omni {
 	*  @brief Managed allocator instance that is used for data that may persistent in the memory across frames.
 	*  Use with caution - may lead to up to x2 memory waste due to alignment requirement being a power of two.
 	*/
-	inline PersistentAllocator g_PersistentAllocator = IAllocator::Setup<PersistentAllocator>(1024 * 1024 * 10);
+	inline PersistentAllocator g_PersistentAllocator = IAllocator::Setup<PersistentAllocator>(1024 * 1024 * 256);
 
 }
