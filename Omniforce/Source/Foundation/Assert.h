@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Foundation/Platform.h>
+#include <Foundation/Log/Logger.h>
 
 #ifdef OMNIFORCE_DEBUG
 	#define OMNIFORCE_ASSERT(expression)																	\

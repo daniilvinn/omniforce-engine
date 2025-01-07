@@ -1,6 +1,7 @@
 #pragma once
 
-#include "../BasicTypes.h"
+#include <Foundation/BasicTypes.h>
+#include <Foundation/Assert.h>
 
 namespace Omni {
 
@@ -43,7 +44,9 @@ namespace Omni {
 
 		template<typename T, typename... Args>
 		requires std::is_abstract_v<T>
-		inline void InitializeMemory(Args&&... args) {}
+		inline void InitializeMemory(Args&&... args) {
+			OMNIFORCE_ASSERT_TAGGED(false, "Cannot instantiate abstract class");
+		}
 
 		inline void Invalidate() {
 			Memory = nullptr;

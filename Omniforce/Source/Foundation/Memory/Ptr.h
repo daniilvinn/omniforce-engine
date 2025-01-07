@@ -1,10 +1,11 @@
 #pragma once
 
-#include "../Platform.h"
-#include "../BasicTypes.h"
+#include <Foundation/Platform.h>
+#include <Foundation/BasicTypes.h>
 
-#include "MemoryAllocation.h"
-#include "Allocator.h"
+#include <Foundation/Memory/MemoryAllocation.h>
+#include <Foundation/Memory/Allocator.h>
+#include <Foundation/Assert.h>
 
 #include <memory>
 #include <iostream>
@@ -29,9 +30,9 @@ namespace Omni {
 			return m_Allocation.As<T>();
 		}
 
-		template<typename NewType>
-		inline WeakPtr<NewType> As() const {
-			return WeakPtr<NewType>(m_Allocation);
+		template<typename U>
+		inline WeakPtr<U> As() const {
+			return WeakPtr<U>(m_Allocation);
 		}
 
 		inline operator bool() const {
@@ -70,12 +71,21 @@ namespace Omni {
 		// Forbid copying
 		Ptr(const Ptr& other) = delete;
 
+		// Allow only nullptr to be assigned when it comes to assigning a raw pointer
+		Ptr(std::nullptr_t) {
+			m_Allocation = MemoryAllocation::InvalidAllocation();
+			m_Allocator = nullptr;
+		}
+
+		template<typename T>
+		Ptr(T*) = delete;
+
 		template<typename U>
 		Ptr(Ptr<U>&& other) noexcept
 			: m_Allocator(other.m_Allocator)
 			, m_Allocation(other.m_Allocation)
 		{
-			static_assert(std::is_same_v<T, U> || std::is_base_of_v<T, U> || std::is_base_of_v<U, T>, "Types are not related to each other");
+			static_assert(std::is_same_v<T, U> || std::is_base_of_v<T, U> || !std::is_abstract_v<U>, "Types are not related to each other");
 
 			other.ReleaseNoFree();
 		}
@@ -88,25 +98,20 @@ namespace Omni {
 			m_Allocator = nullptr;
 		}
 
-		inline void ReleaseNoFree() {
-			m_Allocation.Invalidate();
-			m_Allocator = nullptr;
+		inline constexpr T* Raw() const {
+			return m_Allocation.As<T>();
 		}
 
-		inline T* Raw() const {
-			return (T*)m_Allocation.Memory;
-		}
-
-		template<typename NewType>
-		inline WeakPtr<NewType> As() const {
-			return WeakPtr<NewType>(m_Allocation);
+		template<typename U>
+		inline WeakPtr<U> As() const {
+			return WeakPtr<U>(m_Allocation);
 		}
 
 		Ptr<T>& operator=(const Ptr<T>& other) = delete;
 
 		template<typename U>
 		Ptr<T>& operator=(Ptr<U>&& other) noexcept {
-			static_assert(std::is_same_v<T, U> || std::is_base_of_v<T, U> || std::is_base_of_v<U, T>, "Types are not related to each other");
+			static_assert(std::is_same_v<T, U> || std::is_base_of_v<T, U> || !std::is_abstract_v<U>, "Types are not related to each other");
 
 			if (m_Allocation.IsValid())
 				m_Allocator->Free<T>(m_Allocation);
@@ -119,11 +124,11 @@ namespace Omni {
 			return *this;
 		};
 
-		inline T* operator->() {
+		inline constexpr T* operator->() {
 			return m_Allocation.As<T>();
 		}
 
-		inline const T* operator->() const {
+		inline constexpr const T* operator->() const {
 			return m_Allocation.As<T>();
 		}
 
@@ -135,11 +140,17 @@ namespace Omni {
 			return m_Allocation.IsValid();
 		}
 
-		template<typename T, typename... TArgs>
-		friend Ptr<T> CreatePtr(IAllocator* allocator, TArgs&&... args);
+		template<typename U, typename... TArgs>
+		friend Ptr<U> CreatePtr(IAllocator* allocator, TArgs&&... args);
 
 		template<typename U>
 		friend class Ptr;
+
+	private:
+		inline void ReleaseNoFree() {
+			m_Allocation.Invalidate();
+			m_Allocator = nullptr;
+		}
 
 	private:
 		IAllocator* m_Allocator;
@@ -147,9 +158,9 @@ namespace Omni {
 
 	};
 
-	template<typename T, typename... TArgs>
-	Ptr<T> CreatePtr(IAllocator* allocator, TArgs&&... args) {
-		return Ptr<T>(allocator, std::forward<TArgs>(args)...);
+	template<typename U, typename... TArgs>
+	Ptr<U> CreatePtr(IAllocator* allocator, TArgs&&... args) {
+		return Ptr<U>(allocator, std::forward<TArgs>(args)...);
 	};
 
 	template<typename T>
@@ -175,10 +186,11 @@ namespace Omni {
 			template<typename... TArgs>
 			requires std::is_abstract_v<T>
 			StorageType(TArgs&&... args)
-				: object({}), ref_counter(1) {}
+				: object({}), ref_counter(1) 
+			{ OMNIFORCE_ASSERT_TAGGED(false, "Cannot instantiate abstract class"); }
 
 			Atomic<CounterType> ref_counter;
-			byte object[sizeof(T)];
+			byte object[sizeof(T)]; // a hack that forbids allocation of T explicitly
 		};
 
 		template<typename... TArgs>
@@ -237,9 +249,7 @@ namespace Omni {
 
 		~Ref() {
 			// Decrement ref counter
-			if (m_CounterAllocation.IsValid()) {
-				DecrementRefCounter();
-			}
+			DecrementRefCounter();
 
 			// Check if allocation is valid (e.g. if this pointer references some object)
 			if (CanReleaseAllocation()) {
@@ -270,14 +280,12 @@ namespace Omni {
 		{
 			static_assert(std::is_same_v<T, U> || std::is_base_of_v<T, U>, "Types are not related to each other");
 
-			if (m_Allocation.IsValid()) {
-				IncrementRefCounter();
-			}
+			IncrementRefCounter();
 
 			other.Reset();
 		}
 
-		inline T* Raw() const {
+		inline constexpr T* Raw() const {
 			return m_Allocation.As<T>();
 		}
 
@@ -287,18 +295,16 @@ namespace Omni {
 		}
 
 		void Reset() {
-			if (m_Allocation.IsValid()) [[likely]] {
-				DecrementRefCounter();
+			DecrementRefCounter();
 
-				m_Allocator = nullptr;
-				m_Allocation = MemoryAllocation::InvalidAllocation();
-				m_CounterAllocation = MemoryAllocation::InvalidAllocation();
-				m_CachedObject = nullptr;
-				m_CachedCounter = nullptr;
+			m_Allocator = nullptr;
+			m_Allocation = MemoryAllocation::InvalidAllocation();
+			m_CounterAllocation = MemoryAllocation::InvalidAllocation();
+			m_CachedObject = nullptr;
+			m_CachedCounter = nullptr;
 
-				if (CanReleaseAllocation()) {
-					ReleaseAllocation();
-				}
+			if (CanReleaseAllocation()) {
+				ReleaseAllocation();
 			}
 		}
 
@@ -404,11 +410,15 @@ namespace Omni {
 		}
 
 		inline void IncrementRefCounter() {
-			(*m_CachedCounter)++;
+			if (m_Allocation.IsValid()) {
+				(*m_CachedCounter)++;
+			}
 		}
 
 		inline void DecrementRefCounter() {
-			(*m_CachedCounter)--;
+			if (m_Allocation.IsValid()) {
+				(*m_CachedCounter)--;
+			}
 		}
 
 	private:

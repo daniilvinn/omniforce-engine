@@ -24,7 +24,6 @@ namespace Omni {
 		byte* GetData() const { return m_Data; };
 		uint64 GetSize() const { return m_Size; };
 
-
 	private:
 		std::filesystem::path m_Path;
 		byte* m_Data;

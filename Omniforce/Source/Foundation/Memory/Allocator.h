@@ -1,7 +1,8 @@
 #pragma once
 
-#include "../Platform.h"
-#include "MemoryAllocation.h"
+#include <Foundation/Platform.h>
+
+#include <Foundation/Memory/MemoryAllocation.h>
 
 namespace Omni {
 

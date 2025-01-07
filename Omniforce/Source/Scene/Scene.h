@@ -46,9 +46,9 @@ namespace Omni {
 		auto&					GetEntities() { return m_Entities; }
 		Entity					GetEntity(UUID id);
 		Entity					GetEntity(std::string_view tag);
-		Ref<Image>			GetFinalImage() const { return m_Renderer->GetFinalImage(); }
-		Ref<Camera>			GetCamera() const { return m_Camera; };
-		Ref<SceneRenderer>	GetRenderer() const { return m_Renderer; }
+		Ref<Image>				GetFinalImage() const { return m_Renderer->GetFinalImage(); }
+		Ref<Camera>				GetCamera() const { return m_Camera; };
+		Ref<SceneRenderer>		GetRenderer() const { return m_Renderer; }
 		UUID					GetID() const { return m_Id; }
 		PhysicsSettings			GetPhysicsSettings() const { return m_PhysicsSettings; }
 		void					SetPhysicsSettings(const PhysicsSettings& settings);

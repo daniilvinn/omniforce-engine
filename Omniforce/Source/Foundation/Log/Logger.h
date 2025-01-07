@@ -2,7 +2,6 @@
 
 #include <Foundation/Platform.h>
 #include <Foundation/BasicTypes.h>
-#include <Foundation/Memory/Ptr.h>
 
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/base_sink.h>

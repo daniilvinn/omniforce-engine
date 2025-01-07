@@ -70,6 +70,8 @@ namespace Omni
 		m_ImGuiRenderer = ImGuiRenderer::Create();
 		m_ImGuiRenderer->Launch(m_WindowSystem->GetWindow("main")->Raw());
 		DebugRenderer::Init();
+
+		OMNIFORCE_CORE_INFO("Engine is initialized, leaving Application::Initialize()");
 	}
 
 	void Application::Run()
