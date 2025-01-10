@@ -20,9 +20,9 @@ namespace Omni {
 		Array(IAllocator* allocator) 
 			: m_Allocator(allocator)
 			, m_Size(0)
-			, m_GrowthFactor(2.0f) 
+			, m_GrowthFactor(2.0f)
 		{
-
+			Reallocate(32);
 		}
 
 		// Num of objects, not size in bytes
@@ -340,8 +340,8 @@ namespace Omni {
 				memcpy(new_allocation.Memory, m_Allocation.Memory, std::min(new_size, m_Size) * sizeof(T));
 
 				m_Allocator->FreeBase(m_Allocation);
-				m_MaxSize = new_allocation.Size / sizeof(T);
 			}
+			m_MaxSize = new_allocation.Size / sizeof(T);
 			m_Allocation = new_allocation;
 		}
 

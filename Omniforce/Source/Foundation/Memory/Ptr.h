@@ -257,6 +257,16 @@ namespace Omni {
 			}
 		}
 
+		Ref(const Ref& other)
+			: m_Allocator(other.m_Allocator)
+			, m_Allocation(other.m_Allocation)
+			, m_CounterAllocation(other.m_CounterAllocation)
+			, m_CachedObject((T*)other.m_CachedObject)
+			, m_CachedCounter(other.m_CachedCounter)
+		{
+			IncrementRefCounter();
+		};
+
 		template<typename U>
 		Ref(const Ref<U>& other) 
 			: m_Allocator(other.m_Allocator)
@@ -315,6 +325,31 @@ namespace Omni {
 			}
 		}
 
+		Ref& operator=(const Ref& other) noexcept {
+			// Early out in case if two pointers are referencing the same resource
+			if (m_Allocation == other.m_Allocation) [[unlikely]] {
+				return *this;
+			}
+
+			if (m_Allocation.IsValid()) {
+				DecrementRefCounter();
+
+				if (CanReleaseAllocation()) {
+					ReleaseAllocation();
+				}
+			}
+
+			m_Allocator = other.m_Allocator;
+			m_Allocation = other.m_Allocation;
+			m_CounterAllocation = other.m_CounterAllocation;
+			m_CachedObject = (T*)other.m_CachedObject;
+			m_CachedCounter = other.m_CachedCounter;
+
+			IncrementRefCounter();
+
+			return *this;
+		}
+
 		template<typename U>
 		Ref<T>& operator=(const Ref<U>& other) noexcept {
 			static_assert(std::is_same_v<T, U> || std::is_base_of_v<T, U> || std::is_base_of_v<U, T>, "Types are not related to each other");
@@ -339,6 +374,35 @@ namespace Omni {
 			m_CachedCounter = other.m_CachedCounter;
 
 			IncrementRefCounter();
+
+			return *this;
+		}
+
+		Ref& operator=(Ref&& other) noexcept {
+			// Early out in case if two pointers are referencing the same resource
+			if (m_Allocation == other.m_Allocation) [[unlikely]] {
+				return *this;
+			}
+
+			if (m_Allocation.IsValid()) {
+				DecrementRefCounter();
+
+				if (CanReleaseAllocation()) {
+					ReleaseAllocation();
+				}
+			}
+
+			m_Allocator = other.m_Allocator;
+			m_Allocation = other.m_Allocation;
+			m_CounterAllocation = other.m_CounterAllocation;
+			m_CachedObject = other.m_CachedObject;
+			m_CachedCounter = other.m_CachedCounter;
+
+			IncrementRefCounter();
+
+			other.Reset();
+
+			return *this;
 		}
 
 		template<typename U>
@@ -396,7 +460,7 @@ namespace Omni {
 				return false;
 			}
 
-			if (*(m_Allocation.As<Atomic<CounterType>>()) != 0) {
+			if (*m_CachedCounter != 0) {
 				return false;
 			}
 

@@ -26,15 +26,16 @@ namespace Omni {
 		template<typename T, typename... Args>
 		T* AllocateEvent(Args&&... args)
 		{
-			auto e = m_EventAllocator->AllocateObject<T>(std::forward<Args>(args)...);
-			m_EventBuffer.Add(e);
-			return e;
+			MemoryAllocation e = m_EventAllocator->Allocate<T>(std::forward<Args>(args)...);
+			m_EventBuffer.Add(e.As<T>());
+			return e.As<T>();
 		}
 
 		void FlushEventBuffer() { 
 			for (const auto& e : m_EventBuffer)
 				m_EventCallback(e);
 			m_EventBuffer.Clear();
+			m_EventAllocator->Clear();
 		}
 
 		bool Minimized() const { return m_Minimized; }
