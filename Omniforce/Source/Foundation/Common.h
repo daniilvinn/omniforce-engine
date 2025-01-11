@@ -5,6 +5,8 @@
 #include "Assert.h"
 
 #include "Memory/Ptr.h"
+#include "Memory/Ref.h"
+#include "Memory/WeakPtr.h"
 #include "Memory/Allocator.h"
 #include "Memory/Allocators/DedicatedMemoryAllocator.h"
 #include "Memory/Allocators/PersistentAllocator.h"
