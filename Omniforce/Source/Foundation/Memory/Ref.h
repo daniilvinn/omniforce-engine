@@ -141,7 +141,7 @@ namespace Omni {
 		}
 
 		inline constexpr T* Raw() const {
-			return m_Allocation.As<T>();
+			return m_CachedObject;
 		}
 
 		template<typename U>
