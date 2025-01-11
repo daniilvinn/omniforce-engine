@@ -35,7 +35,7 @@ namespace Omni {
 
 			~StorageType()
 			{
-				T* typed_object;
+				T* typed_object = (T*)object;
 				typed_object->~T();
 			}
 
@@ -258,7 +258,7 @@ namespace Omni {
 				return false;
 			}
 
-			if (GetCounter() != 0) {
+			if (*m_Allocation.As<Atomic<TCounter>>() != 0) { // for some reason fails to compile here
 				return false;
 			}
 
@@ -272,18 +272,14 @@ namespace Omni {
 
 		inline void IncrementRefCounter() {
 			if (m_Allocation.IsValid()) {
-				GetCounter()++;
+				(*m_Allocation.As<Atomic<TCounter>>())++;
 			}
 		}
 
 		inline void DecrementRefCounter() {
 			if (m_Allocation.IsValid()) {
-				GetCounter()--;
+				(*m_Allocation.As<Atomic<TCounter>>())--;
 			}
-		}
-
-		inline Atomic<TCounter>& GetCounter() {
-			return *(m_Allocation.As<Atomic<TCounter>>());
 		}
 
 	private:

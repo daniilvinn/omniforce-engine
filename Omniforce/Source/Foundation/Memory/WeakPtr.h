@@ -60,7 +60,7 @@ namespace Omni {
 		requires SupportsWeakPtr<PtrType, T, U>
 		WeakPtr<T>(const PtrType<U>& other) noexcept
 		{
-			T* m_Object = (T*)other.Raw();
+			m_Object = (T*)other.Raw();
 		}
 
 		// Forbid move constructors
@@ -73,7 +73,7 @@ namespace Omni {
 		requires SupportsWeakPtr<PtrType, T, U>
 		WeakPtr<T>& operator=(const PtrType<U>& other) noexcept
 		{
-			T* m_Object = (T*)other.Raw();
+			m_Object = (T*)other.Raw();
 		}
 
 		// Forbid move assignment
