@@ -5,7 +5,6 @@
 
 #include <Foundation/Memory/MemoryAllocation.h>
 #include <Foundation/Memory/Allocator.h>
-#include <Foundation/Memory/WeakPtr.h>
 #include <Foundation/Assert.h>
 
 namespace Omni {
@@ -67,11 +66,6 @@ namespace Omni {
 
 		inline constexpr T* Raw() const {
 			return m_Allocation.As<T>();
-		}
-
-		template<typename U>
-		inline WeakPtr<U> As() const {
-			return WeakPtr<U>(m_Allocation);
 		}
 
 		Ptr<T>& operator=(const Ptr<T>& other) = delete;

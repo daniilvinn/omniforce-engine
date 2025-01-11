@@ -119,17 +119,6 @@ namespace Omni {
 			return m_CachedObject;
 		}
 
-		template<typename U>
-		inline constexpr WeakPtr<U> As() const {
-			MemoryAllocation allocation = m_Allocation;
-
-			if (m_Allocation == m_CounterAllocation) {
-				allocation.Memory += sizeof(uint64);
-				allocation.Size -= sizeof(uint64);
-			}
-
-			return WeakPtr<U>(allocation);
-		}
 		void Reset() {
 			DecrementRefCounter();
 

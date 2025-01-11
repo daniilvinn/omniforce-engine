@@ -5,6 +5,8 @@
 
 #include <Foundation/Memory/PtrCommon.h>
 #include <Foundation/Memory/MemoryAllocation.h>
+#include <Foundation/Memory/Ptr.h>
+#include <Foundation/Memory/Ref.h>
 #include <Foundation/Assert.h>
 
 namespace Omni {
