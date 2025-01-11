@@ -109,6 +109,8 @@ namespace Omni
 
 	void Application::PreFrame()
 	{
+		g_TransientAllocator.Clear();
+
 		if (!m_WindowSystem->GetWindow("main")->Minimized()) {
 			m_DeltaTimeData.delta_time = (m_DeltaTimeData.current_frame_time - m_DeltaTimeData.last_frame_time);
 			m_DeltaTimeData.last_frame_time = m_DeltaTimeData.current_frame_time;
@@ -117,9 +119,6 @@ namespace Omni
 
 			m_ImGuiRenderer->BeginFrame();
 		}
-
-		g_TransientAllocator.Clear();
-
 	}
 
 	void Application::PostFrame()
