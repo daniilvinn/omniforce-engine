@@ -104,7 +104,7 @@ namespace Omni {
 				// Execution code
 				VkPipelineStageFlags stagemasks[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
-				WeakPtr<VulkanDeviceCmdBuffer> vk_cmd_buffer = m_CurrentCmdBuffer.As<VulkanDeviceCmdBuffer>();
+				WeakPtr<VulkanDeviceCmdBuffer> vk_cmd_buffer = m_CurrentCmdBuffer;
 				VkCommandBuffer raw_buffer = vk_cmd_buffer->Raw();
 				auto semaphores = m_Swapchain->GetSemaphores();
 
@@ -138,7 +138,7 @@ namespace Omni {
 				);
 			}
 
-			WeakPtr<VulkanImage> vk_image = image.As<VulkanImage>();
+			WeakPtr<VulkanImage> vk_image = image;
 
 			VkClearColorValue clear_color_value = {};
 			clear_color_value.float32[0] = value.r;
@@ -168,7 +168,7 @@ namespace Omni {
 	void VulkanRenderer::RenderMeshTasks(Ref<Pipeline> pipeline, const glm::uvec3& dimensions, MiscData data)
 	{
 		Renderer::Submit([=]() mutable {
-			WeakPtr<VulkanPipeline> vk_pipeline = pipeline.As<VulkanPipeline>();
+			WeakPtr<VulkanPipeline> vk_pipeline = pipeline;
 
 			if (data.size) {
 				vkCmdPushConstants(m_CurrentCmdBuffer->Raw(), vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
@@ -182,8 +182,8 @@ namespace Omni {
 	void VulkanRenderer::RenderMeshTasksIndirect(Ref<Pipeline> pipeline, Ref<DeviceBuffer> params, MiscData data)
 	{
 		Renderer::Submit([=]() mutable {
-			WeakPtr<VulkanPipeline> vk_pipeline = pipeline.As<VulkanPipeline>();
-			WeakPtr<VulkanDeviceBuffer> vk_buffer = params.As<VulkanDeviceBuffer>();
+			WeakPtr<VulkanPipeline> vk_pipeline = pipeline;
+			WeakPtr<VulkanDeviceBuffer> vk_buffer = params;
 
 			vkCmdBindPipeline(m_CurrentCmdBuffer->Raw(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
 			if (data.size) {
@@ -279,7 +279,7 @@ namespace Omni {
 	void VulkanRenderer::RenderQuad(Ref<Pipeline> pipeline, MiscData data)
 	{
 		Renderer::Submit([=]() mutable {
-			WeakPtr<VulkanPipeline> vk_pipeline = pipeline.As<VulkanPipeline>();
+			WeakPtr<VulkanPipeline> vk_pipeline = pipeline;
 
 			vkCmdPushConstants(m_CurrentCmdBuffer->Raw(), vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
 			vkCmdBindPipeline(m_CurrentCmdBuffer->Raw(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
@@ -293,7 +293,7 @@ namespace Omni {
 	void VulkanRenderer::RenderQuad(Ref<Pipeline> pipeline, uint32 amount, MiscData data)
 	{
 		Renderer::Submit([=]() mutable {
-			WeakPtr<VulkanPipeline> vk_pipeline = pipeline.As<VulkanPipeline>();
+			WeakPtr<VulkanPipeline> vk_pipeline = pipeline;
 
 			if (data.size)
 			{
@@ -308,7 +308,7 @@ namespace Omni {
 	void VulkanRenderer::DispatchCompute(Ref<Pipeline> pipeline, const glm::uvec3& dimensions, MiscData data)
 	{
 		Renderer::Submit([=]() mutable {
-			WeakPtr<VulkanPipeline> vk_pipeline = pipeline.As<VulkanPipeline>();
+			WeakPtr<VulkanPipeline> vk_pipeline = pipeline;
 			
 			if (data.size) {
 				vkCmdPushConstants(m_CurrentCmdBuffer->Raw(), vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
@@ -322,14 +322,14 @@ namespace Omni {
 	void VulkanRenderer::RenderUnindexed(Ref<Pipeline> pipeline, Ref<DeviceBuffer> vertex_buffer, MiscData data)
 	{
 		Renderer::Submit([=]() mutable {
-			WeakPtr<VulkanPipeline> vk_pipeline = pipeline.As<VulkanPipeline>();
+			WeakPtr<VulkanPipeline> vk_pipeline = pipeline;
 
 			if (data.size) {
 				vkCmdPushConstants(m_CurrentCmdBuffer->Raw(), vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
 				delete[] data.data;
 			}
 
-			WeakPtr<VulkanDeviceBuffer> vk_buffer = vertex_buffer.As<VulkanDeviceBuffer>();
+			WeakPtr<VulkanDeviceBuffer> vk_buffer = vertex_buffer;
 			VkBuffer vb = vk_buffer->Raw();
 			VkDeviceSize offset = 0;
 
@@ -365,7 +365,7 @@ namespace Omni {
 	void VulkanRenderer::CopyToSwapchain(Ref<Image> image)
 	{
 		Renderer::Submit([=]() mutable {
-			WeakPtr<VulkanImage> vk_image = image.As<VulkanImage>();
+			WeakPtr<VulkanImage> vk_image = image;
 			Ref<Image> swapchain_image = m_Swapchain->GetCurrentImage();
 
 			uvec3 swapchain_resolution = swapchain_image->GetSpecification().extent;
@@ -398,7 +398,7 @@ namespace Omni {
 				m_CurrentCmdBuffer->Raw(),
 				vk_image->Raw(),
 				(VkImageLayout)vk_image->GetCurrentLayout(),
-				image.As<VulkanImage>()->Raw(),
+				WeakPtr<VulkanImage>(image)->Raw(),
 				(VkImageLayout)VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 				1,
 				&image_blit,
@@ -430,7 +430,7 @@ namespace Omni {
 
 			for (auto& image_barrier : barrier.image_barriers) {
 				Ref<Image> image = image_barrier.first;
-				WeakPtr<VulkanImage> vk_image = image.As<VulkanImage>();
+				WeakPtr<VulkanImage> vk_image = image;
 
 				VkImageMemoryBarrier2 vk_barrier = {};
 				vk_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
@@ -473,7 +473,7 @@ namespace Omni {
 			std::vector<VkRenderingAttachmentInfo> color_attachments = {};
 
 			for (auto attachment : attachments) {
-				WeakPtr<VulkanImage> vk_target = attachment.As<VulkanImage>();
+				WeakPtr<VulkanImage> vk_target = attachment;
 				ImageSpecification target_spec = vk_target->GetSpecification();
 
 				if (target_spec.usage == ImageUsage::RENDER_TARGET) {
@@ -570,8 +570,8 @@ namespace Omni {
 		Renderer::Submit([=]() mutable {
 			PipelineSpecification pipeline_spec = pipeline->GetSpecification();
 
-			WeakPtr<VulkanPipeline> vk_pipeline = pipeline.As<VulkanPipeline>();
-			WeakPtr<VulkanDescriptorSet> vk_set = set.As<VulkanDescriptorSet>();
+			WeakPtr<VulkanPipeline> vk_pipeline = pipeline;
+			WeakPtr<VulkanDescriptorSet> vk_set = set;
 
 			VkDescriptorSet raw_set = vk_set->Raw();
 

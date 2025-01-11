@@ -207,8 +207,8 @@ namespace Omni {
 
 	void VulkanDeviceBuffer::CopyRegionTo(Ref<DeviceCmdBuffer> cmd_buffer, Ref<DeviceBuffer> dst_buffer, uint64 src_offset, uint64 dst_offset, uint64 size)
 	{
-		WeakPtr<VulkanDeviceCmdBuffer> vk_cmd_buffer = cmd_buffer.As<VulkanDeviceCmdBuffer>();
-		WeakPtr<VulkanDeviceBuffer> vk_buffer = dst_buffer.As<VulkanDeviceBuffer>();
+		WeakPtr<VulkanDeviceCmdBuffer> vk_cmd_buffer = cmd_buffer;
+		WeakPtr<VulkanDeviceBuffer> vk_buffer = dst_buffer;
 
 		VkBufferCopy params = {};
 		params.srcOffset = src_offset;
@@ -220,7 +220,7 @@ namespace Omni {
 
 	void VulkanDeviceBuffer::Clear(Ref<DeviceCmdBuffer> cmd_buffer, uint64 offset, uint64 size, uint32 value)
 	{
-		WeakPtr<VulkanDeviceCmdBuffer> device_cmd_buffer = cmd_buffer.As<VulkanDeviceCmdBuffer>();
+		WeakPtr<VulkanDeviceCmdBuffer> device_cmd_buffer = cmd_buffer;
 		vkCmdFillBuffer(device_cmd_buffer->Raw(), m_Buffer, offset, size, value);
 	}
 

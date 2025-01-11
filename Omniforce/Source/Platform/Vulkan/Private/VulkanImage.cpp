@@ -94,7 +94,7 @@ namespace Omni {
 
 	void VulkanImage::SetLayout(Ref<DeviceCmdBuffer> cmd_buffer, ImageLayout new_layout, PipelineStage src_stage, PipelineStage dst_stage, BitMask src_access, BitMask dst_access)
 	{
-		WeakPtr<VulkanDeviceCmdBuffer> vk_cmd_buffer = cmd_buffer.As<VulkanDeviceCmdBuffer>();
+		WeakPtr<VulkanDeviceCmdBuffer> vk_cmd_buffer = cmd_buffer;
 
 		VkImageMemoryBarrier2 image_memory_barrier = {};
 		image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;

@@ -97,7 +97,7 @@ namespace Omni {
 				camera_component.camera->SetPosition(world_transform.translation);
 
 				if (camera_component.camera->GetType() == CameraProjectionType::PROJECTION_3D) {
-					WeakPtr<Camera3D> camera_3D = camera_component.camera.As<Camera3D>();
+					WeakPtr<Camera3D> camera_3D = camera_component.camera;
 					glm::vec3 euler_angles = glm::degrees(glm::eulerAngles(world_transform.rotation));
 					camera_3D->SetRotation(euler_angles.y, euler_angles.x);
 				}

@@ -94,8 +94,8 @@ namespace Omni {
 	void VulkanDescriptorSet::Write(uint16 binding, uint16 array_element, Ref<Image> image, Ref<ImageSampler> sampler)
 	{
 		auto device = VulkanGraphicsContext::Get()->GetDevice();
-		WeakPtr<VulkanImage> vk_image = image.As<VulkanImage>();
-		WeakPtr<VulkanImageSampler> vk_sampler = sampler.As<VulkanImageSampler>();
+		WeakPtr<VulkanImage> vk_image = image;
+		WeakPtr<VulkanImageSampler> vk_sampler = sampler;
 
 		VkDescriptorImageInfo descriptor_image_info = {};
 		descriptor_image_info.imageView = vk_image->RawView();
@@ -117,7 +117,7 @@ namespace Omni {
 	void VulkanDescriptorSet::Write(uint16 binding, uint16 array_element, Ref<DeviceBuffer> buffer, uint64 size, uint64 offset)
 	{
 		auto device = VulkanGraphicsContext::Get()->GetDevice();
-		WeakPtr<VulkanDeviceBuffer> vk_buffer = buffer.As<VulkanDeviceBuffer>();
+		WeakPtr<VulkanDeviceBuffer> vk_buffer = buffer;
 
 		VkDescriptorBufferInfo descriptor_buffer_info = {};
 		descriptor_buffer_info.buffer = vk_buffer->Raw();

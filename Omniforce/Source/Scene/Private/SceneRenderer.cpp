@@ -389,6 +389,8 @@ namespace Omni {
 		if (camera) {
 			m_Camera = camera;
 
+			WeakPtr<Camera3D> camera_3D = m_Camera;
+
 			GLSL::CameraData camera_data;
 			camera_data.view = m_Camera->GetViewMatrix();
 			camera_data.proj = m_Camera->GetProjectionMatrix();
@@ -397,7 +399,7 @@ namespace Omni {
 			camera_data.frustum = m_Camera->GenerateFrustum();
 			camera_data.forward_vector = m_Camera->GetForwardVector();
 			// If camera is 3D (very likely to be truth though) cast it to 3D camera and get FOV, otherwise use fixed 90 degree FOV
-			camera_data.fov = m_Camera->GetType() == CameraProjectionType::PROJECTION_3D ? m_Camera.As<Camera3D>()->GetFOV() : glm::radians(90.0f);
+			camera_data.fov = m_Camera->GetType() == CameraProjectionType::PROJECTION_3D ? camera_3D->GetFOV() : glm::radians(90.0f);
 			camera_data.viewport_width = m_CurrectMainRenderTarget->GetSpecification().extent.r;
 			camera_data.viewport_height = m_CurrectMainRenderTarget->GetSpecification().extent.g;
 			camera_data.near_clip_distance = m_Camera->GetNearClip();
