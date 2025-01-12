@@ -15,6 +15,7 @@
 #include "Log/Logger.h"
 
 #include "Array.h"
+#include "Stack.h"
 #include "Timer.h"
 #include "UUID.h"
 
@@ -29,3 +30,4 @@
 #include <sstream>
 #include <filesystem>
 #include <array>
+#include <stack>

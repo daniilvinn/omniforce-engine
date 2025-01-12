@@ -10,12 +10,10 @@ namespace Omni {
 
 	// Resizable array
 	template<typename T>
+	requires (std::is_copy_constructible_v<T> || std::is_move_constructible_v<T>)
 	class OMNIFORCE_API Array {
 	public:
 		using SizeType = uint64;
-
-		static_assert(std::is_copy_constructible_v<T> || std::is_move_constructible_v<T>,
-			"T must be either copy-constructible or move-constructible");
 
 		Array(IAllocator* allocator) 
 			: m_Allocator(allocator)
@@ -35,7 +33,10 @@ namespace Omni {
 		}
 
 		Array(IAllocator* allocator, std::initializer_list<T> init_list)
-			: m_Allocator(allocator), m_Size(0), m_GrowthFactor(2.0f) {
+			: m_Allocator(allocator)
+			, m_Size(0)
+			, m_GrowthFactor(2.0f) 
+		{
 			Reallocate(init_list.size());
 
 			T* typed_array = m_Allocation.As<T>();
