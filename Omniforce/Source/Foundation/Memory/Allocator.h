@@ -8,11 +8,11 @@ namespace Omni {
 
 	class OMNIFORCE_API IAllocator {
 	public:
-		using SizeType = uint64_t;
+		using TSize = uint64_t;
 
 		struct Stats {
-			SizeType frame_memory_usage;
-			SizeType a;
+			TSize frame_memory_usage;
+			TSize a;
 		};
 
 		virtual ~IAllocator() {};
@@ -32,23 +32,23 @@ namespace Omni {
 		}
 
 		template<typename T>
-		void Free(MemoryAllocation allocation, SizeType num_elements) {
+		void Free(MemoryAllocation allocation, TSize num_elements) {
 			T* typed_array = allocation.As<T>();
 
-			for (SizeType i = 0; i < num_elements; i++) {
+			for (TSize i = 0; i < num_elements; i++) {
 				typed_array[i].~T();
 			}
 
 			FreeBase(allocation);
 		}
 
-		virtual MemoryAllocation AllocateBase(SizeType size) = 0;
+		virtual MemoryAllocation AllocateBase(TSize size) = 0;
 
 		virtual void FreeBase(MemoryAllocation& allocation) = 0;
 
 		virtual void Clear() = 0;
 
-		virtual SizeType ComputeAlignedSize(SizeType size) { 
+		virtual TSize ComputeAlignedSize(TSize size) { 
 			return size; 
 		};
 

@@ -18,7 +18,7 @@ namespace Omni {
 	template<>
 	class OMNIFORCE_API TransientAllocator<false> : public IAllocator {
 	public:
-		TransientAllocator(SizeType pool_size = 1024 * 1024)
+		TransientAllocator(TSize pool_size = 1024 * 1024)
 			: m_Size(0)
 			, m_MaxSize(pool_size)
 		{
@@ -30,7 +30,7 @@ namespace Omni {
 			delete[] m_MemoryPool;
 		};
 
-		MemoryAllocation AllocateBase(SizeType InAllocationSize) override {
+		MemoryAllocation AllocateBase(TSize InAllocationSize) override {
 			OMNIFORCE_ASSERT_TAGGED(m_MaxSize >= m_Size + InAllocationSize, "Transient allocator: out of memory");
 
 			MemoryAllocation Alloc;
@@ -51,7 +51,7 @@ namespace Omni {
 			return ptr;
 		};
 
-		[[nodiscard]] byte* AllocateMemory(SizeType size)
+		[[nodiscard]] byte* AllocateMemory(TSize size)
 		{
 			OMNIFORCE_ASSERT_TAGGED(m_MaxSize >= m_Size + size, "Transient allocator: out of memory");
 
@@ -75,15 +75,15 @@ namespace Omni {
 
 	private:
 		byte* m_MemoryPool = nullptr;
-		SizeType m_Size = 0;
-		SizeType m_MaxSize = 0;
+		TSize m_Size = 0;
+		TSize m_MaxSize = 0;
 	};
 
 	template<>
 	class OMNIFORCE_API TransientAllocator<true> : public IAllocator {
 	public:
 
-		TransientAllocator(SizeType pool_size = 1024 * 1024)
+		TransientAllocator(TSize pool_size = 1024 * 1024)
 			: m_Size(0)
 			, m_MaxSize(pool_size)
 		{
@@ -95,7 +95,7 @@ namespace Omni {
 			delete[] m_MemoryPool;
 		};
 
-		MemoryAllocation AllocateBase(SizeType InAllocationSize) override {
+		MemoryAllocation AllocateBase(TSize InAllocationSize) override {
 			MemoryAllocation Alloc;
 
 			Alloc.Size = InAllocationSize;
@@ -109,17 +109,17 @@ namespace Omni {
 		{
 			OMNIFORCE_ASSERT_TAGGED(m_MaxSize >= m_Size + sizeof(T), "Transient allocator: out of memory");
 
-			SizeType ptr_offset = m_Size.fetch_add(sizeof(T));
+			TSize ptr_offset = m_Size.fetch_add(sizeof(T));
 			T* ptr = new (m_MemoryPool + ptr_offset) T(std::forward<Args>(args)...);
 
 			return ptr;
 		};
 
-		[[nodiscard]] byte* AllocateMemory(SizeType size)
+		[[nodiscard]] byte* AllocateMemory(TSize size)
 		{
 			OMNIFORCE_ASSERT_TAGGED(m_MaxSize >= m_Size + size, "Transient allocator: out of memory");
 
-			SizeType ptr_offset = m_Size.fetch_add(size);
+			TSize ptr_offset = m_Size.fetch_add(size);
 			byte* ptr = m_MemoryPool + ptr_offset;
 
 			return ptr;
@@ -137,14 +137,14 @@ namespace Omni {
 			m_Size = 0;
 		}
 
-		SizeType ComputeAlignedSize(SizeType size) override { 
+		TSize ComputeAlignedSize(TSize size) override { 
 			return size; 
 		};
 
 	private:
 		byte* m_MemoryPool = nullptr;
-		Atomic<SizeType> m_Size = 0;
-		SizeType m_MaxSize = 0;
+		Atomic<TSize> m_Size = 0;
+		TSize m_MaxSize = 0;
 	};
 
 	/*

@@ -13,7 +13,7 @@ namespace Omni {
 	public:
 		DedicatedMemoryAllocator() {};
 
-		MemoryAllocation AllocateBase(SizeType InAllocationSize) override {
+		MemoryAllocation AllocateBase(TSize InAllocationSize) override {
 			MemoryAllocation Allocation;
 			Allocation.Memory = new byte[InAllocationSize];
 			Allocation.Size = InAllocationSize;
@@ -28,7 +28,7 @@ namespace Omni {
 
 		void Clear() override {};
 
-		SizeType ComputeAlignedSize(SizeType size) override { 
+		TSize ComputeAlignedSize(TSize size) override { 
 			return size; 
 		};
 
