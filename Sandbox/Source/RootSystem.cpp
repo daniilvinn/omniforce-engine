@@ -17,7 +17,6 @@ public:
 
 	void OnUpdate(float32 step) override
 	{
-		Ref<Image> swapchain_image = Renderer::GetSwapchainImage();
 
 		{
 		if (Input::KeyPressed(KeyCode::KEY_W))
@@ -34,9 +33,6 @@ public:
 		if (Input::KeyPressed(KeyCode::KEY_E))
 			m_Camera->Rotate(0.5f, 0.0f, 0.0f, true);
 		}
-
-		m_Renderer->BeginScene(m_Camera);
-		m_Renderer->EndScene();
 
 	}
 
@@ -57,29 +53,21 @@ public:
 
 	void Destroy() override
 	{
-		Renderer::WaitDevice();
-		m_Renderer->Destroy();
 	}
 
 	void Launch() override
 	{
-		SceneRendererSpecification renderer_spec = {};
-		renderer_spec.anisotropic_filtering = 16;
-
-		m_Renderer = SceneRenderer::Create(&g_PersistentAllocator, renderer_spec);
-
 		m_Camera = CreateRef<Camera3D>(&g_PersistentAllocator);
 		m_Camera->SetProjection( glm::radians(90.0f), 16.0 / 9.0, 0.0f, 100.0f );
 
-		m_Scene = new Scene(SceneType::SCENE_TYPE_2D);
+		m_Scene = CreatePtr<Scene>(&g_PersistentAllocator, SceneType::SCENE_TYPE_3D);
 	}
 
 	/*
 	*	DATA
 	*/
 	Ref<Camera3D> m_Camera;
-	Ref<SceneRenderer> m_Renderer;
-	Scene* m_Scene;
+	Ptr<Scene> m_Scene;
 	uint32 m_SelectedEntity = 0;
 	bool m_EntitySelected = false;
 };
