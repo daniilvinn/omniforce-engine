@@ -115,6 +115,8 @@ namespace Omni {
 		static Ref<Pipeline> Create(IAllocator* allocator, const PipelineSpecification& spec, UUID id = UUID());
 		virtual void Destroy() = 0;
 
+		virtual ~Pipeline() {};
+
 		virtual const PipelineSpecification& GetSpecification() const = 0;
 		UUID GetID() const { return m_ID; }
 		uint32 GetDeviceID() const {

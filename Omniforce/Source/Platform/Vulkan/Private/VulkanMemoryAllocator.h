@@ -20,7 +20,6 @@ namespace Omni {
 	class VulkanMemoryAllocator {
 	public:
 		static void Init();
-		static void Destroy();
 		static VulkanMemoryAllocator* Get() { return s_Instance; }
 
 		void InvalidateAllocation(VmaAllocation allocation, uint64 size = VK_WHOLE_SIZE, uint64 offset = 0);
@@ -38,7 +37,6 @@ namespace Omni {
 
 	private:
 		VulkanMemoryAllocator();
-		~VulkanMemoryAllocator();
 
 	private:
 		static VulkanMemoryAllocator* s_Instance;

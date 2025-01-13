@@ -10,7 +10,6 @@ namespace Omni {
 	public:
 		static Ref<GraphicsContext> Create();
 		
-		virtual void Destroy() = 0;
 		virtual Ref<Swapchain> GetSwapchain() = 0;
 
 	};

@@ -5,6 +5,7 @@
 #include <Platform/Vulkan/VulkanDevice.h>
 #include <Platform/Vulkan/VulkanImage.h>
 #include <Platform/Vulkan/VulkanDeviceCmdBuffer.h>
+#include <Core/RuntimeExecutionContext.h>
 
 #include <GLFW/glfw3.h>
 
@@ -13,12 +14,19 @@ namespace Omni {
 	VulkanSwapchain::VulkanSwapchain(const SwapchainSpecification& spec)
 		: m_Surface(VK_NULL_HANDLE), m_Swapchain(VK_NULL_HANDLE), m_Specification(spec)
 	{
-
+		m_Swapchain = new VkSwapchainKHR(VK_NULL_HANDLE);
 	}
 
 	VulkanSwapchain::~VulkanSwapchain()
 	{
-
+		auto device = VulkanGraphicsContext::Get()->GetDevice();
+		for (auto& image : m_Images) {
+			RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueObjectDeletion(
+				[vk_device = device->Raw(), vk_view = image->RawView()]() {
+					vkDestroyImageView(vk_device, vk_view, nullptr);
+				}
+			);
+		}
 	}
 
 	void VulkanSwapchain::CreateSurface(const SwapchainSpecification& spec)
@@ -35,6 +43,17 @@ namespace Omni {
 			)
 		);
 		OMNIFORCE_CORE_INFO("Initialized application window surface");
+
+		VkInstance vk_instance = VulkanGraphicsContext::Get()->GetVulkanInstance();
+
+		RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueCoreObjectDelection(
+			//OMNIFORCE_ASSERT_TAGGED(!m_Swapchain, "Attempted to destroy window surface, but associated swapchain was not destroyed yet");
+
+			[vk_instance, surface = m_Surface]() {
+				vkDestroySurfaceKHR(vk_instance, surface, nullptr);
+				OMNIFORCE_CORE_INFO("Destroyed application window surface");
+			}
+		);
 
 		// Looking for available presentation modes.
 		// FIFO (aka v-synced) is guaranteed to be available, so only looking for Mailbox (non v-synced) mode.
@@ -68,6 +87,12 @@ namespace Omni {
 			}
 		}
 
+		RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueCoreObjectDelection(
+			[vk_device = device->Raw(), swapchain = m_Swapchain]() {
+				vkDestroySwapchainKHR(vk_device, *swapchain, nullptr);
+			}
+		);
+
 	}
 
 	void VulkanSwapchain::CreateSwapchain(const SwapchainSpecification& spec)
@@ -78,9 +103,9 @@ namespace Omni {
 		m_Images.reserve(m_SwachainImageCount);
 		m_Semaphores.reserve(spec.frames_in_flight);
 
-		if (m_Swapchain) [[likely]]
+		if (*m_Swapchain) [[likely]]
 		{
-			vkDestroySwapchainKHR(device->Raw(), m_Swapchain, nullptr);
+			vkDestroySwapchainKHR(device->Raw(), *m_Swapchain, nullptr);
 		}
 
 		uvec2 extent = (uvec2)spec.extent;
@@ -111,19 +136,23 @@ namespace Omni {
 			swapchain_create_info.presentMode = m_Specification.vsync ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_MAILBOX_KHR;
 		}
 
-		VK_CHECK_RESULT(vkCreateSwapchainKHR(device->Raw(), &swapchain_create_info, nullptr, &m_Swapchain));
+		VK_CHECK_RESULT(vkCreateSwapchainKHR(device->Raw(), &swapchain_create_info, nullptr, m_Swapchain));
 
-		VK_CHECK_RESULT(vkGetSwapchainImagesKHR(device->Raw(), m_Swapchain, (uint32*)&m_SwachainImageCount, nullptr));
+		VK_CHECK_RESULT(vkGetSwapchainImagesKHR(device->Raw(), *m_Swapchain, (uint32*)&m_SwachainImageCount, nullptr));
 
 		m_Images.reserve(m_SwachainImageCount);
 		std::vector<VkImage> pure_swapchain_images(m_SwachainImageCount);
 
-		VK_CHECK_RESULT(vkGetSwapchainImagesKHR(device->Raw(), m_Swapchain, (uint32*)&m_SwachainImageCount, pure_swapchain_images.data()));
+		VK_CHECK_RESULT(vkGetSwapchainImagesKHR(device->Raw(), *m_Swapchain, (uint32*)&m_SwachainImageCount, pure_swapchain_images.data()));
 
 		VulkanDeviceCmdBuffer image_layout_transition_command_buffer = device->AllocateTransientCmdBuffer();
 
 		for (auto& image : m_Images) {
-			vkDestroyImageView(device->Raw(), image->RawView(), nullptr);
+			RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueObjectDeletion(
+				[vk_device = device->Raw(), vk_view = image->RawView()]() {
+					vkDestroyImageView(vk_device, vk_view, nullptr);
+				}
+			);
 		}
 
 		m_Images.clear();
@@ -198,29 +227,47 @@ namespace Omni {
 		VkSemaphoreCreateInfo semaphore_create_info = {};
 		semaphore_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-		for (int32 i = 0; i < m_Specification.frames_in_flight; i++) {
-			VkSemaphore render_semaphore;
-			VkSemaphore present_semaphore;
+		// Only create sync objects once
+		if (m_Semaphores.size() == 0) {
+			for (int32 i = 0; i < m_Specification.frames_in_flight; i++) {
+				VkSemaphore render_semaphore;
+				VkSemaphore present_semaphore;
 
-			VK_CHECK_RESULT(vkCreateSemaphore(device->Raw(), &semaphore_create_info, nullptr, &render_semaphore));
-			VK_CHECK_RESULT(vkCreateSemaphore(device->Raw(), &semaphore_create_info, nullptr, &present_semaphore));
+				VK_CHECK_RESULT(vkCreateSemaphore(device->Raw(), &semaphore_create_info, nullptr, &render_semaphore));
+				VK_CHECK_RESULT(vkCreateSemaphore(device->Raw(), &semaphore_create_info, nullptr, &present_semaphore));
 
-			m_Semaphores.push_back({ render_semaphore, present_semaphore });
-		}
+				m_Semaphores.push_back({ render_semaphore, present_semaphore });
 
-		m_Fences.reserve(spec.frames_in_flight);
+				RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueCoreObjectDelection(
+					[vk_device = device->Raw(), render_semaphore, present_semaphore]() {
+						vkDestroySemaphore(vk_device, render_semaphore, nullptr);
+						vkDestroySemaphore(vk_device, present_semaphore, nullptr);
+					}
+				);
 
-		m_Semaphores.shrink_to_fit();
-		m_Fences.shrink_to_fit();
+			}
 
-		VkFenceCreateInfo fence_create_info = {};
-		fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-		fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+			m_Fences.reserve(spec.frames_in_flight);
 
-		for (int32 i = 0; i < spec.frames_in_flight; i++) {
-			VkFence fence;
-			VK_CHECK_RESULT(vkCreateFence(device->Raw(), &fence_create_info, nullptr, &fence));
-			m_Fences.push_back(fence);
+			m_Semaphores.shrink_to_fit();
+			m_Fences.shrink_to_fit();
+
+			VkFenceCreateInfo fence_create_info = {};
+			fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+			fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+			for (int32 i = 0; i < spec.frames_in_flight; i++) {
+				VkFence fence;
+				VK_CHECK_RESULT(vkCreateFence(device->Raw(), &fence_create_info, nullptr, &fence));
+				m_Fences.push_back(fence);
+
+				RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueCoreObjectDelection(
+					[vk_device = device->Raw(), fence]() {
+						vkDestroyFence(vk_device, fence, nullptr);
+					}
+				);
+
+			}
 		}
 		
 		OMNIFORCE_CORE_INFO(
@@ -230,45 +277,6 @@ namespace Omni {
 			spec.vsync ? "on" : "off",
 			m_SwachainImageCount
 		);
-	}
-
-	void VulkanSwapchain::CreateSwapchain()
-	{
-
-	}
-
-	void VulkanSwapchain::DestroySurface()
-	{
-		VulkanGraphicsContext* ctx = VulkanGraphicsContext::Get();
-
-		OMNIFORCE_ASSERT_TAGGED(!m_Swapchain, "Attempted to destroy window surface, but associated swapchain was not destroyed yet");
-		vkDestroySurfaceKHR(ctx->GetVulkanInstance(), m_Surface, nullptr);
-		OMNIFORCE_CORE_INFO("Destroyed application window surface");
-	}
-
-	void VulkanSwapchain::DestroySwapchain()
-	{
-		Ref<VulkanDevice> device = VulkanGraphicsContext::Get()->GetDevice();
-
-		vkDeviceWaitIdle(device->Raw());
-		for (auto& image : m_Images) {
-			vkDestroyImageView(device->Raw(), image->RawView(), nullptr);
-		}
-
-		vkDestroySwapchainKHR(device->Raw(), m_Swapchain, nullptr);
-
-		for (auto& semaphores : m_Semaphores) {
-			vkDestroySemaphore(device->Raw(), semaphores.render_complete, nullptr);
-			vkDestroySemaphore(device->Raw(), semaphores.present_complete, nullptr);
-		}
-
-		for (auto& fence : m_Fences) {
-			vkDestroyFence(device->Raw(), fence, nullptr);
-		}
-
-		m_Swapchain = VK_NULL_HANDLE;
-
-		OMNIFORCE_CORE_INFO("Destroyed swapchain and sync primitives");
 	}
 
 	void VulkanSwapchain::SetVSync(bool vsync)
@@ -293,7 +301,7 @@ namespace Omni {
 
 		VkResult acquisition_result = vkAcquireNextImageKHR(
 			device->Raw(),
-			m_Swapchain,
+			*m_Swapchain,
 			UINT64_MAX,
 			m_Semaphores[m_CurrentFrameIndex].present_complete,
 			VK_NULL_HANDLE,
@@ -323,7 +331,7 @@ namespace Omni {
 		present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 		present_info.pImageIndices = &m_CurrentImageIndex;
 		present_info.swapchainCount = 1;
-		present_info.pSwapchains = &m_Swapchain;
+		present_info.pSwapchains = m_Swapchain;
 		present_info.waitSemaphoreCount = 1;
 		present_info.pWaitSemaphores = &m_Semaphores[m_CurrentFrameIndex].render_complete;
 		present_info.pResults = nullptr;

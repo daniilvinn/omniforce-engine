@@ -1,6 +1,7 @@
 #include <Foundation/Common.h>
 #include <Core/Application.h>
 
+#include <Core/RuntimeExecutionContext.h>
 #include <Core/Events/ApplicationEvents.h>
 #include <Core/Input/Input.h>
 #include <Renderer/Renderer.h>
@@ -27,6 +28,7 @@ namespace Omni
 	void Application::Launch(Options& options)
 	{
 		OMNIFORCE_CORE_INFO("Engine startup initiated");
+		RuntimeExecutionContext::Init();
 
 		s_Instance = this;
 		m_RootSystem = options.root_system;
@@ -90,12 +92,18 @@ namespace Omni
 
 	void Application::Destroy()
 	{
+		Renderer::WaitDevice();
+
 		m_ImGuiRenderer->Destroy();
 		AssetManager::Shutdown();
 		DebugRenderer::Shutdown();
 		Renderer::Shutdown();
 
+		RuntimeExecutionContext::Get().GetObjectLifetimeManager().ExecuteCoreObjectDeletionQueue();
+
 		OMNIFORCE_CORE_INFO("Engine shutdown success");
+
+		RuntimeExecutionContext::Shutdown();
 	}
 
 	void Application::OnEvent(Event* e)
@@ -119,6 +127,8 @@ namespace Omni
 
 			m_ImGuiRenderer->BeginFrame();
 		}
+
+		RuntimeExecutionContext::Get().GetObjectLifetimeManager().ExecutePendingDeletionQueue();
 	}
 
 	void Application::PostFrame()
@@ -133,6 +143,8 @@ namespace Omni
 		m_WindowSystem->ProcessEvents();
 
 		m_DeltaTimeData.current_frame_time = Input::Time();
+
+		RuntimeExecutionContext::Get().Update();
 	}
 
 	Ref<AppWindow> Application::GetWindow(const std::string& tag) const

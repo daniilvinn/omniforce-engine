@@ -39,7 +39,6 @@ namespace Omni {
 	public:
 		VulkanDevice(Ref<VulkanPhysicalDevice> physical_device, const VkPhysicalDeviceFeatures& features);
 		~VulkanDevice();
-		void Destroy();
 
 		VkDevice Raw() const { return m_Device; }
 		Ref<VulkanPhysicalDevice> GetPhysicalDevice() const { return m_PhysicalDevice; }

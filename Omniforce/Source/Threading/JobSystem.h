@@ -13,7 +13,13 @@ namespace Omni {
 
 	class JobSystem {
 	public:
-		static tf::Executor* GetExecutor() { return &m_Executor; };
+		static tf::Executor* GetExecutor() { 
+			return &m_Executor; 
+		};
+
+		static void WaitForAll() { 
+			return m_Executor.wait_for_all(); 
+		}
 
 	private:
 		inline static tf::Executor m_Executor;

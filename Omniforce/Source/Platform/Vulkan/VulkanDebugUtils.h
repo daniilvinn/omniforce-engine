@@ -6,10 +6,9 @@
 namespace Omni {
 	class VulkanDebugUtils {
 	public:
-		VulkanDebugUtils(VulkanGraphicsContext* ctx);
+		VulkanDebugUtils() {}
+		VulkanDebugUtils(VkInstance instance);
 		~VulkanDebugUtils();
-
-		void Destroy(VulkanGraphicsContext* ctx);
 
 		static VkDebugUtilsMessengerCreateInfoEXT GetMessengerCreateInfo();
 

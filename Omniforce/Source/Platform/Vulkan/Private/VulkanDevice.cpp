@@ -3,6 +3,7 @@
 
 #include <Platform/Vulkan/VulkanGraphicsContext.h>
 #include <Platform/Vulkan/VulkanDeviceCmdBuffer.h>
+#include <Core/RuntimeExecutionContext.h>
 
 namespace Omni {
 
@@ -103,6 +104,7 @@ namespace Omni {
 	VulkanPhysicalDevice::~VulkanPhysicalDevice()
 	{
 		// TODO: test this code
+#if 0
 		void* node = &m_DeviceProps;
 		while (node != nullptr) {
 			intptr_t offset_ptr = ((intptr_t)node + sizeof(VkStructureType)); // offsetting to pNext
@@ -111,6 +113,7 @@ namespace Omni {
 			delete node;
 			node = next_node;
 		}
+#endif
 	}
 
 	std::vector<VkPhysicalDevice> VulkanPhysicalDevice::List(VulkanGraphicsContext* ctx)
@@ -238,6 +241,13 @@ namespace Omni {
 		device_create_info.pNext = &device_features2;
 
 		VK_CHECK_RESULT(vkCreateDevice(m_PhysicalDevice->Raw(), &device_create_info, nullptr, &m_Device));
+
+		RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueCoreObjectDelection(
+			[device = m_Device]() mutable {
+				vkDestroyDevice(device, nullptr);
+			}
+		);
+
 		vkGetDeviceQueue(m_Device, m_PhysicalDevice->GetQueueFamilyIndices().graphics, 0, &m_GeneralQueue);
 		vkGetDeviceQueue(m_Device, m_PhysicalDevice->GetQueueFamilyIndices().compute, 0, &m_AsyncComputeQueue);
 
@@ -248,17 +258,16 @@ namespace Omni {
 
 		VK_CHECK_RESULT(vkCreateCommandPool(m_Device, &cmd_pool_create_info, nullptr, &m_CmdPool));
 
+		RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueCoreObjectDelection(
+			[device = m_Device, pool = m_CmdPool]() {
+				vkDestroyCommandPool(device, pool, nullptr);
+			}
+		);
+
 	}
 
 	VulkanDevice::~VulkanDevice()
 	{
-		OMNIFORCE_ASSERT_TAGGED(!m_Device, "Vulkan device was not destroyed yet. Please, call VulkanDevice::Destroy().");
-	}
-
-	void VulkanDevice::Destroy()
-	{
-		vkDestroyCommandPool(m_Device, m_CmdPool, nullptr);
-		vkDestroyDevice(m_Device, nullptr);
 		m_Device = VK_NULL_HANDLE;
 	}
 

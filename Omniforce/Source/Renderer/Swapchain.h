@@ -17,12 +17,10 @@ namespace Omni {
 
 	class OMNIFORCE_API Swapchain {
 	public:
+		virtual ~Swapchain() {};
+
 		virtual void CreateSurface(const SwapchainSpecification& spec) = 0;
 		virtual void CreateSwapchain(const SwapchainSpecification& spec) = 0;
-		virtual void CreateSwapchain() = 0; // Used mostly to recreate swapchain
-
-		virtual void DestroySurface() = 0;
-		virtual void DestroySwapchain() = 0;
 
 		virtual void BeginFrame() = 0;
 		virtual void EndFrame() = 0;

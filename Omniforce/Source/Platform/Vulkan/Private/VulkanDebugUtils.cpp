@@ -2,6 +2,7 @@
 #include <Platform/Vulkan/VulkanDebugUtils.h>
 
 #include <Platform/Vulkan/VulkanGraphicsContext.h>
+#include <Core/RuntimeExecutionContext.h>
 
 namespace Omni {
 
@@ -31,24 +32,24 @@ namespace Omni {
 		return VK_FALSE;
 	}
 
-	VulkanDebugUtils::VulkanDebugUtils(VulkanGraphicsContext* ctx)
+	VulkanDebugUtils::VulkanDebugUtils(VkInstance instance)
 		: m_Logger(VK_NULL_HANDLE)
 	{
 		VkDebugUtilsMessengerCreateInfoEXT messenger_info = GetMessengerCreateInfo();
 
-		auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(ctx->GetVulkanInstance(), "vkCreateDebugUtilsMessengerEXT");
-		VK_CHECK_RESULT(func(ctx->GetVulkanInstance(), &messenger_info, nullptr, &m_Logger));
+		//auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(ctx->GetVulkanInstance(), "vkCreateDebugUtilsMessengerEXT");
+		VK_CHECK_RESULT(vkCreateDebugUtilsMessengerEXT(instance, &messenger_info, nullptr, &m_Logger));
+
+		RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueCoreObjectDelection(
+			[instance, logger = m_Logger]() {
+				if (OMNIFORCE_BUILD_CONFIG != OMNIFORCE_RELEASE_CONFIG)
+					vkDestroyDebugUtilsMessengerEXT(instance, logger, nullptr);
+			}
+		);
 	}
 
 	VulkanDebugUtils::~VulkanDebugUtils()
 	{
-
-	}
-
-	void VulkanDebugUtils::Destroy(VulkanGraphicsContext* ctx)
-	{
-		auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(ctx->GetVulkanInstance(), "vkDestroyDebugUtilsMessengerEXT");
-		func(ctx->GetVulkanInstance(), m_Logger, nullptr);
 
 	}
 

@@ -137,8 +137,7 @@ namespace Omni {
 			buffer_copy.size = data_size;
 			buffer_copy.srcOffset = 0;
 			buffer_copy.dstOffset = 0;
-
-			VulkanDeviceCmdBuffer cmd_buffer = device->AllocateTransientCmdBuffer();
+						VulkanDeviceCmdBuffer cmd_buffer = device->AllocateTransientCmdBuffer();
 
 			vkCmdCopyBuffer(cmd_buffer, staging_buffer.Raw(), m_Buffer, 1, &buffer_copy);
 
@@ -164,6 +163,7 @@ namespace Omni {
 			);
 
 			device->ExecuteTransientCmdBuffer(cmd_buffer);
+			staging_buffer.Destroy();
 		}
 		else 
 		{

@@ -8,6 +8,7 @@
 #include <Platform/Vulkan/VulkanDebugUtils.h>
 #include <Platform/Vulkan/VulkanSwapchain.h>
 #include <Platform/Vulkan/Private/VulkanMemoryAllocator.h>
+#include <Core/RuntimeExecutionContext.h>
 
 #include <vector>
 
@@ -27,6 +28,12 @@ namespace Omni {
 		s_Instance = this;
 
 		volkInitialize();
+
+		RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueCoreObjectDelection(
+			[]() {
+				volkFinalize();
+			}
+		);
 
 		VkApplicationInfo application_info = {};
 		application_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -58,8 +65,14 @@ namespace Omni {
 		VK_CHECK_RESULT(vkCreateInstance(&instance_create_info, nullptr, &m_VulkanInstance));
 		volkLoadInstance(m_VulkanInstance);
 
+		RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueCoreObjectDelection(
+			[vk_instance = m_VulkanInstance, debug_utils = m_DebugUtils]() {
+				vkDestroyInstance(vk_instance, nullptr);
+			}
+		);
+
 		if (OMNIFORCE_BUILD_CONFIG != OMNIFORCE_RELEASE_CONFIG)
-			m_DebugUtils = CreateRef<VulkanDebugUtils>(&g_PersistentAllocator, this);
+			m_DebugUtils = CreateRef<VulkanDebugUtils>(&g_PersistentAllocator, m_VulkanInstance);
 
 		VkPhysicalDeviceFeatures device_features = {};
 		device_features.samplerAnisotropy = true;
@@ -89,24 +102,6 @@ namespace Omni {
 		m_Swapchain->CreateSwapchain(swapchain_spec);
 
 		VulkanMemoryAllocator::Init();
-	}
-
-	VulkanGraphicsContext::~VulkanGraphicsContext()
-	{
-		Destroy();
-	}
-
-	void VulkanGraphicsContext::Destroy()
-	{
-		vkDeviceWaitIdle(m_Device->Raw());
-		VulkanMemoryAllocator::Destroy();
-		m_Swapchain->DestroySwapchain();
-		m_Swapchain->DestroySurface();
-		m_Device->Destroy();
-		if (OMNIFORCE_BUILD_CONFIG != OMNIFORCE_RELEASE_CONFIG)
-			m_DebugUtils->Destroy(this);
-		vkDestroyInstance(m_VulkanInstance, nullptr);
-		volkFinalize();
 	}
 
 	std::vector<const char*> VulkanGraphicsContext::GetVulkanExtensions()

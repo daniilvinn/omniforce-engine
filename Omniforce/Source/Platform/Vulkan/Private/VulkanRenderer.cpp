@@ -1,6 +1,7 @@
 #include <Foundation/Common.h>
 #include <Platform/Vulkan/VulkanRenderer.h>
 
+#include <Core/RuntimeExecutionContext.h>
 #include <Platform/Vulkan/VulkanGraphicsContext.h>
 #include <Platform/Vulkan/VulkanDevice.h>
 #include <Platform/Vulkan/VulkanPipeline.h>
@@ -32,7 +33,15 @@ namespace Omni {
 
 		for (auto& buf : m_CmdBuffers) {
 			buf = CreateRef<VulkanDeviceCmdBuffer>(&g_PersistentAllocator, DeviceCmdBufferLevel::PRIMARY, DeviceCmdBufferType::GENERAL, DeviceCmdType::GENERAL);
+
+			RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueCoreObjectDelection(
+				[device = m_Device->Raw(), pool = buf->RawPool()]() {
+					vkDestroyCommandPool(device, pool, nullptr);
+				}
+			);
 		}
+
+		OMNIFORCE_CORE_INFO("Initialized renderer device command buffers");
 
 		if (s_DescriptorPool == VK_NULL_HANDLE) {
 			uint32 descriptor_count = UINT16_MAX * config.frames_in_flight;;
@@ -56,18 +65,19 @@ namespace Omni {
 
 			vkCreateDescriptorPool(m_Device->Raw(), &descriptor_pool_create_info, nullptr, &s_DescriptorPool);
 
+			RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueCoreObjectDelection(
+				[device = m_Device->Raw(), pool = s_DescriptorPool]() {
+					vkDestroyDescriptorPool(device, pool, nullptr);
+					OMNIFORCE_CORE_INFO("Destroyed global renderer descriptor pool");
+				}
+			);
+
 			OMNIFORCE_CORE_INFO("Initialized global renderer descriptor pool");
 		}
 	}
 
 	VulkanRenderer::~VulkanRenderer()
 	{
-		vkDeviceWaitIdle(m_Device->Raw());
-		for (auto& cmd_buffer : m_CmdBuffers)
-			cmd_buffer->Destroy();
-		vkDestroyDescriptorPool(m_Device->Raw(), s_DescriptorPool, nullptr);
-
-		OMNIFORCE_CORE_INFO("Destroyed global renderer descriptor pool");
 	}
 
 	void VulkanRenderer::BeginFrame()

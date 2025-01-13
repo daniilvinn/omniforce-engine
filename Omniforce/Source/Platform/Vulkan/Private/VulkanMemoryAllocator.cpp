@@ -4,9 +4,10 @@
 #include <Core/Utils.h>
 #include <Platform/Vulkan/VulkanGraphicsContext.h>
 #include <Platform/Vulkan/VulkanDeviceBuffer.h>
+#include <Core/RuntimeExecutionContext.h>
 
 #if OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG
-	#define OMNIFORCE_TRACE_DEVICE_ALLOCATIONS 0
+	#define OMNIFORCE_TRACE_DEVICE_ALLOCATIONS 1
 #else
 	#define OMNIFORCE_TRACE_DEVICE_ALLOCATIONS 0
 #endif
@@ -43,25 +44,23 @@ namespace Omni {
 		vmaCreateAllocator(&allocator_create_info, &m_Allocator);
 
 		m_Statistics = { 0, 0, 0 };
-	}
 
-	VulkanMemoryAllocator::~VulkanMemoryAllocator()
-	{
-		OMNIFORCE_CORE_TRACE("Destroying vulkan memory allocator: ");
-		OMNIFORCE_CORE_TRACE("\tTotal memory allocated: {0}", Utils::FormatAllocationSize(m_Statistics.allocated));
-		OMNIFORCE_CORE_TRACE("\tTotal memory freed: {0}", Utils::FormatAllocationSize(m_Statistics.freed));
-		OMNIFORCE_CORE_TRACE("\tIn use at the moment: {0}", Utils::FormatAllocationSize(m_Statistics.currently_allocated));
-		vmaDestroyAllocator(m_Allocator);
+		RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueCoreObjectDelection(
+			[allocator = m_Allocator, stats = m_Statistics, instance = s_Instance]() {
+				OMNIFORCE_CORE_TRACE("Destroying vulkan memory allocator: ");
+				OMNIFORCE_CORE_TRACE("\tTotal memory allocated: {0}", Utils::FormatAllocationSize(stats.allocated));
+				OMNIFORCE_CORE_TRACE("\tTotal memory freed: {0}", Utils::FormatAllocationSize(stats.freed));
+				OMNIFORCE_CORE_TRACE("\tIn use at the moment: {0}", Utils::FormatAllocationSize(stats.currently_allocated));
+				vmaDestroyAllocator(allocator);
+
+				delete s_Instance;
+			}
+		);
 	}
 
 	void VulkanMemoryAllocator::Init()
 	{
 		s_Instance = new VulkanMemoryAllocator;
-	}
-
-	void VulkanMemoryAllocator::Destroy()
-	{
-		delete s_Instance;
 	}
 
 	void VulkanMemoryAllocator::InvalidateAllocation(VmaAllocation allocation, uint64 size /*= VK_WHOLE_SIZE*/, uint64 offset /*= 0*/)

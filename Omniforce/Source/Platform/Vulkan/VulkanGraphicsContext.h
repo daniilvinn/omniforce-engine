@@ -14,8 +14,6 @@ namespace Omni {
 	public:
 		VulkanGraphicsContext() {};
 		VulkanGraphicsContext(const RendererConfig& config);
-		~VulkanGraphicsContext();
-		void Destroy() override;
 
 		static VulkanGraphicsContext* Get() { return s_Instance; }
 

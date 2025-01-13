@@ -1,6 +1,7 @@
 #include <Foundation/Common.h>
 #include <Platform/Vulkan/VulkanPipeline.h>
 
+#include <Core/RuntimeExecutionContext.h>
 #include <Platform/Vulkan/VulkanGraphicsContext.h>
 #include <Platform/Vulkan/VulkanShader.h>
 #include <Platform/Vulkan/VulkanImage.h>
@@ -88,20 +89,22 @@ namespace Omni {
 		case PipelineType::RAY_TRACING:		std::unreachable(); break;
 		default:							std::unreachable(); break;
 		}
+
 	}
 
 	VulkanPipeline::~VulkanPipeline()
 	{
-		auto device = VulkanGraphicsContext::Get()->GetDevice();
-		vkDestroyPipelineLayout(device->Raw(), m_PipelineLayout, nullptr);
-		vkDestroyPipeline(device->Raw(), m_Pipeline, nullptr);
+		RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueObjectDeletion(
+			[vk_device = VulkanGraphicsContext::Get()->GetDevice()->Raw(), vk_pipeline = m_Pipeline, vk_layout = m_PipelineLayout]() {
+				vkDestroyPipelineLayout(vk_device, vk_layout, nullptr);
+				vkDestroyPipeline(vk_device, vk_pipeline, nullptr);
+			}
+		);
 	}
 
 	void VulkanPipeline::Destroy()
 	{
-		auto device = VulkanGraphicsContext::Get()->GetDevice();
-		vkDestroyPipeline(device->Raw(), m_Pipeline, nullptr);
-		vkDestroyPipelineLayout(device->Raw(), m_PipelineLayout, nullptr);
+		
 	}
 
 	void VulkanPipeline::CreateGraphics()
