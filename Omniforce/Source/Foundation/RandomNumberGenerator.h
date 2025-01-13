@@ -7,6 +7,8 @@
 
 namespace Omni {
 
+	using uint64 = uint64_t; // declare it here because cannot include BasicTypes.h due to cyclic dependency
+
 	class OMNIFORCE_API RandomEngine {
 	public:
 		template<typename T>

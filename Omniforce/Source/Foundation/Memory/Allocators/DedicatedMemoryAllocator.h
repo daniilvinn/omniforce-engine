@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../Allocator.h"
-#include "../Ptr.h"
+#include <Foundation/Memory/Allocator.h>
+#include <Foundation/Memory/Ptr.h>
 
 namespace Omni {
 

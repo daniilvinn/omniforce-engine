@@ -18,22 +18,6 @@ public:
 	void OnUpdate(float32 step) override
 	{
 
-		{
-		if (Input::KeyPressed(KeyCode::KEY_W))
-			m_Camera->Move({ 0.0f, 0.0f, 0.05f });
-		if (Input::KeyPressed(KeyCode::KEY_S))
-			m_Camera->Move({ 0.0f, 0.0f, -0.05f });
-		if (Input::KeyPressed(KeyCode::KEY_A))
-			m_Camera->Move({ -0.05f, 0.0f, 0.0f });
-		if (Input::KeyPressed(KeyCode::KEY_D))
-			m_Camera->Move({ 0.05f, 0.0f, 0.0f});
-
-		if (Input::KeyPressed(KeyCode::KEY_Q))
-			m_Camera->Rotate(-0.5f, 0.0f, 0.0f, true);
-		if (Input::KeyPressed(KeyCode::KEY_E))
-			m_Camera->Rotate(0.5f, 0.0f, 0.0f, true);
-		}
-
 	}
 
 	void OnEvent(Event* e) override
@@ -43,11 +27,7 @@ public:
 	}
 
 	bool OnWindowResize(WindowResizeEvent* e) {
-		if (e->GetResolution().x == 0 || e->GetResolution().y == 0) return false;
-
-		float32 aspect_ratio = (float32)e->GetResolution().x / (float32)e->GetResolution().y;
-		m_Camera->SetProjection(glm::radians(90.0f), aspect_ratio, 0.0f, 100.0f);
-
+		
 		return false;
 	}
 
@@ -57,19 +37,9 @@ public:
 
 	void Launch() override
 	{
-		m_Camera = CreateRef<Camera3D>(&g_PersistentAllocator);
-		m_Camera->SetProjection( glm::radians(90.0f), 16.0 / 9.0, 0.0f, 100.0f );
-
-		m_Scene = CreatePtr<Scene>(&g_PersistentAllocator, SceneType::SCENE_TYPE_3D);
+	
 	}
-
-	/*
-	*	DATA
-	*/
-	Ref<Camera3D> m_Camera;
-	Ptr<Scene> m_Scene;
-	uint32 m_SelectedEntity = 0;
-	bool m_EntitySelected = false;
+	
 };
 
 Subsystem* ConstructRootSystem() 

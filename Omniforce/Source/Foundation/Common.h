@@ -14,8 +14,10 @@
 #include "Memory/VirtualMemoryBlock.h"
 #include "Log/Logger.h"
 
-#include "Array.h"
-#include "Stack.h"
+#include "Containers/Array.h"
+#include "Containers/StaticArray.h"
+#include "Containers/Stack.h"
+
 #include "Timer.h"
 #include "UUID.h"
 

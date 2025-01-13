@@ -7,7 +7,7 @@
 
 namespace Omni {
 
-	class Timer
+	class OMNIFORCE_API Timer
 	{
 	public:
 		Timer() {

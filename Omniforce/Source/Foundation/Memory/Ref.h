@@ -73,16 +73,6 @@ namespace Omni {
 		template<typename U>
 		Ref(U*) = delete;
 
-		~Ref() {
-			// Decrement ref counter
-			DecrementRefCounter();
-
-			// Check if allocation is valid (e.g. if this pointer references some object)
-			if (CanReleaseAllocation()) {
-				ReleaseAllocation();
-			}
-		}
-
 		Ref(const Ref& other)
 			: m_Allocator(other.m_Allocator)
 			, m_Allocation(other.m_Allocation)
@@ -113,6 +103,16 @@ namespace Omni {
 			IncrementRefCounter();
 
 			other.Reset();
+		}
+
+		~Ref() {
+			// Decrement ref counter
+			DecrementRefCounter();
+
+			// Check if allocation is valid (e.g. if this pointer references some object)
+			if (CanReleaseAllocation()) {
+				ReleaseAllocation();
+			}
 		}
 
 		inline constexpr T* Raw() const {

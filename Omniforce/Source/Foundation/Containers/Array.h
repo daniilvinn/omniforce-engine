@@ -10,10 +10,16 @@ namespace Omni {
 
 	// Resizable array
 	template<typename T>
-	requires (std::is_copy_constructible_v<T> || std::is_move_constructible_v<T>)
+	requires ((std::is_copy_constructible_v<T> || std::is_move_constructible_v<T>) && !std::is_abstract_v<T>)
 	class OMNIFORCE_API Array {
 	public:
 		using SizeType = uint64;
+
+		Array()
+			: m_Allocator(nullptr)
+			, m_Size(0)
+			, m_GrowthFactor(2.0f)
+		{}
 
 		Array(IAllocator* allocator) 
 			: m_Allocator(allocator)
@@ -45,19 +51,63 @@ namespace Omni {
 			}
 		}
 
-		~Array() {
-			T* typed_array = m_Allocation.As<T>();
-			for (uint32 i = 0; i < m_Size; i++) {
-				typed_array[i].~T();
+		Array(const Array<T>& other) {
+			if (this == &other) {
+				OMNIFORCE_CORE_WARNING("Attempted to assign an array to itself");
+				return *this;
 			}
-			
+
 			if (m_Allocation.IsValid()) {
+				Clear();
+				m_Allocator->FreeBase(m_Allocation);
+			}
+
+			if (HasEnoughMemory(other.Size())) {
+				Reallocate(other.Size());
+			}
+
+			T* typed_array = m_Allocation.As<T>();
+			const T* other_array = other.m_Allocation.As<T>();
+
+			for (SizeType i = 0; i < other.m_Size; ++i) {
+				new (&typed_array[i]) T(other_array[i]);
+			}
+
+			m_Size = other.m_Size;
+		}
+
+		Array(Array<T>&& other) noexcept {
+			if (this == &other) {
+				return *this;
+			}
+
+			if (m_Allocation.IsValid()) {
+				Clear();
+				m_Allocator->FreeBase(m_Allocation);
+			}
+
+			m_Allocator = other.m_Allocator;
+			m_Allocation = other.m_Allocation;
+			m_Size = other.m_Size;
+			m_GrowthFactor = other.m_GrowthFactor;
+
+			other.m_Allocation.Invalidate();
+			other.m_Size = 0;
+		}
+
+		~Array() {
+			if (m_Allocation.IsValid()) {
+				T* typed_array = m_Allocation.As<T>();
+				for (uint32 i = 0; i < m_Size; i++) {
+					typed_array[i].~T();
+				}
+
 				m_Allocator->Free<T>(m_Allocation, m_Size);
 			}
 		}
 
 		void Add(const T& value) {
-			if (m_Size == m_MaxSize) {
+			if (m_Size == Capacity()) {
 				Reallocate(CalculateNewSize());
 			}
 
@@ -68,7 +118,7 @@ namespace Omni {
 		}
 
 		void Add(T&& value) {
-			if (m_Size == m_MaxSize) {
+			if (m_Size == Capacity()) {
 				Reallocate(CalculateNewSize());
 			}
 
@@ -116,7 +166,7 @@ namespace Omni {
 			OMNIFORCE_ASSERT_TAGGED(index <= m_Size, "Index out of bounds");
 
 			// Check if we are out of bounds
-			if (m_Size == m_MaxSize) {
+			if (m_Size == Capacity()) {
 				Reallocate(CalculateNewSize());
 			}
 
@@ -205,8 +255,16 @@ namespace Omni {
 			m_Size = new_size;
 		}
 
-		inline void	Preallocate(SizeType new_capacity) { 
-			Reallocate(new_capacity); 
+		void Reallocate(SizeType new_size = 256 / sizeof(T)) {
+
+			MemoryAllocation new_allocation = m_Allocator->AllocateBase(new_size * sizeof(T));
+			if (m_Allocation.IsValid()) [[likely]]
+			{
+				memcpy(new_allocation.Memory, m_Allocation.Memory, std::min(new_size, m_Size) * sizeof(T));
+
+				m_Allocator->FreeBase(m_Allocation);
+			}
+			m_Allocation = new_allocation;
 		}
 
 		inline uint32 Size() const { 
@@ -236,7 +294,10 @@ namespace Omni {
 				return *this;
 			}
 
-			Clear();
+			if (m_Allocation.IsValid()) {
+				Clear();
+				m_Allocator->FreeBase(m_Allocation);
+			}
 
 			if (HasEnoughMemory(other.Size())) {
 				Reallocate(other.Size());
@@ -260,17 +321,18 @@ namespace Omni {
 				return *this;
 			}
 
-			Clear();
+			if (m_Allocation.IsValid()) {
+				Clear();
+				m_Allocator->FreeBase(m_Allocation);
+			}
 
 			//m_Allocator = other.m_Allocator;
 			m_Allocation = other.m_Allocation;
 			m_Size = other.m_Size;
-			m_MaxSize = other.m_MaxSize;
 			m_GrowthFactor = other.m_GrowthFactor;
 
 			other.m_Allocation.Invalidate();
 			other.m_Size = 0;
-			other.m_MaxSize = 0;
 
 			return *this;
 		}
@@ -281,7 +343,10 @@ namespace Omni {
 				Reallocate(init_list.size());
 			}
 
-			Clear();
+			if (m_Allocation.IsValid()) {
+				Clear();
+				m_Allocator->FreeBase(m_Allocation);
+			}
 
 			T* typed_array = m_Allocation.As<T>();
 
@@ -330,27 +395,13 @@ namespace Omni {
 		}
 
 		inline bool	HasEnoughMemory(SizeType new_size) const { 
-			return m_MaxSize >= new_size; 
-		}
-
-		void Reallocate(SizeType new_size = 256 / sizeof(T)) {
-
-			MemoryAllocation new_allocation = m_Allocator->AllocateBase(new_size * sizeof(T));
-			if (m_Allocation.IsValid()) [[likely]] 
-			{
-				memcpy(new_allocation.Memory, m_Allocation.Memory, std::min(new_size, m_Size) * sizeof(T));
-
-				m_Allocator->FreeBase(m_Allocation);
-			}
-			m_MaxSize = new_allocation.Size / sizeof(T);
-			m_Allocation = new_allocation;
+			return Capacity() >= new_size;
 		}
 
 	private:
 		IAllocator* m_Allocator;
 		MemoryAllocation m_Allocation;
 		SizeType m_Size;
-		SizeType m_MaxSize; // Cached value for max size
 		float32 m_GrowthFactor;
 
 	};
