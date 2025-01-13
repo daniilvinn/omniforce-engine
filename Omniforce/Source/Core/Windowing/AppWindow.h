@@ -44,9 +44,9 @@ namespace Omni {
 	protected:
 		AppWindow() 
 			: m_EventAllocator(&g_TransientAllocator)
-			, m_EventBuffer(&g_TransientAllocator)
+			, m_EventBuffer(&g_PersistentAllocator)
 		{ 
-			m_EventBuffer.Preallocate(2048); 
+			m_EventBuffer.Reallocate(8096); 
 		};
 		AppWindow(const AppWindow&) = delete;
 

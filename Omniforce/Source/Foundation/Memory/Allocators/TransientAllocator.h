@@ -150,6 +150,6 @@ namespace Omni {
 	/*
 	*  @brief Global allocator for data that lives one frame. Managed by the engine. Do not call `Clear()`
 	*/
-	inline TransientAllocator<true> g_TransientAllocator = IAllocator::Setup<TransientAllocator<true>>();
+	inline TransientAllocator<true> g_TransientAllocator = IAllocator::Setup<TransientAllocator<true>>(1024 * 1024 * 32);
 
 }

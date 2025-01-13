@@ -11,6 +11,10 @@ namespace Omni {
 
 	class PipelineLibrary {
 	public:
+		static void Flush() {
+			m_Pipelines.clear();
+		}
+
 		static Ref<Pipeline> GetPipeline(const PipelineSpecification& spec) {
 			for (auto& pipeline : m_Pipelines) {
 				if (pipeline->GetSpecification() == spec)

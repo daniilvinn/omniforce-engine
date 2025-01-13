@@ -8,6 +8,7 @@
 #include <Renderer/Pipeline.h>
 #include <Renderer/DescriptorSet.h>
 #include <Core/Windowing/WindowSystem.h>
+#include <Scene/PipelineLibrary.h>
 
 namespace Omni {
 
@@ -28,6 +29,7 @@ namespace Omni {
 	void Renderer::Shutdown()
 	{
 		ShaderLibrary::Destroy();
+		PipelineLibrary::Flush();
 		delete s_RendererAPI;
 	}
 

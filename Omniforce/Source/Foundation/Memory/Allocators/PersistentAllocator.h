@@ -1,11 +1,12 @@
 #pragma once
 
-#include "../../Platform.h"
-#include "../../BasicTypes.h"
-#include "../../Log/Logger.h"
-#include "../../Array.h"
-#include "../Allocator.h"
-#include "DedicatedMemoryAllocator.h"
+#include <Foundation/Platform.h>
+#include <Foundation/BasicTypes.h>
+
+#include <Foundation/Log/Logger.h>
+#include <Foundation/Memory/Allocator.h>
+#include <Foundation/Containers/Array.h>
+#include <Foundation/Memory/Allocators/DedicatedMemoryAllocator.h>
 
 #include <shared_mutex>
 #include <limits>
@@ -76,7 +77,7 @@ namespace Omni {
 
 			// Find block using address
 			auto it = m_AllocatedMemoryBlocks.find(allocation.Memory);
-			OMNIFORCE_ASSERT_TAGGED(it == m_AllocatedMemoryBlocks.end(), "Persistent allocator: attempted to free invalid or untracked block");
+			OMNIFORCE_ASSERT_TAGGED(it != m_AllocatedMemoryBlocks.end(), "Persistent allocator: attempted to free invalid or untracked block");
 
 			TSize block_size = it->second;
 			TSize block = (TSize)(allocation.Memory - (byte*)&m_MemoryPool[0]) / m_MinimalBlockSize;
