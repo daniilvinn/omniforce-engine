@@ -75,11 +75,6 @@ namespace Omni {
 
 	VulkanImage::~VulkanImage()
 	{
-
-	}
-
-	void VulkanImage::Destroy()
-	{
 		if (m_CreatedFromRaw) return;
 
 		auto device = VulkanGraphicsContext::Get()->GetDevice();
@@ -254,8 +249,6 @@ namespace Omni {
 		m_Specification.mip_levels = texture_create_info.mipLevels;
 		m_Specification.type = ImageType::TYPE_2D;
 		m_Specification.usage = ImageUsage::TEXTURE;
-
-		staging_buffer.Destroy();
 	}
 
 	void VulkanImage::CreateRenderTarget()
@@ -472,13 +465,6 @@ namespace Omni {
 
 	VulkanImageSampler::~VulkanImageSampler()
 	{
-
-	}
-
-	void VulkanImageSampler::Destroy()
-	{
-		auto device = VulkanGraphicsContext::Get()->GetDevice();
-		vkDestroySampler(device->Raw(), m_Sampler, nullptr);
 		m_Sampler = VK_NULL_HANDLE;
 	}
 

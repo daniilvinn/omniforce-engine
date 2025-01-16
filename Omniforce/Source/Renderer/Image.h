@@ -88,9 +88,9 @@ namespace Omni {
 		static Ref<Image> Create(IAllocator* allocator, const ImageSpecification& spec, const AssetHandle& id = AssetHandle());
 		static Ref<Image> Create(IAllocator* allocator, const ImageSpecification& spec, const std::vector<RGBA32> data, const AssetHandle& id = AssetHandle());
 
-		virtual ~Image() {}
-
 		virtual void Destroy() = 0;
+
+		virtual ~Image() {};
 
 		virtual ImageSpecification GetSpecification() const = 0;
 		virtual void SetLayout(
@@ -140,7 +140,7 @@ namespace Omni {
 	public:
 		static Ref<ImageSampler> Create(IAllocator* allocator, const ImageSamplerSpecification& spec);
 
-		virtual void Destroy() = 0;
+		virtual ~ImageSampler() {};
 	};
 
 }

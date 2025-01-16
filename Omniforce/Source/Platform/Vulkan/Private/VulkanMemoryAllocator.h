@@ -27,8 +27,8 @@ namespace Omni {
 		VmaAllocation AllocateBuffer(const DeviceBufferSpecification& spec, VkBufferCreateInfo* create_info, uint32_t flags, VkBuffer* buffer);
 		VmaAllocation AllocateImage(VkImageCreateInfo* create_info, uint32_t flags, VkImage* image);
 
-		void DestroyBuffer(VkBuffer* buffer, VmaAllocation* allocation);
-		void DestroyImage(VkImage* image, VmaAllocation* allocation);
+		void DestroyBuffer(VkBuffer buffer, VmaAllocation allocation);
+		void DestroyImage(VkImage image, VmaAllocation allocation);
 
 		void* MapMemory(VmaAllocation allocation);
 		void UnmapMemory(VmaAllocation allocation);

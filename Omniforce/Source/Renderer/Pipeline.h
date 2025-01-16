@@ -113,7 +113,6 @@ namespace Omni {
 	public:
 		// NOTE: automatically(!!!) adds pipeline to pipeline library
 		static Ref<Pipeline> Create(IAllocator* allocator, const PipelineSpecification& spec, UUID id = UUID());
-		virtual void Destroy() = 0;
 
 		virtual ~Pipeline() {};
 

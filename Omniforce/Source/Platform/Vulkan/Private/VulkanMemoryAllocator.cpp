@@ -118,13 +118,13 @@ namespace Omni {
 		return allocation;
 	}
 
-	void VulkanMemoryAllocator::DestroyBuffer(VkBuffer* buffer, VmaAllocation* allocation)
+	void VulkanMemoryAllocator::DestroyBuffer(VkBuffer buffer, VmaAllocation allocation)
 	{
 		std::lock_guard lock(m_Mutex);
 		VmaAllocationInfo allocation_info;
-		vmaGetAllocationInfo(m_Allocator, *allocation, &allocation_info);
+		vmaGetAllocationInfo(m_Allocator, allocation, &allocation_info);
 
-		vmaDestroyBuffer(m_Allocator, *buffer, *allocation);
+		vmaDestroyBuffer(m_Allocator, buffer, allocation);
 
 		m_Statistics.freed += allocation_info.size;
 		m_Statistics.currently_allocated -= allocation_info.size;
@@ -134,18 +134,15 @@ namespace Omni {
 			OMNIFORCE_CORE_TRACE("\tFreed memory: {0}", Utils::FormatAllocationSize(allocation_info.size));
 			OMNIFORCE_CORE_TRACE("\tCurrently allocated: {0}", Utils::FormatAllocationSize(m_Statistics.currently_allocated));
 		}
-
-		*buffer = VK_NULL_HANDLE;
-		*allocation = VK_NULL_HANDLE;
 	}
 
-	void VulkanMemoryAllocator::DestroyImage(VkImage* image, VmaAllocation* allocation)
+	void VulkanMemoryAllocator::DestroyImage(VkImage image, VmaAllocation allocation)
 	{
 		std::lock_guard lock(m_Mutex);
 		VmaAllocationInfo allocation_info;
-		vmaGetAllocationInfo(m_Allocator, *allocation, &allocation_info);
+		vmaGetAllocationInfo(m_Allocator, allocation, &allocation_info);
 
-		vmaDestroyImage(m_Allocator, *image, *allocation);
+		vmaDestroyImage(m_Allocator, image, allocation);
 
 		m_Statistics.freed += allocation_info.size;
 		m_Statistics.currently_allocated -= allocation_info.size;
@@ -155,9 +152,6 @@ namespace Omni {
 			OMNIFORCE_CORE_TRACE("\tFreed memory: {0}", Utils::FormatAllocationSize(allocation_info.size));
 			OMNIFORCE_CORE_TRACE("\tCurrently allocated: {0}", Utils::FormatAllocationSize(m_Statistics.currently_allocated));
 		}
-
-		*image = VK_NULL_HANDLE;
-		*allocation = VK_NULL_HANDLE;
 	}
 
 

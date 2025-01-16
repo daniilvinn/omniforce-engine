@@ -58,8 +58,6 @@ namespace Omni {
 
 		virtual ~DeviceBuffer() {};
 
-		virtual void Destroy() = 0;
-
 		virtual DeviceBufferSpecification GetSpecification() const = 0;
 		virtual uint64 GetDeviceAddress() = 0;
 		virtual uint64 GetPerFrameSize() = 0;

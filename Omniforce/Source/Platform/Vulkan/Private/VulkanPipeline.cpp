@@ -102,11 +102,6 @@ namespace Omni {
 		);
 	}
 
-	void VulkanPipeline::Destroy()
-	{
-		
-	}
-
 	void VulkanPipeline::CreateGraphics()
 	{
 		auto device = VulkanGraphicsContext::Get()->GetDevice();

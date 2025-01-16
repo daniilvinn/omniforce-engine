@@ -30,8 +30,6 @@ namespace Omni {
 
 	DeviceMaterialPool::~DeviceMaterialPool()
 	{
-		m_PoolBuffer->Destroy();
-		m_StagingForCopy->Destroy();
 		m_VirtualAllocator->Destroy();
 	}
 

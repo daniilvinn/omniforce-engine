@@ -163,7 +163,6 @@ namespace Omni {
 			);
 
 			device->ExecuteTransientCmdBuffer(cmd_buffer);
-			staging_buffer.Destroy();
 		}
 		else 
 		{

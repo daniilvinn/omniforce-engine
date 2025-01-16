@@ -37,8 +37,6 @@ namespace Omni {
 		VulkanDeviceBuffer(const DeviceBufferSpecification& spec, void* data, uint64 data_size);
 		~VulkanDeviceBuffer();
 
-		void Destroy() override;
-
 		VkBuffer Raw() const { return m_Buffer; }
 		
 		DeviceBufferSpecification GetSpecification() const override { return m_Specification; }

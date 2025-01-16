@@ -29,8 +29,6 @@ namespace Omni {
 		}
 
 		void Destroy() {
-			m_DeviceBuffer->Destroy();
-			m_StagingForCopy->Destroy();
 		}
 
 		uint32 Allocate(const UUID& id, const T& data) {

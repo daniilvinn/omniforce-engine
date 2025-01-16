@@ -18,8 +18,9 @@ namespace Omni {
 		VulkanImage(std::filesystem::path path);
 		~VulkanImage();
 
+		void Destroy() override {};
+
 		void CreateFromRaw(const ImageSpecification& spec, VkImage image, VkImageView view);
-		void Destroy() override;
 
 		VkImage Raw() const { return m_Image; }
 		VkImageView RawView() const { return m_ImageView; };
@@ -54,8 +55,6 @@ namespace Omni {
 	public:
 		VulkanImageSampler(const ImageSamplerSpecification& spec);
 		~VulkanImageSampler();
-
-		void Destroy() override;
 
 		VkSampler Raw() const { return m_Sampler; }
 		ImageSamplerSpecification GetSpecification() const { return m_Specification; }

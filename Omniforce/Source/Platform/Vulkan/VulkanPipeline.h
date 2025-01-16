@@ -12,8 +12,6 @@ namespace Omni {
 		VulkanPipeline(const PipelineSpecification& spec);
 		~VulkanPipeline();
 
-		void Destroy() override;
-
 		VkPipeline Raw() const { return m_Pipeline; }
 		VkPipelineLayout RawLayout() const { return m_PipelineLayout; }
 		const PipelineSpecification& GetSpecification() const override { return m_Specification; }
