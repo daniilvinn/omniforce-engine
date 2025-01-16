@@ -10,7 +10,9 @@ namespace Omni {
 		AssetHandle Handle;
 		AssetType Type;
 
+		virtual ~AssetBase() {};
 		virtual void Destroy() = 0;
+
 		bool Valid() { return Handle.Valid(); }
 
 	};

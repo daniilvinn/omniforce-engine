@@ -33,3 +33,5 @@
 #include <filesystem>
 #include <array>
 #include <stack>
+
+#include <nlohmann/json.hpp>

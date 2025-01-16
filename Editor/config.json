@@ -1,0 +1,13 @@
+{
+    "Renderer": {
+        "AllowResourceStreaming": true,
+        "UseVirtualGeometry": true,
+        "ForceVTGPipeline": false,
+        "ForceFramesInFlight": 2
+    },
+    "Core": {
+
+        "ForceRecompileShaders": true,
+        "Headless": false
+    }
+}

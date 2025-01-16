@@ -13,6 +13,7 @@
 #include <Core/Events/KeyEvents.h>
 #include <Core/Events/MouseEvents.h>
 #include <Core/Input/Input.h>
+#include <Core/EngineConfig.h>
 
 #include <Threading/JobSystem.h>
 

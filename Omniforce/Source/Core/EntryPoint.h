@@ -22,6 +22,10 @@ int main()
 	OMNIFORCE_INITIALIZE_LOG_SYSTEM(Logger::Level::LEVEL_TRACE);
 	OMNIFORCE_CORE_INFO("Entering `main` function");
 
+	if (!EngineConfig::Load()) {
+		g_EngineRunning = false;
+	}
+
 	while (g_EngineRunning) 
 	{
 		Ptr<Application> app = CreatePtr<Application>(&g_PersistentAllocator);

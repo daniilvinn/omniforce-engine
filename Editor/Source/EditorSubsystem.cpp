@@ -246,7 +246,7 @@ public:
 
 			m_ViewportFocused = ImGui::IsWindowFocused();
 			ImVec2 viewport_frame_size = ImGui::GetContentRegionAvail();
-			UI::RenderImage(m_EditorScene->GetFinalImage(), SceneRenderer::GetSamplerLinear(), viewport_frame_size, 0, true);
+			UI::RenderImage(m_EditorScene->GetFinalImage(), m_EditorScene->GetRenderer()->GetSamplerLinear(), viewport_frame_size, 0, true);
 
 			if(auto camera = m_CurrentScene->GetCamera(); camera)
 				camera->SetAspectRatio(viewport_frame_size.x / viewport_frame_size.y);
@@ -416,7 +416,7 @@ public:
 
 		// unloading textures from memory and releasing their indices
 		AssetManager* asset_manager = AssetManager::Get();
-		Ref<SceneRenderer> renderer = m_EditorScene->GetRenderer();
+		auto renderer = m_EditorScene->GetRenderer();
 		auto& texture_registry = *asset_manager->GetAssetRegistry();
 		for (auto [id, asset] : texture_registry) {
 			if(asset->Type != AssetType::OMNI_IMAGE)
