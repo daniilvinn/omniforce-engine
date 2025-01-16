@@ -56,8 +56,8 @@ namespace Omni {
 		DebugSceneView GetCurrentDebugMode() const { return m_CurrentDebugMode; }
 
 		Ref<Image> GetFinalImage();
-		static Ref<ImageSampler> GetSamplerNearest() { return s_SamplerNearest; }
-		static Ref<ImageSampler> GetSamplerLinear() { return s_SamplerLinear; }
+		Ref<ImageSampler> GetSamplerNearest() { return m_SamplerNearest; }
+		Ref<ImageSampler> GetSamplerLinear() { return m_SamplerLinear; }
 		AssetHandle GetDummyWhiteTexture() const { return m_DummyWhiteTexture->Handle; }
 		/*
 		* @brief Adds resource to a global renderer data
@@ -93,8 +93,8 @@ namespace Omni {
 		Ref<Image> m_CurrentDepthAttachment;
 
 		std::vector<Ref<DescriptorSet>> m_SceneDescriptorSet;
-		inline static Ref<ImageSampler> s_SamplerNearest;
-		inline static Ref<ImageSampler> s_SamplerLinear;
+		Ref<ImageSampler> m_SamplerNearest;
+		Ref<ImageSampler> m_SamplerLinear;
 		Ref<Image> m_DummyWhiteTexture;
 		uint32 m_SpriteBufferSize; // size in bytes per frame in flight, not overall size
 		std::vector<Sprite> m_SpriteQueue;

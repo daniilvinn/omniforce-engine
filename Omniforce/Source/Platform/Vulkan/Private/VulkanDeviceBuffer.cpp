@@ -1,6 +1,7 @@
 #include <Foundation/Common.h>
 #include <Platform/Vulkan/VulkanDeviceBuffer.h>
 
+#include <Core/RuntimeExecutionContext.h>
 #include <Platform/Vulkan/Private/VulkanMemoryAllocator.h>
 #include <Platform/Vulkan/VulkanDeviceCmdBuffer.h>
 #include <Platform/Vulkan/VulkanGraphicsContext.h>
@@ -93,15 +94,18 @@ namespace Omni {
 
 	VulkanDeviceBuffer::~VulkanDeviceBuffer()
 	{
-		
-	}
+		auto buffer = m_Buffer;
+		auto allocation = m_Allocation;
+		auto data = m_Data;
 
-	void VulkanDeviceBuffer::Destroy()
-	{
-		VulkanMemoryAllocator* alloc = VulkanMemoryAllocator::Get();
-		alloc->DestroyBuffer(&m_Buffer, &m_Allocation);
+		RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueObjectDeletion(
+			[buffer, allocation, data]() {
+				VulkanMemoryAllocator* alloc = VulkanMemoryAllocator::Get();
+				alloc->DestroyBuffer(buffer, allocation);
 
-		if(m_Data) delete m_Data;
+				if (data) delete data;
+			}
+		);
 	}
 
 	uint64 VulkanDeviceBuffer::GetDeviceAddress()

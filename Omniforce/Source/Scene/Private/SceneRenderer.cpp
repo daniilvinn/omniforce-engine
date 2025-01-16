@@ -110,7 +110,7 @@ namespace Omni {
 			sampler_spec.lod_bias = 0.0f;
 			sampler_spec.anisotropic_filtering_level = m_Specification.anisotropic_filtering;
 
-			s_SamplerNearest = ImageSampler::Create(&g_PersistentAllocator, sampler_spec);
+			m_SamplerNearest = ImageSampler::Create(&g_PersistentAllocator, sampler_spec);
 		}
 		// Initializing linear filtration sampler
 		{
@@ -124,7 +124,7 @@ namespace Omni {
 			sampler_spec.lod_bias = 0.0f;
 			sampler_spec.anisotropic_filtering_level = m_Specification.anisotropic_filtering;
 
-			s_SamplerLinear = ImageSampler::Create(&g_PersistentAllocator, sampler_spec);
+			m_SamplerLinear = ImageSampler::Create(&g_PersistentAllocator, sampler_spec);
 		}
 		// Load dummy white texture
 		{
@@ -350,8 +350,6 @@ namespace Omni {
 
 	void SceneRenderer::Destroy()
 	{
-		s_SamplerLinear->Destroy();
-		s_SamplerNearest->Destroy();
 		//m_DummyWhiteTexture->Destroy();
 		for (auto set : m_SceneDescriptorSet)
 			set->Destroy();
@@ -730,8 +728,8 @@ namespace Omni {
 
 		switch (filtering_mode)
 		{
-		case SamplerFilteringMode::NEAREST:		sampler = s_SamplerNearest; break;
-		case SamplerFilteringMode::LINEAR:		sampler = s_SamplerLinear;  break;
+		case SamplerFilteringMode::NEAREST:		sampler = m_SamplerNearest; break;
+		case SamplerFilteringMode::LINEAR:		sampler = m_SamplerLinear;  break;
 		default:								OMNIFORCE_ASSERT_TAGGED(false, "Invalid sampler filtering mode"); break;
 		}
 

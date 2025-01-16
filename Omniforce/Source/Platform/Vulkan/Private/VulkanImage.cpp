@@ -1,6 +1,7 @@
 #include <Foundation/Common.h>
 #include <Platform/Vulkan/VulkanImage.h>
 
+#include <Core/RuntimeExecutionContext.h>
 #include <Platform/Vulkan/VulkanDeviceBuffer.h>
 #include <Platform/Vulkan/VulkanGraphicsContext.h>
 #include <Platform/Vulkan/VulkanDeviceCmdBuffer.h>
@@ -8,7 +9,6 @@
 #include <Renderer/Renderer.h>
 
 #include <stb_image.h>
-
 #include <bc7enc.h>
 
 namespace Omni {
@@ -77,12 +77,19 @@ namespace Omni {
 	{
 		if (m_CreatedFromRaw) return;
 
-		auto device = VulkanGraphicsContext::Get()->GetDevice();
-		auto allocator = VulkanMemoryAllocator::Get();
+		auto view = m_ImageView;
+		auto allocation = m_Allocation;
+		auto image = m_Image;
 
-		vkDestroyImageView(device->Raw(), m_ImageView, nullptr);
-		allocator->DestroyImage(&m_Image, &m_Allocation);
-		
+		RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueObjectDeletion(
+			[view, allocation, image]() {
+				auto allocator = VulkanMemoryAllocator::Get();
+				auto device = VulkanGraphicsContext::Get()->GetDevice();
+
+				vkDestroyImageView(device->Raw(), view, nullptr);
+				allocator->DestroyImage(image, allocation);
+			}
+		);
 
 		m_ImageView = VK_NULL_HANDLE;
 	}
@@ -465,6 +472,13 @@ namespace Omni {
 
 	VulkanImageSampler::~VulkanImageSampler()
 	{
+		auto sampler = m_Sampler;
+		RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueObjectDeletion(
+			[sampler]() {
+				auto device = VulkanGraphicsContext::Get()->GetDevice();
+				vkDestroySampler(device->Raw(), sampler, nullptr);
+			}
+		);
 		m_Sampler = VK_NULL_HANDLE;
 	}
 
