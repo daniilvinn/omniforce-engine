@@ -75,6 +75,7 @@ namespace Omni {
 				attachment_spec.usage = ImageUsage::RENDER_TARGET;
 				attachment_spec.extent = Renderer::GetSwapchainImage()->GetSpecification().extent;
 				attachment_spec.format = ImageFormat::RGB32_HDR;
+				OMNI_DEBUG_ONLY_CODE(attachment_spec.debug_name = "SceneRenderer output");
 				for (int i = 0; i < Renderer::GetConfig().frames_in_flight; i++)
 					m_RendererOutputs.push_back(Image::Create(&g_PersistentAllocator, attachment_spec));
 
@@ -138,6 +139,7 @@ namespace Omni {
 			image_spec.type = ImageType::TYPE_2D;
 			image_spec.mip_levels = 1;
 			image_spec.array_layers = 1;
+			image_spec.debug_name = "Dummy white texture";
 
 			m_DummyWhiteTexture = Image::Create(&g_PersistentAllocator, image_spec, 0);
 			AcquireResourceIndex(m_DummyWhiteTexture, SamplerFilteringMode::LINEAR);
@@ -346,13 +348,11 @@ namespace Omni {
 
 	SceneRenderer::~SceneRenderer()
 	{
+		int x = 5;
 	}
 
 	void SceneRenderer::Destroy()
 	{
-		//m_DummyWhiteTexture->Destroy();
-		for (auto set : m_SceneDescriptorSet)
-			set->Destroy();
 		m_MeshResourcesBuffer.Destroy();
 	}
 

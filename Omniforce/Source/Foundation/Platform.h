@@ -42,7 +42,7 @@
 	#endif
 #endif
 
-#ifndef OMNIFORCE_RELEASE
+#ifdef OMNIFORCE_DEBUG
 	#define	OMNI_DEBUG_ONLY_CODE(code) code 
 #else
 	#define OMNI_DEBUG_ONLY_CODE(code)

@@ -2,15 +2,10 @@
 #include <Platform/Vulkan/Private/VulkanMemoryAllocator.h>
 
 #include <Core/Utils.h>
+#include <Core/EngineConfig.h>
 #include <Platform/Vulkan/VulkanGraphicsContext.h>
 #include <Platform/Vulkan/VulkanDeviceBuffer.h>
 #include <Core/RuntimeExecutionContext.h>
-
-#if OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG
-	#define OMNIFORCE_TRACE_DEVICE_ALLOCATIONS 1
-#else
-	#define OMNIFORCE_TRACE_DEVICE_ALLOCATIONS 0
-#endif
 
 #undef VMA_LEAK_LOG_FORMAT(format, ...)
 #define VMA_LEAK_LOG_FORMAT(format, ...) do { \
@@ -21,7 +16,10 @@
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
 
+
 namespace Omni {
+
+	static EngineConfigValue<bool> s_TraceAllocation("Core.Log.TraceDeviceAllocations", "Enables logging of all device memory allocations");
 
 	VulkanMemoryAllocator* VulkanMemoryAllocator::s_Instance = nullptr;
 
@@ -43,10 +41,15 @@ namespace Omni {
 
 		vmaCreateAllocator(&allocator_create_info, &m_Allocator);
 
-		m_Statistics = { 0, 0, 0 };
+		s_Instance = this;
+
+		auto allocator = m_Allocator;
+		auto instance = s_Instance;
 
 		RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueCoreObjectDelection(
-			[allocator = m_Allocator, stats = m_Statistics, instance = s_Instance]() {
+			[allocator, instance]() {
+				auto stats = instance->GetStats();
+
 				OMNIFORCE_CORE_TRACE("Destroying vulkan memory allocator: ");
 				OMNIFORCE_CORE_TRACE("\tTotal memory allocated: {0}", Utils::FormatAllocationSize(stats.allocated));
 				OMNIFORCE_CORE_TRACE("\tTotal memory freed: {0}", Utils::FormatAllocationSize(stats.freed));
@@ -83,12 +86,14 @@ namespace Omni {
 
 		m_Statistics.allocated += allocation_info.size;
 		m_Statistics.currently_allocated += allocation_info.size;
+		m_Statistics.num_active_buffers++;
 
-		if (OMNIFORCE_TRACE_DEVICE_ALLOCATIONS) {
+		if (s_TraceAllocation.Get()) {
 			OMNIFORCE_CORE_TRACE("Allocating device buffer:");
 			OMNIFORCE_CORE_TRACE("\tRequested size: {0}", Utils::FormatAllocationSize(create_info->size));
 			OMNIFORCE_CORE_TRACE("\tAllocated size: {0}", Utils::FormatAllocationSize(allocation_info.size));
 			OMNIFORCE_CORE_TRACE("\tCurrently allocated: {0}", Utils::FormatAllocationSize(m_Statistics.currently_allocated));
+
 		}
 		return allocation;
 	}
@@ -107,10 +112,12 @@ namespace Omni {
 		VmaAllocationInfo allocation_info;
 
 		VK_CHECK_RESULT(vmaCreateImage(m_Allocator, create_info, &allocation_create_info, image, &allocation, &allocation_info));
+
 		m_Statistics.allocated += allocation_info.size;
 		m_Statistics.currently_allocated += allocation_info.size;
+		m_Statistics.num_active_images++;
 
-		if (OMNIFORCE_TRACE_DEVICE_ALLOCATIONS) {
+		if (s_TraceAllocation.Get()) {
 			OMNIFORCE_CORE_TRACE("Allocating device image:");
 			OMNIFORCE_CORE_TRACE("\tAllocated size: {0}", Utils::FormatAllocationSize(allocation_info.size));
 			OMNIFORCE_CORE_TRACE("\tCurrently allocated: {0}", Utils::FormatAllocationSize(m_Statistics.currently_allocated));
@@ -128,8 +135,9 @@ namespace Omni {
 
 		m_Statistics.freed += allocation_info.size;
 		m_Statistics.currently_allocated -= allocation_info.size;
+		m_Statistics.num_active_buffers--;
 
-		if (OMNIFORCE_TRACE_DEVICE_ALLOCATIONS) {
+		if (s_TraceAllocation.Get()) {
 			OMNIFORCE_CORE_TRACE("Destroying device buffer:");
 			OMNIFORCE_CORE_TRACE("\tFreed memory: {0}", Utils::FormatAllocationSize(allocation_info.size));
 			OMNIFORCE_CORE_TRACE("\tCurrently allocated: {0}", Utils::FormatAllocationSize(m_Statistics.currently_allocated));
@@ -146,8 +154,9 @@ namespace Omni {
 
 		m_Statistics.freed += allocation_info.size;
 		m_Statistics.currently_allocated -= allocation_info.size;
+		m_Statistics.num_active_images--;
 
-		if (OMNIFORCE_TRACE_DEVICE_ALLOCATIONS) {
+		if (s_TraceAllocation.Get()) {
 			OMNIFORCE_CORE_TRACE("Destroying device image:");
 			OMNIFORCE_CORE_TRACE("\tFreed memory: {0}", Utils::FormatAllocationSize(allocation_info.size));
 			OMNIFORCE_CORE_TRACE("\tCurrently allocated: {0}", Utils::FormatAllocationSize(m_Statistics.currently_allocated));
@@ -167,6 +176,11 @@ namespace Omni {
 	{
 		std::lock_guard lock(m_Mutex);
 		vmaUnmapMemory(m_Allocator, allocation);
+	}
+
+	void VulkanMemoryAllocator::SetAllocationName(VmaAllocation allocation, const std::string& name)
+	{
+		vmaSetAllocationName(m_Allocator, allocation, name.c_str());
 	}
 
 }

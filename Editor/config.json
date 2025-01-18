@@ -8,6 +8,9 @@
     "Core": {
 
         "ForceRecompileShaders": true,
-        "Headless": false
+        "Headless": false,
+        "Log": {
+            "TraceDeviceAllocations": false
+        }
     }
 }

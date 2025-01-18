@@ -1,6 +1,7 @@
 #include <Foundation/Common.h>
 #include <Platform/Vulkan/VulkanDescriptorSet.h>
 
+#include <Core/RuntimeExecutionContext.h>
 #include <Platform/Vulkan/VulkanGraphicsContext.h>
 #include <Platform/Vulkan/VulkanRenderer.h>
 #include <Platform/Vulkan/VulkanImage.h>
@@ -72,6 +73,8 @@ namespace Omni {
 
 		VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device->Raw(), &layout_create_info, nullptr, &m_Layout));
 
+		// NOTE: implement freeing of descriptor sets
+		// Maybe not needed since everything is bindless
 		std::vector<VkDescriptorSet> set = VulkanRenderer::AllocateDescriptorSets(m_Layout, 1);
 		m_DescriptorSet = set[0];
 
@@ -79,16 +82,16 @@ namespace Omni {
 
 	VulkanDescriptorSet::~VulkanDescriptorSet()
 	{
-		auto device = VulkanGraphicsContext::Get()->GetDevice();
-		vkDestroyDescriptorSetLayout(device->Raw(), m_Layout, nullptr);
-		VulkanRenderer::FreeDescriptorSets({ m_DescriptorSet });
-	}
+		auto layout = m_Layout;
+		auto device = VulkanGraphicsContext::Get()->GetDevice()->Raw();
+		auto set = m_DescriptorSet;
 
-	void VulkanDescriptorSet::Destroy()
-	{
-		auto device = VulkanGraphicsContext::Get()->GetDevice();
-		VulkanRenderer::FreeDescriptorSets({ m_DescriptorSet });
-		vkDestroyDescriptorSetLayout(device->Raw(), m_Layout, nullptr);
+		RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueObjectDeletion(
+			[layout, device, set]() {
+				vkDestroyDescriptorSetLayout(device, layout, nullptr);
+				VulkanRenderer::FreeDescriptorSets({ set });
+			}
+		);
 	}
 
 	void VulkanDescriptorSet::Write(uint16 binding, uint16 array_element, Ref<Image> image, Ref<ImageSampler> sampler)

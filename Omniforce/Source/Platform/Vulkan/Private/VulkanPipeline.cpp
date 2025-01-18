@@ -94,10 +94,14 @@ namespace Omni {
 
 	VulkanPipeline::~VulkanPipeline()
 	{
+		auto device = VulkanGraphicsContext::Get()->GetDevice()->Raw();
+		auto pipeline = m_Pipeline;
+		auto layout = m_PipelineLayout;
+
 		RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueObjectDeletion(
-			[vk_device = VulkanGraphicsContext::Get()->GetDevice()->Raw(), vk_pipeline = m_Pipeline, vk_layout = m_PipelineLayout]() {
-				vkDestroyPipelineLayout(vk_device, vk_layout, nullptr);
-				vkDestroyPipeline(vk_device, vk_pipeline, nullptr);
+			[device, pipeline, layout]() mutable {
+				vkDestroyPipelineLayout(device, layout, nullptr);
+				vkDestroyPipeline(device, pipeline, nullptr);
 			}
 		);
 	}

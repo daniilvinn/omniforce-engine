@@ -4,9 +4,9 @@
 	#include <Windows.h>
 #endif
 
-extern Omni::Subsystem* ConstructRootSystem();
-
 using namespace Omni;
+
+extern Ptr<Subsystem> ConstructRootSystem();
 
 bool g_EngineRunning;
 
@@ -40,4 +40,6 @@ int main()
 
 		g_EngineRunning = false;
 	}
+
+	EngineConfig::Save();
 }

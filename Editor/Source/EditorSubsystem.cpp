@@ -302,10 +302,10 @@ public:
 	{
 		m_EditorScene = new Scene(SceneType::SCENE_TYPE_3D);
 
-		m_HierarchyPanel = new SceneHierarchyPanel(m_EditorScene);
-		m_PropertiesPanel = new PropertiesPanel(m_EditorScene);
-		m_AssetsPanel = new ContentBrowser(m_EditorScene);
-		m_LogsPanel = new LogsPanel(m_EditorScene);
+		m_HierarchyPanel = CreatePtr<SceneHierarchyPanel>(&g_PersistentAllocator, m_EditorScene);
+		m_PropertiesPanel = CreatePtr<PropertiesPanel>(&g_PersistentAllocator, m_EditorScene);
+		m_AssetsPanel = CreatePtr<ContentBrowser>(&g_PersistentAllocator, m_EditorScene);
+		m_LogsPanel = CreatePtr<LogsPanel>(&g_PersistentAllocator, m_EditorScene);
 
 		m_ProjectPath = "";
 
@@ -322,8 +322,7 @@ public:
 
 	void Destroy() override
 	{
-		Renderer::WaitDevice();
-		m_EditorScene->Destroy();
+		delete m_EditorScene;
 	}
 
 	void OnEvent(Event* e) override
@@ -551,10 +550,10 @@ public:
 	bool m_VisualizeCullBounds = false;
 	bool m_SceneDebugViewEnabled = false;
 
-	SceneHierarchyPanel* m_HierarchyPanel;
-	PropertiesPanel* m_PropertiesPanel;
-	ContentBrowser* m_AssetsPanel;
-	LogsPanel* m_LogsPanel;
+	Ptr<SceneHierarchyPanel> m_HierarchyPanel;
+	Ptr<PropertiesPanel> m_PropertiesPanel;
+	Ptr<ContentBrowser> m_AssetsPanel;
+	Ptr<LogsPanel> m_LogsPanel;
 
 	std::filesystem::path m_ProjectPath;
 	std::string m_ProjectFilename;
@@ -564,7 +563,7 @@ public:
 
 };
 
-Subsystem* ConstructRootSystem()
+Ptr<Subsystem> ConstructRootSystem()
 {
-	return new EditorSubsystem;
+	return CreatePtr<EditorSubsystem>(&g_PersistentAllocator);
 }

@@ -65,7 +65,7 @@ namespace Omni {
 
 		static VkDescriptorPool s_DescriptorPool;
 
-		std::shared_mutex m_Mutex;
+		inline static std::shared_mutex m_Mutex;
 	};
 
 }

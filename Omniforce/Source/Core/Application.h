@@ -23,7 +23,7 @@ namespace Omni {
 
 		struct Options 
 		{
-			Subsystem* root_system;
+			Ptr<Subsystem> root_system;
 			BitMask flags;
 		};
 
@@ -51,7 +51,7 @@ namespace Omni {
 		static Application* s_Instance;
 		bool m_Running;
 
-		Subsystem* m_RootSystem;
+		Ptr<Subsystem> m_RootSystem;
 		Ptr<WindowSystem> m_WindowSystem;
 		ImGuiRenderer* m_ImGuiRenderer;
 

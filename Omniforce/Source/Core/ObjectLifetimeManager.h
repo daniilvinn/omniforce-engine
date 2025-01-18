@@ -50,7 +50,7 @@ namespace Omni {
 				m_CoreObjectDeletionQueue.Pop();
 			}
 
-			m_CoreObjectQueueExecuted = true;
+			OMNI_DEBUG_ONLY_CODE(m_CoreObjectQueueExecuted = true);
 		}
 
 		// Adds an object to the deletion queue. Queue will be executed after 3 frames in async mode.
@@ -106,9 +106,7 @@ namespace Omni {
 		// Deletion queues
 		StaticArray<Stack<std::function<void()>>, NUM_DELETION_QUEUES> m_DeletionQueues;
 
-#ifdef OMNIFORCE_DEBUG
-		bool m_CoreObjectQueueExecuted = false;
-#endif
+		OMNI_DEBUG_ONLY_FIELD(bool m_CoreObjectQueueExecuted = false);
 
 	};
 

@@ -31,7 +31,7 @@ namespace Omni
 		RuntimeExecutionContext::Init();
 
 		s_Instance = this;
-		m_RootSystem = options.root_system;
+		m_RootSystem = std::move(options.root_system);
 
 		m_WindowSystem = std::move(WindowSystem::Init());
 
@@ -87,7 +87,7 @@ namespace Omni
 			PostFrame();
 		}
 		OMNIFORCE_CORE_INFO("Exiting engine loop");
-		m_RootSystem->Destroy();
+		m_RootSystem.ForceRelease();
 	}
 
 	void Application::Destroy()

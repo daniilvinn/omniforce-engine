@@ -230,8 +230,8 @@ namespace Omni {
 
 	void VulkanRenderer::FreeDescriptorSets(std::vector<VkDescriptorSet> sets)
 	{
+		std::lock_guard lock(m_Mutex);
 		auto device = VulkanGraphicsContext::Get()->GetDevice();
-
 		VK_CHECK_RESULT(vkFreeDescriptorSets(device->Raw(), s_DescriptorPool, sets.size(), sets.data()));
 	}
 

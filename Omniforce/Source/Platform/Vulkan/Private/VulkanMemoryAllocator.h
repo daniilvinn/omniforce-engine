@@ -12,9 +12,19 @@ namespace Omni {
 
 	struct VulkanAllocatorStatistics
 	{
+		VulkanAllocatorStatistics()
+			: allocated(0)
+			, freed(0)
+			, currently_allocated(0)
+			, num_active_images(0)
+			, num_active_buffers(0)
+		{}
+
 		uint64 allocated;
 		uint64 freed;
 		uint64 currently_allocated;
+		uint64 num_active_images;
+		uint64 num_active_buffers;
 	};
 
 	class VulkanMemoryAllocator {
@@ -34,6 +44,7 @@ namespace Omni {
 		void UnmapMemory(VmaAllocation allocation);
 
 		VulkanAllocatorStatistics GetStats() const { return m_Statistics; }
+		void SetAllocationName(VmaAllocation allocation, const std::string& name);
 
 	private:
 		VulkanMemoryAllocator();

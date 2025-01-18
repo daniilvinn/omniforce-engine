@@ -50,6 +50,7 @@ namespace Omni {
 			view_name_info.pObjectName = fmt::format("{} view", spec.debug_name.c_str()).c_str();
 
 			vkSetDebugUtilsObjectNameEXT(VulkanGraphicsContext::Get()->GetDevice()->Raw(), &view_name_info);
+			VulkanMemoryAllocator::Get()->SetAllocationName(m_Allocation, m_Specification.debug_name);
 		);
 		
 	}
@@ -80,13 +81,13 @@ namespace Omni {
 		auto view = m_ImageView;
 		auto allocation = m_Allocation;
 		auto image = m_Image;
+		auto device = VulkanGraphicsContext::Get()->GetDevice()->Raw();
 
 		RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueObjectDeletion(
-			[view, allocation, image]() {
+			[view, allocation, image, device]() {
 				auto allocator = VulkanMemoryAllocator::Get();
-				auto device = VulkanGraphicsContext::Get()->GetDevice();
 
-				vkDestroyImageView(device->Raw(), view, nullptr);
+				vkDestroyImageView(device, view, nullptr);
 				allocator->DestroyImage(image, allocation);
 			}
 		);
@@ -473,10 +474,10 @@ namespace Omni {
 	VulkanImageSampler::~VulkanImageSampler()
 	{
 		auto sampler = m_Sampler;
+		auto device = VulkanGraphicsContext::Get()->GetDevice()->Raw();
 		RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueObjectDeletion(
-			[sampler]() {
-				auto device = VulkanGraphicsContext::Get()->GetDevice();
-				vkDestroySampler(device->Raw(), sampler, nullptr);
+			[sampler, device]() {
+				vkDestroySampler(device, sampler, nullptr);
 			}
 		);
 		m_Sampler = VK_NULL_HANDLE;

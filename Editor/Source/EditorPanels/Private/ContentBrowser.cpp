@@ -50,6 +50,7 @@ namespace Omni {
 			spec.mip_levels = 1;
 			spec.pixels = std::move(data);
 			spec.mip_levels = 1;
+			OMNI_DEBUG_ONLY_CODE(spec.debug_name = fmt::format("Content browser {} icon", entry.path().filename().string()));
 
 			Ref<Image> image = Image::Create(&g_PersistentAllocator, spec);
 

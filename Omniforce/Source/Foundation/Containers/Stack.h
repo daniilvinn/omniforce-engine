@@ -136,7 +136,15 @@ namespace Omni {
 			MemoryAllocation new_allocation = m_Allocator->AllocateBase(new_size * sizeof(T));
 
 			if (m_Allocation.IsValid()) {
-				memcpy(new_allocation.Memory, m_Allocation.Memory, std::min(new_size, m_Size) * sizeof(T));
+				T* typed_array = (T*)m_Allocation.Memory;
+				T* new_typed_array = (T*)new_allocation.Memory;
+
+				for (uint64 i = 0; i < m_Size; i++) {
+					// NOTE: May be suboptimal, needs investigation
+					memset(new_typed_array + i, 0, sizeof(T));
+					new_typed_array[i] = std::move(typed_array[i]);
+				}
+
 				m_Allocator->FreeBase(m_Allocation);
 			}
 

@@ -12,8 +12,6 @@ namespace Omni {
 		VulkanDescriptorSet(const DescriptorSetSpecification& spec);
 		~VulkanDescriptorSet();
 
-		void Destroy() override;
-
 		VkDescriptorSet Raw() const { return m_DescriptorSet; }
 		VkDescriptorSetLayout RawLayout() const { return m_Layout; }
 
