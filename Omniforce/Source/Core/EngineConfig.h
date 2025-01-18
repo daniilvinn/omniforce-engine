@@ -36,8 +36,6 @@ namespace Omni {
 		}
 
 		static void Save() {
-			return;
-
 			std::ofstream out_stream("Config.json");
 
 			if (!out_stream.is_open()) {
@@ -45,7 +43,7 @@ namespace Omni {
 			}
 
 			try {
-				out_stream << m_Config->dump();
+				out_stream << m_Config->dump(4);
 			}
 			catch (std::exception* e) {
 				OMNIFORCE_CORE_ERROR("Failed to save engine config; error: {}", e->what());
