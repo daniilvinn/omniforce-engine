@@ -17,8 +17,6 @@
 
 namespace Omni {
 
-	VkDescriptorPool VulkanRenderer::s_DescriptorPool = VK_NULL_HANDLE;
-
 	VulkanRenderer::VulkanRenderer(const RendererConfig& config)
 		: m_Config(config)
 	{

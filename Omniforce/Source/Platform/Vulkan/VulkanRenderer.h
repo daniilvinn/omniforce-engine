@@ -53,6 +53,14 @@ namespace Omni {
 		static std::vector<VkDescriptorSet> AllocateDescriptorSets(VkDescriptorSetLayout layout, uint32 count);
 		static void FreeDescriptorSets(std::vector<VkDescriptorSet> sets);
 
+		static VkDescriptorPool GetGlobalDescriptorPool() {
+			return s_DescriptorPool;
+		}
+
+		static std::shared_mutex& GetMutex() {
+			return m_Mutex;
+		}
+
 	private:
 		RendererConfig m_Config;
 
@@ -63,7 +71,7 @@ namespace Omni {
 		std::vector<Ref<VulkanDeviceCmdBuffer>> m_CmdBuffers;
 		Ref<VulkanDeviceCmdBuffer> m_CurrentCmdBuffer;
 
-		static VkDescriptorPool s_DescriptorPool;
+		inline static VkDescriptorPool s_DescriptorPool = VK_NULL_HANDLE;
 
 		inline static std::shared_mutex m_Mutex;
 	};

@@ -85,11 +85,13 @@ namespace Omni {
 		auto layout = m_Layout;
 		auto device = VulkanGraphicsContext::Get()->GetDevice()->Raw();
 		auto set = m_DescriptorSet;
+		auto pool = VulkanRenderer::GetGlobalDescriptorPool();
 
 		RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueObjectDeletion(
-			[layout, device, set]() {
+			[layout, device, set, pool]() {
+				std::lock_guard lock(VulkanRenderer::GetMutex());
 				vkDestroyDescriptorSetLayout(device, layout, nullptr);
-				VulkanRenderer::FreeDescriptorSets({ set });
+				vkFreeDescriptorSets(device, pool, 1, &set);
 			}
 		);
 	}
