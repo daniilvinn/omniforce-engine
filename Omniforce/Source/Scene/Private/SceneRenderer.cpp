@@ -139,7 +139,7 @@ namespace Omni {
 			image_spec.type = ImageType::TYPE_2D;
 			image_spec.mip_levels = 1;
 			image_spec.array_layers = 1;
-			image_spec.debug_name = "Dummy white texture";
+			OMNI_DEBUG_ONLY_CODE(image_spec.debug_name = "Dummy white texture");
 
 			m_DummyWhiteTexture = Image::Create(&g_PersistentAllocator, image_spec, 0);
 			AcquireResourceIndex(m_DummyWhiteTexture, SamplerFilteringMode::LINEAR);
@@ -349,11 +349,6 @@ namespace Omni {
 	SceneRenderer::~SceneRenderer()
 	{
 		int x = 5;
-	}
-
-	void SceneRenderer::Destroy()
-	{
-		m_MeshResourcesBuffer.Destroy();
 	}
 
 	void SceneRenderer::BeginScene(Ref<Camera> camera)

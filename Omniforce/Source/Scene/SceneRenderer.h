@@ -45,8 +45,6 @@ namespace Omni {
 		SceneRenderer(const SceneRendererSpecification& spec);
 		~SceneRenderer();
 
-		void Destroy();
-
 		void BeginScene(Ref<Camera> camera);
 		void EndScene();
 

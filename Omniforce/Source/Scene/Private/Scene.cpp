@@ -74,7 +74,7 @@ namespace Omni {
 
 	void Scene::Destroy()
 	{
-		m_Renderer->Destroy();
+		
 	}
 
 	void Scene::OnUpdate(float32 step)
