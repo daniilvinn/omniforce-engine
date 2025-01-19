@@ -1,6 +1,0 @@
-#ifndef CONSTANTS_GLSLH
-#define CONSTANTS_GLSLH
-
-const float PI = 3.14159265359;
-
-#endif

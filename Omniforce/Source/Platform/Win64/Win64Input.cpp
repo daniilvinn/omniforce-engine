@@ -1,0 +1,57 @@
+#include <Foundation/Common.h>
+#include <Platform/Win64/Win64Input.h>
+
+#include <Core/Application.h>
+
+#include <GLFW/glfw3.h>
+
+namespace Omni {
+
+	bool Win64Input::Impl_KeyPressed(KeyCode code, const std::string& window_tag) const
+	{
+		int32 status = glfwGetKey((GLFWwindow*)Application::Get()->GetWindow(window_tag)->Raw(), (int32)code);
+		return status == GLFW_PRESS || status == GLFW_REPEAT ? true : false;
+	}
+
+	bool Win64Input::Impl_ButtonPressed(ButtonCode code, const std::string& window_tag) const
+	{
+		int32 status = glfwGetMouseButton((GLFWwindow*)Application::Get()->GetWindow(window_tag)->Raw(), (int32)code);
+		return status == GLFW_PRESS ? true : false;
+	}
+
+	float32 Win64Input::Impl_MouseScrolledX(const std::string& window_tag) const
+	{
+		// Method not implemented.
+		assert(false);
+		return 0.0f;
+	}
+
+	float32 Win64Input::Impl_MouseScrolledY(const std::string& window_tag) const
+	{
+		OMNIFORCE_ASSERT_TAGGED(false, "Method not implemented");
+		return 0.0f;
+	}
+
+	ivec2 Win64Input::Impl_MousePosition(const std::string& window_tag) const
+	{
+		glm::f64vec2 pos;
+		glfwGetCursorPos((GLFWwindow*)Application::Get()->GetWindow(window_tag)->Raw(), &pos.x, &pos.y);
+		return { (int32)pos.x, (int32)pos.y };
+	}
+
+	void Win64Input::Impl_LockAndHideMouse(const std::string& window_tag)
+	{
+		glfwSetInputMode((GLFWwindow*)Application::Get()->GetWindow(window_tag)->Raw(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	}
+
+	void Win64Input::Impl_ReleaseAndShowMouse(const std::string& window_tag)
+	{
+		glfwSetInputMode((GLFWwindow*)Application::Get()->GetWindow(window_tag)->Raw(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+	}
+
+	float64 Win64Input::Impl_Time()
+	{
+		return glfwGetTime();
+	}
+
+}
