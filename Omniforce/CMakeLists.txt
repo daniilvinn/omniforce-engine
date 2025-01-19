@@ -56,12 +56,14 @@ target_include_directories(${ENGINE_TARGET}
         "ThirdParty/libMETIS/include"
         "ThirdParty/GLFW/include"
         "ThirdParty/VulkanMemoryAllocator/include"
+        "ThirdParty/slang/include"
 )
 target_link_directories(${ENGINE_TARGET} PUBLIC 
     "${Vulkan_SDK}\\Lib" 
     "${Vulkan_SDK}\\Bin" 
     "ThirdParty/mono/lib" 
     "ThirdParty/NVAftermath/lib/x64"
+    "ThirdParty/slang"
 )
 target_compile_definitions(${ENGINE_TARGET} PUBLIC 
     OMNIFORCE_STATIC 
@@ -108,6 +110,7 @@ target_link_libraries(
         nv_libdeflate
         meshoptimizer
         fastgltf
+        slang.lib
 )
 
 target_compile_options(

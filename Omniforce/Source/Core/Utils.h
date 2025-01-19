@@ -155,5 +155,23 @@ namespace Omni {
 			return sphere;
 		}
 
+		inline Array<std::string> SplitString(IAllocator* allocator, const std::string& str, char separator) {
+			Array<std::string> result(allocator);
+			size_t start = 0;
+			size_t pos = str.find(separator);
+
+			while (pos != std::string::npos) {
+				result.Add(str.substr(start, pos - start)); 
+				start = pos + 1; 
+				pos = str.find(separator, start); 
+			}
+
+			if (start < str.size()) {
+				result.Add(str.substr(start));
+			}
+
+			return result;
+		}
+
 	}
 }

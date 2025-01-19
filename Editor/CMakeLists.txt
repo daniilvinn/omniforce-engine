@@ -15,6 +15,8 @@ add_executable(${EDITOR_TARGET} ${EDITOR_FILES})
 target_link_libraries(${EDITOR_TARGET} PUBLIC OmniforceEngine ${OMNI_IMGUI_TARGET} OpenMP::OpenMP_CXX)
 target_include_directories(${EDITOR_TARGET} SYSTEM PUBLIC ${IMGUI_INCLUDE_PATH} PUBLIC "Source")
 
+add_dependencies(${EDITOR_TARGET} OmniforceEngine)
+
 set_target_properties(${EDITOR_TARGET} PROPERTIES
     VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/Editor"
 )
@@ -29,6 +31,10 @@ set_target_properties(${EDITOR_TARGET} PROPERTIES
 )
 endif()
 
+# Setup target, copy dependencies
+SetupTarget(${EDITOR_TARGET})
+
+# Install and setup IDE filters
 omni_set_project_ide_folder(${EDITOR_TARGET} ${CMAKE_CURRENT_SOURCE_DIR})
 
 install(TARGETS Editor DESTINATION "${CMAKE_SOURCE_DIR}/Install")

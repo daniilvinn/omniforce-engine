@@ -78,7 +78,7 @@ namespace Omni {
 
 		Array(Array<T>&& other) noexcept {
 			if (this == &other) {
-				return *this;
+				return;
 			}
 
 			if (m_Allocation.IsValid()) {
