@@ -1,0 +1,43 @@
+#ifndef LIGHTS_GLSLH
+#define LIGHTS_GLSLH
+
+#ifdef __OMNI_COMPILE_SHADER_FOR_GLSL
+	#extension GL_EXT_buffer_reference2   : require
+	#extension GL_EXT_scalar_block_layout : require
+#endif
+
+#ifdef __OMNI_COMPILE_SHADER_FOR_CXX
+
+#include <glm/glm.hpp>
+
+namespace Omni::GLSL {
+struct PointLight {
+	using vec3 = glm::vec3;
+#else
+	layout(buffer_reference, scalar, buffer_reference_align = 4) buffer PointLight {
+#endif // defined __OMNI_COMPILE_SHADER_FOR_CXX
+
+	vec3 position;
+	vec3 color;
+	float intensity;
+	float min_radius;
+	float radius;
+};
+
+#ifdef __OMNI_COMPILE_SHADER_FOR_CXX
+}
+#endif
+
+#ifdef __OMNI_COMPILE_SHADER_FOR_GLSL
+	float ComputePointLightAttenuation(vec3 world_position, PointLight point_light) {
+		// If fragment is within min_radius sphere, no attenuation is applied. 
+		// If fragment is within [min_radius, radius) range, attenuation is applied. 
+		// If fragment is outside of `radius` sphere, no lighting is applied.
+
+		float distance = length(point_light.position - world_position);
+		float attenuation = clamp(1.0 - (distance - point_light.min_radius) / (point_light.radius - point_light.min_radius), 0.0, 1.0);
+		return attenuation * attenuation;
+	}
+#endif
+
+#endif // !defined LIGHTS_GLSLH

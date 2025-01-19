@@ -1,54 +1,57 @@
-[submodule "Omniforce/vendor/Jolt"]
-	path = Omniforce/vendor/Jolt
+[submodule "Omniforce/ThirdParty/Jolt"]
+	path = Omniforce/ThirdParty/Jolt
 	url = https://github.com/jrouwe/JoltPhysics.git
-[submodule "Omniforce/vendor/ImGuizmo"]
-	path = Omniforce/vendor/ImGuizmo
+[submodule "Omniforce/ThirdParty/ImGuizmo"]
+	path = Omniforce/ThirdParty/ImGuizmo
 	url = https://github.com/CedricGuillemet/ImGuizmo.git
-[submodule "Omniforce/vendor/Assimp"]
-	path = Omniforce/vendor/Assimp
+[submodule "Omniforce/ThirdParty/Assimp"]
+	path = Omniforce/ThirdParty/Assimp
 	url = https://github.com/assimp/assimp.git
-[submodule "Omniforce/vendor/nv-libdeflate"]
-	path = Omniforce/vendor/nv-libdeflate
+[submodule "Omniforce/ThirdParty/nv-libdeflate"]
+	path = Omniforce/ThirdParty/nv-libdeflate
 	url = https://github.com/daniilvinn/libdeflate.git
-[submodule "Omniforce/vendor/meshoptimizer"]
-	path = Omniforce/vendor/meshoptimizer
+[submodule "Omniforce/ThirdParty/meshoptimizer"]
+	path = Omniforce/ThirdParty/meshoptimizer
 	url = https://github.com/zeux/meshoptimizer.git
-[submodule "Omniforce/vendor/fastgltf"]
-	path = Omniforce/vendor/fastgltf
+[submodule "Omniforce/ThirdParty/fastgltf"]
+	path = Omniforce/ThirdParty/fastgltf
 	url = https://github.com/spnda/fastgltf.git
-[submodule "Omniforce/vendor/volk"]
-	path = Omniforce/vendor/volk
+[submodule "Omniforce/ThirdParty/volk"]
+	path = Omniforce/ThirdParty/volk
 	url = https://github.com/zeux/volk.git
-[submodule "Omniforce/vendor/imgui"]
-	path = Omniforce/vendor/imgui
+[submodule "Omniforce/ThirdParty/imgui"]
+	path = Omniforce/ThirdParty/imgui
 	url = https://github.com/ocornut/imgui.git
-[submodule "Omniforce/vendor/taskflow"]
-	path = Omniforce/vendor/taskflow
+[submodule "Omniforce/ThirdParty/taskflow"]
+	path = Omniforce/ThirdParty/taskflow
 	url = https://github.com/taskflow/taskflow.git
-[submodule "Omniforce/vendor/glm"]
-	path = Omniforce/vendor/glm
+[submodule "Omniforce/ThirdParty/glm"]
+	path = Omniforce/ThirdParty/glm
 	url = https://github.com/g-truc/glm.git
-[submodule "Omniforce/vendor/miniball"]
-	path = Omniforce/vendor/miniball
+[submodule "Omniforce/ThirdParty/miniball"]
+	path = Omniforce/ThirdParty/miniball
 	url = https://github.com/daniilvinn/miniball.git
-[submodule "Omniforce/vendor/libMETIS"]
-	path = Omniforce/vendor/libMETIS
+[submodule "Omniforce/ThirdParty/libMETIS"]
+	path = Omniforce/ThirdParty/libMETIS
 	url = https://github.com/daniilvinn/METIS.git
-[submodule "Omniforce/vendor/spdlog"]
-	path = Omniforce/vendor/spdlog
+[submodule "Omniforce/ThirdParty/spdlog"]
+	path = Omniforce/ThirdParty/spdlog
 	url = https://github.com/gabime/spdlog.git
-[submodule "Omniforce/vendor/GLFW"]
-	path = Omniforce/vendor/GLFW
+[submodule "Omniforce/ThirdParty/GLFW"]
+	path = Omniforce/ThirdParty/GLFW
 	url = https://github.com/glfw/glfw.git
-[submodule "Omniforce/vendor/EnTT"]
-	path = Omniforce/vendor/EnTT
+[submodule "Omniforce/ThirdParty/EnTT"]
+	path = Omniforce/ThirdParty/EnTT
 	url = https://github.com/skypjack/entt.git
-[submodule "Omniforce/vendor/nlohmann-json"]
-	path = Omniforce/vendor/nlohmann-json
+[submodule "Omniforce/ThirdParty/nlohmann-json"]
+	path = Omniforce/ThirdParty/nlohmann-json
 	url = https://github.com/nlohmann/json.git
-[submodule "Omniforce/vendor/robin-hood-hashing"]
-	path = Omniforce/vendor/robin-hood-hashing
+[submodule "Omniforce/ThirdParty/robin-hood-hashing"]
+	path = Omniforce/ThirdParty/robin-hood-hashing
 	url = https://github.com/martinus/robin-hood-hashing.git
-[submodule "Omniforce/vendor/VulkanMemoryAllocator"]
-	path = Omniforce/vendor/VulkanMemoryAllocator
+[submodule "Omniforce/ThirdParty/VulkanMemoryAllocator"]
+	path = Omniforce/ThirdParty/VulkanMemoryAllocator
 	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+[submodule "Omniforce/ThirdParty/miniaudio"]
+	path = Omniforce/ThirdParty/miniaudio
+	url = https://github.com/mackron/miniaudio.git

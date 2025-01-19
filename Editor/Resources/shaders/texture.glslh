@@ -1,9 +1,0 @@
-#ifndef TEXTURE_GLSLH
-#define TEXTURE_GLSLH
-
-struct Texture {
-	uint texture_index;
-	uint uv_channel_index;
-};
-
-#endif

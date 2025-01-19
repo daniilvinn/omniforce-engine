@@ -9,12 +9,12 @@ if(MSVC)
 	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 endif()
 
-set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/installation")
+set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/Install")
 
 find_package(OpenMP REQUIRED)
 
 # Include sub-projects.
-add_subdirectory ("Omniforce/vendor")
+add_subdirectory ("Omniforce/ThirdParty")
 
 add_subdirectory (Omniforce)
 add_subdirectory (Sandbox)

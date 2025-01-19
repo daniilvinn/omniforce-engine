@@ -2,5 +2,7 @@ out/
 .vs/
 bin/
 obj/
-build/
-installation
+Build/
+Install/
+Editor/Resources/Shaders
+Sandbox/Resources

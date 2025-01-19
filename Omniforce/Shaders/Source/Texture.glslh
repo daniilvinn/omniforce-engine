@@ -1,0 +1,22 @@
+#ifndef TEXTURE_GLSLH
+#define TEXTURE_GLSLH
+
+#ifdef __cplusplus
+namespace ShaderData {
+#endif
+
+struct Texture {
+
+#ifdef __cplusplus
+	using uint = uint32;
+#endif
+
+	uint texture_index;
+	uint uv_channel_index;
+};
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

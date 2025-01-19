@@ -1,0 +1,10 @@
+#ifndef PIPELINE_LOCAL_GLSLH
+#define PIPELINE_LOCAL_GLSLH
+
+#extension GL_EXT_shader_explicit_arithmetic_types_int64	: require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16	: require
+
+#define __OMNI_PIPELINE_LOCAL_HASH_32 uint(__OMNI_PIPELINE_LOCAL_HASH)
+#define __OMNI_PIPELINE_LOCAL_HASH_16 uint16_t(uint16_t(__OMNI_PIPELINE_LOCAL_HASH_32) ^ uint16_t(__OMNI_PIPELINE_LOCAL_HASH_32 >> 32))
+
+#endif

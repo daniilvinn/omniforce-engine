@@ -1,5 +1,5 @@
 cd ..
-mkdir build
-cd build
+mkdir Build
+cd Build
 cmake ..
 PAUSE
