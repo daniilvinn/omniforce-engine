@@ -58,8 +58,7 @@ namespace Omni {
 			session_description.targetCount = 1;
 			session_description.defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_COLUMN_MAJOR;
 
-			Slang::ComPtr<slang::ISession> local_session;
-			slang_result = m_GlobalSession->createSession(session_description, local_session.writeRef());
+			slang_result = m_GlobalSession->createSession(session_description, m_LocalSession.writeRef());
 		}
 	}
 
@@ -198,7 +197,7 @@ namespace Omni {
 		return compilation_result;
 	}
 
-	bool ShaderCompiler::LoadModule(stdfs::path& path, const ShaderMacroTable& macros /*= {}*/)
+	bool ShaderCompiler::LoadModule(const stdfs::path& path, const ShaderMacroTable& macros /*= {}*/)
 	{
 		std::string path_string = path.string();
 
@@ -216,7 +215,7 @@ namespace Omni {
 		m_LoadedModules.emplace(path.stem().string().c_str(), slang_module);
 	}
 
-	ByteArray ShaderCompiler::GetEntryPointCode(IAllocator* allocator, std::string& entry_point_full_name)
+	ByteArray ShaderCompiler::GetEntryPointCode(IAllocator* allocator, const std::string& entry_point_full_name)
 	{
 		// Split entry point name;
 		// Entry point name must in this format: SWRaster.EntryScanline

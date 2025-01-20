@@ -39,8 +39,8 @@ namespace Omni {
 
 		ShaderCompilationResult Compile(std::string& source, const std::string& filename, const ShaderMacroTable& macros = {});
 
-		bool LoadModule(stdfs::path& path, const ShaderMacroTable& macros = {});
-		ByteArray GetEntryPointCode(IAllocator* allocator, std::string& entry_point_name);
+		bool LoadModule(const stdfs::path& path, const ShaderMacroTable& macros = {});
+		ByteArray GetEntryPointCode(IAllocator* allocator, const std::string& entry_point_name);
 
 	private:
 		bool ValidateSlangResult(SlangResult result, Slang::ComPtr<slang::IBlob>& diagnosticsBlob);

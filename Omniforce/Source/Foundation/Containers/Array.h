@@ -123,7 +123,7 @@ namespace Omni {
 			}
 
 			T* typed_array = m_Allocation.As<T>();
-			typed_array[m_Size] = value;
+			typed_array[m_Size] = std::move(value);
 
 			m_Size++;
 		}
@@ -264,6 +264,7 @@ namespace Omni {
 
 				m_Allocator->FreeBase(m_Allocation);
 			}
+			memset(new_allocation.Memory, 0, new_allocation.Size);
 			m_Allocation = new_allocation;
 		}
 
