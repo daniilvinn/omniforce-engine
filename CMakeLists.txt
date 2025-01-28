@@ -20,6 +20,7 @@ add_subdirectory (Omniforce)
 add_subdirectory (Sandbox)
 add_subdirectory (Editor)
 add_subdirectory (ScriptEngine)
+add_subdirectory ("Tools/MetaTool")
 
 if(MSVC)
 	set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${EDITOR_TARGET})
