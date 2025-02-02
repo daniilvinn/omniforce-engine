@@ -34,6 +34,8 @@ target_include_directories(${METATOOL_TARGET}
     SYSTEM PRIVATE
         "Source/"
         "${LLVM_ROOT}\\include"
+        "${CMAKE_SOURCE_DIR}/Omniforce/ThirdParty/nlohmann-json/single_include"
+        "${CMAKE_SOURCE_DIR}/Omniforce/ThirdParty/spdlog/include"
 )
 target_link_directories(${METATOOL_TARGET} PRIVATE 
     "${LLVM_ROOT}\\lib"
@@ -42,7 +44,7 @@ target_link_directories(${METATOOL_TARGET} PRIVATE
 get_target_property(ENGINE_INCLUDE_DIRS ${ENGINE_TARGET} INTERFACE_INCLUDE_DIRECTORIES)
 get_target_property(ENGINE_DEFINES ${ENGINE_TARGET} COMPILE_DEFINITIONS)
 
-set(CLANG_PARSER_ARGS "\"-x\", \"c++\", \"-std=c++23\", \"-Wno-everything\"")
+set(CLANG_PARSER_ARGS "\"-x\", \"c++\", \"-fsyntax-only\", \"-emit-ast\", \"-std=c++23\", \"-Wno-everything\", \"-DMETATOOL\"")
 
 foreach(INCLUDE_DIR ${ENGINE_INCLUDE_DIRS})
     string(REPLACE "\\" "\\\\" FORMATTED_INCLUDE_DIR ${INCLUDE_DIR})
@@ -58,7 +60,7 @@ string(JOIN ", " CLANG_PARSER_ARGS_STR ${CLANG_PARSER_ARGS})
 target_compile_definitions(${METATOOL_TARGET} PRIVATE 
     OMNIFORCE_STATIC
     NOMINMAX
-    "DUMMY_FILE_OUTPUT_DIR=\"${CMAKE_BINARY_DIR}/MetaToolGen\""
+    "METATOOL_WORKING_DIRECTORY=\"${CMAKE_BINARY_DIR}/MetaToolGen\""
     "$<$<CONFIG:Debug>:OMNIFORCE_DEBUG>"
     "$<$<CONFIG:Debug>:VMA_LEAK_LOG_FORMAT>"
     "$<$<CONFIG:RelWithDebInfo>:OMNIFORCE_RELWITHDEBINFO>"
@@ -71,6 +73,7 @@ target_link_libraries(
     ${METATOOL_TARGET}
     PRIVATE
         libclang.lib
+        OpenMP::OpenMP_CXX
 )
 
 target_compile_options(
@@ -81,5 +84,6 @@ target_compile_options(
 )
 
 set_property(TARGET ${METATOOL_TARGET} PROPERTY CXX_STANDARD 23)
+set_property(TARGET ${METATOOL_TARGET} PROPERTY FOLDER "MetaToolActions")
 
 omni_set_project_ide_folder(${METATOOL_TARGET} ${CMAKE_CURRENT_SOURCE_DIR})

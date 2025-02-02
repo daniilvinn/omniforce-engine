@@ -49,3 +49,9 @@
 #endif
 
 #define OMNI_DEBUG_ONLY_FIELD(field) OMNI_DEBUG_ONLY_CODE(field)
+
+#ifdef METATOOL
+#define META(...) __attribute__((annotate(#__VA_ARGS__)))
+#else
+#define META(...)
+#endif

@@ -181,22 +181,33 @@ else()
     message(FATAL_ERROR "This script is intended for Windows only.")
 endif()
 
+set(PARSE_TARGETS_FILE "${CMAKE_BINARY_DIR}/MetaToolGen/ParseTargets.txt")
+
+add_custom_target(
+    ClearParseTargets
+    COMMAND ${CMAKE_COMMAND} -E rm -f ${PARSE_TARGETS_FILE}
+    COMMAND ${CMAKE_COMMAND} -E touch ${PARSE_TARGETS_FILE}
+)
+
+add_custom_target(
+    SetupParseTargets
+    DEPENDS ClearParseTargets
+)
+
 set(GEN_OUT_FILES) 
 
 foreach(SOURCE_FILE ${ENGINE_SOURCES})
     get_filename_component(FILE_NAME_WITH_EXTENSION ${SOURCE_FILE} NAME)
-
-    set(GEN_FILE "${CMAKE_BINARY_DIR}/MetaToolGen/${FILE_NAME_WITH_EXTENSION}.gen")
+    set(GEN_FILE "${CMAKE_BINARY_DIR}/MetaToolGen/DummyOut/${FILE_NAME_WITH_EXTENSION}.gen")
 
     if(NOT GEN_FILE IN_LIST GEN_OUT_FILES)
         list(APPEND GEN_OUT_FILES ${GEN_FILE})
-
         add_custom_command(
             OUTPUT ${GEN_FILE}
             PRE_BUILD
-            COMMAND ${METATOOL_TARGET} ${SOURCE_FILE}
+            COMMAND ${CMAKE_COMMAND} -E echo ${SOURCE_FILE} >> ${PARSE_TARGETS_FILE}
+            COMMENT ""
             DEPENDS ${SOURCE_FILE}
-            COMMENT "Running MetaTool on ${SOURCE_FILE}"
             VERBATIM
         )
     endif()
@@ -204,7 +215,12 @@ endforeach()
 
 add_custom_target(
     MetaToolRunner ALL
-    DEPENDS ${GEN_OUT_FILES} ${CODEGEN_TARGET}
+    COMMAND ${METATOOL_TARGET}
+    DEPENDS ${GEN_OUT_FILES} ${CODEGEN_TARGET} SetupParseTargets
 )
 
 add_dependencies(${ENGINE_TARGET} MetaToolRunner)
+
+set_target_properties(ClearParseTargets PROPERTIES FOLDER "MetaToolActions")
+set_target_properties(SetupParseTargets PROPERTIES FOLDER "MetaToolActions")
+set_target_properties(MetaToolRunner PROPERTIES FOLDER "MetaToolActions")
