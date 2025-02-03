@@ -10,6 +10,13 @@
 
 #include <glm/glm.hpp>
 
+namespace glm {
+	using half  = uint16_t;
+	using hvec2 = glm::u16vec2;
+	using hvec3 = glm::u16vec3;
+	using hvec4 = glm::u16vec4;
+}
+
 namespace Omni {
 
 	typedef uint64_t uint64;

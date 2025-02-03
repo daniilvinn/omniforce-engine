@@ -69,6 +69,11 @@ namespace Omni {
 		// TU to ParsingResult map
 		std::unordered_map<std::string, ParsingResult> m_ParsingResult;
 
+		struct RunStatistics {
+			uint32_t targets_generated = 0;
+			uint32_t targets_skipped = 0;
+		} m_RunStatistics;
+
 	};
 
 }

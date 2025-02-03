@@ -207,6 +207,10 @@ namespace Omni {
 			Slang::ComPtr<slang::IBlob> diagnostics_blob;
 			slang_module = m_LocalSession->loadModule(path_string.c_str(), diagnostics_blob.writeRef());
 
+			Slang::ComPtr<SlangCompileRequest> req;
+
+			m_LocalSession->createCompileRequest(req.writeRef());
+
 			if (!slang_module) {
 				return ValidateSlangResult(-1, diagnostics_blob);
 			}

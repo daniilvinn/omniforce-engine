@@ -1,4 +1,4 @@
-#include <Foundation/Common.h>
+﻿#include <Foundation/Common.h>
 #include <Renderer/ShaderLibrary.h>
 
 #include <Renderer/ShaderCompiler.h>
@@ -7,6 +7,13 @@
 #include <Threading/JobSystem.h>
 
 namespace Omni {
+
+	struct META(ShaderExpose, Module = "CoreTypes") ShaderExposedTest {
+		glm::vec3 x;
+		glm::uvec2 test;
+		glm::half radius;
+		glm::hvec3 test2;
+	};
 
 	ShaderLibrary::ShaderLibrary()
 	{
@@ -17,6 +24,11 @@ namespace Omni {
 		m_GlobalMacros.push_back({ "__OMNI_MESH_SHADER_PREFERRED_WORK_GROUP_SIZE", std::to_string(Renderer::GetDeviceOptimalMeshWorkGroupSize()) });
 		m_GlobalMacros.push_back({ "__OMNI_COMPILE_SHADER_FOR_GLSL", "" });
 		m_GlobalMacros.shrink_to_fit();
+
+		// Test slang
+		ShaderCompiler compiler;
+		compiler.LoadModule("Resources/Shaders/Slang/Shared/Shader.slang");
+		ByteArray code = compiler.GetEntryPointCode(&g_TransientAllocator, "Shader.ComputeMain");
 	}
 
 	ShaderLibrary::~ShaderLibrary()

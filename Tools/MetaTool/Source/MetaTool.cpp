@@ -31,7 +31,7 @@ namespace Omni {
 			exit(0);
 		}
 		else {
-			std::cout << "Running " << m_ParseTargets.size() << " MetaTool action(s)" << std::endl;
+			std::cout << "MetaTool: running " << m_ParseTargets.size() << " action(s)" << std::endl;
 		}
 
 		std::filesystem::create_directory(m_WorkingDir / "DummyOut");
@@ -83,8 +83,8 @@ namespace Omni {
 	void MetaTool::TraverseAST()
 	{
 		for (auto& [path, TU] : m_TranslationUnits) {
+			std::string target_filename = std::filesystem::path(path).filename().string();
 			CXCursor root_cursor = clang_getTranslationUnitCursor(TU);
-
 			ParsingResult TU_parsing_result = {};
 
 			clang_visitChildren(root_cursor, [](CXCursor cursor, CXCursor parent, CXClientData client_data) {
@@ -99,32 +99,30 @@ namespace Omni {
 
 				if (clang_isAttribute(clang_getCursorKind(cursor))) {
 					ParsedType parsed_type = {};
-
 					parsed_type.type_name = clang_getCString(clang_getCursorSpelling(parent));
 
 					CXType type = clang_getCursorType(parent);
-
 					clang_Type_visitFields(type, [](CXCursor field_cursor, CXClientData field_client_data) {
 						ParsedType* field_output = (ParsedType*)field_client_data;
-
 						field_output->members.push_back({
 							clang_getCString(clang_getTypeSpelling(clang_getCursorType(field_cursor))),
 							clang_getCString(clang_getCursorSpelling(field_cursor))
 						});
-
 						return CXVisit_Continue;
 					}, &parsed_type);
 
 					std::string input = clang_getCString(clang_getCursorSpelling(cursor));
+					std::regex regex(R"(\s*([\w]+)\s*(?:=\s*\"([^\"]*)\")?)");
 
-					std::regex regular_expression("\\s*,\\s*|\\s+");
-
-					std::sregex_token_iterator iterator_begin(input.begin(), input.end(), regular_expression, -1);
-					std::sregex_token_iterator iterator_end;
+					std::sregex_iterator iterator_begin(input.begin(), input.end(), regex);
+					std::sregex_iterator iterator_end;
 
 					for (iterator_begin; iterator_begin != iterator_end; ++iterator_begin) {
 						MetaEntry meta_entry = {};
-						meta_entry.key = *iterator_begin;
+						meta_entry.key = (*iterator_begin)[1].str();
+						if ((*iterator_begin)[2].matched) {
+							meta_entry.values.push_back((*iterator_begin)[2].str());
+						}
 						parsed_type.meta.push_back(meta_entry);
 					}
 
@@ -132,24 +130,45 @@ namespace Omni {
 				}
 
 				return CXChildVisit_Recurse;
-			}, (void*)&TU_parsing_result);
+				}, (void*)&TU_parsing_result);
 
 			m_ParsingResult.emplace(path, TU_parsing_result);
 
 			for (auto& parsed_type : m_ParsingResult[path].types) {
 				m_GeneratedDataCache.emplace(path, json::object());
-
 				m_GeneratedDataCache[path].emplace(parsed_type.type_name, json::object());
-				json& parsed_type_node = m_GeneratedDataCache[path][parsed_type.type_name];
-				parsed_type_node.emplace("Meta", parsed_type.meta);
-				parsed_type_node.emplace("Types", json::object());
 
-				json& fields = parsed_type_node["Types"];
+				json& parsed_type_node = m_GeneratedDataCache[path][parsed_type.type_name];
+
+				parsed_type_node.emplace("Meta", json::object());
+				json& metadata_node = parsed_type_node["Meta"];
+
+				for (auto& meta_entry : parsed_type.meta) {
+					metadata_node.emplace(meta_entry.key, meta_entry.values);
+				}
+
+				parsed_type_node.emplace("Fields", json::object());
+				json& fields = parsed_type_node["Fields"];
 
 				for (auto& member : parsed_type.members) {
 					fields.emplace(member.name, member.type_name);
 				}
 			}
+
+			std::ifstream cache_stream(m_WorkingDir / "Cache" / fmt::format("{}.cache", target_filename));
+			json target_cache;
+			target_cache << cache_stream;
+
+			if (target_cache == m_GeneratedDataCache[path]) {
+				m_ParsingResult.erase(path);
+				m_GeneratedDataCache.erase(path);
+				m_RunStatistics.targets_skipped++;
+				continue;
+			}
+			else {
+				m_RunStatistics.targets_generated++;
+			}
+
 		}
 	}
 
@@ -158,9 +177,31 @@ namespace Omni {
 		for (auto& [TU_path, parsing_result] : m_ParsingResult) {
 			for (auto& parsed_type : parsing_result.types) {
 				// Return if no "ShaderExpose" annotation - no code generation needed
-				if (std::find(parsed_type.meta.begin(), parsed_type.meta.end(), "ShaderExpose") == parsed_type.meta.end()) {
+				auto shader_expose_meta_iterator = std::find_if(parsed_type.meta.begin(), parsed_type.meta.end(), 
+					[](const MetaEntry& entry) {
+						return entry.key == "ShaderExpose";
+					}
+				);
+
+				if (shader_expose_meta_iterator == parsed_type.meta.end()) {
 					continue;
 				}
+
+				// Try to acquire shader module name for exposed struct
+
+				auto shader_module_meta_iterator = std::find_if(parsed_type.meta.begin(), parsed_type.meta.end(),
+					[](const MetaEntry& entry) {
+						return entry.key == "Module";
+					}
+				);
+
+				if (shader_module_meta_iterator == parsed_type.meta.end()) {
+					std::cerr << "MetaTool: failed to run parsing action on shader exposed \"" 
+						<< parsed_type.type_name << "\" type - the type is exposed but no shader module was specified" << std::endl;
+					exit(-3);
+				}
+
+				std::string type_module_name = (*shader_module_meta_iterator).values[0];
 
 				std::ofstream stream(m_WorkingDir / "Generated" / std::filesystem::path(parsed_type.type_name + ".slang"));
 
@@ -168,7 +209,7 @@ namespace Omni {
 				{
 					stream << "#pragma once" << std::endl;
 					PrintEmptyLine(stream);
-					stream << fmt::format("module {};", parsed_type.type_name) << std::endl;
+					stream << fmt::format("module {};", type_module_name) << std::endl;
 					PrintEmptyLine(stream);
 					stream << "namespace Omni {" << std::endl;
 				}
@@ -202,6 +243,7 @@ namespace Omni {
 			stream << m_GeneratedDataCache[parse_target.string()].dump(4);
 			stream.close();
 		}
+		std::cout << fmt::format("MetaTool: {} target(s) generated, {} target(s) skipped", m_RunStatistics.targets_generated, m_RunStatistics.targets_skipped) << std::endl;
 	}
 
 	void MetaTool::CleanUp()
@@ -277,13 +319,13 @@ namespace Omni {
 		else if (source_type == "glm::ivec4") {
 			return "int4";
 		}
-		else if (source_type == "glm::half2") {
+		else if (source_type == "glm::hvec2") {
 			return "half2";
 		}
-		else if (source_type == "glm::half3") {
+		else if (source_type == "glm::hvec3") {
 			return "half3";
 		}
-		else if (source_type == "glm::half4") {
+		else if (source_type == "glm::hvec4") {
 			return "half4";
 		}
 		// Scalar types
