@@ -4,18 +4,19 @@
 #include <regex>
 #include <fstream>
 #include <mutex>
+#include <thread>
 
 #include <spdlog/fmt/fmt.h>
 
 namespace Omni {
 
 	MetaTool::MetaTool()
-		: m_Index(nullptr)
+		: m_Index()
 		, m_TranslationUnits()
 		, m_WorkingDir(METATOOL_WORKING_DIRECTORY)
 		, m_GeneratedDataCache()
-	{
-	}
+		, m_NumThreads(std::thread::hardware_concurrency())
+	{}
 
 	void MetaTool::Setup()
 	{
@@ -27,18 +28,15 @@ namespace Omni {
 		}
 
 		if (m_ParseTargets.size() == 0) {
-			std::cout << "[WARNING] MetaTool: attempted to launch 0 MetaTool actions" << std::endl;
 			exit(0);
 		}
-		else {
-			std::cout << "MetaTool: running " << m_ParseTargets.size() << " action(s)" << std::endl;
-		}
+
+		std::cout << "MetaTool: running " << m_ParseTargets.size() << " action(s)" << std::endl;
 
 		std::filesystem::create_directory(m_WorkingDir / "DummyOut");
 		std::filesystem::create_directory(m_WorkingDir / "Cache");
 		std::filesystem::create_directory(m_WorkingDir / "Generated");
 
-		m_Index = clang_createIndex(0, 0);
 
 		std::vector<const char*> args = {
 			CLANG_PARSER_ARGS
@@ -50,32 +48,62 @@ namespace Omni {
 
 		std::mutex mtx;
 
-		#pragma omp parallel for
-		for(int i = 0; i < m_ParseTargets.size(); i++) {
-			std::filesystem::path TU_path = m_ParseTargets[i];
-			CXTranslationUnit TU = nullptr;
+		std::vector<std::thread> threads(m_NumThreads);
+		m_Index.resize(m_NumThreads);
 
-			CXErrorCode error_code = clang_parseTranslationUnit2(
-				m_Index,
-				TU_path.string().c_str(),
-				args.data(),
-				args.size(),
-				nullptr,
-				0,
-				CXTranslationUnit_SkipFunctionBodies | CXTranslationUnit_PrecompiledPreamble | CXTranslationUnit_IncludeAttributedTypes,
-				&TU
-			);
+		for (int thread_idx = 0; thread_idx < m_NumThreads; thread_idx++) {
 
-			if (error_code != CXError_Success) {
-				std::cerr << "Failed to run MetaTool; error code: " << error_code << std::endl;
-				exit(-2);
-			}
+			int32_t num_TU_for_thread = m_ParseTargets.size() / m_NumThreads;
+			int32_t num_TU_remainder = m_ParseTargets.size() % m_NumThreads;
 
-			Validate(TU);
+			int32_t start_target_index = thread_idx * num_TU_for_thread + std::min(thread_idx, num_TU_remainder);
+			int32_t end_target_index = start_target_index + num_TU_for_thread + (thread_idx < num_TU_remainder ? 1 : 0);
 
-			mtx.lock();
-			m_TranslationUnits.emplace(TU_path.string(), TU);
-			mtx.unlock();
+			// Kick a job for each hardware thread
+			threads[thread_idx] = std::thread([&, thread_idx, start_target_index, end_target_index]() {
+
+				// Kill redundant threads
+				if (m_ParseTargets.size() < m_NumThreads) {
+					if (thread_idx >= m_ParseTargets.size()) {
+						return;
+					}
+				}
+
+				m_Index[thread_idx] = clang_createIndex(0, 0);
+
+				for(int i = start_target_index; i < end_target_index; i++) {
+
+					std::filesystem::path TU_path = m_ParseTargets[i];
+					CXTranslationUnit TU = nullptr;
+
+					CXErrorCode error_code = clang_parseTranslationUnit2(
+						m_Index[thread_idx],
+						TU_path.string().c_str(),
+						args.data(),
+						args.size(),
+						nullptr,
+						0,
+						CXTranslationUnit_SkipFunctionBodies | CXTranslationUnit_PrecompiledPreamble | CXTranslationUnit_IncludeAttributedTypes,
+						&TU
+					);
+
+					if (error_code != CXError_Success) {
+						std::cerr << "Failed to run MetaTool; error code: " << error_code << std::endl;
+						exit(-2);
+					}
+
+					Validate(TU);
+
+					mtx.lock();
+					m_TranslationUnits.emplace(TU_path.string(), TU);
+					mtx.unlock();
+				}
+			});
+		}
+
+		// Wait for parsing jobs
+		for (int thread_idx = 0; thread_idx < m_NumThreads; thread_idx++) {
+			threads[thread_idx].join();
 		}
 
 	}
@@ -258,7 +286,10 @@ namespace Omni {
 		for (auto& [TU_path, TU] : m_TranslationUnits) {
 			clang_disposeTranslationUnit(TU);
 		}
-		clang_disposeIndex(m_Index);
+		
+		for (uint32_t i = 0; i < m_NumThreads; i++) {
+			clang_disposeIndex(m_Index[i]);
+		}
 	}
 
 	void MetaTool::Validate(CXTranslationUnit translation_unit)

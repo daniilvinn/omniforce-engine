@@ -60,10 +60,11 @@ namespace Omni {
 	private:
 		std::vector<std::filesystem::path> m_ParseTargets;
 		std::filesystem::path m_WorkingDir;
-		
+		uint32_t m_NumThreads;
+
 		std::unordered_map<std::string, json> m_GeneratedDataCache;
 
-		CXIndex m_Index;
+		std::vector<CXIndex> m_Index;
 		std::unordered_map<std::string, CXTranslationUnit> m_TranslationUnits;
 
 		// TU to ParsingResult map
