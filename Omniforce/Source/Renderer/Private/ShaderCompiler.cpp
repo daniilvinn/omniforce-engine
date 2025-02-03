@@ -217,6 +217,7 @@ namespace Omni {
 		}
 		
 		m_LoadedModules.emplace(path.stem().string().c_str(), slang_module);
+		return true;
 	}
 
 	ByteArray ShaderCompiler::GetEntryPointCode(IAllocator* allocator, const std::string& entry_point_full_name)

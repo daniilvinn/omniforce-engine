@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Foundation/Common.h>
+
 #include <glm/glm.hpp>
 
 namespace Omni {

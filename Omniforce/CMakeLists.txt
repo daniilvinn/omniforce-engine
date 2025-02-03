@@ -78,6 +78,7 @@ target_include_directories(${ENGINE_TARGET}
         "ThirdParty/libMETIS/include"
         "ThirdParty/GLFW/include"
         "ThirdParty/VulkanMemoryAllocator/include"
+        "ThirdParty/volk"
 )
 target_link_directories(${ENGINE_TARGET} PUBLIC 
     "${Vulkan_SDK}\\Lib" 

@@ -62,7 +62,7 @@ namespace Omni {
 				args.size(),
 				nullptr,
 				0,
-				CXTranslationUnit_SkipFunctionBodies | CXTranslationUnit_PrecompiledPreamble | CXTranslationUnit_Incomplete | CXTranslationUnit_IncludeAttributedTypes,
+				CXTranslationUnit_SkipFunctionBodies | CXTranslationUnit_PrecompiledPreamble | CXTranslationUnit_IncludeAttributedTypes,
 				&TU
 			);
 
@@ -155,7 +155,14 @@ namespace Omni {
 				}
 			}
 
-			std::ifstream cache_stream(m_WorkingDir / "Cache" / fmt::format("{}.cache", target_filename));
+			std::filesystem::path cache_path = m_WorkingDir / "Cache" / fmt::format("{}.cache", target_filename);
+			bool target_is_cached = std::filesystem::exists(cache_path);
+			if (!target_is_cached) {
+				m_RunStatistics.targets_generated++;
+				continue;
+			}
+
+			std::ifstream cache_stream(cache_path);
 			json target_cache;
 			target_cache << cache_stream;
 

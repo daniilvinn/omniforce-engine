@@ -20,7 +20,7 @@ namespace Omni {
 			template<typename... TArgs>
 			requires (!std::is_abstract_v<T>)
 			StorageType(TArgs&&... args)
-				: object({}), ref_counter(1)
+				: object(), ref_counter(1)
 			{
 				new (object) T(std::forward<TArgs>(args)...);
 			}
@@ -28,7 +28,7 @@ namespace Omni {
 			template<typename... TArgs>
 			requires std::is_abstract_v<T>
 			StorageType(TArgs&&... args)
-				: object({}), ref_counter(1)
+				: object(), ref_counter(1)
 			{
 				OMNIFORCE_ASSERT_TAGGED(false, "Cannot instantiate abstract class");
 			}

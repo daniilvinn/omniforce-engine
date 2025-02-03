@@ -93,7 +93,7 @@ namespace Omni {
 		}
 
 
-		Array<T>& operator=(Array<T>&& other) noexcept {
+		StaticArray<T, TSize>& operator=(StaticArray<T, TSize>&& other) noexcept {
 			if (this == &other) {
 				return *this;
 			}
@@ -111,7 +111,7 @@ namespace Omni {
 			return *this;
 		}
 
-		Array<T>& operator=(std::initializer_list<T> init_list) {
+		StaticArray<T, TSize>& operator=(std::initializer_list<T> init_list) {
 			OMNIFORCE_ASSERT_TAGGED(TSize >= init_list.size(), "Attempted to assign initializer list that is bigger than array size");
 
 			T* typed_array = m_Allocation.As<T>();
