@@ -181,26 +181,33 @@ namespace Omni {
 						}
 						m_Mutex.unlock();
 					}
-					// Validate result, skip code generation for this target if matched with cache
-					{
-						std::filesystem::path cache_path = m_WorkingDir / "Cache" / fmt::format("{}.cache", target_filename);
-						bool target_is_cached = std::filesystem::exists(cache_path);
-						if (!target_is_cached) {
-							m_RunStatistics.targets_generated++;
-							continue;
-						}
+					// ==========================================================
+					// Check if code generation is needed, compute run statistics
+					// ==========================================================
+					{ 
+						for (auto& validation_target : m_ParseTargets) {
+							std::string validation_target_filename = validation_target.filename().string();
 
-						std::ifstream cache_stream(cache_path);
-						json target_cache;
-						target_cache << cache_stream;
+							// If target has no cache, then it we must generate it
+							std::filesystem::path cache_path = m_WorkingDir / "Cache" / fmt::format("{}.cache", validation_target_filename);
+							bool target_is_cached = std::filesystem::exists(cache_path);
+							if (!target_is_cached) {
+								m_RunStatistics.targets_generated++;
+								continue;
+							}
 
-						if (target_cache == m_GeneratedDataCache[TU_path.string()]) {
-							m_GeneratedDataCache.erase(TU_path.string());
-							m_RunStatistics.targets_skipped++;
-							continue;
-						}
-						else {
-							m_RunStatistics.targets_generated++;
+							// Compare caches. Skip code generation stage if caches match
+							std::ifstream cache_stream(cache_path);
+							json target_cache;
+							target_cache << cache_stream;
+
+							if (target_cache == m_GeneratedDataCache[TU_path.string()]) {
+								m_GeneratedDataCache.erase(TU_path.string());
+								m_RunStatistics.targets_skipped++;
+							}
+							else {
+								m_RunStatistics.targets_generated++;
+							}
 						}
 					}
 				}
