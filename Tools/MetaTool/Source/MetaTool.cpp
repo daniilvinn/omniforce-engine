@@ -60,14 +60,14 @@ namespace Omni {
 	{
 		std::vector<std::thread> threads(m_NumThreads);
 
-		for (int thread_idx = 0; thread_idx < m_NumThreads; thread_idx++) {
+		for (uint32_t thread_idx = 0; thread_idx < m_NumThreads; thread_idx++) {
 
 			// Setup task parameters
-			int32_t num_TU_for_thread = m_ParseTargets.size() / m_NumThreads;
-			int32_t num_TU_remainder = m_ParseTargets.size() % m_NumThreads;
+			uint32_t num_TU_for_thread = m_ParseTargets.size() / m_NumThreads;
+			uint32_t num_TU_remainder = m_ParseTargets.size() % m_NumThreads;
 
-			int32_t start_target_index = thread_idx * num_TU_for_thread + std::min(thread_idx, num_TU_remainder);
-			int32_t end_target_index = start_target_index + num_TU_for_thread + (thread_idx < num_TU_remainder ? 1 : 0);
+			uint32_t start_target_index = thread_idx * num_TU_for_thread + std::min(thread_idx, num_TU_remainder);
+			uint32_t end_target_index = start_target_index + num_TU_for_thread + (thread_idx < num_TU_remainder ? 1 : 0);
 
 			// Kick a job for each hardware thread
 			threads[thread_idx] = std::thread([&, thread_idx, start_target_index, end_target_index]() {
@@ -79,7 +79,7 @@ namespace Omni {
 					}
 				}
 
-				for (int i = start_target_index; i < end_target_index; i++) {
+				for (uint32_t i = start_target_index; i < end_target_index; i++) {
 
 					std::filesystem::path TU_path = m_ParseTargets[i];
 					std::string target_filename = std::filesystem::path(TU_path).filename().string();
@@ -126,7 +126,6 @@ namespace Omni {
 							// Start traversal
 							json& parsing_result = *(json*)client_data;
 
-
 							// Check if we are on attribute
 							if (clang_isAttribute(clang_getCursorKind(cursor))) {
 								const char* type_name = clang_getCString(clang_getCursorSpelling(parent));
@@ -143,8 +142,8 @@ namespace Omni {
 									field_output.emplace("Fields", json::object());
 
 									field_output["Fields"].emplace(
-										clang_getCString(clang_getTypeSpelling(clang_getCursorType(field_cursor))),
-										clang_getCString(clang_getCursorSpelling(field_cursor))
+										clang_getCString(clang_getCursorSpelling(field_cursor)),
+										clang_getCString(clang_getTypeSpelling(clang_getCursorType(field_cursor)))
 									);
 									return CXVisit_Continue;
 								}, &parsed_type);
@@ -196,7 +195,6 @@ namespace Omni {
 						target_cache << cache_stream;
 
 						if (target_cache == m_GeneratedDataCache[TU_path.string()]) {
-							m_ParsingResult.erase(TU_path.string());
 							m_GeneratedDataCache.erase(TU_path.string());
 							m_RunStatistics.targets_skipped++;
 							continue;
@@ -217,36 +215,40 @@ namespace Omni {
 
 	void MetaTool::GenerateCode()
 	{
-		for (auto& [TU_path, parsing_result] : m_ParsingResult) {
-			for (auto& parsed_type : parsing_result.types) {
-				// Return if no "ShaderExpose" annotation - no code generation needed
-				auto shader_expose_meta_iterator = std::find_if(parsed_type.meta.begin(), parsed_type.meta.end(), 
-					[](const MetaEntry& entry) {
-						return entry.key == "ShaderExpose";
-					}
-				);
+		for (auto& [TU_path, parsing_result] : m_GeneratedDataCache) {
+			for (auto& parsed_type_iter : parsing_result.items()) {
+				json& parsed_type = parsing_result[parsed_type_iter.key()];
+				std::string type_name = parsed_type_iter.key();
 
-				if (shader_expose_meta_iterator == parsed_type.meta.end()) {
+				// Return if no "ShaderExpose" annotation - no code generation needed
+				bool shader_exposed_annotation_found = false;
+				bool shader_module_annotation_found = false;
+				for (auto& meta_entry : parsed_type["Meta"].items()) {
+					shader_exposed_annotation_found = shader_module_annotation_found || meta_entry.key() == "ShaderExpose";
+					shader_module_annotation_found = shader_module_annotation_found || meta_entry.key() == "Module";
+				}
+
+				if (!shader_exposed_annotation_found) {
 					continue;
 				}
 
 				// Try to acquire shader module name for exposed struct
-
-				auto shader_module_meta_iterator = std::find_if(parsed_type.meta.begin(), parsed_type.meta.end(),
-					[](const MetaEntry& entry) {
-						return entry.key == "Module";
-					}
-				);
-
-				if (shader_module_meta_iterator == parsed_type.meta.end()) {
+				if (!shader_module_annotation_found) {
 					std::cerr << "MetaTool: failed to run parsing action on shader exposed \"" 
-						<< parsed_type.type_name << "\" type - the type is exposed but no shader module was specified" << std::endl;
+						<< type_name << "\" type - the type is exposed but no shader module was specified" << std::endl;
 					exit(-3);
 				}
 
-				std::string type_module_name = (*shader_module_meta_iterator).values[0];
+				std::vector<std::string> module_entry_values;
+				parsed_type["Meta"]["Module"].get_to(module_entry_values);
 
-				std::ofstream stream(m_WorkingDir / "Generated" / std::filesystem::path(parsed_type.type_name + ".slang"));
+				if (module_entry_values.size() != 1) {
+					std::cerr << "\'Module\' meta entry may only have one value" << std::endl;
+				}
+
+				std::string type_module_name = module_entry_values[0];
+
+				std::ofstream stream(m_WorkingDir / "Generated" / std::filesystem::path(type_name + ".slang"));
 
 				// Generate prologue
 				{
@@ -259,9 +261,12 @@ namespace Omni {
 				// Generate contents
 				{
 					PrintEmptyLine(stream);
-					stream << fmt::format("public struct {} {{", parsed_type.type_name) << std::endl;
-					for (auto& member : parsed_type.members) {
-						stream << fmt::format("\t{} {};", GetShaderType(member.type_name), member.name) << std::endl;
+					stream << fmt::format("public struct {} {{", type_name) << std::endl;
+					for (auto& member : parsed_type["Fields"].items()) {
+						std::string field_type = member.value().get<std::string>();
+						std::string field_name = member.key();
+
+						stream << fmt::format("\t{} {};", GetShaderType(field_type), field_name) << std::endl;
 					}
 					stream << "};" << std::endl;
 					PrintEmptyLine(stream);
