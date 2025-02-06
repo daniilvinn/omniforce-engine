@@ -3,7 +3,6 @@
 #include <iostream>
 #include <regex>
 #include <fstream>
-#include <mutex>
 #include <thread>
 
 #include <spdlog/fmt/fmt.h>
@@ -20,6 +19,7 @@ namespace Omni {
 
 	void MetaTool::Setup()
 	{
+		// Load parse targets
 		std::ifstream parse_targets_stream(m_WorkingDir / "ParseTargets.txt");
 		std::string parse_target;
 
@@ -27,6 +27,7 @@ namespace Omni {
 			m_ParseTargets.push_back(parse_target);
 		}
 
+		// Exit if no parse targets (maybe throw a warning in this case?)
 		if (m_ParseTargets.size() == 0) {
 			exit(0);
 		}
@@ -37,22 +38,27 @@ namespace Omni {
 		std::filesystem::create_directory(m_WorkingDir / "Cache");
 		std::filesystem::create_directory(m_WorkingDir / "Generated");
 
-
-		std::vector<const char*> args = {
+		// Setup parser args
+		m_ParserArgs = {
 			CLANG_PARSER_ARGS
 		};
 
-		std::erase_if(args, [](const char* arg) {
+		// Erase empty compiler definitions
+		std::erase_if(m_ParserArgs, [](const char* arg) {
 			return std::string(arg) == std::string("-D");
 		});
 
-		std::mutex mtx;
-
-		std::vector<std::thread> threads(m_NumThreads);
+		// Prepare index storage
 		m_Index.resize(m_NumThreads);
+	}
+
+	void MetaTool::TraverseAST()
+	{
+		std::vector<std::thread> threads(m_NumThreads);
 
 		for (int thread_idx = 0; thread_idx < m_NumThreads; thread_idx++) {
 
+			// Setup task parameters
 			int32_t num_TU_for_thread = m_ParseTargets.size() / m_NumThreads;
 			int32_t num_TU_remainder = m_ParseTargets.size() % m_NumThreads;
 
@@ -71,32 +77,132 @@ namespace Omni {
 
 				m_Index[thread_idx] = clang_createIndex(0, 0);
 
-				for(int i = start_target_index; i < end_target_index; i++) {
+				for (int i = start_target_index; i < end_target_index; i++) {
 
 					std::filesystem::path TU_path = m_ParseTargets[i];
+					std::string target_filename = std::filesystem::path(TU_path).filename().string();
 					CXTranslationUnit TU = nullptr;
+					// ======================
+					// Parse translation unit
+					// ======================
+					{
+						CXErrorCode error_code = clang_parseTranslationUnit2(
+							m_Index[thread_idx],
+							TU_path.string().c_str(),
+							m_ParserArgs.data(),
+							m_ParserArgs.size(),
+							nullptr,
+							0,
+							CXTranslationUnit_SkipFunctionBodies | CXTranslationUnit_PrecompiledPreamble | CXTranslationUnit_IncludeAttributedTypes,
+							&TU
+						);
 
-					CXErrorCode error_code = clang_parseTranslationUnit2(
-						m_Index[thread_idx],
-						TU_path.string().c_str(),
-						args.data(),
-						args.size(),
-						nullptr,
-						0,
-						CXTranslationUnit_SkipFunctionBodies | CXTranslationUnit_PrecompiledPreamble | CXTranslationUnit_IncludeAttributedTypes,
-						&TU
-					);
+						if (error_code != CXError_Success) {
+							std::cerr << "Failed to run MetaTool; error code: " << error_code << std::endl;
+							exit(-2);
+						}
 
-					if (error_code != CXError_Success) {
-						std::cerr << "Failed to run MetaTool; error code: " << error_code << std::endl;
-						exit(-2);
+						Validate(TU);
 					}
+					// ============
+					// Traverse AST
+					// ============
+					{
+						CXCursor root_cursor = clang_getTranslationUnitCursor(TU);
 
-					Validate(TU);
+						json TU_parsing_result = json::object();
 
-					mtx.lock();
-					m_TranslationUnits.emplace(TU_path.string(), TU);
-					mtx.unlock();
+						clang_visitChildren(root_cursor, [](CXCursor cursor, CXCursor parent, CXClientData client_data) {
+							// Check if we are in Omniforce source file
+							CXSourceLocation current_cursor_location = clang_getCursorLocation(cursor);
+							CXSourceLocation parent_cursor_location = clang_getCursorLocation(parent);
+
+							if (!clang_Location_isFromMainFile(current_cursor_location) && !clang_Location_isFromMainFile(parent_cursor_location)) {
+								return CXChildVisit_Continue;
+							}
+
+							// Start traversal
+							json& parsing_result = *(json*)client_data;
+
+
+							// Check if we are on attribute
+							if (clang_isAttribute(clang_getCursorKind(cursor))) {
+								const char* type_name = clang_getCString(clang_getCursorSpelling(parent));
+
+								parsing_result.emplace(type_name, json::object());
+								json& parsed_type = parsing_result.at(type_name);
+
+								// If so, acquire parent type (that is a struct or a class)
+								CXType type = clang_getCursorType(parent);
+
+								// Traverse its fields to generate code
+								clang_Type_visitFields(type, [](CXCursor field_cursor, CXClientData field_client_data) {
+									json& field_output = *(json*)field_client_data;
+									field_output.emplace("Fields", json::object());
+
+									field_output["Fields"].emplace(
+										clang_getCString(clang_getTypeSpelling(clang_getCursorType(field_cursor))),
+										clang_getCString(clang_getCursorSpelling(field_cursor))
+									);
+									return CXVisit_Continue;
+								}, &parsed_type);
+
+								// Parse attributes
+								std::string input = clang_getCString(clang_getCursorSpelling(cursor));
+								std::regex regex(R"(\s*([\w]+)\s*(?:=\s*\"([^\"]*)\")?)");
+
+								std::sregex_iterator iterator_begin(input.begin(), input.end(), regex);
+								std::sregex_iterator iterator_end;
+
+								// Parse metadata
+								parsed_type.emplace("Meta", json::object());
+								for (iterator_begin; iterator_begin != iterator_end; ++iterator_begin) {
+									std::string meta_entry_name = (*iterator_begin)[1].str();
+									parsed_type["Meta"].emplace(meta_entry_name, json::array());
+
+									std::vector<std::string> meta_entry_values;
+									
+									if ((*iterator_begin)[2].matched) {
+										parsed_type["Meta"][meta_entry_name].emplace_back((*iterator_begin)[2].str());
+									}
+								}
+							}
+
+							// Keep traversal going
+							return CXChildVisit_Recurse;
+						}, &TU_parsing_result);
+
+						// Write traversal results
+						m_Mutex.lock();
+						{
+							m_GeneratedDataCache[TU_path.string()] = TU_parsing_result;
+							clang_disposeTranslationUnit(TU);
+						}
+						m_Mutex.unlock();
+					}
+					// Validate result, skip code generation for this target if matched with cache
+					{
+						std::filesystem::path cache_path = m_WorkingDir / "Cache" / fmt::format("{}.cache", target_filename);
+						bool target_is_cached = std::filesystem::exists(cache_path);
+						if (!target_is_cached) {
+							m_RunStatistics.targets_generated++;
+							continue;
+						}
+
+						std::ifstream cache_stream(cache_path);
+						json target_cache;
+						target_cache << cache_stream;
+
+						if (target_cache == m_GeneratedDataCache[TU_path.string()]) {
+							m_ParsingResult.erase(TU_path.string());
+							m_GeneratedDataCache.erase(TU_path.string());
+							m_RunStatistics.targets_skipped++;
+							continue;
+						}
+						else {
+							m_RunStatistics.targets_generated++;
+						}
+					}
 				}
 			});
 		}
@@ -104,106 +210,6 @@ namespace Omni {
 		// Wait for parsing jobs
 		for (int thread_idx = 0; thread_idx < m_NumThreads; thread_idx++) {
 			threads[thread_idx].join();
-		}
-
-	}
-
-	void MetaTool::TraverseAST()
-	{
-		for (auto& [path, TU] : m_TranslationUnits) {
-			std::string target_filename = std::filesystem::path(path).filename().string();
-			CXCursor root_cursor = clang_getTranslationUnitCursor(TU);
-			ParsingResult TU_parsing_result = {};
-
-			clang_visitChildren(root_cursor, [](CXCursor cursor, CXCursor parent, CXClientData client_data) {
-				CXSourceLocation current_cursor_location = clang_getCursorLocation(cursor);
-				CXSourceLocation parent_cursor_location = clang_getCursorLocation(parent);
-
-				if (!clang_Location_isFromMainFile(current_cursor_location) && !clang_Location_isFromMainFile(parent_cursor_location)) {
-					return CXChildVisit_Continue;
-				}
-
-				ParsingResult* parsing_result = (ParsingResult*)client_data;
-
-				if (clang_isAttribute(clang_getCursorKind(cursor))) {
-					ParsedType parsed_type = {};
-					parsed_type.type_name = clang_getCString(clang_getCursorSpelling(parent));
-
-					CXType type = clang_getCursorType(parent);
-					clang_Type_visitFields(type, [](CXCursor field_cursor, CXClientData field_client_data) {
-						ParsedType* field_output = (ParsedType*)field_client_data;
-						field_output->members.push_back({
-							clang_getCString(clang_getTypeSpelling(clang_getCursorType(field_cursor))),
-							clang_getCString(clang_getCursorSpelling(field_cursor))
-						});
-						return CXVisit_Continue;
-					}, &parsed_type);
-
-					std::string input = clang_getCString(clang_getCursorSpelling(cursor));
-					std::regex regex(R"(\s*([\w]+)\s*(?:=\s*\"([^\"]*)\")?)");
-
-					std::sregex_iterator iterator_begin(input.begin(), input.end(), regex);
-					std::sregex_iterator iterator_end;
-
-					for (iterator_begin; iterator_begin != iterator_end; ++iterator_begin) {
-						MetaEntry meta_entry = {};
-						meta_entry.key = (*iterator_begin)[1].str();
-						if ((*iterator_begin)[2].matched) {
-							meta_entry.values.push_back((*iterator_begin)[2].str());
-						}
-						parsed_type.meta.push_back(meta_entry);
-					}
-
-					parsing_result->types.push_back(parsed_type);
-				}
-
-				return CXChildVisit_Recurse;
-				}, (void*)&TU_parsing_result);
-
-			m_ParsingResult.emplace(path, TU_parsing_result);
-
-			for (auto& parsed_type : m_ParsingResult[path].types) {
-				m_GeneratedDataCache.emplace(path, json::object());
-				m_GeneratedDataCache[path].emplace(parsed_type.type_name, json::object());
-
-				json& parsed_type_node = m_GeneratedDataCache[path][parsed_type.type_name];
-
-				parsed_type_node.emplace("Meta", json::object());
-				json& metadata_node = parsed_type_node["Meta"];
-
-				for (auto& meta_entry : parsed_type.meta) {
-					metadata_node.emplace(meta_entry.key, meta_entry.values);
-				}
-
-				parsed_type_node.emplace("Fields", json::object());
-				json& fields = parsed_type_node["Fields"];
-
-				for (auto& member : parsed_type.members) {
-					fields.emplace(member.name, member.type_name);
-				}
-			}
-
-			std::filesystem::path cache_path = m_WorkingDir / "Cache" / fmt::format("{}.cache", target_filename);
-			bool target_is_cached = std::filesystem::exists(cache_path);
-			if (!target_is_cached) {
-				m_RunStatistics.targets_generated++;
-				continue;
-			}
-
-			std::ifstream cache_stream(cache_path);
-			json target_cache;
-			target_cache << cache_stream;
-
-			if (target_cache == m_GeneratedDataCache[path]) {
-				m_ParsingResult.erase(path);
-				m_GeneratedDataCache.erase(path);
-				m_RunStatistics.targets_skipped++;
-				continue;
-			}
-			else {
-				m_RunStatistics.targets_generated++;
-			}
-
 		}
 	}
 
@@ -278,15 +284,11 @@ namespace Omni {
 			stream << m_GeneratedDataCache[parse_target.string()].dump(4);
 			stream.close();
 		}
-		std::cout << fmt::format("MetaTool: {} target(s) generated, {} target(s) skipped", m_RunStatistics.targets_generated, m_RunStatistics.targets_skipped) << std::endl;
+		std::cout << fmt::format("MetaTool: {} target(s) generated, {} target(s) skipped", m_RunStatistics.targets_generated.load(), m_RunStatistics.targets_skipped.load()) << std::endl;
 	}
 
 	void MetaTool::CleanUp()
 	{
-		for (auto& [TU_path, TU] : m_TranslationUnits) {
-			clang_disposeTranslationUnit(TU);
-		}
-		
 		for (uint32_t i = 0; i < m_NumThreads; i++) {
 			clang_disposeIndex(m_Index[i]);
 		}

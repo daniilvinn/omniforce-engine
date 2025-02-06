@@ -2,6 +2,9 @@
 
 #include "OptionParser.h"
 
+#include <mutex>
+#include <atomic>
+
 #include <clang-c/Index.h>
 #include <nlohmann/json.hpp>
 
@@ -64,6 +67,7 @@ namespace Omni {
 
 		std::unordered_map<std::string, json> m_GeneratedDataCache;
 
+		std::vector<const char*> m_ParserArgs;
 		std::vector<CXIndex> m_Index;
 		std::unordered_map<std::string, CXTranslationUnit> m_TranslationUnits;
 
@@ -71,9 +75,11 @@ namespace Omni {
 		std::unordered_map<std::string, ParsingResult> m_ParsingResult;
 
 		struct RunStatistics {
-			uint32_t targets_generated = 0;
-			uint32_t targets_skipped = 0;
+			std::atomic_uint32_t targets_generated = 0;
+			std::atomic_uint32_t targets_skipped = 0;
 		} m_RunStatistics;
+
+		std::mutex m_Mutex;
 
 	};
 
