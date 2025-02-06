@@ -83,7 +83,9 @@ namespace Omni {
 
 					std::filesystem::path TU_path = m_ParseTargets[i];
 					std::string target_filename = std::filesystem::path(TU_path).filename().string();
+
 					CXTranslationUnit TU = nullptr;
+
 					// ======================
 					// Parse translation unit
 					// ======================
@@ -145,6 +147,7 @@ namespace Omni {
 										clang_getCString(clang_getCursorSpelling(field_cursor)),
 										clang_getCString(clang_getTypeSpelling(clang_getCursorType(field_cursor)))
 									);
+
 									return CXVisit_Continue;
 								}, &parsed_type);
 
@@ -157,6 +160,7 @@ namespace Omni {
 
 								// Parse metadata
 								parsed_type.emplace("Meta", json::object());
+
 								for (iterator_begin; iterator_begin != iterator_end; ++iterator_begin) {
 									std::string meta_entry_name = (*iterator_begin)[1].str();
 									parsed_type["Meta"].emplace(meta_entry_name, json::array());
@@ -191,6 +195,7 @@ namespace Omni {
 							// If target has no cache, then it we must generate it
 							std::filesystem::path cache_path = m_WorkingDir / "Cache" / fmt::format("{}.cache", validation_target_filename);
 							bool target_is_cached = std::filesystem::exists(cache_path);
+
 							if (!target_is_cached) {
 								m_RunStatistics.targets_generated++;
 								continue;
@@ -198,6 +203,7 @@ namespace Omni {
 
 							// Compare caches. Skip code generation stage if caches match
 							std::ifstream cache_stream(cache_path);
+
 							json target_cache;
 							target_cache << cache_stream;
 
@@ -230,6 +236,7 @@ namespace Omni {
 				// Return if no "ShaderExpose" annotation - no code generation needed
 				bool shader_exposed_annotation_found = false;
 				bool shader_module_annotation_found = false;
+
 				for (auto& meta_entry : parsed_type["Meta"].items()) {
 					shader_exposed_annotation_found = shader_module_annotation_found || meta_entry.key() == "ShaderExpose";
 					shader_module_annotation_found = shader_module_annotation_found || meta_entry.key() == "Module";
