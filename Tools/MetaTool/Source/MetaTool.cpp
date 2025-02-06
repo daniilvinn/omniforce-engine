@@ -50,6 +50,10 @@ namespace Omni {
 
 		// Prepare index storage
 		m_Index.resize(m_NumThreads);
+
+		for (auto& index : m_Index) {
+			index = clang_createIndex(0, 0);
+		}
 	}
 
 	void MetaTool::TraverseAST()
@@ -74,8 +78,6 @@ namespace Omni {
 						return;
 					}
 				}
-
-				m_Index[thread_idx] = clang_createIndex(0, 0);
 
 				for (int i = start_target_index; i < end_target_index; i++) {
 
