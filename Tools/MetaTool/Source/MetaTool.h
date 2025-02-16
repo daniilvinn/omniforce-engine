@@ -22,12 +22,13 @@ namespace Omni {
 
 		void GenerateCode();
 
+		void AssembleModules();
+
 		void DumpResults();
 
 		void CleanUp();
 
 	private:
-
 		void Validate(CXTranslationUnit translation_unit);
 
 		void PrintEmptyLine(std::ofstream& stream);
@@ -35,15 +36,19 @@ namespace Omni {
 		constexpr std::string GetShaderType(const std::string& source_type) const;
 
 	private:
+		using StringPath = std::string;
+
 		std::vector<std::filesystem::path> m_ParseTargets;
 		std::filesystem::path m_WorkingDir;
 		uint32_t m_NumThreads;
 
-		std::unordered_map<std::string, json> m_GeneratedDataCache;
+		std::unordered_map<StringPath, json> m_GeneratedDataCache;
+		std::vector<std::string> m_PendingModuleReassemblies;
+		std::unordered_map<std::string, json> m_ModuleCaches;
 
 		std::vector<const char*> m_ParserArgs;
 		std::vector<CXIndex> m_Index;
-		std::unordered_map<std::string, CXTranslationUnit> m_TranslationUnits;
+		std::unordered_map<StringPath, CXTranslationUnit> m_TranslationUnits;
 
 		struct RunStatistics {
 			std::atomic_uint32_t targets_generated = 0;

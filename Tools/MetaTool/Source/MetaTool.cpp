@@ -6,6 +6,7 @@
 #include <thread>
 
 #include <spdlog/fmt/fmt.h>
+#include <spdlog/fmt/ostr.h>
 
 namespace Omni {
 
@@ -21,7 +22,7 @@ namespace Omni {
 	{
 		// Load parse targets
 		std::ifstream parse_targets_stream(m_WorkingDir / "ParseTargets.txt");
-		std::string parse_target;
+		StringPath parse_target;
 
 		while (std::getline(parse_targets_stream, parse_target)) {
 			m_ParseTargets.push_back(parse_target);
@@ -34,9 +35,9 @@ namespace Omni {
 
 		std::cout << "MetaTool: running " << m_ParseTargets.size() << " action(s)" << std::endl;
 
-		std::filesystem::create_directory(m_WorkingDir / "DummyOut");
-		std::filesystem::create_directory(m_WorkingDir / "Cache");
-		std::filesystem::create_directory(m_WorkingDir / "Generated");
+		std::filesystem::create_directories(m_WorkingDir / "DummyOut");
+		std::filesystem::create_directories(m_WorkingDir / "Cache" / "Modules");
+		std::filesystem::create_directories(m_WorkingDir / "Generated");
 
 		// Setup parser args
 		m_ParserArgs = {
@@ -82,7 +83,7 @@ namespace Omni {
 				for (uint32_t i = start_target_index; i < end_target_index; i++) {
 
 					std::filesystem::path TU_path = m_ParseTargets[i];
-					std::string target_filename = std::filesystem::path(TU_path).filename().string();
+					StringPath target_filename = std::filesystem::path(TU_path).filename().string();
 
 					CXTranslationUnit TU = nullptr;
 
@@ -190,7 +191,7 @@ namespace Omni {
 					// ==========================================================
 					{ 
 						for (auto& validation_target : m_ParseTargets) {
-							std::string validation_target_filename = validation_target.filename().string();
+							StringPath validation_target_filename = validation_target.filename().string();
 
 							// If target has no cache, then it we must generate it
 							std::filesystem::path cache_path = m_WorkingDir / "Cache" / fmt::format("{}.cache", validation_target_filename);
@@ -228,6 +229,7 @@ namespace Omni {
 
 	void MetaTool::GenerateCode()
 	{
+		// Generate implementation code
 		for (auto& [TU_path, parsing_result] : m_GeneratedDataCache) {
 			for (auto& parsed_type_iter : parsing_result.items()) {
 				json& parsed_type = parsing_result[parsed_type_iter.key()];
@@ -262,13 +264,29 @@ namespace Omni {
 
 				std::string type_module_name = module_entry_values[0];
 
-				std::ofstream stream(m_WorkingDir / "Generated" / std::filesystem::path(type_name + ".slang"));
+				// Load module cache if needed
+				if (!m_ModuleCaches.contains(type_module_name)) {
+					std::ifstream module_cache_stream(m_WorkingDir / "Cache" / "Modules" / fmt::format("{}.cache", type_module_name));
+					m_ModuleCaches[type_module_name] = json::parse(module_cache_stream);
+				}
+				
+				// Check if module reassembly is needed
+				if (!m_ModuleCaches[type_module_name].contains(type_name)) {
+					bool module_pending = std::find(m_PendingModuleReassemblies.begin(), m_PendingModuleReassemblies.end(), type_module_name) != m_PendingModuleReassemblies.end();
+
+					if (!module_pending) {
+						m_PendingModuleReassemblies.emplace_back(type_module_name);
+					}
+				}
+
+				std::filesystem::create_directories(m_WorkingDir / "Generated" / "Implementations" / type_module_name);
+				std::ofstream stream(m_WorkingDir / "Generated" / "Implementations" / type_module_name / std::filesystem::path(type_name + ".slang"));
 
 				// Generate prologue
 				{
 					stream << "#pragma once" << std::endl;
 					PrintEmptyLine(stream);
-					stream << fmt::format("module {};", type_module_name) << std::endl;
+					stream << fmt::format("implementing {};", type_module_name) << std::endl;
 					PrintEmptyLine(stream);
 					stream << "namespace Omni {" << std::endl;
 				}
@@ -291,6 +309,26 @@ namespace Omni {
 				}
 			}
 		}
+	}
+
+	void MetaTool::AssembleModules()
+	{
+		for (const auto& pending_module_reassembly_name : m_PendingModuleReassemblies) {
+			std::ofstream module_stream(m_WorkingDir / "Generated" / fmt::format("{}.slang", pending_module_reassembly_name));
+
+			module_stream << fmt::format("module {};", pending_module_reassembly_name) << std::endl;
+
+			// Add all implementations to this module
+
+			std::filesystem::directory_iterator implementation_iterator(m_WorkingDir / "Generated" / "Implementations" / pending_module_reassembly_name);
+			for (const auto& implementation : implementation_iterator) {
+				const std::string implementation_stem = implementation.path().stem().string();
+
+				module_stream << fmt::format("__include Implementations.{}.{};", pending_module_reassembly_name, implementation_stem) << std::endl;
+			}
+
+		}
+
 	}
 
 	void MetaTool::DumpResults()
