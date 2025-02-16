@@ -41,6 +41,7 @@ namespace Omni {
 
 		std::vector<std::filesystem::path> m_ParseTargets;
 		std::filesystem::path m_WorkingDir;
+		std::filesystem::path m_OutputDir;
 		uint32_t m_NumThreads;
 
 		std::unordered_map<StringPath, CacheType> m_GeneratedDataCache;

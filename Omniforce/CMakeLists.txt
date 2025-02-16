@@ -184,15 +184,13 @@ endif()
 
 set(PARSE_TARGETS_FILE "${CMAKE_BINARY_DIR}/MetaToolGen/ParseTargets.txt")
 
-add_custom_target(
-    ClearParseTargets
-    COMMAND ${CMAKE_COMMAND} -E rm -f ${PARSE_TARGETS_FILE}
-    COMMAND ${CMAKE_COMMAND} -E touch ${PARSE_TARGETS_FILE}
-)
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/MetaToolGen/DummyOut")
+file(TOUCH ${PARSE_TARGETS_FILE})
 
 add_custom_target(
-    SetupParseTargets
-    DEPENDS ClearParseTargets
+    ClearParseTargets ALL
+    COMMAND ${CMAKE_COMMAND} -E rm -f ${PARSE_TARGETS_FILE}
+    COMMAND ${CMAKE_COMMAND} -E touch ${PARSE_TARGETS_FILE}
 )
 
 set(GEN_OUT_FILES) 
@@ -205,8 +203,8 @@ foreach(SOURCE_FILE ${ENGINE_SOURCES})
         list(APPEND GEN_OUT_FILES ${GEN_FILE})
         add_custom_command(
             OUTPUT ${GEN_FILE}
-            PRE_BUILD
             COMMAND ${CMAKE_COMMAND} -E echo ${SOURCE_FILE} >> ${PARSE_TARGETS_FILE}
+            COMMAND ${CMAKE_COMMAND} -E touch ${GEN_FILE}
             COMMENT ""
             DEPENDS ${SOURCE_FILE}
             VERBATIM
@@ -217,11 +215,8 @@ endforeach()
 add_custom_target(
     MetaToolRunner ALL
     COMMAND ${METATOOL_TARGET}
-    DEPENDS ${GEN_OUT_FILES} ${CODEGEN_TARGET} SetupParseTargets
+    DEPENDS ${GEN_OUT_FILES} ${METATOOL_TARGET} ClearParseTargets
 )
 
-add_dependencies(${ENGINE_TARGET} MetaToolRunner)
-
 set_target_properties(ClearParseTargets PROPERTIES FOLDER "MetaToolActions")
-set_target_properties(SetupParseTargets PROPERTIES FOLDER "MetaToolActions")
 set_target_properties(MetaToolRunner PROPERTIES FOLDER "MetaToolActions")

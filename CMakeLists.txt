@@ -15,6 +15,7 @@ find_package(OpenMP REQUIRED)
 
 # Include sub-projects.
 add_subdirectory ("Omniforce/ThirdParty")
+set(METATOOL_TARGET MetaTool CACHE INTERNAL "") # HACK
 
 add_subdirectory (Omniforce)
 add_subdirectory (Sandbox)

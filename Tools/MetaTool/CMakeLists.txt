@@ -5,7 +5,6 @@
 include("${CMAKE_SOURCE_DIR}/utils.cmake")
 
 # Add source to this project's executable.
-set(METATOOL_TARGET MetaTool CACHE INTERNAL "")
 set(PATH_ENV $ENV{PATH})
 
 foreach(dir IN LISTS PATH_ENV)
@@ -20,15 +19,15 @@ if(NOT LLVM_ROOT)
     message(FATAL_ERROR "Cannot find LLVM")
 endif()
 
-file (GLOB_RECURSE CODEGEN_FILES
+file (GLOB_RECURSE METATOOL_FILES
     "Source/*.h"
     "Source/*.cpp"
     "Source/*.hpp"
 )
 
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${CODEGEN_FILES})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${METATOOL_FILES})
 
-add_executable(${METATOOL_TARGET} ${CODEGEN_FILES})
+add_executable(${METATOOL_TARGET} ${METATOOL_FILES})
 
 target_include_directories(${METATOOL_TARGET}
     SYSTEM PRIVATE
@@ -61,6 +60,7 @@ target_compile_definitions(${METATOOL_TARGET} PRIVATE
     OMNIFORCE_STATIC
     NOMINMAX
     "METATOOL_WORKING_DIRECTORY=\"${CMAKE_BINARY_DIR}/MetaToolGen\""
+    "METATOOL_OUTPUT_DIRECTORY=\"${CMAKE_SOURCE_DIR}/Omniforce/Shaders\""
     "$<$<CONFIG:Debug>:OMNIFORCE_DEBUG>"
     "$<$<CONFIG:Debug>:VMA_LEAK_LOG_FORMAT>"
     "$<$<CONFIG:RelWithDebInfo>:OMNIFORCE_RELWITHDEBINFO>"

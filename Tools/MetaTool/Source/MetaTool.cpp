@@ -14,6 +14,7 @@ namespace Omni {
 		: m_Index()
 		, m_TranslationUnits()
 		, m_WorkingDir(METATOOL_WORKING_DIRECTORY)
+		, m_OutputDir(METATOOL_OUTPUT_DIRECTORY)
 		, m_GeneratedDataCache()
 		, m_NumThreads(std::thread::hardware_concurrency())
 	{}
@@ -37,7 +38,7 @@ namespace Omni {
 
 		std::filesystem::create_directories(m_WorkingDir / "DummyOut");
 		std::filesystem::create_directories(m_WorkingDir / "Cache" / "Modules");
-		std::filesystem::create_directories(m_WorkingDir / "Generated");
+		std::filesystem::create_directories(m_OutputDir / "Gen");
 
 		// Setup parser args
 		m_ParserArgs = {
@@ -247,7 +248,7 @@ namespace Omni {
 							std::string type_module_name = module_entry_values[0];
 
 							// Delete the file
-							std::filesystem::remove(m_WorkingDir / "Generated" / "Implementations" / type_module_name / std::filesystem::path(cached_type_name + ".slang"));
+							std::filesystem::remove(m_OutputDir / "Gen" / "Implementations" / type_module_name / std::filesystem::path(cached_type_name + ".slang"));
 						}
 
 						if (target_cache == m_GeneratedDataCache[TU_path.string()]) {
@@ -334,8 +335,8 @@ namespace Omni {
 						}
 					}
 
-					std::filesystem::create_directories(m_WorkingDir / "Generated" / "Implementations" / type_module_name);
-					std::ofstream stream(m_WorkingDir / "Generated" / "Implementations" / type_module_name / std::filesystem::path(type_name + ".slang"));
+					std::filesystem::create_directories(m_OutputDir / "Gen" / "Implementations" / type_module_name);
+					std::ofstream stream(m_OutputDir / "Gen" / "Implementations" / type_module_name / std::filesystem::path(type_name + ".slang"));
 
 					// Generate prologue
 					{
@@ -373,7 +374,7 @@ namespace Omni {
 	void MetaTool::AssembleModules()
 	{
 		for (const auto& pending_module_reassembly_name : m_PendingModuleReassemblies) {
-			std::ofstream module_stream(m_WorkingDir / "Generated" / fmt::format("{}.slang", pending_module_reassembly_name));
+			std::ofstream module_stream(m_OutputDir / "Gen" / fmt::format("{}.slang", pending_module_reassembly_name));
 			std::ofstream module_cache_stream(m_WorkingDir / "Cache" / "Modules" / fmt::format("{}.cache", pending_module_reassembly_name));
 
 			CacheType module_cache = CacheType::array();
@@ -381,7 +382,7 @@ namespace Omni {
 			module_stream << fmt::format("module {};", pending_module_reassembly_name) << std::endl;
 
 			// Add all implementations to this module code and cache
-			std::filesystem::directory_iterator implementation_iterator(m_WorkingDir / "Generated" / "Implementations" / pending_module_reassembly_name);
+			std::filesystem::directory_iterator implementation_iterator(m_OutputDir / "Gen" / "Implementations" / pending_module_reassembly_name);
 			for (const auto& implementation : implementation_iterator) {
 				const std::string implementation_stem = implementation.path().stem().string();
 				module_cache.emplace_back(implementation_stem);
@@ -398,10 +399,10 @@ namespace Omni {
 		for (auto& parse_target : m_ParseTargets) {
 			std::filesystem::path target_file(parse_target.filename());
 
-			std::ofstream stream(m_WorkingDir / "DummyOut" / (target_file.string() + ".gen"));
-			stream.close();
+			//std::ofstream stream(m_WorkingDir / "DummyOut" / (target_file.string() + ".gen"));
+			//stream.close();
 
-			stream.open(m_WorkingDir / "Cache" / (target_file.string() + ".cache"));
+			std::ofstream stream(m_WorkingDir / "Cache" / (target_file.string() + ".cache"));
 			stream << m_GeneratedDataCache[parse_target.string()].dump(4);
 			stream.close();
 		}
