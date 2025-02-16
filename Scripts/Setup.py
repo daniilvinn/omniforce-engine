@@ -9,9 +9,8 @@ import sys
 import ctypes
 import requests
 
-
 def is_admin():
-    """Проверяет, запущен ли скрипт от имени администратора."""
+    """Checks if script is run with admin rights"""
     try:
         return ctypes.windll.shell32.IsUserAnAdmin()
     except:
@@ -19,7 +18,7 @@ def is_admin():
 
 
 def run_as_admin():
-    """Перезапускает скрипт с правами администратора, если они отсутствуют."""
+    """Reloads the script if it is run without admin rights"""
     if not is_admin():
         print("Re-running script as administrator...")
         ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " " + " ".join(sys.argv), None, 1)
@@ -27,7 +26,7 @@ def run_as_admin():
 
 
 def check_and_install_vulkan_sdk():
-    """Проверяет наличие Vulkan SDK и устанавливает его при необходимости."""
+    """Checks if Vulkan SDK is present and installs it on the system if it is not"""
     vulkan_sdk_path = os.getenv('VULKAN_SDK')
     if vulkan_sdk_path:
         print(f"Vulkan SDK is installed at: {vulkan_sdk_path}")
@@ -39,7 +38,7 @@ def check_and_install_vulkan_sdk():
 
 
 def get_latest_vulkan_sdk_url():
-    """Получает ссылку на последнюю версию Vulkan SDK."""
+    """Acquires a link to the latest Vulkan SDK"""
     url = "https://vulkan.lunarg.com/sdk/home"
     print("Fetching latest Vulkan SDK version...")
     response = urllib.request.urlopen(url)
@@ -59,7 +58,7 @@ def get_latest_vulkan_sdk_url():
 
 
 def install_vulkan_sdk():
-    """Скачивает и устанавливает Vulkan SDK."""
+    """Downloands and installs Vulkan SDK"""
     vulkan_sdk_url = get_latest_vulkan_sdk_url()
     print(f"Downloading Vulkan SDK from {vulkan_sdk_url}...")
 
@@ -75,7 +74,7 @@ def install_vulkan_sdk():
 
 
 def check_and_install_cmake():
-    """Проверяет наличие CMake и устанавливает его при необходимости."""
+    """Checks if CMake is present and installs it if it is not"""
     cmake_path = shutil.which("cmake")
     if cmake_path:
         print(f"CMake is installed at: {cmake_path}")
@@ -87,7 +86,7 @@ def check_and_install_cmake():
 
 
 def install_cmake():
-    """Скачивает и устанавливает CMake."""
+    """Downloads and installs CMake"""
     cmake_url = "https://cmake.org/download/CMake-3.25.0-windows-x86_64.msi"
     temp_file = tempfile.NamedTemporaryFile(delete=False)
     temp_file.close()
@@ -102,7 +101,7 @@ def install_cmake():
 
 
 def get_latest_clang_url():
-    """Получает ссылку на последнюю версию Clang с GitHub."""
+    """Gets link to the latest release of Clang on GitHub"""
     try:
         api_url = "https://api.github.com/repos/llvm/llvm-project/releases/latest"
         print("Fetching latest Clang version using GitHub API...")
@@ -124,7 +123,7 @@ def get_latest_clang_url():
 
 
 def download_file(url, temp_file):
-    """Скачивает файл и проверяет его корректность."""
+    """Downloads and validates the file"""
     try:
         print(f"Downloading file from {url}...")
         with requests.get(url, stream=True) as r:
@@ -141,55 +140,55 @@ def download_file(url, temp_file):
 
 
 def install_clang(install_dir):
-    """Скачивает и устанавливает Clang в указанную директорию."""
+    """Downloads and installs Clang into the desired directory"""
     clang_url = get_latest_clang_url()
     print(f"Downloading Clang from {clang_url}...")
 
-    # Скачиваем .exe установщик Clang
+    # Download .exe installer of Clang
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".exe")
     temp_file.close()
 
     download_file(clang_url, temp_file)
 
-    # Запускаем установщик в тихом режиме
+    # Run and install in silent mode
     print("Running the Clang installer...")
     subprocess.run([temp_file.name, "/silent", "/install"], check=True)
 
     os.remove(temp_file.name)
     print("Clang installation complete.")
 
-    # Теперь Clang должен быть установлен, добавим его в PATH
+    # Now Clang must be installed, add it to the PATH
     clang_bin = os.path.join(install_dir, "bin")
     os.environ["PATH"] += os.pathsep + clang_bin
     print(f"Clang added to PATH: {clang_bin}")
 
 
 def check_and_install_clang():
-    """Проверяет наличие Clang в PATH или Program Files, при необходимости устанавливает."""
-    # Проверяем наличие Clang в PATH
+    """Checks if Clang is present in PATH system or in Program Files folder. Install it if it is not"""
+    # Check if clang is present in PATH system
     clang_path = shutil.which("clang")
     if clang_path:
         print(f"Clang is installed and available in PATH at: {clang_path}")
         return True
 
-    # Проверяем наличие Clang в Program Files
+    # Check if Clang is present in Program Files
     install_dir = os.path.join(os.environ["ProgramFiles"], "Clang")
     clang_bin = os.path.join(install_dir, "bin", "clang.exe")
     if os.path.isfile(clang_bin):
         print(f"Clang is installed at: {clang_bin}, but not in PATH.")
-        # Добавляем Clang в PATH
+        # Add Clang to the PATH
         os.environ["PATH"] += os.pathsep + os.path.join(install_dir, "bin")
         print(f"Clang added to PATH: {os.path.join(install_dir, 'bin')}")
         return True
 
-    # Если Clang нигде не найден, устанавливаем его
+    # If clang is not found, install it
     print("Clang is not installed.")
     install_clang(install_dir)
     return False
 
 
 def main():
-    """Основная логика скрипта."""
+    """Main logic"""
     run_as_admin()
     print("Checking for Vulkan SDK, CMake, and Clang...")
 
