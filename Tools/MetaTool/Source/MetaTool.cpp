@@ -29,7 +29,7 @@ namespace Omni {
 		}
 
 		// Exit if no parse targets (maybe throw a warning in this case?)
-		if (m_ParseTargets.size() == 0) {
+		if (m_ParseTargets.empty()) {
 			exit(0);
 		}
 
@@ -115,7 +115,7 @@ namespace Omni {
 					{
 						CXCursor root_cursor = clang_getTranslationUnitCursor(TU);
 
-						json TU_parsing_result = json::object();
+						TypeCache TU_parsing_result = TypeCache::object();
 
 						clang_visitChildren(root_cursor, [](CXCursor cursor, CXCursor parent, CXClientData client_data) {
 							// Check if we are in Omniforce source file
@@ -127,22 +127,22 @@ namespace Omni {
 							}
 
 							// Start traversal
-							json& parsing_result = *(json*)client_data;
+							TypeCache& parsing_result = *(TypeCache*)client_data;
 
 							// Check if we are on attribute
 							if (clang_isAttribute(clang_getCursorKind(cursor))) {
 								const char* type_name = clang_getCString(clang_getCursorSpelling(parent));
 
-								parsing_result.emplace(type_name, json::object());
-								json& parsed_type = parsing_result.at(type_name);
+								parsing_result.emplace(type_name, TypeCache::object());
+								TypeCache& parsed_type = parsing_result.at(type_name);
 
 								// If so, acquire parent type (that is a struct or a class)
 								CXType type = clang_getCursorType(parent);
 
 								// Traverse its fields to generate code
 								clang_Type_visitFields(type, [](CXCursor field_cursor, CXClientData field_client_data) {
-									json& field_output = *(json*)field_client_data;
-									field_output.emplace("Fields", json::object());
+									TypeCache& field_output = *(TypeCache*)field_client_data;
+									field_output.emplace("Fields", TypeCache::object());
 
 									field_output["Fields"].emplace(
 										clang_getCString(clang_getCursorSpelling(field_cursor)),
@@ -160,11 +160,11 @@ namespace Omni {
 								std::sregex_iterator iterator_end;
 
 								// Parse metadata
-								parsed_type.emplace("Meta", json::object());
+								parsed_type.emplace("Meta", TypeCache::object());
 
 								for (iterator_begin; iterator_begin != iterator_end; ++iterator_begin) {
 									std::string meta_entry_name = (*iterator_begin)[1].str();
-									parsed_type["Meta"].emplace(meta_entry_name, json::array());
+									parsed_type["Meta"].emplace(meta_entry_name, TypeCache::array());
 
 									std::vector<std::string> meta_entry_values;
 									
@@ -205,7 +205,7 @@ namespace Omni {
 							// Compare caches. Skip code generation stage if caches match
 							std::ifstream cache_stream(cache_path);
 
-							json target_cache;
+							TypeCache target_cache;
 							target_cache << cache_stream;
 
 							if (target_cache == m_GeneratedDataCache[TU_path.string()]) {
@@ -230,89 +230,112 @@ namespace Omni {
 	void MetaTool::GenerateCode()
 	{
 		// Generate implementation code
-		for (auto& [TU_path, parsing_result] : m_GeneratedDataCache) {
-			for (auto& parsed_type_iter : parsing_result.items()) {
-				json& parsed_type = parsing_result[parsed_type_iter.key()];
-				std::string type_name = parsed_type_iter.key();
+		try
+		{
 
-				// Return if no "ShaderExpose" annotation - no code generation needed
-				bool shader_exposed_annotation_found = false;
-				bool shader_module_annotation_found = false;
+			for (auto& [TU_path, parsing_result] : m_GeneratedDataCache) {
 
-				for (auto& meta_entry : parsed_type["Meta"].items()) {
-					shader_exposed_annotation_found = shader_module_annotation_found || meta_entry.key() == "ShaderExpose";
-					shader_module_annotation_found = shader_module_annotation_found || meta_entry.key() == "Module";
-				}
+				for (auto& parsed_type_iter : parsing_result.items()) {
+					TypeCache& parsed_type = parsing_result[parsed_type_iter.key()];
 
-				if (!shader_exposed_annotation_found) {
-					continue;
-				}
+					std::string type_name = parsed_type_iter.key();
 
-				// Try to acquire shader module name for exposed struct
-				if (!shader_module_annotation_found) {
-					std::cerr << "MetaTool: failed to run parsing action on shader exposed \"" 
-						<< type_name << "\" type - the type is exposed but no shader module was specified" << std::endl;
-					exit(-3);
-				}
+					// Return if no "ShaderExpose" annotation - no code generation needed
+					bool shader_exposed_annotation_found = false;
+					bool shader_module_annotation_found = false;
 
-				std::vector<std::string> module_entry_values;
-				parsed_type["Meta"]["Module"].get_to(module_entry_values);
-
-				if (module_entry_values.size() != 1) {
-					std::cerr << "\'Module\' meta entry may only have one value" << std::endl;
-				}
-
-				std::string type_module_name = module_entry_values[0];
-
-				// Load module cache if needed
-				if (!m_ModuleCaches.contains(type_module_name)) {
-					std::ifstream module_cache_stream(m_WorkingDir / "Cache" / "Modules" / fmt::format("{}.cache", type_module_name));
-					m_ModuleCaches[type_module_name] = json::parse(module_cache_stream);
-				}
-				
-				// Check if module reassembly is needed
-				if (!m_ModuleCaches[type_module_name].contains(type_name)) {
-					bool module_pending = std::find(m_PendingModuleReassemblies.begin(), m_PendingModuleReassemblies.end(), type_module_name) != m_PendingModuleReassemblies.end();
-
-					if (!module_pending) {
-						m_PendingModuleReassemblies.emplace_back(type_module_name);
+					for (auto& meta_entry : parsed_type["Meta"].items()) {
+						shader_exposed_annotation_found = shader_module_annotation_found || meta_entry.key() == "ShaderExpose";
+						shader_module_annotation_found = shader_module_annotation_found || meta_entry.key() == "Module";
 					}
-				}
 
-				std::filesystem::create_directories(m_WorkingDir / "Generated" / "Implementations" / type_module_name);
-				std::ofstream stream(m_WorkingDir / "Generated" / "Implementations" / type_module_name / std::filesystem::path(type_name + ".slang"));
-
-				// Generate prologue
-				{
-					stream << "#pragma once" << std::endl;
-					PrintEmptyLine(stream);
-					stream << fmt::format("implementing {};", type_module_name) << std::endl;
-					PrintEmptyLine(stream);
-					stream << "namespace Omni {" << std::endl;
-				}
-				// Generate contents
-				{
-					PrintEmptyLine(stream);
-					stream << fmt::format("public struct {} {{", type_name) << std::endl;
-					for (auto& member : parsed_type["Fields"].items()) {
-						std::string field_type = member.value().get<std::string>();
-						std::string field_name = member.key();
-
-						stream << fmt::format("\t{} {};", GetShaderType(field_type), field_name) << std::endl;
+					if (!shader_exposed_annotation_found) {
+						continue;
 					}
-					stream << "};" << std::endl;
-					PrintEmptyLine(stream);
-				}
-				// Generate epilogue
-				{
-					stream << "}" << std::endl;
+
+					// Try to acquire shader module name for exposed struct
+					if (!shader_module_annotation_found) {
+						std::cerr << "MetaTool: failed to run parsing action on shader exposed \""
+							<< type_name << "\" type - the type is exposed but no shader module was specified" << std::endl;
+						exit(-3);
+					}
+
+					std::vector<std::string> module_entry_values;
+					parsed_type["Meta"]["Module"].get_to(module_entry_values);
+
+					if (module_entry_values.size() != 1) {
+						std::cerr << "\'Module\' meta entry may only have one value" << std::endl;
+					}
+
+					std::string type_module_name = module_entry_values[0];
+
+					// If cache does not exist, we inevitably need to assemble the module
+					std::filesystem::path module_cache_path =  m_WorkingDir / "Cache" / "Modules" / fmt::format("{}.cache", type_module_name);
+					bool module_cache_exists = std::filesystem::exists(module_cache_path);
+					if (!module_cache_exists) {
+						bool module_pending = std::find(m_PendingModuleReassemblies.begin(), m_PendingModuleReassemblies.end(), type_module_name) != m_PendingModuleReassemblies.end();
+
+						if (!module_pending) {
+							m_PendingModuleReassemblies.emplace_back(type_module_name);
+						}
+					}
+					else {
+						// Load module cache if needed
+						if (!m_ModuleCaches.contains(type_module_name) && !module_cache_exists) {
+							std::ifstream module_cache_stream(m_WorkingDir / "Cache" / "Modules" / fmt::format("{}.cache", type_module_name));
+							m_ModuleCaches[type_module_name] = TypeCache::parse(module_cache_stream);
+						}
+					
+						// Check if module reassembly is needed
+						if (!m_ModuleCaches[type_module_name].contains(type_name)) {
+							bool module_pending = std::find(m_PendingModuleReassemblies.begin(), m_PendingModuleReassemblies.end(), type_module_name) != m_PendingModuleReassemblies.end();
+
+							if (!module_pending) {
+								m_PendingModuleReassemblies.emplace_back(type_module_name);
+							}
+						}
+					}
+
+					std::filesystem::create_directories(m_WorkingDir / "Generated" / "Implementations" / type_module_name);
+					std::ofstream stream(m_WorkingDir / "Generated" / "Implementations" / type_module_name / std::filesystem::path(type_name + ".slang"));
+
+					// Generate prologue
+					{
+						stream << "#pragma once" << std::endl;
+						PrintEmptyLine(stream);
+						stream << fmt::format("implementing {};", type_module_name) << std::endl;
+						PrintEmptyLine(stream);
+						stream << "namespace Omni {" << std::endl;
+					}
+					// Generate contents
+					{
+						PrintEmptyLine(stream);
+						stream << fmt::format("public struct {} {{", type_name) << std::endl;
+						for (auto& member : parsed_type["Fields"].items()) {
+							std::string field_type = member.value().get<std::string>();
+							std::string field_name = member.key();
+
+							stream << fmt::format("\t{} {};", GetShaderType(field_type), field_name) << std::endl;
+						}
+						stream << "};" << std::endl;
+						PrintEmptyLine(stream);
+					}
+					// Generate epilogue
+					{
+						stream << "}" << std::endl;
+					}
 				}
 			}
+		}
+		catch (const std::exception& e)
+		{
+			std::cout << fmt::format("MetaTool run failed while generating code; error: {}", e.what()) << std::endl;
 		}
 	}
 
 	void MetaTool::AssembleModules()
 	{
+
 		for (const auto& pending_module_reassembly_name : m_PendingModuleReassemblies) {
 			std::ofstream module_stream(m_WorkingDir / "Generated" / fmt::format("{}.slang", pending_module_reassembly_name));
 
@@ -333,6 +356,7 @@ namespace Omni {
 
 	void MetaTool::DumpResults()
 	{
+
 		for (auto& parse_target : m_ParseTargets) {
 			std::filesystem::path target_file(parse_target.filename());
 
@@ -388,75 +412,40 @@ namespace Omni {
 		stream << std::endl;
 	}
 
-	constexpr std::string MetaTool::GetShaderType(const std::string& source_type) const
+	// Does NOT support matrices yet
+	std::string MetaTool::GetShaderType(const std::string& source_type) const
 	{
-		// Vector types
-		if (source_type == "glm::vec2") {
-			return "float2";
+		static std::unordered_map<std::string, std::string> shader_type_lookup_table = {
+			{ "glm::vec",	"float" },
+			{ "glm::uvec",	"uint" },
+			{ "glm::ivec",	"int" },
+			{ "glm::hvec",	"half" },
+
+			{ "uint64_t",	"uint64" },
+			{ "uint32",		"uint" },
+			{ "float64",	"double" },
+			{ "float32",	"float" },
+			{ "uint16",		"uint16_t" },
+			{ "float16",	"half" },
+			{ "uint8",		"uint8_t" },
+			{ "byte",		"uint8_t" }
+		};
+
+		std::string vector_scalar_type = source_type.substr(0, source_type.size() - 1);
+
+		// Check if it is a primitive type
+		if (!shader_type_lookup_table.contains(vector_scalar_type)) {
+			return source_type;
 		}
-		else if (source_type == "glm::vec3") {
-			return "float3";
-		}
-		else if (source_type == "glm::vec4") {
-			return "float4";
-		}
-		else if (source_type == "glm::uvec2") {
-			return "uint2";
-		}
-		else if (source_type == "glm::uvec3") {
-			return "uint3";
-		}
-		else if (source_type == "glm::uvec4") {
-			return "uint4";
-		}
-		else if (source_type == "glm::ivec2") {
-			return "int2";
-		}
-		else if (source_type == "glm::ivec3") {
-			return "int3";
-		}
-		else if (source_type == "glm::ivec4") {
-			return "int4";
-		}
-		else if (source_type == "glm::hvec2") {
-			return "half2";
-		}
-		else if (source_type == "glm::hvec3") {
-			return "half3";
-		}
-		else if (source_type == "glm::hvec4") {
-			return "half4";
-		}
-		// Scalar types
-		else if (source_type == "uint64") {
-			return "uint64_t";
-		}
-		else if (source_type == "float64") {
-			return "double";
-		}
-		else if (source_type == "uint32") {
-			return "uint";
-		}
-		else if (source_type == "float32") {
-			return "float";
-		}
-		else if (source_type == "uint16") {
-			return "uint16_t";
-		}
-		else if (source_type == "glm::half") {
-			return "half";
-		}
-		else if (source_type == "uint8") {
-			return "uint8_t";
-		}
-		else if (source_type == "byte") {
-			return "uint8_t";
-		}
-		else if (source_type == "bool") {
-			return "bool";
+
+		// Check if it is a vector type
+		if (source_type.find("glm::") != std::string::npos) {
+			char num_vector_components = source_type[source_type.size() - 1];
+
+			return fmt::format("{}{}", shader_type_lookup_table[vector_scalar_type], num_vector_components);
 		}
 		else {
-			return source_type;
+			return shader_type_lookup_table[source_type];
 		}
 
 	}

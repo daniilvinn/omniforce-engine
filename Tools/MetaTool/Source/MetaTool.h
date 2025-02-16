@@ -33,18 +33,19 @@ namespace Omni {
 
 		void PrintEmptyLine(std::ofstream& stream);
 
-		constexpr std::string GetShaderType(const std::string& source_type) const;
+		std::string GetShaderType(const std::string& source_type) const;
 
 	private:
 		using StringPath = std::string;
+		using TypeCache = nlohmann::ordered_json;
 
 		std::vector<std::filesystem::path> m_ParseTargets;
 		std::filesystem::path m_WorkingDir;
 		uint32_t m_NumThreads;
 
-		std::unordered_map<StringPath, json> m_GeneratedDataCache;
+		std::unordered_map<StringPath, TypeCache> m_GeneratedDataCache;
 		std::vector<std::string> m_PendingModuleReassemblies;
-		std::unordered_map<std::string, json> m_ModuleCaches;
+		std::unordered_map<std::string, TypeCache> m_ModuleCaches;
 
 		std::vector<const char*> m_ParserArgs;
 		std::vector<CXIndex> m_Index;

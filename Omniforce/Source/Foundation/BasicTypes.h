@@ -11,10 +11,11 @@
 #include <glm/glm.hpp>
 
 namespace glm {
-	using half  = uint16_t;
+
 	using hvec2 = glm::u16vec2;
 	using hvec3 = glm::u16vec3;
 	using hvec4 = glm::u16vec4;
+
 }
 
 namespace Omni {
@@ -32,6 +33,7 @@ namespace Omni {
 	typedef uint8_t byte;
 	typedef float float32;
 	typedef double float64;
+	typedef glm::uint16_t half;
 
 	using BitMask = uint64;
 	using Flag = uint64;
