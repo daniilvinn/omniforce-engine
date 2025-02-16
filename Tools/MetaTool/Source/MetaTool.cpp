@@ -115,7 +115,7 @@ namespace Omni {
 					{
 						CXCursor root_cursor = clang_getTranslationUnitCursor(TU);
 
-						TypeCache TU_parsing_result = TypeCache::object();
+						CacheType TU_parsing_result = CacheType::object();
 
 						clang_visitChildren(root_cursor, [](CXCursor cursor, CXCursor parent, CXClientData client_data) {
 							// Check if we are in Omniforce source file
@@ -127,22 +127,22 @@ namespace Omni {
 							}
 
 							// Start traversal
-							TypeCache& parsing_result = *(TypeCache*)client_data;
+							CacheType& parsing_result = *(CacheType*)client_data;
 
 							// Check if we are on attribute
 							if (clang_isAttribute(clang_getCursorKind(cursor))) {
 								const char* type_name = clang_getCString(clang_getCursorSpelling(parent));
 
-								parsing_result.emplace(type_name, TypeCache::object());
-								TypeCache& parsed_type = parsing_result.at(type_name);
+								parsing_result.emplace(type_name, CacheType::object());
+								CacheType& parsed_type = parsing_result.at(type_name);
 
 								// If so, acquire parent type (that is a struct or a class)
 								CXType type = clang_getCursorType(parent);
 
 								// Traverse its fields to generate code
 								clang_Type_visitFields(type, [](CXCursor field_cursor, CXClientData field_client_data) {
-									TypeCache& field_output = *(TypeCache*)field_client_data;
-									field_output.emplace("Fields", TypeCache::object());
+									CacheType& field_output = *(CacheType*)field_client_data;
+									field_output.emplace("Fields", CacheType::object());
 
 									field_output["Fields"].emplace(
 										clang_getCString(clang_getCursorSpelling(field_cursor)),
@@ -160,11 +160,11 @@ namespace Omni {
 								std::sregex_iterator iterator_end;
 
 								// Parse metadata
-								parsed_type.emplace("Meta", TypeCache::object());
+								parsed_type.emplace("Meta", CacheType::object());
 
 								for (iterator_begin; iterator_begin != iterator_end; ++iterator_begin) {
 									std::string meta_entry_name = (*iterator_begin)[1].str();
-									parsed_type["Meta"].emplace(meta_entry_name, TypeCache::array());
+									parsed_type["Meta"].emplace(meta_entry_name, CacheType::array());
 
 									std::vector<std::string> meta_entry_values;
 									
@@ -190,31 +190,72 @@ namespace Omni {
 					// Check if code generation is needed, compute run statistics
 					// ==========================================================
 					{ 
-						for (auto& validation_target : m_ParseTargets) {
-							StringPath validation_target_filename = validation_target.filename().string();
+						StringPath validation_target_filename = TU_path.filename().string();
 
-							// If target has no cache, then it we must generate it
-							std::filesystem::path cache_path = m_WorkingDir / "Cache" / fmt::format("{}.cache", validation_target_filename);
-							bool target_is_cached = std::filesystem::exists(cache_path);
+						// If target has no cache, then it we must generate it
+						std::filesystem::path cache_path = m_WorkingDir / "Cache" / fmt::format("{}.cache", validation_target_filename);
+						bool target_is_cached = std::filesystem::exists(cache_path);
 
-							if (!target_is_cached) {
-								m_RunStatistics.targets_generated++;
+						if (!target_is_cached) {
+							m_RunStatistics.targets_generated++;
+							continue;
+						}
+
+						// Compare caches. Skip code generation stage if caches match
+						std::ifstream cache_stream(cache_path);
+
+						CacheType target_cache;
+						target_cache << cache_stream;
+
+						for (const auto& cached_type_node : target_cache.items()) {
+							std::string cached_type_name = cached_type_node.key();
+							CacheType cached_type = cached_type_node.value();
+
+							// If type was deleted, need to also delete its shader implementation
+							if (m_GeneratedDataCache[TU_path.string()].contains(cached_type_name)) {
+								if (m_GeneratedDataCache[TU_path.string()][cached_type_name]["Meta"] == cached_type["Meta"]) {
+									continue;
+								}
+							}
+
+							bool shader_exposed_annotation_found = false;
+							bool shader_module_annotation_found = false;
+
+							for (auto& meta_entry : cached_type["Meta"].items()) {
+								shader_exposed_annotation_found = shader_exposed_annotation_found || meta_entry.key() == "ShaderExpose";
+								shader_module_annotation_found = shader_module_annotation_found || meta_entry.key() == "Module";
+							}
+
+							if (!shader_exposed_annotation_found) {
 								continue;
 							}
 
-							// Compare caches. Skip code generation stage if caches match
-							std::ifstream cache_stream(cache_path);
-
-							TypeCache target_cache;
-							target_cache << cache_stream;
-
-							if (target_cache == m_GeneratedDataCache[TU_path.string()]) {
-								m_GeneratedDataCache.erase(TU_path.string());
-								m_RunStatistics.targets_skipped++;
+							// Try to acquire shader module name for exposed struct
+							if (!shader_module_annotation_found) {
+								std::cerr << "MetaTool: failed to run parsing action on shader exposed \""
+									<< cached_type_name << "\" type - the type is exposed but no shader module was specified" << std::endl;
+								exit(-3);
 							}
-							else {
-								m_RunStatistics.targets_generated++;
+
+							std::vector<std::string> module_entry_values;
+							cached_type["Meta"]["Module"].get_to(module_entry_values);
+
+							if (module_entry_values.size() != 1) {
+								std::cerr << "\'Module\' meta entry may only have one value" << std::endl;
 							}
+
+							std::string type_module_name = module_entry_values[0];
+
+							// Delete the file
+							std::filesystem::remove(m_WorkingDir / "Generated" / "Implementations" / type_module_name / std::filesystem::path(cached_type_name + ".slang"));
+						}
+
+						if (target_cache == m_GeneratedDataCache[TU_path.string()]) {
+							m_GeneratedDataCache.erase(TU_path.string());
+							m_RunStatistics.targets_skipped++;
+						}
+						else {
+							m_RunStatistics.targets_generated++;
 						}
 					}
 				}
@@ -230,22 +271,18 @@ namespace Omni {
 	void MetaTool::GenerateCode()
 	{
 		// Generate implementation code
-		try
-		{
-
+		try {
 			for (auto& [TU_path, parsing_result] : m_GeneratedDataCache) {
-
 				for (auto& parsed_type_iter : parsing_result.items()) {
-					TypeCache& parsed_type = parsing_result[parsed_type_iter.key()];
-
 					std::string type_name = parsed_type_iter.key();
+					CacheType& parsed_type = parsing_result[parsed_type_iter.key()];
 
 					// Return if no "ShaderExpose" annotation - no code generation needed
 					bool shader_exposed_annotation_found = false;
 					bool shader_module_annotation_found = false;
 
 					for (auto& meta_entry : parsed_type["Meta"].items()) {
-						shader_exposed_annotation_found = shader_module_annotation_found || meta_entry.key() == "ShaderExpose";
+						shader_exposed_annotation_found = shader_exposed_annotation_found || meta_entry.key() == "ShaderExpose";
 						shader_module_annotation_found = shader_module_annotation_found || meta_entry.key() == "Module";
 					}
 
@@ -272,6 +309,7 @@ namespace Omni {
 					// If cache does not exist, we inevitably need to assemble the module
 					std::filesystem::path module_cache_path =  m_WorkingDir / "Cache" / "Modules" / fmt::format("{}.cache", type_module_name);
 					bool module_cache_exists = std::filesystem::exists(module_cache_path);
+
 					if (!module_cache_exists) {
 						bool module_pending = std::find(m_PendingModuleReassemblies.begin(), m_PendingModuleReassemblies.end(), type_module_name) != m_PendingModuleReassemblies.end();
 
@@ -282,8 +320,8 @@ namespace Omni {
 					else {
 						// Load module cache if needed
 						if (!m_ModuleCaches.contains(type_module_name) && !module_cache_exists) {
-							std::ifstream module_cache_stream(m_WorkingDir / "Cache" / "Modules" / fmt::format("{}.cache", type_module_name));
-							m_ModuleCaches[type_module_name] = TypeCache::parse(module_cache_stream);
+							std::ifstream module_cache_stream(module_cache_path);
+							m_ModuleCaches[type_module_name] = CacheType::parse(module_cache_stream);
 						}
 					
 						// Check if module reassembly is needed
@@ -327,36 +365,36 @@ namespace Omni {
 				}
 			}
 		}
-		catch (const std::exception& e)
-		{
+		catch (const std::exception& e) {
 			std::cout << fmt::format("MetaTool run failed while generating code; error: {}", e.what()) << std::endl;
 		}
 	}
 
 	void MetaTool::AssembleModules()
 	{
-
 		for (const auto& pending_module_reassembly_name : m_PendingModuleReassemblies) {
 			std::ofstream module_stream(m_WorkingDir / "Generated" / fmt::format("{}.slang", pending_module_reassembly_name));
+			std::ofstream module_cache_stream(m_WorkingDir / "Cache" / "Modules" / fmt::format("{}.cache", pending_module_reassembly_name));
+
+			CacheType module_cache = CacheType::array();
 
 			module_stream << fmt::format("module {};", pending_module_reassembly_name) << std::endl;
 
-			// Add all implementations to this module
-
+			// Add all implementations to this module code and cache
 			std::filesystem::directory_iterator implementation_iterator(m_WorkingDir / "Generated" / "Implementations" / pending_module_reassembly_name);
 			for (const auto& implementation : implementation_iterator) {
 				const std::string implementation_stem = implementation.path().stem().string();
+				module_cache.emplace_back(implementation_stem);
 
 				module_stream << fmt::format("__include Implementations.{}.{};", pending_module_reassembly_name, implementation_stem) << std::endl;
 			}
 
+			module_cache_stream << module_cache.dump(4);
 		}
-
 	}
 
 	void MetaTool::DumpResults()
 	{
-
 		for (auto& parse_target : m_ParseTargets) {
 			std::filesystem::path target_file(parse_target.filename());
 
