@@ -342,7 +342,7 @@ namespace Omni {
 					{
 						stream << "#pragma once" << std::endl;
 						PrintEmptyLine(stream);
-						stream << fmt::format("implementing {};", type_module_name) << std::endl;
+						stream << fmt::format("implementing Gen.{};", type_module_name) << std::endl;
 						PrintEmptyLine(stream);
 						stream << "namespace Omni {" << std::endl;
 					}
@@ -470,21 +470,20 @@ namespace Omni {
 			{ "byte",		"uint8_t" }
 		};
 
-		std::string vector_scalar_type = source_type.substr(0, source_type.size() - 1);
-
 		// Check if it is a primitive type
-		if (!shader_type_lookup_table.contains(vector_scalar_type)) {
-			return source_type;
+		if (shader_type_lookup_table.contains(source_type)) {
+			return shader_type_lookup_table[source_type];
 		}
 
 		// Check if it is a vector type
 		if (source_type.find("glm::") != std::string::npos) {
 			char num_vector_components = source_type[source_type.size() - 1];
+			std::string vector_scalar_type = source_type.substr(0, source_type.size() - 1);
 
 			return fmt::format("{}{}", shader_type_lookup_table[vector_scalar_type], num_vector_components);
 		}
 		else {
-			return shader_type_lookup_table[source_type];
+			return source_type;
 		}
 
 	}

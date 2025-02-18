@@ -76,25 +76,25 @@ namespace Omni {
 	using RGB32 = glm::u8vec3;
 	using RGBA32 = glm::u8vec4;
 
-	struct META(ShaderExpose, Module = "TestModule") Sphere {
+	struct META(ShaderExpose, Module = "Common") Sphere {
 		glm::vec3 center = {};
 		float32 radius = {};
 	};
 
-	struct META(ShaderExpose, Module = "TestModule") AABB {
+	struct META(ShaderExpose, Module = "Common") AABB {
 		glm::vec3 min = {}, max = {};
 	};
 
-	struct META(ShaderExpose, Module = "TestModule") AABB_2D {
+	struct META(ShaderExpose, Module = "Common") AABB_2D {
 		glm::vec2 min = {}, max = {};
 	};
 
-	struct META(ShaderExpose, Module = "TestModule") Bounds {
+	struct META(ShaderExpose, Module = "Common") Bounds {
 		Sphere sphere = {};
 		AABB aabb = {};
 	};
 
-	struct META(ShaderExpose, Module = "TestModule") Plane {
+	struct META(ShaderExpose, Module = "Common") Plane {
 		glm::vec3 normal = {};
 		float32 distance = {};
 

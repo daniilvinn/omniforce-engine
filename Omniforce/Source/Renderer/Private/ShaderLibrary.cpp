@@ -8,13 +8,6 @@
 
 namespace Omni {
 
-	struct META(ShaderExpose, Module = "CoreTypes") ShaderExposedTest {
-		glm::vec3 x;
-		glm::uvec2 test;
-		glm::half radius;
-		glm::hvec3 test2;
-	};
-
 	ShaderLibrary::ShaderLibrary()
 	{
 		m_GlobalMacros.push_back({ "_OMNI_SCENE_DESCRIPTOR_SET", "0" });
@@ -27,7 +20,7 @@ namespace Omni {
 
 		// Test slang
 		ShaderCompiler compiler;
-		compiler.LoadModule("Resources/Shaders/Slang/Shared/Shader.slang");
+		compiler.LoadModule("Resources/Shaders/Slang/Test.slang");
 		ByteArray code = compiler.GetEntryPointCode(&g_TransientAllocator, "Shader.ComputeMain");
 	}
 
