@@ -2,5 +2,8 @@
     "slang.predefinedMacros": [
         "OMNI_DECLARE_INPUT_STRUCTURE",
         "__OMNI_COMPILE_HOST_CODE=0"
+    ],
+    "slang.additionalSearchPaths": [
+        "CMAKE_GENERATED_SHADER_PATH"
     ]
 }

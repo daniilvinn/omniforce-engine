@@ -220,3 +220,13 @@ add_custom_target(
 
 set_target_properties(ClearParseTargets PROPERTIES FOLDER "MetaToolActions")
 set_target_properties(MetaToolRunner PROPERTIES FOLDER "MetaToolActions")
+
+# setup slangdconfig.json
+# Read the file content
+file(READ "${CMAKE_SOURCE_DIR}/Omniforce/Shaders/slangdconfig.json" SLANG_CONFIG_CONTENTS)
+
+# Replace "World" with "CMake"
+string(REPLACE "CMAKE_GENERATED_SHADER_PATH" "${CMAKE_SOURCE_DIR}/Omniforce/Shaders/" SLANG_CONFIG_CONTENTS "${SLANG_CONFIG_CONTENTS}")
+
+# Write the modified content to a new file
+file(WRITE "${CMAKE_SOURCE_DIR}/Omniforce/Shaders/slangdconfig.json" "${SLANG_CONFIG_CONTENTS}")
