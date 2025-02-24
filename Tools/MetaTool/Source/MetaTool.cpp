@@ -485,27 +485,28 @@ namespace Omni {
 	std::string MetaTool::GetShaderType(const std::string& source_type)
 	{
 		static std::unordered_map<std::string, std::string> shader_type_lookup_table = {
-			{ "glm::vec",	"float" },
-			{ "glm::uvec",	"uint" },
-			{ "glm::ivec",	"int" },
-			{ "glm::hvec",	"half" },
-			{ "glm::i8vec", "int8_t"},
-			{ "glm::i16vec", "int16_t"},
-			{ "glm::u8vec", "int16_t"},
-			{ "glm::u16vec", "int16_t"},
+			{ "glm::vec",		"float"		},
+			{ "glm::uvec",		"uint"		},
+			{ "glm::ivec",		"int"		},
+			{ "glm::hvec",		"half"		},
+			{ "glm::i8vec",		"int8_t"	},
+			{ "glm::i16vec",	"int16_t"	},
+			{ "glm::u8vec",		"int16_t"	},
+			{ "glm::u16vec",	"int16_t"	},
 
+			{ "glm::mat4",		"float4x4"	},
 
-			{ "uint64",		"uint64_t" },
-			{ "uint32",		"uint" },
-			{ "uint16",		"uint16_t" },
-			{ "uint8",		"uint8_t" },
-			{ "float64",	"double" },
-			{ "float32",	"float" },
-			{ "float16",	"half" },
-			{ "int32",		"int" },
-			{ "int16",		"int16_t" },
-			{ "int8",		"int8_t" },
-			{ "byte",		"uint8_t" }
+			{ "uint64",			"uint64_t"	},
+			{ "uint32",			"uint"		},
+			{ "uint16",			"uint16_t"	},
+			{ "uint8",			"uint8_t"	},
+			{ "float64",		"double"	},
+			{ "float32",		"float"		},
+			{ "float16",		"half"		},
+			{ "int32",			"int"		},
+			{ "int16",			"int16_t"	},
+			{ "int8",			"int8_t"	},
+			{ "byte",			"uint8_t"	}
 		};
 
 		// Check if it is a primitive type

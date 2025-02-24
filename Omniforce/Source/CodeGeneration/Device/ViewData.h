@@ -1,39 +1,21 @@
-#ifndef CAMERA_DATA_GLSLH
-#define CAMERA_DATA_GLSLH
+#pragma once
 
-#ifdef __OMNI_COMPILE_SHADER_FOR_CXX
-	#include <Foundation/BasicTypes.h>
-	#include <glm/glm.hpp>
-#else
-	#include <Source/Frustum.glslh>
+#include <Foundation/Common.h>
 
-	#extension GL_EXT_buffer_reference2			: require
-	#extension GL_EXT_scalar_block_layout		: require
-#endif // defined __cplusplus
+namespace Omni {
 
-#ifdef __OMNI_COMPILE_SHADER_FOR_CXX
-namespace Omni::GLSL {
-	struct CameraData {
-		using mat4 = glm::mat4;
-		using vec3 = glm::vec3;
-#else
-	layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer CameraData {
-#endif
-		mat4 view;
-		mat4 proj;
-		mat4 view_proj;
-		vec3 position;
+	struct META(ShaderExpose, Module = "Common") ViewData {
+		glm::mat4 view;
+		glm::mat4 proj;
+		glm::mat4 view_proj;
+		glm::vec3 position;
 		Frustum frustum;
-		vec3 forward_vector;
-		float fov; // in radians
-		float viewport_height;
-		float viewport_width;
-		float near_clip_distance;
-		float far_clip_distance;
+		glm::vec3 forward_vector;
+		float32 fov; // in radians
+		float32 viewport_height;
+		float32 viewport_width;
+		float32 near_clip_distance;
+		float32 far_clip_distance;
 	};
 
-#ifdef __OMNI_COMPILE_SHADER_FOR_CXX
 }
-#endif
-
-#endif
