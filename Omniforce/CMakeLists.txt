@@ -230,3 +230,5 @@ string(REPLACE "CMAKE_GENERATED_SHADER_PATH" "${CMAKE_SOURCE_DIR}/Omniforce/Shad
 
 # Write the modified content to a new file
 file(WRITE "${CMAKE_SOURCE_DIR}/Omniforce/Shaders/slangdconfig.json" "${SLANG_CONFIG_CONTENTS}")
+
+add_dependencies(${ENGINE_TARGET} MetaToolRunner)

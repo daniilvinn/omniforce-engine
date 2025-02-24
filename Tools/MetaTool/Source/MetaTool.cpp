@@ -145,9 +145,21 @@ namespace Omni {
 									CacheType& field_output = *(CacheType*)field_client_data;
 									field_output.emplace("Fields", CacheType::object());
 
+									std::string field_type_name = clang_getCString(clang_getTypeSpelling(clang_getCursorType(field_cursor)));
+									std::string field_name = clang_getCString(clang_getCursorSpelling(field_cursor));
+
+									// If it is BDA type, convert it to a pointer
+									if (field_type_name.find("BDA") == 0) {
+										size_t bda_type_begin_index = field_type_name.find('<') + 1;
+										size_t bda_type_end_index = field_type_name.find('>');
+
+										std::string bda_type = field_type_name.substr(bda_type_begin_index, bda_type_end_index - bda_type_begin_index) + '*';
+										field_type_name = bda_type;
+									}
+
 									field_output["Fields"].emplace(
-										clang_getCString(clang_getCursorSpelling(field_cursor)),
-										clang_getCString(clang_getTypeSpelling(clang_getCursorType(field_cursor)))
+										field_name,
+										field_type_name
 									);
 
 									return CXVisit_Continue;
@@ -354,7 +366,18 @@ namespace Omni {
 							std::string field_type = member.value().get<std::string>();
 							std::string field_name = member.key();
 
-							stream << fmt::format("\t{} {};", GetShaderType(field_type), field_name) << std::endl;
+							std::string array_subscript;
+
+							size_t array_subscript_begin_index = field_type.find_first_of('[');
+							size_t bda_declaration_begin_index = field_type.find_first_of("BDA<");
+
+							// Check if it is array type
+							if (array_subscript_begin_index != std::string::npos) {
+								array_subscript = field_type.substr(array_subscript_begin_index);
+								field_type.erase(array_subscript_begin_index);
+							}
+
+							stream << fmt::format("\t{} {}{};", GetShaderType(field_type), field_name, array_subscript) << std::endl;
 						}
 						stream << "};" << std::endl;
 						PrintEmptyLine(stream);

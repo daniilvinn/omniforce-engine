@@ -110,12 +110,18 @@ namespace Omni {
 
 	};
 
-	struct Frustum {
+	struct META(ShaderExpose, Module = "Common") Frustum {
 		Plane planes[6] = {}; // top, bottom, right, left, far, near planes
 	};
 
 	// Macro table is usually being iterated, so I use an array of pairs and not a map, because map
 	// fits better for random access
 	using ShaderMacroTable = std::map<std::string, std::string>;
+
+	// This struct is templated because template param is needed by code generation
+	template<typename T>
+	struct BDA {
+		uint64 address;
+	};
 
 }
