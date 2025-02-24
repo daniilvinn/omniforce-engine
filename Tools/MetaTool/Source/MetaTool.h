@@ -33,7 +33,7 @@ namespace Omni {
 
 		void PrintEmptyLine(std::ofstream& stream);
 
-		std::string GetShaderType(const std::string& source_type) const;
+		static std::string GetShaderType(const std::string& source_type);
 
 	private:
 		using StringPath = std::string;

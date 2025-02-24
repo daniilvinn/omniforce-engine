@@ -153,7 +153,7 @@ namespace Omni {
 										size_t bda_type_begin_index = field_type_name.find('<') + 1;
 										size_t bda_type_end_index = field_type_name.find('>');
 
-										std::string bda_type = field_type_name.substr(bda_type_begin_index, bda_type_end_index - bda_type_begin_index) + '*';
+										std::string bda_type = GetShaderType(field_type_name.substr(bda_type_begin_index, bda_type_end_index - bda_type_begin_index)) + '*';
 										field_type_name = bda_type;
 									}
 
@@ -355,6 +355,13 @@ namespace Omni {
 						stream << "#pragma once" << std::endl;
 						PrintEmptyLine(stream);
 						stream << fmt::format("implementing Gen.{};", type_module_name) << std::endl;
+
+						// Include Gen.Common in case if it is non-common module
+						if (type_module_name != "Common") {
+							PrintEmptyLine(stream);
+							stream << fmt::format("import Gen.Common;") << std::endl;
+						}
+
 						PrintEmptyLine(stream);
 						stream << "namespace Omni {" << std::endl;
 					}
@@ -475,21 +482,29 @@ namespace Omni {
 	}
 
 	// Does NOT support matrices yet
-	std::string MetaTool::GetShaderType(const std::string& source_type) const
+	std::string MetaTool::GetShaderType(const std::string& source_type)
 	{
 		static std::unordered_map<std::string, std::string> shader_type_lookup_table = {
 			{ "glm::vec",	"float" },
 			{ "glm::uvec",	"uint" },
 			{ "glm::ivec",	"int" },
 			{ "glm::hvec",	"half" },
+			{ "glm::i8vec", "int8_t"},
+			{ "glm::i16vec", "int16_t"},
+			{ "glm::u8vec", "int16_t"},
+			{ "glm::u16vec", "int16_t"},
 
-			{ "uint64_t",	"uint64" },
+
+			{ "uint64",		"uint64_t" },
 			{ "uint32",		"uint" },
+			{ "uint16",		"uint16_t" },
+			{ "uint8",		"uint8_t" },
 			{ "float64",	"double" },
 			{ "float32",	"float" },
-			{ "uint16",		"uint16_t" },
 			{ "float16",	"half" },
-			{ "uint8",		"uint8_t" },
+			{ "int32",		"int" },
+			{ "int16",		"int16_t" },
+			{ "int8",		"int8_t" },
 			{ "byte",		"uint8_t" }
 		};
 
