@@ -118,10 +118,10 @@ namespace Omni {
 	// fits better for random access
 	using ShaderMacroTable = std::map<std::string, std::string>;
 
-	// This struct is templated because template param is needed by code generation
-	template<typename T>
-	struct BDA {
-		uint64 address;
+	struct META(ShaderExpose, Module = "Common") Transform {
+		glm::vec3 translation;
+		glm::hvec4 rotation;
+		glm::vec3 scale;
 	};
 
 }

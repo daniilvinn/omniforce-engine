@@ -26,7 +26,7 @@ namespace Omni {
 		buffer_spec.size = mesh_data.local_indices.size();
 		m_Buffers.emplace(MeshBufferKey::MICRO_INDICES, DeviceBuffer::Create(allocator, buffer_spec, (void*)mesh_data.local_indices.data(), buffer_spec.size));
 
-		buffer_spec.size = mesh_data.cull_data.size() * sizeof MeshletBounds;
+		buffer_spec.size = mesh_data.cull_data.size() * sizeof MeshClusterBounds;
 		m_Buffers.emplace(MeshBufferKey::MESHLETS_CULL_DATA, DeviceBuffer::Create(allocator, buffer_spec, (void*)mesh_data.cull_data.data(), buffer_spec.size));
 
 		m_MeshletCount = mesh_data.meshlets.size();
