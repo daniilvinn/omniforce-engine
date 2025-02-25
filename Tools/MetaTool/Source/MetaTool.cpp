@@ -384,7 +384,7 @@ namespace Omni {
 								field_type.erase(array_subscript_begin_index);
 							}
 
-							stream << fmt::format("\t{} {}{};", GetShaderType(field_type), field_name, array_subscript) << std::endl;
+							stream << fmt::format("\tpublic {} {}{};", GetShaderType(field_type), field_name, array_subscript) << std::endl;
 						}
 						stream << "};" << std::endl;
 						PrintEmptyLine(stream);
@@ -417,7 +417,7 @@ namespace Omni {
 				const std::string implementation_stem = implementation.path().stem().string();
 				module_cache.emplace_back(implementation_stem);
 
-				module_stream << fmt::format("__include Implementations.{}.{};", pending_module_reassembly_name, implementation_stem) << std::endl;
+				module_stream << fmt::format("__include Gen.Implementations.{}.{};", pending_module_reassembly_name, implementation_stem) << std::endl;
 			}
 
 			module_cache_stream << module_cache.dump(4);
