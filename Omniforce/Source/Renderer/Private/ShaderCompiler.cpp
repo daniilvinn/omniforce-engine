@@ -53,10 +53,14 @@ namespace Omni {
 			target_description.flags = SLANG_TARGET_FLAG_GENERATE_SPIRV_DIRECTLY;
 			target_description.forceGLSLScalarBufferLayout = true;
 
+			const char* IncludeDir[] = { "Resources/Shaders" };
+
 			slang::SessionDesc session_description = {};
 			session_description.targets = &target_description;
 			session_description.targetCount = 1;
 			session_description.defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_COLUMN_MAJOR;
+			session_description.searchPaths = IncludeDir;
+			session_description.searchPathCount = 1;
 
 			slang_result = m_GlobalSession->createSession(session_description, m_LocalSession.writeRef());
 		}
@@ -207,9 +211,7 @@ namespace Omni {
 			Slang::ComPtr<slang::IBlob> diagnostics_blob;
 			slang_module = m_LocalSession->loadModule(path_string.c_str(), diagnostics_blob.writeRef());
 
-			Slang::ComPtr<SlangCompileRequest> req;
-
-			m_LocalSession->createCompileRequest(req.writeRef());
+			uint32 x = m_LocalSession->getLoadedModuleCount();
 
 			if (!slang_module) {
 				return ValidateSlangResult(-1, diagnostics_blob);
@@ -242,9 +244,14 @@ namespace Omni {
 		slang_module->findEntryPointByName(entry_point_name.c_str(), entry_point.writeRef());
 
 		// Compose a program
+		
 		Array<slang::IComponentType*> component_types(&g_TransientAllocator);
-		component_types.Add(slang_module);
 		component_types.Add(entry_point);
+		component_types.Add(slang_module);
+
+		for (uint32 i = 0; i < m_LocalSession->getLoadedModuleCount(); i++) {
+			component_types.Add(m_LocalSession->getLoadedModule(i));
+		}
 
 		Slang::ComPtr<slang::IComponentType> composed_program;
 		{

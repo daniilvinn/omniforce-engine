@@ -18,7 +18,7 @@ namespace Omni {
 		} metadata;
 	};
 
-	struct META(ShaderExpose, Module = "Rendering") ClusterLODCullingData {
+	struct META(ShaderExpose, Module = "RenderingGenerated") ClusterLODCullingData {
 		Sphere sphere = {};
 		Sphere parent_sphere = { glm::vec3(+INFINITY), +INFINITY };
 
@@ -26,7 +26,7 @@ namespace Omni {
 		float32 parent_error = INFINITY;
 	};
 
-	struct META(ShaderExpose, Module = "Rendering") MeshClusterBounds {
+	struct META(ShaderExpose, Module = "RenderingGenerated") MeshClusterBounds {
 		// Visibility culling data
 		Sphere vis_culling_sphere = {};
 		glm::vec3 cone_apex = {};
@@ -37,7 +37,7 @@ namespace Omni {
 		ClusterLODCullingData lod_culling = {};
 	};
 
-	struct META(ShaderExpose, Module = "Rendering") ClusterGeometryMetadata {
+	struct META(ShaderExpose, Module = "RenderingGenerated") ClusterGeometryMetadata {
 		uint32 vertex_bit_offset = 0; // offset within a bitstream of vertex geometry data
 		uint32 vertex_offset = 0;     // offset within an array of vertex attribute data
 		uint32 triangle_offset = 0;

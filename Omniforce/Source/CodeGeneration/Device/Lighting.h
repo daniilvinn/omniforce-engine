@@ -4,7 +4,7 @@
 
 namespace Omni {
 
-	struct META(ShaderExpose, Module = "Rendering") PointLight {
+	struct META(ShaderExpose, Module = "RenderingGenerated") PointLight {
 		glm::vec3 position;
 		glm::vec3 color;
 		float32 intensity;
