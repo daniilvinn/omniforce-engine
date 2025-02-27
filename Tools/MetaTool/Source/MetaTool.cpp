@@ -1,5 +1,7 @@
 #include "MetaTool.h"
 
+#include "Timer.h"
+
 #include <iostream>
 #include <regex>
 #include <fstream>
@@ -290,6 +292,7 @@ namespace Omni {
 
 	void MetaTool::GenerateCode()
 	{
+		std::cout << "MetaTool: generating code" << std::endl;
 		// Generate implementation code
 		try {
 			for (auto& [TU_path, parsing_result] : m_GeneratedDataCache) {
@@ -493,7 +496,6 @@ namespace Omni {
 
 			stream.close();
 		}
-		std::cout << fmt::format("MetaTool: {} target(s) generated, {} target(s) skipped", m_RunStatistics.targets_generated.load(), m_RunStatistics.targets_skipped.load()) << std::endl;
 	}
 
 	void MetaTool::CleanUp()
@@ -501,6 +503,12 @@ namespace Omni {
 		for (uint32_t i = 0; i < m_NumThreads; i++) {
 			clang_disposeIndex(m_Index[i]);
 		}
+	}
+
+	void MetaTool::PrintStatistics()
+	{
+		std::cout << fmt::format("MetaTool: {} target(s) generated, {} target(s) skipped", m_RunStatistics.targets_generated.load(), m_RunStatistics.targets_skipped.load()) << std::endl;
+		std::cout << fmt::format("MetaTool: session finished. Time taken: {:.3f}s", m_RunStatistics.session_timer.ElapsedMilliseconds() / 1000.0f);
 	}
 
 	void MetaTool::Validate(CXTranslationUnit translation_unit)

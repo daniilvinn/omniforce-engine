@@ -1,6 +1,7 @@
 #pragma once
 
 #include "OptionParser.h"
+#include "Timer.h"
 
 #include <mutex>
 #include <atomic>
@@ -28,6 +29,8 @@ namespace Omni {
 
 		void CleanUp();
 
+		void PrintStatistics();
+
 	private:
 		void Validate(CXTranslationUnit translation_unit);
 
@@ -53,6 +56,7 @@ namespace Omni {
 		std::unordered_map<StringPath, CXTranslationUnit> m_TranslationUnits;
 
 		struct RunStatistics {
+			Timer session_timer;
 			std::atomic_uint32_t targets_generated = 0;
 			std::atomic_uint32_t targets_skipped = 0;
 		} m_RunStatistics;

@@ -15,6 +15,7 @@ int main(int argc, char** argv) {
 	meta_tool.DumpCache();
 	meta_tool.GenerateCode();
 	meta_tool.AssembleModules();
+	meta_tool.PrintStatistics();
 
 	return 0;
 }
