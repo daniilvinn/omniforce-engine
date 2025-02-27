@@ -235,7 +235,7 @@ namespace Omni {
 		// Check if module is loaded
 		std::string& module_name = module_and_ep[0];
 		std::string& entry_point_name = module_and_ep[1];
-		OMNIFORCE_ASSERT_TAGGED(m_LoadedModules.contains(module_and_ep[0]), "Module is not loaded");
+		OMNIFORCE_ASSERT_TAGGED(m_LoadedModules.contains(module_name), "Module is not loaded");
 
 		// Find entry point by its name in found module
 		slang::IModule* slang_module = m_LoadedModules.at(module_and_ep[0]);

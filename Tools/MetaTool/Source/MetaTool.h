@@ -24,7 +24,7 @@ namespace Omni {
 
 		void AssembleModules();
 
-		void DumpResults();
+		void DumpCache();
 
 		void CleanUp();
 

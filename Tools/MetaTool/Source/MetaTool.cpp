@@ -4,6 +4,7 @@
 #include <regex>
 #include <fstream>
 #include <thread>
+#include <unordered_set>
 
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/fmt/ostr.h>
@@ -38,6 +39,7 @@ namespace Omni {
 
 		std::filesystem::create_directories(m_WorkingDir / "DummyOut");
 		std::filesystem::create_directories(m_WorkingDir / "Cache" / "Modules");
+		std::filesystem::create_directories(m_WorkingDir / "Cache" / "TypeModules");
 		std::filesystem::create_directories(m_OutputDir / "Gen");
 
 		// Setup parser args
@@ -185,6 +187,11 @@ namespace Omni {
 										parsed_type["Meta"][meta_entry_name].emplace_back((*iterator_begin)[2].str());
 									}
 								}
+
+								// If it is shader-expose type, then mark this as MetaTool-annotated type
+								bool metatool_annotated_type = parsed_type["Meta"].contains("ShaderExpose");
+								parsed_type["Meta"].emplace("MetaToolAnnotated", metatool_annotated_type);
+
 							}
 
 							// Keep traversal going
@@ -353,13 +360,39 @@ namespace Omni {
 					// Generate prologue
 					{
 						stream << "#pragma once" << std::endl;
+
 						PrintEmptyLine(stream);
 						stream << fmt::format("implementing Gen.{};", type_module_name) << std::endl;
+						PrintEmptyLine(stream);
 
-						// Include Gen.Common in case if it is non-common module
-						if (type_module_name != "Common") {
-							PrintEmptyLine(stream);
-							stream << fmt::format("import Gen.Common;") << std::endl;
+						// Detect and generate dependency imports
+						std::unordered_set<std::string> dependencies;
+
+						for (auto& member : parsed_type["Fields"].items()) {
+							std::filesystem::path type_module_cache_path = m_WorkingDir / "Cache" / "TypeModules" / std::filesystem::path(member.value().get<std::string>() + ".cache");
+
+							if (!std::filesystem::exists(type_module_cache_path)) {
+								continue;
+							}
+
+							std::ifstream type_module_cache_stream(type_module_cache_path);
+
+							// A hack, for some reason it cannot parse json directly here
+							std::string module_cache_data_string((std::istreambuf_iterator<char>(type_module_cache_stream)),
+								std::istreambuf_iterator<char>());
+
+							json type_module_cache = json::parse(module_cache_data_string);
+
+							std::string field_module_name = type_module_cache["Module"].get<std::string>();
+
+							// A check so the field does not try to import itself
+							if(type_module_name != field_module_name)
+								dependencies.emplace(field_module_name);
+						}
+
+						// Generate imports
+						for (auto& dependency : dependencies) {
+							stream << fmt::format("import Gen.{};", dependency) << std::endl;
 						}
 
 						PrintEmptyLine(stream);
@@ -393,6 +426,7 @@ namespace Omni {
 					{
 						stream << "}" << std::endl;
 					}
+					stream.close();
 				}
 			}
 		}
@@ -424,16 +458,39 @@ namespace Omni {
 		}
 	}
 
-	void MetaTool::DumpResults()
+	void MetaTool::DumpCache()
 	{
 		for (auto& parse_target : m_ParseTargets) {
 			std::filesystem::path target_file(parse_target.filename());
-
-			//std::ofstream stream(m_WorkingDir / "DummyOut" / (target_file.string() + ".gen"));
-			//stream.close();
+			json target_cache = m_GeneratedDataCache[parse_target.string()];
 
 			std::ofstream stream(m_WorkingDir / "Cache" / (target_file.string() + ".cache"));
-			stream << m_GeneratedDataCache[parse_target.string()].dump(4);
+			stream << target_cache.dump(4);
+			stream.close();
+
+			for (const auto& type_node : target_cache.items()) {
+				json type_cache_node = type_node.value();
+
+				// Skip type module cache generation if it is not MetaTool-annotated type (e.g. has some other annotaions like [[deprecated]])
+				if (type_cache_node.contains("Meta")) {
+					if (!type_cache_node["Meta"]["MetaToolAnnotated"].get<bool>()) {
+						continue;
+					}
+				}
+				else {
+					continue;
+				}
+
+				std::string type_module_name = type_cache_node["Meta"]["Module"].get<std::array<std::string, 1>>()[0];
+
+				json type_module_cache = json::object();
+				type_module_cache.emplace("Module", type_module_name);
+
+				std::ofstream type_module_cache_stream(m_WorkingDir / "Cache" / "TypeModules" / std::filesystem::path(type_node.key() + ".cache"));
+				type_module_cache_stream << type_module_cache.dump(4);
+				type_module_cache_stream.close();
+			}
+
 			stream.close();
 		}
 		std::cout << fmt::format("MetaTool: {} target(s) generated, {} target(s) skipped", m_RunStatistics.targets_generated.load(), m_RunStatistics.targets_skipped.load()) << std::endl;
