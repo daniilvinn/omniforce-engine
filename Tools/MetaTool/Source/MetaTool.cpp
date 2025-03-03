@@ -323,6 +323,8 @@ namespace Omni {
 					std::vector<std::string> module_entry_values;
 					parsed_type["Meta"]["Module"].get_to(module_entry_values);
 
+					bool is_shader_input = parsed_type["Meta"].contains("ShaderInput");
+
 					if (module_entry_values.size() != 1) {
 						std::cerr << "\'Module\' meta entry may only have one value" << std::endl;
 					}
@@ -372,7 +374,16 @@ namespace Omni {
 						std::unordered_set<std::string> dependencies;
 
 						for (auto& member : parsed_type["Fields"].items()) {
-							std::filesystem::path type_module_cache_path = m_WorkingDir / "Cache" / "TypeModules" / std::filesystem::path(member.value().get<std::string>() + ".cache");
+							std::string field_type_name = member.value().get<std::string>();
+
+							std::string special_characters = "*[";
+							size_t first_special_character_occurance = field_type_name.find_first_of(special_characters);
+
+							if (first_special_character_occurance != std::string::npos) {
+								field_type_name.erase(first_special_character_occurance);
+							}
+
+							std::filesystem::path type_module_cache_path = m_WorkingDir / "Cache" / "TypeModules" / std::filesystem::path(field_type_name + ".cache");
 
 							if (!std::filesystem::exists(type_module_cache_path)) {
 								continue;
@@ -423,7 +434,15 @@ namespace Omni {
 							stream << fmt::format("\tpublic {} {}{};", GetShaderType(field_type), field_name, array_subscript) << std::endl;
 						}
 						stream << "};" << std::endl;
+
 						PrintEmptyLine(stream);
+
+						// Declare push constant in case if it is annotated with ShaderInput
+						if (is_shader_input) {
+							stream << "[[vk::push_constant]]" << std::endl;
+							stream << fmt::format("ConstantBuffer<{}> Input;", type_name) << std::endl;
+							PrintEmptyLine(stream);
+						}
 					}
 					// Generate epilogue
 					{

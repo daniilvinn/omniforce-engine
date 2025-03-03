@@ -27,6 +27,10 @@ file(GLOB_RECURSE ENGINE_SOURCES
     "Source/*.hpp"
 )
 
+file(GLOB_RECURSE ENGINE_HEADERS
+    "Source/*.h"
+)
+
 file(GLOB_RECURSE ENGINE_THIRDPARTY_SOURCES
    "ThirdParty/ImGuizmo/ImGuizmo.h"
    "ThirdParty/ImGuizmo/ImGuizmo.cpp"
@@ -195,7 +199,7 @@ add_custom_target(
 
 set(GEN_OUT_FILES) 
 
-foreach(SOURCE_FILE ${ENGINE_SOURCES})
+foreach(SOURCE_FILE ${ENGINE_HEADERS})
     get_filename_component(FILE_NAME_WITH_EXTENSION ${SOURCE_FILE} NAME)
     set(GEN_FILE "${CMAKE_BINARY_DIR}/MetaToolGen/DummyOut/${FILE_NAME_WITH_EXTENSION}.gen")
 
