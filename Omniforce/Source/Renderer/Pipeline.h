@@ -93,7 +93,7 @@ namespace Omni {
 
 		bool operator== (const PipelineSpecification& other) const {
 			bool result = true;
-			result &= shader == other.shader;
+			result &= shader.Raw() == other.shader.Raw();
 			result &= line_width == other.line_width;
 			result &= type == other.type;
 			result &= culling_mode == other.culling_mode;

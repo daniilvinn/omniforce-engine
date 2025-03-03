@@ -109,7 +109,7 @@ namespace Omni {
 					layout_binding.binding = reflect_binding->binding;
 					layout_binding.descriptorType = convert(reflect_binding->descriptor_type);
 					layout_binding.descriptorCount = reflect_binding->count;
-					layout_binding.stageFlags = stage_data.first == ShaderStage::COMPUTE ? VK_SHADER_STAGE_COMPUTE_BIT : VK_SHADER_STAGE_ALL;
+					layout_binding.stageFlags = VK_SHADER_STAGE_ALL;
 
 					bool skip_binding = false;
 
