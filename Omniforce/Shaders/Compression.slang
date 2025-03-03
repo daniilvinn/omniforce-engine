@@ -2,7 +2,7 @@ module Compression;
 
 import Gen.Common;
 import Gen.RenderingGenerated;
-import Core.Rendering;
+import Rendering;
 
 namespace Omni {
 

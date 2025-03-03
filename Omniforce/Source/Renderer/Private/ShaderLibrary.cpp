@@ -20,8 +20,7 @@ namespace Omni {
 
 		// Test slang
 		ShaderCompiler compiler;
-		compiler.LoadModule("Resources/Shaders/Slang/Test.slang");
-		ByteArray code = compiler.GetEntryPointCode(&g_TransientAllocator, "Shader.ComputeMain");
+		compiler.LoadModule("Resources/Shaders/Compression.slang");
 	}
 
 	ShaderLibrary::~ShaderLibrary()
