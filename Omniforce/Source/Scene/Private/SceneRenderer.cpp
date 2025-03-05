@@ -39,8 +39,7 @@ namespace Omni {
 			std::vector<DescriptorBinding> bindings;
 			// Camera Data
 			bindings.push_back({ 0, DescriptorBindingType::SAMPLED_IMAGE, UINT16_MAX, (uint64)DescriptorFlags::PARTIALLY_BOUND });
-			bindings.push_back({ 1, DescriptorBindingType::STORAGE_BUFFER, 1, 0 });
-			bindings.push_back({ 2, DescriptorBindingType::STORAGE_IMAGE, 1, 0 });
+			bindings.push_back({ 1, DescriptorBindingType::STORAGE_IMAGE, 1, 0 });
 
 			DescriptorSetSpecification global_set_spec = {};
 			global_set_spec.bindings = std::move(bindings);
@@ -52,20 +51,15 @@ namespace Omni {
 
 			// Create sprite data buffer. Creating SSBO because I need more than 65kb.
 			{
-				uint32 per_frame_size = Utils::Align(sizeof(Sprite) * 2500, Renderer::GetDeviceMinimalStorageBufferOffsetAlignment());
+				uint32 per_frame_size = sizeof(Sprite) * 2048;
 
 				DeviceBufferSpecification buffer_spec = {};
 				buffer_spec.size = per_frame_size * Renderer::GetConfig().frames_in_flight;
 				buffer_spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
-				buffer_spec.buffer_usage = DeviceBufferUsage::STORAGE_BUFFER;
+				buffer_spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
 				buffer_spec.heap = DeviceBufferMemoryHeap::DEVICE;
 
 				m_SpriteDataBuffer = DeviceBuffer::Create(&g_PersistentAllocator, buffer_spec);
-
-				for (uint32 i = 0; i < Renderer::GetConfig().frames_in_flight; i++) {
-					m_SceneDescriptorSet[i]->Write(1, 0, m_SpriteDataBuffer, per_frame_size, i * per_frame_size);
-				}
-
 				m_SpriteBufferSize = per_frame_size;
 			}
 
@@ -161,7 +155,6 @@ namespace Omni {
 			shader_name_to_uuid_table.emplace("VisibleMaterialResolve.ofs", UUID());
 			shader_name_to_uuid_table.emplace("SWMicropolyRaster.ofs", UUID());
 
-
 			// helper lambda
 			auto m = [](UUID id) -> auto {
 				std::map<std::string, std::string> m;
@@ -191,9 +184,11 @@ namespace Omni {
 			});
 			JobSystem::GetExecutor()->run(taskflow).wait();
 
+			shader_library->LoadShader("Resources/Shaders/SpriteRendering.slang", m(shader_name_to_uuid_table["Sprite.ofs"]));
+
 			// 2D pass
 			PipelineSpecification pipeline_spec = PipelineSpecification::Default();
-			pipeline_spec.shader = shader_library->GetShader("Sprite.ofs");
+			pipeline_spec.shader = shader_library->GetShader("SpriteRendering.slang");
 			pipeline_spec.debug_name = "Sprite pass";
 			pipeline_spec.output_attachments_formats = { ImageFormat::RGB32_HDR };
 			pipeline_spec.culling_mode = PipelineCullingMode::NONE;
@@ -303,7 +298,7 @@ namespace Omni {
 			m_VisibilityBuffer = Image::Create(&g_PersistentAllocator, image_spec);
 
 			for (auto& set : m_SceneDescriptorSet) {
-				set->Write(2, 0, m_VisibilityBuffer, nullptr);
+				set->Write(1, 0, m_VisibilityBuffer, nullptr);
 			}
 		}
 		// Init visible cluster buffer
@@ -681,10 +676,14 @@ namespace Omni {
 					m_SpriteQueue.size() * sizeof(Sprite)
 				);
 
+				SpriteRenderingInput* sprite_rendering_input = new SpriteRenderingInput;
+				sprite_rendering_input->View = BDA<ViewData>(m_CameraDataBuffer, m_CameraDataBuffer->GetFrameOffset());
+				sprite_rendering_input->Sprites = BDA<Sprite>(m_SpriteDataBuffer, m_SpriteDataBuffer->GetFrameOffset());
+				sprite_rendering_input->NumSprites = m_SpriteQueue.size();
+
 				MiscData pc = {};
-				pc.data = (byte*)new uint64;
-				memcpy(pc.data, &camera_data_device_address, sizeof uint64);
-				pc.size = sizeof uint64;
+				pc.data = (byte*)sprite_rendering_input;
+				pc.size = sizeof(SpriteRenderingInput);
 
 				Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], m_SpritePass, 0);
 				Renderer::RenderQuads(m_SpritePass, m_SpriteQueue.size(), pc);

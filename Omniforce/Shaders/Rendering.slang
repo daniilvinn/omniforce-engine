@@ -1,6 +1,6 @@
 module Rendering;
 
-import Gen.Common;
+import Gen.BasicTypes;
 import Gen.RenderingGenerated;
 
 namespace Omni {

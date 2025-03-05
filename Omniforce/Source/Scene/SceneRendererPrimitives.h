@@ -3,6 +3,9 @@
 #include <Foundation/Common.h>
 
 #include <Renderer/Mesh.h>
+#include <CodeGeneration/Device/BDA.h>
+#include <CodeGeneration/Device/ViewData.h>
+#include <Scene/Sprite.h>
 
 #include <glm/glm.hpp>
 
@@ -40,6 +43,12 @@ namespace Omni {
 	struct SceneVisibleCluster {
 		const uint32 instance_index = 0;
 		const uint32 cluster_index = 0;
+	};
+
+	struct META(ShaderExpose, ShaderInput, Module = "SpriteRenderingInput") SpriteRenderingInput{
+		BDA<ViewData> View;
+		BDA<Sprite> Sprites;
+		uint32 NumSprites;
 	};
 
 }

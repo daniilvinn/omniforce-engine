@@ -440,7 +440,7 @@ namespace Omni {
 						// Declare push constant in case if it is annotated with ShaderInput
 						if (is_shader_input) {
 							stream << "[[vk::push_constant]]" << std::endl;
-							stream << fmt::format("ConstantBuffer<{}> Input;", type_name) << std::endl;
+							stream << fmt::format("public ConstantBuffer<{}> Input;", type_name) << std::endl;
 							PrintEmptyLine(stream);
 						}
 					}

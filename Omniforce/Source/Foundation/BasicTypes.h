@@ -76,25 +76,25 @@ namespace Omni {
 	using RGB32 = glm::u8vec3;
 	using RGBA32 = glm::u8vec4;
 
-	struct META(ShaderExpose, Module = "Common") Sphere {
+	struct META(ShaderExpose, Module = "BasicTypes") Sphere {
 		glm::vec3 center = {};
 		float32 radius = {};
 	};
 
-	struct META(ShaderExpose, Module = "Common") AABB {
+	struct META(ShaderExpose, Module = "BasicTypes") AABB {
 		glm::vec3 min = {}, max = {};
 	};
 
-	struct META(ShaderExpose, Module = "Common") AABB_2D {
+	struct META(ShaderExpose, Module = "BasicTypes") AABB_2D {
 		glm::vec2 min = {}, max = {};
 	};
 
-	struct META(ShaderExpose, Module = "Common") Bounds {
+	struct META(ShaderExpose, Module = "BasicTypes") Bounds {
 		Sphere sphere = {};
 		AABB aabb = {};
 	};
 
-	struct META(ShaderExpose, Module = "Common") Plane {
+	struct META(ShaderExpose, Module = "BasicTypes") Plane {
 		glm::vec3 normal = {};
 		float32 distance = {};
 
@@ -110,7 +110,7 @@ namespace Omni {
 
 	};
 
-	struct META(ShaderExpose, Module = "Common") Frustum {
+	struct META(ShaderExpose, Module = "BasicTypes") Frustum {
 		Plane planes[6] = {}; // top, bottom, right, left, far, near planes
 	};
 
@@ -118,7 +118,7 @@ namespace Omni {
 	// fits better for random access
 	using ShaderMacroTable = std::map<std::string, std::string>;
 
-	struct META(ShaderExpose, Module = "Common") Transform {
+	struct META(ShaderExpose, Module = "BasicTypes") Transform {
 		glm::vec3 translation;
 		glm::hvec4 rotation;
 		glm::vec3 scale;

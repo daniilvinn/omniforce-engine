@@ -4,7 +4,7 @@
 
 namespace Omni {
 
-	struct META(ShaderExpose, Module = "Common") ViewData {
+	struct META(ShaderExpose, Module = "BasicTypes") ViewData {
 		glm::mat4 view;
 		glm::mat4 proj;
 		glm::mat4 view_proj;

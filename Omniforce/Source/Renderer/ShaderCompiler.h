@@ -14,7 +14,7 @@
 namespace Omni {
 
 	struct OMNIFORCE_API ShaderCompilationResult {
-		std::map<ShaderStage, std::vector<uint32>> bytecode;
+		std::map<ShaderStage, std::vector<uint32>> bytecode; // TODO: change bytecode type to `ByteArray`
 		bool valid;
 	};
 

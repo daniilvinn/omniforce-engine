@@ -27,8 +27,22 @@ vec2 tex_coords[6] = {
 	vec2( 0.0f, 0.0f )
 };
 
+struct Sprite {
+	vec3 position;
+	f16vec4 rotation;
+	vec2 size;
+	vec4 color_tint;
+	uint texture_index;
+};
+
+layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer SpriteRenderQueue {
+	Sprite sprites[];
+};
+
 layout(push_constant, scalar) uniform pc_ {
     CameraData camera_data;
+	SpriteRenderQueue sprite_data;
+	uint num_sprites;
 } pc;
 
 layout(location = 0) out vec2 tex_coord;
@@ -36,7 +50,7 @@ layout(location = 1) out uint texture_index;
 layout(location = 2) out vec4 color_tint;
 
 void main() {
-	Sprite sprite = sprite_data.sprites[gl_InstanceIndex];
+	Sprite sprite = pc.sprite_data.sprites[gl_InstanceIndex];
 
 	vec3 rotated_vertex = RotateByQuat(vec3(sprite.size, 1.0f) * vertices[gl_VertexIndex], vec4(sprite.rotation));
 	gl_Position = pc.camera_data.view_proj * vec4(sprite.position + rotated_vertex, 1);

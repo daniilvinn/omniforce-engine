@@ -3,6 +3,7 @@
 #include <Foundation/Common.h>
 #include <Renderer/RendererCommon.h>
 #include <Renderer/Shader.h>
+#include <Renderer/ShaderCompiler.h>
 
 #include <shared_mutex>
 
@@ -50,6 +51,14 @@ namespace Omni {
 		const InternalStorage* const GetShaders() const { return &m_Library; }
 
 		ShaderStage EvaluateStage(std::filesystem::path file) const;
+
+	private:
+
+		/*
+		*  Loads a Slang module and extracts Vertex / Fragment stages
+		*/
+
+		ShaderCompilationResult LoadSlangShader(const std::filesystem::path& path, ShaderCompiler& compiler);
 
 	private:
 		inline static ShaderLibrary* s_Instance;

@@ -17,10 +17,6 @@ namespace Omni {
 		m_GlobalMacros.push_back({ "__OMNI_MESH_SHADER_PREFERRED_WORK_GROUP_SIZE", std::to_string(Renderer::GetDeviceOptimalMeshWorkGroupSize()) });
 		m_GlobalMacros.push_back({ "__OMNI_COMPILE_SHADER_FOR_GLSL", "" });
 		m_GlobalMacros.shrink_to_fit();
-
-		// Test slang
-		ShaderCompiler compiler;
-		compiler.LoadModule("Resources/Shaders/Compression.slang");
 	}
 
 	ShaderLibrary::~ShaderLibrary()
@@ -44,6 +40,8 @@ namespace Omni {
 
 	bool ShaderLibrary::LoadShader(const std::filesystem::path& path, const ShaderMacroTable& macros) {
 		ShaderCompiler shader_compiler;
+		ShaderCompilationResult compilation_result;
+
 		OMNIFORCE_ASSERT_TAGGED(macros.contains("__OMNI_PIPELINE_LOCAL_HASH"), "No pipeline ID macro provided");
 
 		for (auto& global_macro : m_GlobalMacros)
@@ -65,19 +63,25 @@ namespace Omni {
 			return false;
 		}
 
-		std::string shader_source;
-		std::string line;
-		std::ifstream input_stream(path);
-		while (std::getline(input_stream, line)) shader_source.append(line + '\n');
+		if (path.extension() == ".slang")
+		{
+			compilation_result = LoadSlangShader(path, shader_compiler);
+		}
+		else {
+			std::string shader_source;
+			std::string line;
+			std::ifstream input_stream(path);
+			while (std::getline(input_stream, line)) shader_source.append(line + '\n');
 
-		ShaderCompilationResult compilation_result = shader_compiler.Compile(shader_source, path.filename().string(), macros);
+			compilation_result = shader_compiler.Compile(shader_source, path.filename().string(), macros);
+		}
 
 		if (!compilation_result.valid) return false;
 
 		Ref<Shader> shader = Shader::Create(&g_PersistentAllocator, compilation_result.bytecode, path);
 
 		m_Mutex.lock();
-		auto shader_filename = path.filename().string();
+		std::string shader_filename = path.filename().string();
 
 		if (m_Library.contains(shader_filename)) {
 			m_Library[shader_filename].push_back({ shader, macros });
@@ -177,4 +181,26 @@ namespace Omni {
 		return ShaderStage::UNKNOWN;
 	}
 	
+	ShaderCompilationResult ShaderLibrary::LoadSlangShader(const std::filesystem::path& path, ShaderCompiler& compiler)
+	{
+		compiler.LoadModule(path);
+
+		ByteArray vertex_shader_code = compiler.GetEntryPointCode(&g_PersistentAllocator, fmt::format("{}.{}", path.stem().string(), "VertexStage"));
+		ByteArray fragment_shader_code = compiler.GetEntryPointCode(&g_PersistentAllocator, fmt::format("{}.{}", path.stem().string(), "FragmentStage"));
+
+		std::vector<uint32> vertex_bytecode(vertex_shader_code.Size() / 4);
+		std::vector<uint32> fragment_bytecode(fragment_shader_code.Size() / 4);
+
+		memcpy(vertex_bytecode.data(), vertex_shader_code.Raw(), vertex_shader_code.Size());
+		memcpy(fragment_bytecode.data(), fragment_shader_code.Raw(), fragment_shader_code.Size());
+
+		ShaderCompilationResult result = {};
+		result.valid = vertex_shader_code.Size() && fragment_shader_code.Size();
+
+		result.bytecode.emplace(ShaderStage::VERTEX, std::move(vertex_bytecode));
+		result.bytecode.emplace(ShaderStage::FRAGMENT, std::move(fragment_bytecode));
+
+		return result;
+	}
+
 }
