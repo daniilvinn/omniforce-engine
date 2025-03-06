@@ -37,7 +37,6 @@ namespace Omni {
 		// Descriptor data
 		{
 			std::vector<DescriptorBinding> bindings;
-			// Camera Data
 			bindings.push_back({ 0, DescriptorBindingType::SAMPLED_IMAGE, UINT16_MAX, (uint64)DescriptorFlags::PARTIALLY_BOUND });
 			bindings.push_back({ 1, DescriptorBindingType::STORAGE_IMAGE, 1, 0 });
 
@@ -148,7 +147,7 @@ namespace Omni {
 
 			std::map<std::string, UUID> shader_name_to_uuid_table;
 
-			shader_name_to_uuid_table.emplace("Sprite.ofs", UUID());
+			shader_name_to_uuid_table.emplace("SpriteRendering.slang", UUID());
 			shader_name_to_uuid_table.emplace("CullIndirect.ofs", UUID());
 			shader_name_to_uuid_table.emplace("PBR.ofs", UUID());
 			shader_name_to_uuid_table.emplace("VisibilityBuffer.ofs", UUID());
@@ -163,9 +162,6 @@ namespace Omni {
 			};
 
 			tf::Task shaders_load_task = taskflow.emplace([&](tf::Subflow& sf) {
-				sf.emplace([&, shader_name = "Sprite.ofs"]() { 
-					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
-				});
 				sf.emplace([&, shader_name = "CullIndirect.ofs"]() { 
 					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
 				});
@@ -184,7 +180,7 @@ namespace Omni {
 			});
 			JobSystem::GetExecutor()->run(taskflow).wait();
 
-			shader_library->LoadShader("Resources/Shaders/SpriteRendering.slang", m(shader_name_to_uuid_table["Sprite.ofs"]));
+			shader_library->LoadShader("Resources/Shaders/SpriteRendering.slang", m(shader_name_to_uuid_table["SpriteRendering.slang"]));
 
 			// 2D pass
 			PipelineSpecification pipeline_spec = PipelineSpecification::Default();
@@ -676,6 +672,7 @@ namespace Omni {
 					m_SpriteQueue.size() * sizeof(Sprite)
 				);
 
+				//SpriteRenderingInput* sprite_rendering_input = g_TransientAllocator.Allocate<SpriteRenderingInput>().As<SpriteRenderingInput>();
 				SpriteRenderingInput* sprite_rendering_input = new SpriteRenderingInput;
 				sprite_rendering_input->View = BDA<ViewData>(m_CameraDataBuffer, m_CameraDataBuffer->GetFrameOffset());
 				sprite_rendering_input->Sprites = BDA<Sprite>(m_SpriteDataBuffer, m_SpriteDataBuffer->GetFrameOffset());

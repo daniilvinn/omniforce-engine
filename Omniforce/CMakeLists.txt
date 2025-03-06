@@ -25,6 +25,7 @@ file(GLOB_RECURSE ENGINE_SOURCES
     "Source/*.h"
     "Source/*.cpp"
     "Source/*.hpp"
+    "Shaders/*.*"
 )
 
 file(GLOB_RECURSE ENGINE_HEADERS
