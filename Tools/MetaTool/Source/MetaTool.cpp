@@ -160,6 +160,15 @@ namespace Omni {
 										std::string bda_type = GetShaderType(field_type_name.substr(bda_type_begin_index, bda_type_end_index - bda_type_begin_index)) + '*';
 										field_type_name = bda_type;
 									}
+									else if (field_type_name.find("ShaderRuntimeArray") == 0) {
+										size_t runtime_array_type_begin_index = field_type_name.find('<') + 1;
+										size_t runtime_array_type_end_index = field_type_name.find('>');
+
+										size_t num_chars = runtime_array_type_end_index - runtime_array_type_begin_index;
+
+										std::string runtime_array_type = GetShaderType(field_type_name.substr(runtime_array_type_begin_index, num_chars));
+										field_type_name = runtime_array_type + "[]";
+									}
 
 									field_output["Fields"].emplace(
 										field_name,
@@ -423,7 +432,6 @@ namespace Omni {
 							std::string array_subscript;
 
 							size_t array_subscript_begin_index = field_type.find_first_of('[');
-							size_t bda_declaration_begin_index = field_type.find_first_of("BDA<");
 
 							// Check if it is array type
 							if (array_subscript_begin_index != std::string::npos) {
