@@ -264,7 +264,6 @@ namespace Omni {
 		dummy_pc_range.size = 128;
 		dummy_pc_range.stageFlags = VK_SHADER_STAGE_ALL;
 
-		Ref<VulkanShader> vk_shader = m_Specification.shader;
 		std::vector<VkDescriptorSetLayout> descriptor_set_layouts = { vk_dummy_set->RawLayout() };
 		std::vector<VkPushConstantRange> push_constant_ranges = { dummy_pc_range };
 
@@ -288,7 +287,7 @@ namespace Omni {
 		// HACK: I assume that D32_SFLOAT is chosen format. More proper way to do it is to request depth image format from pipeline spec or swapchain
 		pipeline_rendering.depthAttachmentFormat = VK_FORMAT_D32_SFLOAT;
 
-
+		Ref<VulkanShader> vk_shader = m_Specification.shader;
 		std::vector<VkPipelineShaderStageCreateInfo> stage_infos = vk_shader->GetCreateInfos();
 
 		VkGraphicsPipelineCreateInfo graphics_pipeline_create_info = {};
@@ -322,9 +321,23 @@ namespace Omni {
 	{
 		auto device = VulkanGraphicsContext::Get()->GetDevice();
 
-		Ref<VulkanShader> vk_shader = m_Specification.shader;
-		std::vector<VkDescriptorSetLayout> descriptor_set_layouts = vk_shader->GetLayouts();
-		std::vector<VkPushConstantRange> push_constant_ranges = vk_shader->GetRanges();
+		std::vector<DescriptorBinding> global_bindings;
+		global_bindings.push_back({ 0, DescriptorBindingType::SAMPLED_IMAGE, UINT16_MAX, (uint64)DescriptorFlags::PARTIALLY_BOUND });
+		global_bindings.push_back({ 1, DescriptorBindingType::STORAGE_IMAGE, 1, 0 });
+
+		DescriptorSetSpecification dummy_descriptor_set_spec = {};
+		dummy_descriptor_set_spec.bindings = std::move(global_bindings);
+
+		Ref<DescriptorSet> dummy_set = DescriptorSet::Create(&g_TransientAllocator, dummy_descriptor_set_spec);
+		WeakPtr<VulkanDescriptorSet> vk_dummy_set = dummy_set;
+
+		VkPushConstantRange dummy_pc_range = {};
+		dummy_pc_range.offset = 0;
+		dummy_pc_range.size = 128;
+		dummy_pc_range.stageFlags = VK_SHADER_STAGE_ALL;
+
+		std::vector<VkDescriptorSetLayout> descriptor_set_layouts = { vk_dummy_set->RawLayout() };
+		std::vector<VkPushConstantRange> push_constant_ranges = { dummy_pc_range };
 
 		VkPipelineLayoutCreateInfo pipeline_layout_create_info = {};
 		pipeline_layout_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -335,6 +348,7 @@ namespace Omni {
 
 		VK_CHECK_RESULT(vkCreatePipelineLayout(device->Raw(), &pipeline_layout_create_info, nullptr, &m_PipelineLayout));
 
+		Ref<VulkanShader> vk_shader = m_Specification.shader;
 		std::vector<VkPipelineShaderStageCreateInfo> stage_create_info = vk_shader->GetCreateInfos();
 
 		VkComputePipelineCreateInfo compute_pipeline_create_info = {};

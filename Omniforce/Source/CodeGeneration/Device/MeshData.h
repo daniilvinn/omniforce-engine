@@ -3,11 +3,11 @@
 #include <Foundation/Common.h>
 
 #include <Renderer/Meshlet.h>
-#include <CodeGeneration/Device/BDA.h>
+#include <CodeGeneration/Device/SpecialTypes.h>
 
 namespace Omni {
 
-    struct META(ShaderExpose, Module = "RenderingGenerated") MeshData {
+    struct META(ShaderExpose, Module = "RenderingGenerated") GeometryMeshData {
         float32 lod_distance_multiplier;
         Sphere bounding_sphere;
         uint32 meshlet_count;

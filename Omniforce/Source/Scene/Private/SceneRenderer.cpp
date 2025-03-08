@@ -147,8 +147,6 @@ namespace Omni {
 
 			std::map<std::string, UUID> shader_name_to_uuid_table;
 
-			shader_name_to_uuid_table.emplace("SpriteRendering.slang", UUID());
-			shader_name_to_uuid_table.emplace("CullIndirect.ofs", UUID());
 			shader_name_to_uuid_table.emplace("PBR.ofs", UUID());
 			shader_name_to_uuid_table.emplace("VisibilityBuffer.ofs", UUID());
 			shader_name_to_uuid_table.emplace("VisibleMaterialResolve.ofs", UUID());
@@ -162,9 +160,6 @@ namespace Omni {
 			};
 
 			tf::Task shaders_load_task = taskflow.emplace([&](tf::Subflow& sf) {
-				sf.emplace([&, shader_name = "CullIndirect.ofs"]() { 
-					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
-				});
 				sf.emplace([&, shader_name = "PBR.ofs"]() { 
 					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
 				});
@@ -180,25 +175,47 @@ namespace Omni {
 			});
 			JobSystem::GetExecutor()->run(taskflow).wait();
 
-			shader_library->LoadShader("Resources/Shaders/SpriteRendering.slang", m(shader_name_to_uuid_table["SpriteRendering.slang"]));
+			shader_library->LoadShader2(
+				"SpriteRendering",
+				{
+					"SpriteRendering.VertexStage",
+					"SpriteRendering.FragmentStage"
+				},
+				{}
+			);
+			shader_library->LoadShader2(
+				"FrustumCulling",
+				{
+					"InstanceCulling.FrustumCull"
+				},
+				{}
+			);
+			shader_library->LoadShader2(
+				"PBRLighting",
+				{
+					"FullScreenBase.GenerateQuad",
+					"PBRLighting.LightFunction"
+				},
+				{}
+			);
 
 			// 2D pass
 			PipelineSpecification pipeline_spec = PipelineSpecification::Default();
-			pipeline_spec.shader = shader_library->GetShader("SpriteRendering.slang");
+			pipeline_spec.shader = shader_library->GetShader("SpriteRendering");
 			pipeline_spec.debug_name = "Sprite pass";
 			pipeline_spec.output_attachments_formats = { ImageFormat::RGB32_HDR };
 			pipeline_spec.culling_mode = PipelineCullingMode::NONE;
 
-			m_SpritePass = Pipeline::Create(&g_PersistentAllocator, pipeline_spec, shader_name_to_uuid_table["Sprite.ofs"]);
+			m_SpritePass = Pipeline::Create(&g_PersistentAllocator, pipeline_spec);
 
 			// PBR full screen
-			pipeline_spec.shader = shader_library->GetShader("PBR.ofs");
+			pipeline_spec.shader = shader_library->GetShader("PBRLighting");
 			pipeline_spec.debug_name = "PBR full screen";
 			pipeline_spec.color_blending_enable = false;
 			pipeline_spec.depth_test_enable = false;
 			pipeline_spec.depth_write_enable = false;
 
-			m_PBRFullscreenPipeline = Pipeline::Create(&g_PersistentAllocator, pipeline_spec, shader_name_to_uuid_table["PBR.ofs"]);
+			m_PBRFullscreenPipeline = Pipeline::Create(&g_PersistentAllocator, pipeline_spec);
 
 			// Vis buffer pass
 			pipeline_spec.shader = shader_library->GetShader("VisibilityBuffer.ofs");
@@ -220,10 +237,10 @@ namespace Omni {
 
 			// compute frustum culling
 			pipeline_spec.type = PipelineType::COMPUTE;
-			pipeline_spec.shader = shader_library->GetShader("CullIndirect.ofs");
+			pipeline_spec.shader = shader_library->GetShader("FrustumCulling");
 			pipeline_spec.debug_name = "Frustum cull prepass";
 
-			m_IndirectFrustumCullPipeline = Pipeline::Create(&g_PersistentAllocator, pipeline_spec, shader_name_to_uuid_table["CullIndirect.ofs"]);
+			m_IndirectFrustumCullPipeline = Pipeline::Create(&g_PersistentAllocator, pipeline_spec);
 		}
 		// Initialize device render queue and all buffers for indirect drawing
 		{
@@ -470,18 +487,20 @@ namespace Omni {
 		{
 			std::vector<std::pair<Ref<DeviceBuffer>, PipelineResourceBarrierInfo>> culling_buffers_barriers;
 
+			Ref<DeviceBuffer> mesh_data_buffer = m_MeshResourcesBuffer.GetStorage();
+
 			// Prepare push constants
-			IndirectFrustumCullPassPushContants* compute_push_constants_data = new IndirectFrustumCullPassPushContants;
-			compute_push_constants_data->camera_data_bda = camera_data_device_address;
-			compute_push_constants_data->mesh_data_bda = m_MeshResourcesBuffer.GetStorageBDA();
-			compute_push_constants_data->render_objects_data_bda = m_DeviceRenderQueue->GetDeviceAddress() + m_DeviceRenderQueue->GetFrameOffset();
-			compute_push_constants_data->original_object_count = m_HostRenderQueue.size();
-			compute_push_constants_data->culled_objects_bda = m_CulledDeviceRenderQueue->GetDeviceAddress();
-			compute_push_constants_data->output_buffer_bda = m_DeviceIndirectDrawParams->GetDeviceAddress();
+			InstanceCullingInput* compute_push_constants_data = new InstanceCullingInput;
+			compute_push_constants_data->View = BDA<ViewData>(m_CameraDataBuffer, m_CameraDataBuffer->GetFrameOffset());
+			compute_push_constants_data->Meshes = BDA<GeometryMeshData>(mesh_data_buffer);
+			compute_push_constants_data->SourceInstances = BDA<InstanceRenderData>(m_DeviceRenderQueue, m_DeviceRenderQueue->GetFrameOffset());
+			compute_push_constants_data->SourceInstanceCount = m_HostRenderQueue.size();
+			compute_push_constants_data->PostCullInstances = BDA<InstanceRenderData>(m_CulledDeviceRenderQueue);
+			compute_push_constants_data->IndirectParams = BDA<MeshShadingDrawParams>(m_DeviceIndirectDrawParams);
 
 			MiscData compute_pc = {};
 			compute_pc.data = (byte*)compute_push_constants_data;
-			compute_pc.size = sizeof IndirectFrustumCullPassPushContants;
+			compute_pc.size = sizeof InstanceCullingInput;
 
 			// Submit a dispatch
 			uint32 num_work_groups = (m_HostRenderQueue.size() + 255) / 256;
@@ -644,18 +663,18 @@ namespace Omni {
 				Renderer::InsertBarrier(render_barrier_info);
 
 				// Prepare push constants
-				PBRFullScreenPassPushConstants* pbr_push_constants = new PBRFullScreenPassPushConstants;
-				pbr_push_constants->camera_data_bda = camera_data_device_address;
-				pbr_push_constants->point_lights_bda = m_DevicePointLights->GetDeviceAddress() + m_DevicePointLights->GetFrameOffset();
-				pbr_push_constants->positions_texture_index = GetTextureIndex(m_GBuffer.positions->Handle);
-				pbr_push_constants->base_color_texture_index = GetTextureIndex(m_GBuffer.base_color->Handle);
-				pbr_push_constants->normal_texture_index = GetTextureIndex(m_GBuffer.normals->Handle);
-				pbr_push_constants->metallic_roughness_occlusion_texture_index = GetTextureIndex(m_GBuffer.metallic_roughness_occlusion->Handle);
-				pbr_push_constants->point_light_count = m_HostPointLights.size();
+				PBRLightingInput* pbr_push_constants = new PBRLightingInput;
+				pbr_push_constants->View = BDA<ViewData>(m_CameraDataBuffer, m_CameraDataBuffer->GetFrameOffset());
+				pbr_push_constants->PointLights = BDA<PointLight>(m_DevicePointLights, m_DevicePointLights->GetFrameOffset());
+				pbr_push_constants->PositionTextureID = GetTextureIndex(m_GBuffer.positions->Handle);
+				pbr_push_constants->ColorTextureID = GetTextureIndex(m_GBuffer.base_color->Handle);
+				pbr_push_constants->NormalTextureID = GetTextureIndex(m_GBuffer.normals->Handle);
+				pbr_push_constants->MetallicRoughnessOcclusionTextureID = GetTextureIndex(m_GBuffer.metallic_roughness_occlusion->Handle);
+				pbr_push_constants->PointLightCount = m_HostPointLights.size();
 
 				MiscData pbr_pc = {};
 				pbr_pc.data = (byte*)pbr_push_constants;
-				pbr_pc.size = sizeof PBRFullScreenPassPushConstants;
+				pbr_pc.size = sizeof PBRLightingInput;
 
 				// Submit full screen quad
 				Renderer::BeginRender({ m_CurrectMainRenderTarget }, m_CurrectMainRenderTarget->GetSpecification().extent, { 0, 0 }, { INFINITY, INFINITY, INFINITY, 1.0f });

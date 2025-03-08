@@ -4,6 +4,8 @@ import Gen.BasicTypes;
 
 namespace Omni {
 
+public static const float PI = 3.141592653589;
+
 [[vk::binding(0, 0)]]
 public Sampler2D TextureHeap[65535];
 
@@ -20,6 +22,53 @@ public extension Omni.Transform {
     public float3 TransformPoint(float3 Point) {
         return QuaternionRotate(rotation, Point * scale) + translation;
     }
+}
+
+public extension Omni.Frustum {
+    public bool IntersectSphere(Sphere InSphere) {
+        bool result = true;
+        for (int i = 0; i < 6; i++) {
+            Plane plane = planes[i];
+            result = result && ((dot(plane.normal, InSphere.center) - plane.distance) > -InSphere.radius);
+        }
+        return result;
+    }
+}
+
+public float2 VerticalInvert(float2 x) {
+
+    float2 Result = x;
+    Result.y = 1.0f - Result.y;
+
+    return Result;
+}
+
+public float3 VerticalInvert(float3 x) {
+
+    float3 Result = x;
+    Result.y = 1.0f - Result.y;
+
+    return Result;
+}
+
+public float4 VerticalInvert(float4 x) {
+
+    float4 Result = x;
+    Result.y = 1.0f - Result.y;
+
+    return Result;
+}
+
+public float2 Invert(float2 x) {
+    return 1.0f - x;
+}
+
+public float3 Invert(float3 x) {
+    return 1.0f - x;
+}
+
+public float4 Invert(float4 x) {
+    return 1.0f - x;
 }
 
 }

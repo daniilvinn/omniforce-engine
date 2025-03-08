@@ -11,17 +11,16 @@ namespace Omni {
 	struct BDA {
 		BDA() {}
 
-		BDA(WeakPtr<DeviceBuffer> buffer, bool split_by_fif = false)
-		{
-			address = buffer->GetDeviceAddress();
-			address += split_by_fif ? buffer->GetFrameOffset() : 0;
-		}
-
-		BDA(WeakPtr<DeviceBuffer> buffer, uint64 offset)
+		BDA(WeakPtr<DeviceBuffer> buffer, uint64 offset = 0)
 			: address(buffer->GetDeviceAddress() + offset)
 		{}
 
-		uint64 address;
+		uint64 address = 0;
+	};
+
+	template<typename T>
+	struct ShaderRuntimeArray {
+		const uint32 _;
 	};
 
 }

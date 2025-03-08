@@ -14,7 +14,6 @@
 #include <Threading/JobSystem.h>
 #include <Core/Utils.h>
 #include <Shaders/Shared/RenderObject.glslh>
-#include <Shaders/Shared/Lights.glslh>
 
 #include <nlohmann/json.hpp>
 
@@ -155,12 +154,12 @@ namespace Omni {
 				Entity entity(e, this);
 				TRSComponent trs_component = entity.GetWorldTransform();
 
-				GLSL::PointLight light_data = {};
-				light_data.position = trs_component.translation;
-				light_data.color = point_light.color;
-				light_data.intensity = point_light.intensity;
-				light_data.min_radius = point_light.min_radius;
-				light_data.radius = point_light.radius;
+				PointLight light_data = {};
+				light_data.Position = trs_component.translation;
+				light_data.Color = point_light.color;
+				light_data.Intensity = point_light.intensity;
+				light_data.MinRadius = point_light.min_radius;
+				light_data.Radius = point_light.radius;
 
 				m_Renderer->AddPointLight(light_data);
 

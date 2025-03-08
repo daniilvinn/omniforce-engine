@@ -3,34 +3,40 @@
 #include <Foundation/Common.h>
 
 #include <Renderer/Mesh.h>
-#include <CodeGeneration/Device/BDA.h>
+#include <CodeGeneration/Device/SpecialTypes.h>
 #include <CodeGeneration/Device/ViewData.h>
+#include <CodeGeneration/Device/MeshData.h>
+#include <CodeGeneration/Device/RenderObject.h>
+#include <Scene/Lights.h>
 #include <Scene/Sprite.h>
 
 #include <glm/glm.hpp>
 
 namespace Omni {
 
-	// TODO: here some extreme hackery with alignment
-	struct IndirectFrustumCullPassPushContants {
-		uint64 camera_data_bda;
-		uint64 mesh_data_bda;
-		uint64 render_objects_data_bda;
-		uint32 original_object_count;
-		const uint32 _unused = 0;
-		uint64 culled_objects_bda;
-		uint64 output_buffer_bda;
+	struct META(ShaderExpose, Module = "IndirectRendering") MeshShadingDrawParams {
+		uint32 InstanceCount;
+		ShaderRuntimeArray<glm::uvec3> DrawParams;
 	};
 
-	struct PBRFullScreenPassPushConstants {
-		uint64 camera_data_bda;
-		uint64 point_lights_bda;
-		uint32 positions_texture_index;
-		uint32 base_color_texture_index;
-		uint32 normal_texture_index;
-		uint32 metallic_roughness_occlusion_texture_index;
-		uint32 point_light_count;
-		const uint32 _unused = 0;
+	// TODO: here some extreme hackery with alignment
+	struct META(ShaderExpose, ShaderInput, Module = "InstanceCullingInput") InstanceCullingInput {
+		BDA<ViewData> View;
+		BDA<GeometryMeshData> Meshes;
+		BDA<InstanceRenderData> SourceInstances;
+		uint32 SourceInstanceCount;
+		BDA<InstanceRenderData> PostCullInstances;
+		BDA<MeshShadingDrawParams> IndirectParams;
+	};
+
+	struct META(ShaderExpose, ShaderInput, Module = "PBRLightingInput") PBRLightingInput {
+		BDA<ViewData> View;
+		BDA<PointLight> PointLights;
+		uint32 PointLightCount;
+		uint32 PositionTextureID;
+		uint32 ColorTextureID;
+		uint32 NormalTextureID;
+		uint32 MetallicRoughnessOcclusionTextureID;
 	};
 
 	struct ComputeClearPassPushConstants {

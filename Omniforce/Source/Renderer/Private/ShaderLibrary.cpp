@@ -62,11 +62,6 @@ namespace Omni {
 			OMNIFORCE_CORE_ERROR("Shader directory not found: {0}", path.string());
 			return false;
 		}
-
-		if (path.extension() == ".slang")
-		{
-			compilation_result = LoadSlangShader(path, shader_compiler);
-		}
 		else {
 			std::string shader_source;
 			std::string line;
@@ -90,6 +85,57 @@ namespace Omni {
 			std::vector<std::pair<Ref<Shader>, ShaderMacroTable>> permutations;
 			permutations.push_back({ shader, macros });
 			m_Library.emplace(shader_filename, permutations);
+		}
+		m_Mutex.unlock();
+
+		return true;
+	}
+
+	bool ShaderLibrary::LoadShader2(const std::string& name, std::vector<std::string> entry_point_names, const ShaderMacroTable& macros /*= {}*/)
+	{
+		ShaderCompiler shader_compiler;
+		ShaderCompilationResult compilation_result = {};
+		compilation_result.valid = true;
+
+		for (const auto& entry_point_full_name : entry_point_names) {
+			uint64 separator_location = entry_point_full_name.find('.');
+
+			std::string module_name = entry_point_full_name.substr(0, separator_location);
+			std::string entry_point_name = entry_point_full_name.substr(separator_location + 1);
+
+			std::filesystem::path path = "Resources/Shaders/" + module_name + ".slang";
+
+			for (auto& global_macro : m_GlobalMacros)
+				shader_compiler.AddGlobalMacro(global_macro.first, global_macro.second);
+
+			PerformShaderLoadingChecks(name, path, macros);
+
+			EntryPointCompilationOptions compilation_options = {};
+			compilation_options.entry_point_name = entry_point_name;
+			compilation_options.module_name = module_name;
+			compilation_options.path = path;
+
+			ShaderEntryPointCode compiled_entry_point = LoadShaderEntryPoint(compilation_options, shader_compiler);
+
+			std::vector<uint32> bytecode(compiled_entry_point.bytecode.Size() / 4);
+			memcpy(bytecode.data(), compiled_entry_point.bytecode.Raw(), compiled_entry_point.bytecode.Size());
+
+			compilation_result.valid &= compiled_entry_point.valid;
+			compilation_result.bytecode.emplace(compiled_entry_point.stage, bytecode);
+		}
+		if (!compilation_result.valid) return false;
+
+		Ref<Shader> shader = Shader::Create(&g_PersistentAllocator, compilation_result.bytecode, "");
+
+		m_Mutex.lock();
+
+		if (m_Library.contains(name)) {
+			m_Library[name].push_back({ shader, macros });
+		}
+		else {
+			std::vector<std::pair<Ref<Shader>, ShaderMacroTable>> permutations;
+			permutations.push_back({ shader, macros });
+			m_Library.emplace(name, permutations);
 		}
 		m_Mutex.unlock();
 
@@ -155,7 +201,7 @@ namespace Omni {
 		for (auto& permutation : permutation_list) {
 			auto& permutation_macro_table = permutation.second;
 			
-			std::string& permutation_id = permutation_macro_table.at("__OMNI_PIPELINE_LOCAL_HASH");
+			std::string& permutation_id = permutation_macro_table["__OMNI_PIPELINE_LOCAL_HASH"];
 			
 			// Emplace an id so if everything other than ID matches, then we can freely return this shader
 			macros["__OMNI_PIPELINE_LOCAL_HASH"] = permutation_id;
@@ -181,26 +227,32 @@ namespace Omni {
 		return ShaderStage::UNKNOWN;
 	}
 	
-	ShaderCompilationResult ShaderLibrary::LoadSlangShader(const std::filesystem::path& path, ShaderCompiler& compiler)
+	bool ShaderLibrary::PerformShaderLoadingChecks(const std::string& name, const std::filesystem::path& path, const ShaderMacroTable& macros)
 	{
-		compiler.LoadModule(path);
+		bool result = HasShader(name, macros);
 
-		ByteArray vertex_shader_code = compiler.GetEntryPointCode(&g_PersistentAllocator, fmt::format("{}.{}", path.stem().string(), "VertexStage"));
-		ByteArray fragment_shader_code = compiler.GetEntryPointCode(&g_PersistentAllocator, fmt::format("{}.{}", path.stem().string(), "FragmentStage"));
+		if (result)
+		{
+			OMNIFORCE_CORE_WARNING("Shader \"{0}\" is already loaded.", name);
+			return true;
+		}
 
-		std::vector<uint32> vertex_bytecode(vertex_shader_code.Size() / 4);
-		std::vector<uint32> fragment_bytecode(fragment_shader_code.Size() / 4);
+		result = FileSystem::CheckDirectory(path);
 
-		memcpy(vertex_bytecode.data(), vertex_shader_code.Raw(), vertex_shader_code.Size());
-		memcpy(fragment_bytecode.data(), fragment_shader_code.Raw(), fragment_shader_code.Size());
+		if (!result)
+		{
+			OMNIFORCE_CORE_ERROR("Shader directory not found: {0}", path.string());
+			return false;
+		}
 
-		ShaderCompilationResult result = {};
-		result.valid = vertex_shader_code.Size() && fragment_shader_code.Size();
+		return true;
+	}
 
-		result.bytecode.emplace(ShaderStage::VERTEX, std::move(vertex_bytecode));
-		result.bytecode.emplace(ShaderStage::FRAGMENT, std::move(fragment_bytecode));
-
-		return result;
+	ShaderEntryPointCode ShaderLibrary::LoadShaderEntryPoint(const EntryPointCompilationOptions& options, ShaderCompiler& compiler)
+	{
+		compiler.LoadModule(options.path);
+		ShaderEntryPointCode entry_point_code = compiler.GetEntryPointCode(&g_PersistentAllocator, fmt::format("{}.{}", options.module_name, options.entry_point_name));
+		return entry_point_code;
 	}
 
 }

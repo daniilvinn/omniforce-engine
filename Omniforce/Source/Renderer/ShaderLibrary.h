@@ -26,6 +26,7 @@ namespace Omni {
 
 		// @return true if loaded successfully, false if not. It can happen due to incorrect shader path or invalid shader code
 		bool LoadShader(const std::filesystem::path& path, const ShaderMacroTable& macros = {});
+		bool LoadShader2(const std::string& name, std::vector<std::string> entry_point_names, const ShaderMacroTable& macros = {});
 
 		// @return true if shader was successfully unloaded from library and destroyed, false if no shader with such name was found
 		bool UnloadShader(std::string name, const ShaderMacroTable& macros = {});
@@ -53,12 +54,21 @@ namespace Omni {
 		ShaderStage EvaluateStage(std::filesystem::path file) const;
 
 	private:
+		bool PerformShaderLoadingChecks(const std::string& name, const std::filesystem::path& path, const ShaderMacroTable& macros);
+
+	private:
 
 		/*
 		*  Loads a Slang module and extracts Vertex / Fragment stages
 		*/
 
-		ShaderCompilationResult LoadSlangShader(const std::filesystem::path& path, ShaderCompiler& compiler);
+		struct EntryPointCompilationOptions {
+			std::filesystem::path path;
+			std::string module_name;
+			std::string entry_point_name;
+		};
+
+		ShaderEntryPointCode LoadShaderEntryPoint(const EntryPointCompilationOptions& options, ShaderCompiler& compiler);
 
 	private:
 		inline static ShaderLibrary* s_Instance;

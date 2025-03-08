@@ -327,7 +327,7 @@ namespace Omni {
 				m_Allocator->FreeBase(m_Allocation);
 			}
 
-			//m_Allocator = other.m_Allocator;
+			m_Allocator = other.m_Allocator;
 			m_Allocation = other.m_Allocation;
 			m_Size = other.m_Size;
 			m_GrowthFactor = other.m_GrowthFactor;

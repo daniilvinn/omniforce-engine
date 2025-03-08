@@ -21,6 +21,19 @@ namespace Omni {
 		}
 	}
 
+	ShaderStage convert(const SlangStage stage) {
+		switch (stage)
+		{
+		case SLANG_STAGE_VERTEX:				return ShaderStage::VERTEX;
+		case SLANG_STAGE_FRAGMENT:				return ShaderStage::FRAGMENT;
+		case SLANG_STAGE_MESH:					return ShaderStage::MESH;
+		case SLANG_STAGE_AMPLIFICATION:			return ShaderStage::TASK;
+		case SLANG_STAGE_COMPUTE:				return ShaderStage::COMPUTE;
+		case SLANG_STAGE_NONE:					return ShaderStage::UNKNOWN;
+		default:								std::unreachable();
+		}
+	}
+
 	ShaderCompiler::ShaderCompiler()
 	{
 		if(OMNIFORCE_BUILD_CONFIG == OMNIFORCE_DEBUG_CONFIG)
@@ -222,8 +235,12 @@ namespace Omni {
 		return true;
 	}
 
-	ByteArray ShaderCompiler::GetEntryPointCode(IAllocator* allocator, const std::string& entry_point_full_name)
+	ShaderEntryPointCode ShaderCompiler::GetEntryPointCode(IAllocator* allocator, const std::string& entry_point_full_name)
 	{
+		ShaderEntryPointCode compilation_result = {};
+		compilation_result.valid = false;
+		compilation_result.stage = ShaderStage::UNKNOWN;
+
 		// Split entry point name;
 		// Entry point name must in this format: SWRaster.EntryScanline
 		// Where `SWRaster` is a module name and `EntryScanline` is an entrypoint
@@ -243,29 +260,17 @@ namespace Omni {
 		Slang::ComPtr<slang::IEntryPoint> entry_point;
 		slang_module->findEntryPointByName(entry_point_name.c_str(), entry_point.writeRef());
 
-		// Compose a program
-		
-		Array<slang::IComponentType*> component_types(&g_TransientAllocator);
-		component_types.Add(entry_point);
-		component_types.Add(slang_module);
-
-		for (uint32 i = 0; i < m_LocalSession->getLoadedModuleCount(); i++) {
-			component_types.Add(m_LocalSession->getLoadedModule(i));
-		}
-
 		Slang::ComPtr<slang::IComponentType> composed_program;
 		{
 			Slang::ComPtr<slang::IBlob> diagnostics;
-			SlangResult result = m_LocalSession->createCompositeComponentType(
-				component_types.Raw(),
-				component_types.Size(),
-				composed_program.writeRef(),
-				diagnostics.writeRef()
-			);
+			SlangResult result = entry_point->link(composed_program.writeRef(), diagnostics.writeRef());
+
 			if (!ValidateSlangResult(result, diagnostics)) {
-				return output_code;
+				return compilation_result;
 			}
 		}
+
+		SlangStage stage = composed_program->getLayout()->findEntryPointByName(entry_point_name.c_str())->getStage();
 
 		// Generate code
 		Slang::ComPtr<slang::IBlob> spirv_code;
@@ -278,14 +283,18 @@ namespace Omni {
 				diagnostics.writeRef());
 
 			if (!ValidateSlangResult(result, diagnostics)) {
-				return output_code;
+				return compilation_result;
 			}
 		}
 
 		output_code.Resize(spirv_code->getBufferSize());
 		memcpy(output_code.Raw(), spirv_code->getBufferPointer(), output_code.Size());
 
-		return output_code;
+		compilation_result.bytecode = std::move(output_code);
+		compilation_result.stage = convert(composed_program->getLayout()->getEntryPointByIndex(0)->getStage());
+		compilation_result.valid = true;
+
+		return compilation_result;
 	}
 
 	bool ShaderCompiler::ValidateSlangResult(SlangResult result, Slang::ComPtr<slang::IBlob>& diagnosticsBlob)

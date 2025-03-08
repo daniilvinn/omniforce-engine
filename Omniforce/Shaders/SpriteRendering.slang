@@ -26,7 +26,7 @@ static const float2 tex_coords[6] = {
 
 struct VSOutput {
     float4 Position : SV_POSITION;
-    float2 TextureCoordinate;
+    float2 UV;
     uint TextureIndex;
     float4 ColorTint;
 };
@@ -44,7 +44,7 @@ VSOutput VertexStage(uint InstanceID: SV_InstanceID, uint VertexID: SV_VertexID)
     
     VSOutput Output;
     Output.Position = mul(Input.View.view_proj, float4(TransformedVertex, 1.0f));
-    Output.TextureCoordinate = tex_coords[VertexID];
+    Output.UV = tex_coords[VertexID];
     Output.TextureIndex = CurrentSprite.texture_id;
     Output.ColorTint = CurrentSprite.color_tint;
 
@@ -57,7 +57,7 @@ struct PSOutput {
 
 [shader("pixel")]
 PSOutput FragmentStage(VSOutput StageInput) {
-    float4 TexelColor = TextureHeap[NonUniformResourceIndex(StageInput.TextureIndex)].Sample(StageInput.TextureCoordinate);
+    float4 TexelColor = TextureHeap[NonUniformResourceIndex(StageInput.TextureIndex)].Sample(StageInput.UV);
 
     PSOutput Output;
     Output.Color = TexelColor * StageInput.ColorTint;
