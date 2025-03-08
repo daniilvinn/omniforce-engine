@@ -256,7 +256,7 @@ void main() {
 			// Fetch all 3 vertices' tangent
 			vec4 vertex_tangent[3];
 			for(int i = 0; i < 3; i++) {
-				vertex_tangent[i] = vec4(DecodeTangent(mesh_data.attributes[meshlet_data.vertex_offset].tangent));
+				vertex_tangent[i] = vec4(DecodeTangent(mesh_data.attributes[meshlet_data.vertex_offset + triangle_indices[i]].tangent));
 			}
 
 			// Interpolate and get derivatives for texture fetches
@@ -269,7 +269,7 @@ void main() {
 			// Fetch all 3 vertices' tangent
 			vec3 vertex_normal[3];
 			for(int i = 0; i < 3; i++) {
-				vertex_normal[i] = vec3(DecodeNormal(mesh_data.attributes[meshlet_data.vertex_offset].normal));
+				vertex_normal[i] = vec3(DecodeNormal(mesh_data.attributes[meshlet_data.vertex_offset + triangle_indices[i]].normal));
 			}
 
 			// Interpolate and get derivatives for texture fetches
@@ -286,7 +286,7 @@ void main() {
 			// Fetch all 3 vertices' tangent
 			vec3 vertex_normal[3];
 			for(int i = 0; i < 3; i++) {
-				vertex_normal[i] = vec3(DecodeNormal(mesh_data.attributes[meshlet_data.vertex_offset].normal));
+				vertex_normal[i] = vec3(DecodeNormal(mesh_data.attributes[meshlet_data.vertex_offset + triangle_indices[i]].normal));
 			}
 
 			// Interpolate and get derivatives for texture fetches
