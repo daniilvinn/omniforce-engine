@@ -46,9 +46,14 @@ namespace Omni {
 	};
 
 	// Just so I can do `sizeof()` with it
-	struct SceneVisibleCluster {
-		const uint32 instance_index = 0;
-		const uint32 cluster_index = 0;
+	struct META(ShaderExpose, Module = "RenderingGenerated") SceneVisibleCluster {
+		uint32 InstanceIndex;
+		uint32 ClusterIndex;
+	};
+
+	struct META(ShaderExpose, ShaderInput, Module = "ResolveVisibleMaterialsMaskInput") ResolveVisibleMaterialsMaskInput {
+		BDA<InstanceRenderData> Instances;
+		BDA<SceneVisibleCluster> VisibleClusters;
 	};
 
 	struct META(ShaderExpose, ShaderInput, Module = "SpriteRenderingInput") SpriteRenderingInput{

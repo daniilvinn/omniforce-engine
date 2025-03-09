@@ -147,10 +147,8 @@ namespace Omni {
 
 			std::map<std::string, UUID> shader_name_to_uuid_table;
 
-			shader_name_to_uuid_table.emplace("PBR.ofs", UUID());
 			shader_name_to_uuid_table.emplace("VisibilityBuffer.ofs", UUID());
 			shader_name_to_uuid_table.emplace("VisibleMaterialResolve.ofs", UUID());
-			shader_name_to_uuid_table.emplace("SWMicropolyRaster.ofs", UUID());
 
 			// helper lambda
 			auto m = [](UUID id) -> auto {
@@ -160,16 +158,10 @@ namespace Omni {
 			};
 
 			tf::Task shaders_load_task = taskflow.emplace([&](tf::Subflow& sf) {
-				sf.emplace([&, shader_name = "PBR.ofs"]() { 
-					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
-				});
 				sf.emplace([&, shader_name = "VisibilityBuffer.ofs"]() { 
 					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
 				});
 				sf.emplace([&, shader_name = "VisibleMaterialResolve.ofs"]() { 
-					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
-				});
-				sf.emplace([&, shader_name = "SWMicropolyRaster.ofs"]() {
 					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
 				});
 			});
@@ -195,6 +187,14 @@ namespace Omni {
 				{
 					"FullScreenBase.GenerateQuad",
 					"PBRLighting.LightFunction"
+				},
+				{}
+			);
+			shader_library->LoadShader2(
+				"ResolveVisibleMaterialMask",
+				{
+					"FullScreenBase.GenerateQuad",
+					"VisibleMaterialResolve.ResolveMaterialMask"
 				},
 				{}
 			);
@@ -228,12 +228,12 @@ namespace Omni {
 			m_VisBufferPass = Pipeline::Create(&g_PersistentAllocator, pipeline_spec, shader_name_to_uuid_table["VisibilityBuffer.ofs"]);
 
 			// Vis material resolve pass
-			pipeline_spec.shader = shader_library->GetShader("VisibleMaterialResolve.ofs");
+			pipeline_spec.shader = shader_library->GetShader("ResolveVisibleMaterialMask");
 			pipeline_spec.debug_name = "Vis material resolve";
 			pipeline_spec.depth_write_enable = true;
 			pipeline_spec.depth_test_enable = true;
 
-			m_VisMaterialResolvePass = Pipeline::Create(&g_PersistentAllocator, pipeline_spec, shader_name_to_uuid_table["VisibleMaterialResolve.ofs"]);
+			m_VisMaterialResolvePass = Pipeline::Create(&g_PersistentAllocator, pipeline_spec);
 
 			// compute frustum culling
 			pipeline_spec.type = PipelineType::COMPUTE;
@@ -588,13 +588,13 @@ namespace Omni {
 					{ 0.0f, 0.0f, 0.0f, 0.0f }
 				);
 
-				MiscData pc = {};
-				uint64* data = new uint64[2];
-				data[0] = m_CulledDeviceRenderQueue->GetDeviceAddress();
-				data[1] = m_VisibleClusters->GetDeviceAddress();
+				ResolveVisibleMaterialsMaskInput* MaterialMaskResolveInput = new ResolveVisibleMaterialsMaskInput;
+				MaterialMaskResolveInput->Instances = BDA<InstanceRenderData>(m_CulledDeviceRenderQueue);
+				MaterialMaskResolveInput->VisibleClusters = BDA<SceneVisibleCluster>(m_VisibleClusters);
 
-				pc.data = (byte*)data;
-				pc.size = sizeof(uint64) * 2;
+				MiscData pc = {};
+				pc.data = (byte*)MaterialMaskResolveInput;
+				pc.size = sizeof(ResolveVisibleMaterialsMaskInput);
 
 				Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], m_VisMaterialResolvePass, 0);
 				Renderer::RenderQuads(m_VisMaterialResolvePass, pc);

@@ -11,7 +11,6 @@ public extension Omni.PointLight {
         float Attenuation = clamp(1.0 - (Distance - MinRadius) / (Radius - MinRadius), 0.0, 1.0);
         return Attenuation * Attenuation;
     }
-    
 }
 
 public float DistributionGGX(float3 N, float3 H, float Roughness)

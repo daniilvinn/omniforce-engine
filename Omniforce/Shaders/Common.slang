@@ -5,12 +5,13 @@ import Gen.BasicTypes;
 namespace Omni {
 
 public static const float PI = 3.141592653589;
+public static const float NaN = 0.0 / 0.0;
 
 [[vk::binding(0, 0)]]
-public Sampler2D TextureHeap[65535];
+public Sampler2D TextureHeap[];
 
 [[vk::binding(1, 0)]]
-RWTexture2D<uint64_t> SceneVisibilityBuffer;
+public RWTexture2D<uint64_t> SceneVisibilityBuffer;
 
 public float3 QuaternionRotate(float4 Quat, float3 Point) {
     float3 uv = cross(Quat.xyz, Point);

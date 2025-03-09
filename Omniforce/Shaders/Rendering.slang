@@ -42,7 +42,7 @@ namespace Omni {
 
 	}
 
-	public extension Omni.MeshData {
+    public extension Omni.GeometryMeshData {
 
 		int ReadVertexChannel(uint InClusterID, uint InVertexID, uint VertexChannel)
         {

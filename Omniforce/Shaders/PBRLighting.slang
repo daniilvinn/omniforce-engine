@@ -22,7 +22,7 @@ PSOutput LightFunction(VSOutput StageInput) {
     float3 N                                = TextureHeap[Input.NormalTextureID].Sample(StageInput.ScreenUV).rgb;
     float3 V                                = normalize(Input.View.position - WorldPosition);
 
-    float3 F0 = float3(0.04f);
+    float3 F0 = 0.04f;
     F0 = lerp(F0, BaseColor, MetallicRoughnessOcclusion.b);
 
     float3 Lo = 0.0f;
@@ -54,14 +54,14 @@ PSOutput LightFunction(VSOutput StageInput) {
         Lo += (kD * BaseColor / PI + Specular) * Radiance * NdotL;
     }
 
-    float3 Ambient = float3(0.1) * BaseColor;
+    float3 Ambient = 0.1 * BaseColor;
     float3 Color = Ambient * Lo;
     Color = Color * MetallicRoughnessOcclusion.r;
     Color = Color / (Color + 1.0f);
     Color = pow(Color, float3(1.0 / 2.2));
 
     PSOutput Output;
-    Output.Color = float4(Color, 1.0f);
+    Output.Color = float4(BaseColor, 1.0f);
 
     return Output;
 }
