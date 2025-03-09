@@ -434,10 +434,7 @@ namespace Omni {
 			);
 
 			Renderer::Submit([=]() {
-				m_CulledDeviceRenderQueue->Clear(Renderer::GetCmdBuffer(), 0, 4, 0);
 				m_DeviceIndirectDrawParams->Clear(Renderer::GetCmdBuffer(), 0, 4, 0);
-				m_VisibleClusters->Clear(Renderer::GetCmdBuffer(), 0, 4, 0);
-				m_SWRasterQueue->Clear(Renderer::GetCmdBuffer(), 0, 4, 0); // TODO: change here so it it is cleared properly
 			});
 
 			Renderer::ClearImage(m_VisibilityBuffer, { 0.0f, 0.0f, 0.0f, 0.0f });
@@ -451,16 +448,7 @@ namespace Omni {
 			indirect_params_barrier.buffer_barrier_offset = 0;
 			indirect_params_barrier.buffer_barrier_size = m_DeviceIndirectDrawParams->GetSpecification().size;
 
-			PipelineResourceBarrierInfo culled_objects_barrier = {};
-			culled_objects_barrier.src_stages = (BitMask)PipelineStage::TRANSFER;
-			culled_objects_barrier.dst_stages = (BitMask)PipelineStage::COMPUTE_SHADER;
-			culled_objects_barrier.src_access_mask = (BitMask)PipelineAccess::TRANSFER_WRITE;
-			culled_objects_barrier.dst_access_mask = (BitMask)PipelineAccess::SHADER_WRITE;
-			culled_objects_barrier.buffer_barrier_offset = 0;
-			culled_objects_barrier.buffer_barrier_size = m_CulledDeviceRenderQueue->GetSpecification().size;
-
 			buffers_clear_barriers.push_back({ m_DeviceIndirectDrawParams, indirect_params_barrier });
-			buffers_clear_barriers.push_back({ m_CulledDeviceRenderQueue, culled_objects_barrier });
 			
 			// Early transition of PBR attachments' layout
 			PipelineResourceBarrierInfo pbr_attachment_barrier = {};
@@ -470,12 +458,20 @@ namespace Omni {
 			pbr_attachment_barrier.dst_access_mask = (BitMask)PipelineAccess::COLOR_ATTACHMENT_WRITE;
 			pbr_attachment_barrier.new_image_layout = ImageLayout::COLOR_ATTACHMENT;
 
+			PipelineResourceBarrierInfo vis_buffer_attachment_barrier = {};
+			vis_buffer_attachment_barrier.src_stages = (BitMask)PipelineStage::TRANSFER;
+			vis_buffer_attachment_barrier.dst_stages = (BitMask)PipelineStage::FRAGMENT_SHADER;
+			vis_buffer_attachment_barrier.src_access_mask = (BitMask)PipelineAccess::TRANSFER_WRITE;
+			vis_buffer_attachment_barrier.dst_access_mask = (BitMask)PipelineAccess::SHADER_READ | (BitMask)PipelineAccess::SHADER_WRITE;
+			vis_buffer_attachment_barrier.new_image_layout = ImageLayout::GENERAL;
+
 			PipelineBarrierInfo clear_buffers_barrier_info = {};
 			clear_buffers_barrier_info.buffer_barriers = buffers_clear_barriers;
 			clear_buffers_barrier_info.image_barriers.push_back({ m_GBuffer.positions, pbr_attachment_barrier });
 			clear_buffers_barrier_info.image_barriers.push_back({ m_GBuffer.base_color, pbr_attachment_barrier });
 			clear_buffers_barrier_info.image_barriers.push_back({ m_GBuffer.normals, pbr_attachment_barrier });
 			clear_buffers_barrier_info.image_barriers.push_back({ m_GBuffer.metallic_roughness_occlusion, pbr_attachment_barrier });
+			clear_buffers_barrier_info.image_barriers.push_back({ m_VisibilityBuffer, vis_buffer_attachment_barrier });
 
 			Renderer::InsertBarrier(clear_buffers_barrier_info);
 		}
