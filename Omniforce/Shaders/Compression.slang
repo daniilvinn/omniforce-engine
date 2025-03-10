@@ -1,17 +1,17 @@
 module Compression;
 
-import Gen.Common;
+import Common;
 import Gen.RenderingGenerated;
 import Rendering;
 
 namespace Omni {
 
 public struct VertexDecoder {
-    public float3 Decode(ClusterGeometryMetadata InMetadata, MeshClusterBounds CullData, int3 InEncodedVertex) {
-        int BitExtendMask = 1 << (InMetadata.Bitrate - 1);
-        InEncodedVertex = (InEncodedVertex ^ BitExtendMask) - BitExtendMask;
+    public static float3 Decode(uint Bitrate, float3 ClusterCenter, int3 EncodedVertex) {
+        int BitExtendMask = 1 << (Bitrate - 1);
+        EncodedVertex = (EncodedVertex ^ BitExtendMask) - BitExtendMask;
 
-        return ldexp(float3(InEncodedVertex), int3(-InMetadata.Bitrate)) + CullData.vis_culling_sphere.center;
+        return ldexp(float3(EncodedVertex), int3(-Bitrate)) + ClusterCenter;
 	}
 }
 

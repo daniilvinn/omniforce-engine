@@ -62,7 +62,7 @@ namespace Omni {
 			// Create local session
 			slang::TargetDesc target_description = {};
 			target_description.format = SLANG_SPIRV;
-			target_description.profile = m_GlobalSession->findProfile("spirv_1_6");
+			target_description.profile = m_GlobalSession->findProfile("sm_6_8");
 			target_description.flags = SLANG_TARGET_FLAG_GENERATE_SPIRV_DIRECTLY;
 			target_description.forceGLSLScalarBufferLayout = true;
 

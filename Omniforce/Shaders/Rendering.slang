@@ -48,8 +48,8 @@ namespace Omni {
         {
             int Result = 0;
 
-			ClusterGeometryMetadata ClusterMetadata = meshlets_data[InClusterID];
-			uint LocalOffset = ClusterMetadata.Bitrate * InVertexID + ClusterMetadata.Bitrate * InVertexID;
+            ClusterGeometryMetadata ClusterMetadata = meshlets_data[InClusterID];
+            uint LocalOffset = (ClusterMetadata.Bitrate * InVertexID * 3) + ClusterMetadata.Bitrate * VertexChannel;
 			uint GlobalOffset = ClusterMetadata.vertex_bit_offset + LocalOffset;
 
             uint BitstreamNodeIndex = GlobalOffset >> 5;
@@ -66,6 +66,14 @@ namespace Omni {
 
             return Result;
         }
+
+        public int3 FetchVertex(uint ClusterID, uint VertexID) {
+            uint3 Result;
+            for (int i = 0; i < 3; i++) {
+                Result[i] = ReadVertexChannel(ClusterID, VertexID, i);
+            }
+            return Result;
+		}
 
 	}
 

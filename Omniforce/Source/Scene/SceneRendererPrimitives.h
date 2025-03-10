@@ -19,6 +19,11 @@ namespace Omni {
 		ShaderRuntimeArray<glm::uvec3> DrawParams;
 	};
 
+	struct META(ShaderExpose, Module = "SoftwareRasterizerGenerated") SWRasterQueue {
+		glm::uvec3 ClusterCount;
+		ShaderRuntimeArray<uint32> ClusterIDs;
+	};
+
 	// TODO: here some extreme hackery with alignment
 	struct META(ShaderExpose, ShaderInput, Module = "InstanceCullingInput") InstanceCullingInput {
 		BDA<ViewData> View;
@@ -56,10 +61,23 @@ namespace Omni {
 		BDA<SceneVisibleCluster> VisibleClusters;
 	};
 
-	struct META(ShaderExpose, ShaderInput, Module = "SpriteRenderingInput") SpriteRenderingInput{
+	struct META(ShaderExpose, ShaderInput, Module = "SpriteRenderingInput") SpriteRenderingInput {
 		BDA<ViewData> View;
 		BDA<Sprite> Sprites;
 		uint32 NumSprites;
+	};
+
+	struct META(ShaderExpose, Module = "RenderingGenerated") SceneVisibleClusters {
+		uint32 NumClusters;
+		ShaderRuntimeArray<SceneVisibleCluster> Clusters;
+	};
+
+	struct META(ShaderExpose, ShaderInput, Module = "VisibilityRenderingInput") VisibilityRenderingInput {
+		BDA<ViewData> View;
+		BDA<GeometryMeshData> Meshes;
+		BDA<InstanceRenderData> Instances;
+		BDA<SceneVisibleClusters> OutputVisibleClusters;
+		BDA<SWRasterQueue> SoftwareRasterQueue;
 	};
 
 }
