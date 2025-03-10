@@ -83,9 +83,9 @@ struct MSOutput {
     uint VisibleClusterIndex;
 };
 
-[outputtopology("triangles")]
+[outputtopology("triangle")]
 [shader("mesh")]
-MSOutput RenderClusters(
+void RenderClusters(
     uint ThreadIndex : SV_GroupIndex,
     uint GroupID : SV_GroupID,
     out vertices MSOutput Vertices[64],
@@ -157,5 +157,5 @@ void EmitTriangleVisibility(MSOutput StageInput, float4 PixelCoordinate: SV_POSI
     uint Payload = PrimitiveID;
     Payload |= StageInput.VisibleClusterIndex;
 
-    //InterlockedMax(SceneVisibilityBuffer[uint2(PixelCoordinate.xy)], Pack64(uint2(Depth, Payload)));
+    InterlockedMax(SceneVisibilityBuffer[uint2(PixelCoordinate.xy)], Pack64(uint2(Depth, Payload)));
 }

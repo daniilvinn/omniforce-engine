@@ -198,6 +198,15 @@ namespace Omni {
 				},
 				{}
 			);
+			shader_library->LoadShader2(
+				"VisibilityRendering",
+				{
+					"VisibilityRendering.CullClusters",
+					"VisibilityRendering.RenderClusters",
+					"VisibilityRendering.EmitTriangleVisibility"
+				},
+				{}
+			);
 
 			// 2D pass
 			PipelineSpecification pipeline_spec = PipelineSpecification::Default();
