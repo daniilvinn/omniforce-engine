@@ -12,7 +12,7 @@ namespace Omni {
         Sphere bounding_sphere;
         uint32 meshlet_count;
         int32 quantization_grid_size;
-        BDA<byte> vertices;
+        BDA<uint32> vertices;
         BDA<uint8> micro_indices;
         BDA<byte> attributes; // just raw data
         BDA<ClusterGeometryMetadata> meshlets_data;

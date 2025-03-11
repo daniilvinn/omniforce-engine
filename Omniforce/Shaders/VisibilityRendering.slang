@@ -83,6 +83,7 @@ struct MSOutput {
     uint VisibleClusterIndex;
 };
 
+[numthreads(NumMeshThreads, 1, 1)]
 [outputtopology("triangle")]
 [shader("mesh")]
 void RenderClusters(
