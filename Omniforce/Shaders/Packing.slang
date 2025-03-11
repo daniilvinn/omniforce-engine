@@ -9,7 +9,7 @@ public uint2 Unpack32(uint64_t Value) {
 }
 
 public uint64_t Pack64(uint2 Value) {
-    return (uint64_t(Value.x) << 32) | Value.y;
+    return (Value.y | uint64_t(Value.x) << 32);
 }
 
 }

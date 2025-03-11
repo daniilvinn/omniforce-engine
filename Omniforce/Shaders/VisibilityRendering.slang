@@ -62,9 +62,8 @@ void CullClusters(
     uint WaveVisibleClusterOffset = WaveReadLaneFirst(WaveVisibleClusterOffsetAtomic);
 
     if (IsVisible && IsOptimalLOD) {
-        uint Index = WaveOffset + WavePrefixSum(1) - 1;
+        uint Index = WaveOffset + WavePrefixSum(1);
         uint VisibleClusterIndex = WaveVisibleClusterOffset + Index;
-
         Input.OutputVisibleClusters.Clusters[VisibleClusterIndex] = SceneVisibleCluster(DrawID, ThreadID.x);
         Payload.ClusterIDs[Index] = uint8_t(ThreadID.x & (NumTaskThreads - 1));
     }
@@ -74,6 +73,7 @@ void CullClusters(
     if (LaneID == 0 && NumActiveClusters != 0) {
         Payload.BaseOffset = ThreadID.x;
         Payload.DrawID = DrawID;
+
         DispatchMesh(NumActiveClusters, 1, 1, Payload);
     }
 }
@@ -87,12 +87,11 @@ struct MSOutput {
 [outputtopology("triangle")]
 [shader("mesh")]
 void RenderClusters(
-    uint ThreadIndex : SV_GroupIndex,
-    uint GroupID : SV_GroupID,
+    uint ThreadIndex: SV_GroupIndex,
+    uint GroupID: SV_GroupID,
     out vertices MSOutput Vertices[64],
-    out indices uint3 Triangles[124],
-    out primitives uint Primitives[124],
-    in  payload TaskPayload Payload
+                    out indices uint3 Triangles[124],
+    in payload TaskPayload Payload
 ) {
     InstanceRenderData Instance = Input.Instances[Payload.DrawID];
     GeometryMeshData Mesh = Input.Meshes[Instance.geometry_data_id];
@@ -138,17 +137,14 @@ void RenderClusters(
             break;
         }
 
-        uint3 Offsets = uint3(0, 1, 2);
-        Offsets += ClusterMetadata.triangle_offset + ((ThreadIndex * NumIndexIterations + i) * 3);
-
+        uint3 Offsets = ClusterMetadata.triangle_offset + ((ThreadIndex * NumIndexIterations + i) * 3) + uint3(0, 1, 2);
         uint3 Indices = uint3(
             Mesh.micro_indices[Offsets.x],
             Mesh.micro_indices[Offsets.y],
             Mesh.micro_indices[Offsets.z],
         );
 
-        Triangles[ThreadIndex * NumIndexIterations + i] = Indices;
-        Primitives[ThreadIndex * NumIndexIterations + i] = ThreadIndex * NumIndexIterations + i;
+        Triangles[ThreadIndex * NumIndexIterations + i] = Offsets;
     }
 }
 

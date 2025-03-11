@@ -146,9 +146,7 @@ namespace Omni {
 			std::string shader_prefix = "Resources/Shaders/Source/";
 
 			std::map<std::string, UUID> shader_name_to_uuid_table;
-
 			shader_name_to_uuid_table.emplace("VisibilityBuffer.ofs", UUID());
-			shader_name_to_uuid_table.emplace("VisibleMaterialResolve.ofs", UUID());
 
 			// helper lambda
 			auto m = [](UUID id) -> auto {
@@ -159,9 +157,6 @@ namespace Omni {
 
 			tf::Task shaders_load_task = taskflow.emplace([&](tf::Subflow& sf) {
 				sf.emplace([&, shader_name = "VisibilityBuffer.ofs"]() { 
-					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
-				});
-				sf.emplace([&, shader_name = "VisibleMaterialResolve.ofs"]() { 
 					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
 				});
 			});
@@ -227,14 +222,14 @@ namespace Omni {
 			m_PBRFullscreenPipeline = Pipeline::Create(&g_PersistentAllocator, pipeline_spec);
 
 			// Vis buffer pass
-			pipeline_spec.shader = shader_library->GetShader("VisibilityBuffer.ofs");
+			pipeline_spec.shader = shader_library->GetShader("VisibilityRendering");
 			pipeline_spec.debug_name = "Vis buffer pass";
 			pipeline_spec.output_attachments_formats = {};
 			pipeline_spec.culling_mode = PipelineCullingMode::BACK;
 			pipeline_spec.depth_test_enable = false;
 			pipeline_spec.color_blending_enable = false;
 
-			m_VisBufferPass = Pipeline::Create(&g_PersistentAllocator, pipeline_spec, shader_name_to_uuid_table["VisibilityBuffer.ofs"]);
+			m_VisBufferPass = Pipeline::Create(&g_PersistentAllocator, pipeline_spec);
 
 			// Vis material resolve pass
 			pipeline_spec.shader = shader_library->GetShader("ResolveVisibleMaterialMask");
@@ -444,6 +439,7 @@ namespace Omni {
 
 			Renderer::Submit([=]() {
 				m_DeviceIndirectDrawParams->Clear(Renderer::GetCmdBuffer(), 0, 4, 0);
+				m_VisibleClusters->Clear(Renderer::GetCmdBuffer(), 0, 4, 0);
 			});
 
 			Renderer::ClearImage(m_VisibilityBuffer, { 0.0f, 0.0f, 0.0f, 0.0f });
@@ -540,6 +536,19 @@ namespace Omni {
 		// Render 3D
 		// Vis buffer pass
 		{
+			PipelineResourceBarrierInfo vis_clusters_transfer_barrier_info = {};
+			vis_clusters_transfer_barrier_info.src_stages = (BitMask)PipelineStage::TRANSFER;
+			vis_clusters_transfer_barrier_info.dst_stages = (BitMask)PipelineStage::TASK_SHADER;
+			vis_clusters_transfer_barrier_info.src_access_mask = (BitMask)PipelineAccess::TRANSFER_WRITE;
+			vis_clusters_transfer_barrier_info.dst_access_mask = (BitMask)PipelineAccess::SHADER_READ;
+			vis_clusters_transfer_barrier_info.buffer_barrier_offset = 0;
+			vis_clusters_transfer_barrier_info.buffer_barrier_size = 4;
+
+			PipelineBarrierInfo visible_clusters_barrier_info = {};
+			visible_clusters_barrier_info.buffer_barriers.push_back({ m_VisibleClusters, vis_clusters_transfer_barrier_info });
+
+			Renderer::InsertBarrier(visible_clusters_barrier_info);
+
 			Renderer::BeginRender(
 				{ },
 				m_CurrectMainRenderTarget->GetSpecification().extent,

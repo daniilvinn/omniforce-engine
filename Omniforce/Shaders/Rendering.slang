@@ -44,33 +44,28 @@ namespace Omni {
 
     public extension Omni.GeometryMeshData {
 
-		int ReadVertexChannel(uint InClusterID, uint InVertexID, uint VertexChannel)
+		int ReadVertexChannel(uint ClusterBitrate, uint VertexOffset)
         {
             int Result = 0;
 
-            ClusterGeometryMetadata ClusterMetadata = meshlets_data[InClusterID];
-            uint LocalOffset = (ClusterMetadata.Bitrate * InVertexID * 3) + ClusterMetadata.Bitrate * VertexChannel;
-			uint GlobalOffset = ClusterMetadata.vertex_bit_offset + LocalOffset;
+            uint Index = VertexOffset >> 5;
+            uint LocalOffset = VertexOffset & 0x1F;
+            uint Bitmask = ((1 << ClusterBitrate) - 1) << LocalOffset;
 
-            uint BitstreamNodeIndex = GlobalOffset >> 5;
-            uint BitstreamNodeOffset = GlobalOffset & 0x1F;
+            Result = (vertices[Index] & Bitmask) >> LocalOffset;
 
-            uint Bitmask = ((1u << ClusterMetadata.Bitrate) - 1) << BitstreamNodeOffset;
-
-            Result = (vertices[BitstreamNodeIndex] & Bitmask) >> BitstreamNodeOffset;
-
-            if (BitstreamNodeOffset + ClusterMetadata.Bitrate > 32u) {
-                Bitmask = ((1u << (ClusterMetadata.Bitrate - (32u - BitstreamNodeOffset))) - 1);
-                Result |= (vertices[BitstreamNodeIndex + 1] & Bitmask) << (32u - BitstreamNodeOffset);
+            if (LocalOffset + ClusterBitrate > 32u) {
+                Bitmask = ((1 << (ClusterBitrate - (32u - LocalOffset))) - 1);
+                Result |= (vertices[Index + 1] & Bitmask) << (32u - LocalOffset);
 			}
 
             return Result;
         }
 
-        public int3 FetchVertex(uint ClusterID, uint VertexID) {
+        public int3 FetchVertex(uint ClusterBitrate, uint VertexBitOffset) {
             uint3 Result;
             for (int i = 0; i < 3; i++) {
-                Result[i] = ReadVertexChannel(ClusterID, VertexID, i);
+                Result[i] = ReadVertexChannel(ClusterBitrate, VertexBitOffset + ClusterBitrate * i);
             }
             return Result;
 		}
