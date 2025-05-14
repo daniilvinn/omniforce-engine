@@ -1,15 +1,17 @@
 #pragma once
 
+#include <Foundation/Common.h>
+
 #include <glm/glm.hpp>
 
 namespace Omni {
 
-	struct PointLight {
-		glm::vec3 position;
-		glm::vec3 color;
-		float32 intensity;
-		float32 min_radius;
-		float32 radius;
+	struct META(ShaderExpose, Module = "RenderingGenerated") PointLight {
+		glm::vec3 Position;
+		glm::vec3 Color;
+		float32 Intensity;
+		float32 MinRadius;
+		float32 Radius;
 	};
 
 }

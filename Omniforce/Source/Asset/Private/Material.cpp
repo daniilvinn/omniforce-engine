@@ -52,6 +52,7 @@ namespace Omni {
 		pipeline_spec.color_blending_enable = false;
 		pipeline_spec.depth_test_op = PipelineDepthTestOp::EQUALS;
 		pipeline_spec.depth_write_enable = false;
+		pipeline_spec.debug_name = fmt::format("Material pipeline {:X}", pipeline_id.Get());
 
 		m_Pipeline = PipelineLibrary::HasPipeline(pipeline_spec) ? PipelineLibrary::GetPipeline(pipeline_spec) : m_Pipeline = Pipeline::Create(&g_PersistentAllocator, pipeline_spec, pipeline_id);
 

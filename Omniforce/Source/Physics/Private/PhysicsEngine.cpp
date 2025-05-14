@@ -233,13 +233,12 @@ namespace Omni {
  		}
 		
 		// update
-		int32 optimal_collision_steps = 1;
 		float32 time_since_last_update = m_Timer.ElapsedMilliseconds();
 		if (time_since_last_update > (1000.0f / 120.0f)) {
 			uint32 required_physics_update_iterations = (int32)(time_since_last_update / (1000.0f / 120.0f));
 
-			for (uint32 i = 0; i < required_physics_update_iterations; i++)
-				m_CoreSystem->Update(1 / 120.0f, optimal_collision_steps, s_InternalData.temp_allocator, s_InternalData.job_system);
+			m_CoreSystem->Update(1 / 120.0f, required_physics_update_iterations, s_InternalData.temp_allocator, s_InternalData.job_system);
+
 			m_Timer.Reset();
 		}
 	}

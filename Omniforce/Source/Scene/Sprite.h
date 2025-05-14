@@ -7,11 +7,11 @@
 
 namespace Omni {
 
-	struct OMNIFORCE_API Sprite {
-		fvec4 color_tint;
-		fvec3 position;
-		fvec2 size;
-		glm::u16vec4 rotation;
+	struct OMNIFORCE_API META(ShaderExpose, Module = "BasicTypes") Sprite {
+		glm::vec3 position;
+		glm::hvec4 rotation;
+		glm::vec2 size;
+		glm::vec4 color_tint;
 		uint32 texture_id;
 
 		Sprite() {

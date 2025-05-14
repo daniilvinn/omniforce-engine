@@ -37,10 +37,8 @@ namespace Omni {
 		// Descriptor data
 		{
 			std::vector<DescriptorBinding> bindings;
-			// Camera Data
 			bindings.push_back({ 0, DescriptorBindingType::SAMPLED_IMAGE, UINT16_MAX, (uint64)DescriptorFlags::PARTIALLY_BOUND });
-			bindings.push_back({ 1, DescriptorBindingType::STORAGE_BUFFER, 1, 0 });
-			bindings.push_back({ 2, DescriptorBindingType::STORAGE_IMAGE, 1, 0 });
+			bindings.push_back({ 1, DescriptorBindingType::STORAGE_IMAGE, 1, 0 });
 
 			DescriptorSetSpecification global_set_spec = {};
 			global_set_spec.bindings = std::move(bindings);
@@ -52,20 +50,15 @@ namespace Omni {
 
 			// Create sprite data buffer. Creating SSBO because I need more than 65kb.
 			{
-				uint32 per_frame_size = Utils::Align(sizeof(Sprite) * 2500, Renderer::GetDeviceMinimalStorageBufferOffsetAlignment());
+				uint32 per_frame_size = sizeof(Sprite) * 2048;
 
 				DeviceBufferSpecification buffer_spec = {};
 				buffer_spec.size = per_frame_size * Renderer::GetConfig().frames_in_flight;
 				buffer_spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
-				buffer_spec.buffer_usage = DeviceBufferUsage::STORAGE_BUFFER;
+				buffer_spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
 				buffer_spec.heap = DeviceBufferMemoryHeap::DEVICE;
 
 				m_SpriteDataBuffer = DeviceBuffer::Create(&g_PersistentAllocator, buffer_spec);
-
-				for (uint32 i = 0; i < Renderer::GetConfig().frames_in_flight; i++) {
-					m_SceneDescriptorSet[i]->Write(1, 0, m_SpriteDataBuffer, per_frame_size, i * per_frame_size);
-				}
-
 				m_SpriteBufferSize = per_frame_size;
 			}
 
@@ -153,14 +146,7 @@ namespace Omni {
 			std::string shader_prefix = "Resources/Shaders/Source/";
 
 			std::map<std::string, UUID> shader_name_to_uuid_table;
-
-			shader_name_to_uuid_table.emplace("Sprite.ofs", UUID());
-			shader_name_to_uuid_table.emplace("CullIndirect.ofs", UUID());
-			shader_name_to_uuid_table.emplace("PBR.ofs", UUID());
 			shader_name_to_uuid_table.emplace("VisibilityBuffer.ofs", UUID());
-			shader_name_to_uuid_table.emplace("VisibleMaterialResolve.ofs", UUID());
-			shader_name_to_uuid_table.emplace("SWMicropolyRaster.ofs", UUID());
-
 
 			// helper lambda
 			auto m = [](UUID id) -> auto {
@@ -170,69 +156,95 @@ namespace Omni {
 			};
 
 			tf::Task shaders_load_task = taskflow.emplace([&](tf::Subflow& sf) {
-				sf.emplace([&, shader_name = "Sprite.ofs"]() { 
-					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
-				});
-				sf.emplace([&, shader_name = "CullIndirect.ofs"]() { 
-					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
-				});
-				sf.emplace([&, shader_name = "PBR.ofs"]() { 
-					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
-				});
 				sf.emplace([&, shader_name = "VisibilityBuffer.ofs"]() { 
-					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
-				});
-				sf.emplace([&, shader_name = "VisibleMaterialResolve.ofs"]() { 
-					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
-				});
-				sf.emplace([&, shader_name = "SWMicropolyRaster.ofs"]() {
 					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
 				});
 			});
 			JobSystem::GetExecutor()->run(taskflow).wait();
 
+			shader_library->LoadShader2(
+				"SpriteRendering",
+				{
+					"SpriteRendering.VertexStage",
+					"SpriteRendering.FragmentStage"
+				},
+				{}
+			);
+			shader_library->LoadShader2(
+				"FrustumCulling",
+				{
+					"InstanceCulling.FrustumCull"
+				},
+				{}
+			);
+			shader_library->LoadShader2(
+				"PBRLighting",
+				{
+					"FullScreenBase.GenerateQuad",
+					"PBRLighting.LightFunction"
+				},
+				{}
+			);
+			shader_library->LoadShader2(
+				"ResolveVisibleMaterialMask",
+				{
+					"FullScreenBase.GenerateQuad",
+					"VisibleMaterialResolve.ResolveMaterialMask"
+				},
+				{}
+			);
+			shader_library->LoadShader2(
+				"VisibilityRendering",
+				{
+					"VisibilityRendering.CullClusters",
+					"VisibilityRendering.RenderClusters",
+					"VisibilityRendering.EmitTriangleVisibility"
+				},
+				{}
+			);
+
 			// 2D pass
 			PipelineSpecification pipeline_spec = PipelineSpecification::Default();
-			pipeline_spec.shader = shader_library->GetShader("Sprite.ofs");
+			pipeline_spec.shader = shader_library->GetShader("SpriteRendering");
 			pipeline_spec.debug_name = "Sprite pass";
 			pipeline_spec.output_attachments_formats = { ImageFormat::RGB32_HDR };
 			pipeline_spec.culling_mode = PipelineCullingMode::NONE;
 
-			m_SpritePass = Pipeline::Create(&g_PersistentAllocator, pipeline_spec, shader_name_to_uuid_table["Sprite.ofs"]);
+			m_SpritePass = Pipeline::Create(&g_PersistentAllocator, pipeline_spec);
 
 			// PBR full screen
-			pipeline_spec.shader = shader_library->GetShader("PBR.ofs");
+			pipeline_spec.shader = shader_library->GetShader("PBRLighting");
 			pipeline_spec.debug_name = "PBR full screen";
 			pipeline_spec.color_blending_enable = false;
 			pipeline_spec.depth_test_enable = false;
 			pipeline_spec.depth_write_enable = false;
 
-			m_PBRFullscreenPipeline = Pipeline::Create(&g_PersistentAllocator, pipeline_spec, shader_name_to_uuid_table["PBR.ofs"]);
+			m_PBRFullscreenPipeline = Pipeline::Create(&g_PersistentAllocator, pipeline_spec);
 
 			// Vis buffer pass
-			pipeline_spec.shader = shader_library->GetShader("VisibilityBuffer.ofs");
+			pipeline_spec.shader = shader_library->GetShader("VisibilityRendering");
 			pipeline_spec.debug_name = "Vis buffer pass";
 			pipeline_spec.output_attachments_formats = {};
 			pipeline_spec.culling_mode = PipelineCullingMode::BACK;
 			pipeline_spec.depth_test_enable = false;
 			pipeline_spec.color_blending_enable = false;
 
-			m_VisBufferPass = Pipeline::Create(&g_PersistentAllocator, pipeline_spec, shader_name_to_uuid_table["VisibilityBuffer.ofs"]);
+			m_VisBufferPass = Pipeline::Create(&g_PersistentAllocator, pipeline_spec);
 
 			// Vis material resolve pass
-			pipeline_spec.shader = shader_library->GetShader("VisibleMaterialResolve.ofs");
+			pipeline_spec.shader = shader_library->GetShader("ResolveVisibleMaterialMask");
 			pipeline_spec.debug_name = "Vis material resolve";
 			pipeline_spec.depth_write_enable = true;
 			pipeline_spec.depth_test_enable = true;
 
-			m_VisMaterialResolvePass = Pipeline::Create(&g_PersistentAllocator, pipeline_spec, shader_name_to_uuid_table["VisibleMaterialResolve.ofs"]);
+			m_VisMaterialResolvePass = Pipeline::Create(&g_PersistentAllocator, pipeline_spec);
 
 			// compute frustum culling
 			pipeline_spec.type = PipelineType::COMPUTE;
-			pipeline_spec.shader = shader_library->GetShader("CullIndirect.ofs");
+			pipeline_spec.shader = shader_library->GetShader("FrustumCulling");
 			pipeline_spec.debug_name = "Frustum cull prepass";
 
-			m_IndirectFrustumCullPipeline = Pipeline::Create(&g_PersistentAllocator, pipeline_spec, shader_name_to_uuid_table["CullIndirect.ofs"]);
+			m_IndirectFrustumCullPipeline = Pipeline::Create(&g_PersistentAllocator, pipeline_spec);
 		}
 		// Initialize device render queue and all buffers for indirect drawing
 		{
@@ -303,7 +315,7 @@ namespace Omni {
 			m_VisibilityBuffer = Image::Create(&g_PersistentAllocator, image_spec);
 
 			for (auto& set : m_SceneDescriptorSet) {
-				set->Write(2, 0, m_VisibilityBuffer, nullptr);
+				set->Write(1, 0, m_VisibilityBuffer, nullptr);
 			}
 		}
 		// Init visible cluster buffer
@@ -426,10 +438,8 @@ namespace Omni {
 			);
 
 			Renderer::Submit([=]() {
-				m_CulledDeviceRenderQueue->Clear(Renderer::GetCmdBuffer(), 0, 4, 0);
 				m_DeviceIndirectDrawParams->Clear(Renderer::GetCmdBuffer(), 0, 4, 0);
 				m_VisibleClusters->Clear(Renderer::GetCmdBuffer(), 0, 4, 0);
-				m_SWRasterQueue->Clear(Renderer::GetCmdBuffer(), 0, 4, 0); // TODO: change here so it it is cleared properly
 			});
 
 			Renderer::ClearImage(m_VisibilityBuffer, { 0.0f, 0.0f, 0.0f, 0.0f });
@@ -443,16 +453,7 @@ namespace Omni {
 			indirect_params_barrier.buffer_barrier_offset = 0;
 			indirect_params_barrier.buffer_barrier_size = m_DeviceIndirectDrawParams->GetSpecification().size;
 
-			PipelineResourceBarrierInfo culled_objects_barrier = {};
-			culled_objects_barrier.src_stages = (BitMask)PipelineStage::TRANSFER;
-			culled_objects_barrier.dst_stages = (BitMask)PipelineStage::COMPUTE_SHADER;
-			culled_objects_barrier.src_access_mask = (BitMask)PipelineAccess::TRANSFER_WRITE;
-			culled_objects_barrier.dst_access_mask = (BitMask)PipelineAccess::SHADER_WRITE;
-			culled_objects_barrier.buffer_barrier_offset = 0;
-			culled_objects_barrier.buffer_barrier_size = m_CulledDeviceRenderQueue->GetSpecification().size;
-
 			buffers_clear_barriers.push_back({ m_DeviceIndirectDrawParams, indirect_params_barrier });
-			buffers_clear_barriers.push_back({ m_CulledDeviceRenderQueue, culled_objects_barrier });
 			
 			// Early transition of PBR attachments' layout
 			PipelineResourceBarrierInfo pbr_attachment_barrier = {};
@@ -462,12 +463,20 @@ namespace Omni {
 			pbr_attachment_barrier.dst_access_mask = (BitMask)PipelineAccess::COLOR_ATTACHMENT_WRITE;
 			pbr_attachment_barrier.new_image_layout = ImageLayout::COLOR_ATTACHMENT;
 
+			PipelineResourceBarrierInfo vis_buffer_attachment_barrier = {};
+			vis_buffer_attachment_barrier.src_stages = (BitMask)PipelineStage::TRANSFER;
+			vis_buffer_attachment_barrier.dst_stages = (BitMask)PipelineStage::FRAGMENT_SHADER;
+			vis_buffer_attachment_barrier.src_access_mask = (BitMask)PipelineAccess::TRANSFER_WRITE;
+			vis_buffer_attachment_barrier.dst_access_mask = (BitMask)PipelineAccess::SHADER_READ | (BitMask)PipelineAccess::SHADER_WRITE;
+			vis_buffer_attachment_barrier.new_image_layout = ImageLayout::GENERAL;
+
 			PipelineBarrierInfo clear_buffers_barrier_info = {};
 			clear_buffers_barrier_info.buffer_barriers = buffers_clear_barriers;
 			clear_buffers_barrier_info.image_barriers.push_back({ m_GBuffer.positions, pbr_attachment_barrier });
 			clear_buffers_barrier_info.image_barriers.push_back({ m_GBuffer.base_color, pbr_attachment_barrier });
 			clear_buffers_barrier_info.image_barriers.push_back({ m_GBuffer.normals, pbr_attachment_barrier });
 			clear_buffers_barrier_info.image_barriers.push_back({ m_GBuffer.metallic_roughness_occlusion, pbr_attachment_barrier });
+			clear_buffers_barrier_info.image_barriers.push_back({ m_VisibilityBuffer, vis_buffer_attachment_barrier });
 
 			Renderer::InsertBarrier(clear_buffers_barrier_info);
 		}
@@ -479,18 +488,20 @@ namespace Omni {
 		{
 			std::vector<std::pair<Ref<DeviceBuffer>, PipelineResourceBarrierInfo>> culling_buffers_barriers;
 
+			Ref<DeviceBuffer> mesh_data_buffer = m_MeshResourcesBuffer.GetStorage();
+
 			// Prepare push constants
-			IndirectFrustumCullPassPushContants* compute_push_constants_data = new IndirectFrustumCullPassPushContants;
-			compute_push_constants_data->camera_data_bda = camera_data_device_address;
-			compute_push_constants_data->mesh_data_bda = m_MeshResourcesBuffer.GetStorageBDA();
-			compute_push_constants_data->render_objects_data_bda = m_DeviceRenderQueue->GetDeviceAddress() + m_DeviceRenderQueue->GetFrameOffset();
-			compute_push_constants_data->original_object_count = m_HostRenderQueue.size();
-			compute_push_constants_data->culled_objects_bda = m_CulledDeviceRenderQueue->GetDeviceAddress();
-			compute_push_constants_data->output_buffer_bda = m_DeviceIndirectDrawParams->GetDeviceAddress();
+			InstanceCullingInput* compute_push_constants_data = new InstanceCullingInput;
+			compute_push_constants_data->View = BDA<ViewData>(m_CameraDataBuffer, m_CameraDataBuffer->GetFrameOffset());
+			compute_push_constants_data->Meshes = BDA<GeometryMeshData>(mesh_data_buffer);
+			compute_push_constants_data->SourceInstances = BDA<InstanceRenderData>(m_DeviceRenderQueue, m_DeviceRenderQueue->GetFrameOffset());
+			compute_push_constants_data->SourceInstanceCount = m_HostRenderQueue.size();
+			compute_push_constants_data->PostCullInstances = BDA<InstanceRenderData>(m_CulledDeviceRenderQueue);
+			compute_push_constants_data->IndirectParams = BDA<MeshShadingDrawParams>(m_DeviceIndirectDrawParams);
 
 			MiscData compute_pc = {};
 			compute_pc.data = (byte*)compute_push_constants_data;
-			compute_pc.size = sizeof IndirectFrustumCullPassPushContants;
+			compute_pc.size = sizeof InstanceCullingInput;
 
 			// Submit a dispatch
 			uint32 num_work_groups = (m_HostRenderQueue.size() + 255) / 256;
@@ -525,6 +536,19 @@ namespace Omni {
 		// Render 3D
 		// Vis buffer pass
 		{
+			PipelineResourceBarrierInfo vis_clusters_transfer_barrier_info = {};
+			vis_clusters_transfer_barrier_info.src_stages = (BitMask)PipelineStage::TRANSFER;
+			vis_clusters_transfer_barrier_info.dst_stages = (BitMask)PipelineStage::TASK_SHADER;
+			vis_clusters_transfer_barrier_info.src_access_mask = (BitMask)PipelineAccess::TRANSFER_WRITE;
+			vis_clusters_transfer_barrier_info.dst_access_mask = (BitMask)PipelineAccess::SHADER_READ;
+			vis_clusters_transfer_barrier_info.buffer_barrier_offset = 0;
+			vis_clusters_transfer_barrier_info.buffer_barrier_size = 4;
+
+			PipelineBarrierInfo visible_clusters_barrier_info = {};
+			visible_clusters_barrier_info.buffer_barriers.push_back({ m_VisibleClusters, vis_clusters_transfer_barrier_info });
+
+			Renderer::InsertBarrier(visible_clusters_barrier_info);
+
 			Renderer::BeginRender(
 				{ },
 				m_CurrectMainRenderTarget->GetSpecification().extent,
@@ -582,13 +606,13 @@ namespace Omni {
 					{ 0.0f, 0.0f, 0.0f, 0.0f }
 				);
 
-				MiscData pc = {};
-				uint64* data = new uint64[2];
-				data[0] = m_CulledDeviceRenderQueue->GetDeviceAddress();
-				data[1] = m_VisibleClusters->GetDeviceAddress();
+				ResolveVisibleMaterialsMaskInput* MaterialMaskResolveInput = new ResolveVisibleMaterialsMaskInput;
+				MaterialMaskResolveInput->Instances = BDA<InstanceRenderData>(m_CulledDeviceRenderQueue);
+				MaterialMaskResolveInput->VisibleClusters = BDA<SceneVisibleCluster>(m_VisibleClusters);
 
-				pc.data = (byte*)data;
-				pc.size = sizeof(uint64) * 2;
+				MiscData pc = {};
+				pc.data = (byte*)MaterialMaskResolveInput;
+				pc.size = sizeof(ResolveVisibleMaterialsMaskInput);
 
 				Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], m_VisMaterialResolvePass, 0);
 				Renderer::RenderQuads(m_VisMaterialResolvePass, pc);
@@ -653,18 +677,18 @@ namespace Omni {
 				Renderer::InsertBarrier(render_barrier_info);
 
 				// Prepare push constants
-				PBRFullScreenPassPushConstants* pbr_push_constants = new PBRFullScreenPassPushConstants;
-				pbr_push_constants->camera_data_bda = camera_data_device_address;
-				pbr_push_constants->point_lights_bda = m_DevicePointLights->GetDeviceAddress() + m_DevicePointLights->GetFrameOffset();
-				pbr_push_constants->positions_texture_index = GetTextureIndex(m_GBuffer.positions->Handle);
-				pbr_push_constants->base_color_texture_index = GetTextureIndex(m_GBuffer.base_color->Handle);
-				pbr_push_constants->normal_texture_index = GetTextureIndex(m_GBuffer.normals->Handle);
-				pbr_push_constants->metallic_roughness_occlusion_texture_index = GetTextureIndex(m_GBuffer.metallic_roughness_occlusion->Handle);
-				pbr_push_constants->point_light_count = m_HostPointLights.size();
+				PBRLightingInput* pbr_push_constants = new PBRLightingInput;
+				pbr_push_constants->View = BDA<ViewData>(m_CameraDataBuffer, m_CameraDataBuffer->GetFrameOffset());
+				pbr_push_constants->PointLights = BDA<PointLight>(m_DevicePointLights, m_DevicePointLights->GetFrameOffset());
+				pbr_push_constants->PositionTextureID = GetTextureIndex(m_GBuffer.positions->Handle);
+				pbr_push_constants->ColorTextureID = GetTextureIndex(m_GBuffer.base_color->Handle);
+				pbr_push_constants->NormalTextureID = GetTextureIndex(m_GBuffer.normals->Handle);
+				pbr_push_constants->MetallicRoughnessOcclusionTextureID = GetTextureIndex(m_GBuffer.metallic_roughness_occlusion->Handle);
+				pbr_push_constants->PointLightCount = m_HostPointLights.size();
 
 				MiscData pbr_pc = {};
 				pbr_pc.data = (byte*)pbr_push_constants;
-				pbr_pc.size = sizeof PBRFullScreenPassPushConstants;
+				pbr_pc.size = sizeof PBRLightingInput;
 
 				// Submit full screen quad
 				Renderer::BeginRender({ m_CurrectMainRenderTarget }, m_CurrectMainRenderTarget->GetSpecification().extent, { 0, 0 }, { INFINITY, INFINITY, INFINITY, 1.0f });
@@ -681,10 +705,15 @@ namespace Omni {
 					m_SpriteQueue.size() * sizeof(Sprite)
 				);
 
+				//SpriteRenderingInput* sprite_rendering_input = g_TransientAllocator.Allocate<SpriteRenderingInput>().As<SpriteRenderingInput>();
+				SpriteRenderingInput* sprite_rendering_input = new SpriteRenderingInput;
+				sprite_rendering_input->View = BDA<ViewData>(m_CameraDataBuffer, m_CameraDataBuffer->GetFrameOffset());
+				sprite_rendering_input->Sprites = BDA<Sprite>(m_SpriteDataBuffer, m_SpriteDataBuffer->GetFrameOffset());
+				sprite_rendering_input->NumSprites = m_SpriteQueue.size();
+
 				MiscData pc = {};
-				pc.data = (byte*)new uint64;
-				memcpy(pc.data, &camera_data_device_address, sizeof uint64);
-				pc.size = sizeof uint64;
+				pc.data = (byte*)sprite_rendering_input;
+				pc.size = sizeof(SpriteRenderingInput);
 
 				Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], m_SpritePass, 0);
 				Renderer::RenderQuads(m_SpritePass, m_SpriteQueue.size(), pc);

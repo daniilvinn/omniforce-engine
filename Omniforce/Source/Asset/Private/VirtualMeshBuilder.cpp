@@ -516,7 +516,6 @@ namespace Omni {
 
 	}
 
-	// TODO: take UVs into account
 	// Assumes that positions are encoded in first 12 bytes of vertices
 	std::vector<Omni::uint32> VirtualMeshBuilder::GenerateVertexWelderRemapTable(
 		const std::vector<byte>& vertices, 

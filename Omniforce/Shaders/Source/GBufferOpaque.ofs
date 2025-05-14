@@ -129,7 +129,7 @@ uvec3 LoadTriangleIndices(RenderObjectData instance_data, uint cluster_index, ui
 	return result;
 }
 
-void LoadVertexPositions(out vec4 v[3], RenderObjectData instance, uint cluster_index, uvec3 triangle_indices) {
+void LoadVertexPositions(out vec3 world_v[3], out vec4 v[3], RenderObjectData instance, uint cluster_index, uvec3 triangle_indices) {
 	MeshData mesh_data = pc.mesh_data[instance.geometry_data_id];
 	MeshMeshletsData meshlet_data = mesh_data.meshlets_data[cluster_index];
 
@@ -157,6 +157,7 @@ void LoadVertexPositions(out vec4 v[3], RenderObjectData instance, uint cluster_
 
 		// Transform vertex
 		v[i] = pc.camera_data.view_proj * vec4(TransformPoint(result[i], instance.transform), 1.0f);
+		world_v[i] = TransformPoint(result[i], instance.transform);
 	}
 
 }
@@ -178,9 +179,11 @@ void main() {
 
 	// Fetch vertices
 	vec4 triangle_vertices[3];
+	vec3 world_v[3];
 	uvec3 triangle_indices = LoadTriangleIndices(instance_data, visible_cluster.cluster_index, visibility_payload & 0x7F);
 
 	LoadVertexPositions(
+		world_v,
 		triangle_vertices,
 		instance_data,
 		visible_cluster.cluster_index,
@@ -201,7 +204,7 @@ void main() {
 	// Interpolate and store vertex position
 	{
 		out_position = vec4(
-			InterpolateVertexData(bary_deriv, triangle_vertices[0].xyz, triangle_vertices[1].xyz, triangle_vertices[2].xyz),
+			InterpolateVertexData(bary_deriv, world_v[0], world_v[1], world_v[2]),
 			1.0f
 		);
 	}
@@ -253,7 +256,7 @@ void main() {
 			// Fetch all 3 vertices' tangent
 			vec4 vertex_tangent[3];
 			for(int i = 0; i < 3; i++) {
-				vertex_tangent[i] = vec4(DecodeTangent(mesh_data.attributes[meshlet_data.vertex_offset].tangent));
+				vertex_tangent[i] = vec4(DecodeTangent(mesh_data.attributes[meshlet_data.vertex_offset + triangle_indices[i]].tangent));
 			}
 
 			// Interpolate and get derivatives for texture fetches
@@ -266,7 +269,7 @@ void main() {
 			// Fetch all 3 vertices' tangent
 			vec3 vertex_normal[3];
 			for(int i = 0; i < 3; i++) {
-				vertex_normal[i] = vec3(DecodeNormal(mesh_data.attributes[meshlet_data.vertex_offset].normal));
+				vertex_normal[i] = vec3(DecodeNormal(mesh_data.attributes[meshlet_data.vertex_offset + triangle_indices[i]].normal));
 			}
 
 			// Interpolate and get derivatives for texture fetches
@@ -283,7 +286,7 @@ void main() {
 			// Fetch all 3 vertices' tangent
 			vec3 vertex_normal[3];
 			for(int i = 0; i < 3; i++) {
-				vertex_normal[i] = vec3(DecodeNormal(mesh_data.attributes[meshlet_data.vertex_offset].normal));
+				vertex_normal[i] = vec3(DecodeNormal(mesh_data.attributes[meshlet_data.vertex_offset + triangle_indices[i]].normal));
 			}
 
 			// Interpolate and get derivatives for texture fetches

@@ -15,11 +15,13 @@ find_package(OpenMP REQUIRED)
 
 # Include sub-projects.
 add_subdirectory ("Omniforce/ThirdParty")
+set(METATOOL_TARGET MetaTool CACHE INTERNAL "") # HACK
 
 add_subdirectory (Omniforce)
 add_subdirectory (Sandbox)
 add_subdirectory (Editor)
 add_subdirectory (ScriptEngine)
+add_subdirectory ("Tools/MetaTool")
 
 if(MSVC)
 	set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${EDITOR_TARGET})

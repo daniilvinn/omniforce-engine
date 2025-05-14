@@ -20,7 +20,7 @@ namespace Omni {
 		std::vector<uint8> local_indices;
 		std::vector<RenderableMeshlet> meshlets;
 		std::vector<MeshClusterGroup> meshlet_groups;
-		std::vector<MeshletBounds> cull_bounds;
+		std::vector<MeshClusterBounds> cull_bounds;
 		uint32 vertex_stride;
 	};
 

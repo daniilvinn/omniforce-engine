@@ -1,4 +1,4 @@
-#include <Foundation/Common.h>
+﻿#include <Foundation/Common.h>
 #include <Renderer/ShaderLibrary.h>
 
 #include <Renderer/ShaderCompiler.h>
@@ -40,6 +40,8 @@ namespace Omni {
 
 	bool ShaderLibrary::LoadShader(const std::filesystem::path& path, const ShaderMacroTable& macros) {
 		ShaderCompiler shader_compiler;
+		ShaderCompilationResult compilation_result;
+
 		OMNIFORCE_ASSERT_TAGGED(macros.contains("__OMNI_PIPELINE_LOCAL_HASH"), "No pipeline ID macro provided");
 
 		for (auto& global_macro : m_GlobalMacros)
@@ -60,20 +62,21 @@ namespace Omni {
 			OMNIFORCE_CORE_ERROR("Shader directory not found: {0}", path.string());
 			return false;
 		}
+		else {
+			std::string shader_source;
+			std::string line;
+			std::ifstream input_stream(path);
+			while (std::getline(input_stream, line)) shader_source.append(line + '\n');
 
-		std::string shader_source;
-		std::string line;
-		std::ifstream input_stream(path);
-		while (std::getline(input_stream, line)) shader_source.append(line + '\n');
-
-		ShaderCompilationResult compilation_result = shader_compiler.Compile(shader_source, path.filename().string(), macros);
+			compilation_result = shader_compiler.Compile(shader_source, path.filename().string(), macros);
+		}
 
 		if (!compilation_result.valid) return false;
 
 		Ref<Shader> shader = Shader::Create(&g_PersistentAllocator, compilation_result.bytecode, path);
 
 		m_Mutex.lock();
-		auto shader_filename = path.filename().string();
+		std::string shader_filename = path.filename().string();
 
 		if (m_Library.contains(shader_filename)) {
 			m_Library[shader_filename].push_back({ shader, macros });
@@ -82,6 +85,57 @@ namespace Omni {
 			std::vector<std::pair<Ref<Shader>, ShaderMacroTable>> permutations;
 			permutations.push_back({ shader, macros });
 			m_Library.emplace(shader_filename, permutations);
+		}
+		m_Mutex.unlock();
+
+		return true;
+	}
+
+	bool ShaderLibrary::LoadShader2(const std::string& name, std::vector<std::string> entry_point_names, const ShaderMacroTable& macros /*= {}*/)
+	{
+		ShaderCompiler shader_compiler;
+		ShaderCompilationResult compilation_result = {};
+		compilation_result.valid = true;
+
+		for (const auto& entry_point_full_name : entry_point_names) {
+			uint64 separator_location = entry_point_full_name.find('.');
+
+			std::string module_name = entry_point_full_name.substr(0, separator_location);
+			std::string entry_point_name = entry_point_full_name.substr(separator_location + 1);
+
+			std::filesystem::path path = "Resources/Shaders/" + module_name + ".slang";
+
+			for (auto& global_macro : m_GlobalMacros)
+				shader_compiler.AddGlobalMacro(global_macro.first, global_macro.second);
+
+			PerformShaderLoadingChecks(name, path, macros);
+
+			EntryPointCompilationOptions compilation_options = {};
+			compilation_options.entry_point_name = entry_point_name;
+			compilation_options.module_name = module_name;
+			compilation_options.path = path;
+
+			ShaderEntryPointCode compiled_entry_point = LoadShaderEntryPoint(compilation_options, shader_compiler);
+
+			std::vector<uint32> bytecode(compiled_entry_point.bytecode.Size() / 4);
+			memcpy(bytecode.data(), compiled_entry_point.bytecode.Raw(), compiled_entry_point.bytecode.Size());
+
+			compilation_result.valid &= compiled_entry_point.valid;
+			compilation_result.bytecode.emplace(compiled_entry_point.stage, bytecode);
+		}
+		if (!compilation_result.valid) return false;
+
+		Ref<Shader> shader = Shader::Create(&g_PersistentAllocator, compilation_result.bytecode, "");
+
+		m_Mutex.lock();
+
+		if (m_Library.contains(name)) {
+			m_Library[name].push_back({ shader, macros });
+		}
+		else {
+			std::vector<std::pair<Ref<Shader>, ShaderMacroTable>> permutations;
+			permutations.push_back({ shader, macros });
+			m_Library.emplace(name, permutations);
 		}
 		m_Mutex.unlock();
 
@@ -147,7 +201,7 @@ namespace Omni {
 		for (auto& permutation : permutation_list) {
 			auto& permutation_macro_table = permutation.second;
 			
-			std::string& permutation_id = permutation_macro_table.at("__OMNI_PIPELINE_LOCAL_HASH");
+			std::string& permutation_id = permutation_macro_table["__OMNI_PIPELINE_LOCAL_HASH"];
 			
 			// Emplace an id so if everything other than ID matches, then we can freely return this shader
 			macros["__OMNI_PIPELINE_LOCAL_HASH"] = permutation_id;
@@ -173,4 +227,32 @@ namespace Omni {
 		return ShaderStage::UNKNOWN;
 	}
 	
+	bool ShaderLibrary::PerformShaderLoadingChecks(const std::string& name, const std::filesystem::path& path, const ShaderMacroTable& macros)
+	{
+		bool result = HasShader(name, macros);
+
+		if (result)
+		{
+			OMNIFORCE_CORE_WARNING("Shader \"{0}\" is already loaded.", name);
+			return true;
+		}
+
+		result = FileSystem::CheckDirectory(path);
+
+		if (!result)
+		{
+			OMNIFORCE_CORE_ERROR("Shader directory not found: {0}", path.string());
+			return false;
+		}
+
+		return true;
+	}
+
+	ShaderEntryPointCode ShaderLibrary::LoadShaderEntryPoint(const EntryPointCompilationOptions& options, ShaderCompiler& compiler)
+	{
+		compiler.LoadModule(options.path);
+		ShaderEntryPointCode entry_point_code = compiler.GetEntryPointCode(&g_PersistentAllocator, fmt::format("{}.{}", options.module_name, options.entry_point_name));
+		return entry_point_code;
+	}
+
 }

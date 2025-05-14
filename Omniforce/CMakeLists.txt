@@ -7,18 +7,44 @@ include("../utils.cmake")
 # Add source to this project's executable.
 set(ENGINE_TARGET OmniforceEngine CACHE INTERNAL "")
 set(Vulkan_SDK $ENV{VULKAN_SDK})
+set(PATH_ENV $ENV{PATH})
 
-file (GLOB_RECURSE ENGINE_FILES
+foreach(dir IN LISTS PATH_ENV)
+    if(dir MATCHES "LLVM")
+        get_filename_component(LLVM_ROOT "${dir}" DIRECTORY)
+        message(STATUS "Path to LLVM: ${LLVM_ROOT}")
+        break()
+    endif()
+endforeach()
+
+if(NOT LLVM_ROOT)
+    message(FATAL_ERROR "Cannot find LLVM")
+endif()
+
+file(GLOB_RECURSE ENGINE_SOURCES
     "Source/*.h"
     "Source/*.cpp"
     "Source/*.hpp"
-    "ThirdParty/ImGuizmo/ImGuizmo.h"
-    "ThirdParty/ImGuizmo/ImGuizmo.cpp"
-    "ThirdParty/taskflow/taskflow/*.h"
-    "ThirdParty/taskflow/taskflow/*.cpp"
-    "ThirdParty/taskflow/taskflow/*.hpp"
-    "ThirdParty/tinyfiledialogs/tinyfiledialogs.c"
-    "ThirdParty/tinyfiledialogs/more_dialogs/tinyfd_moredialogs.c"
+    "Shaders/*.*"
+)
+
+file(GLOB_RECURSE ENGINE_HEADERS
+    "Source/*.h"
+)
+
+file(GLOB_RECURSE ENGINE_THIRDPARTY_SOURCES
+   "ThirdParty/ImGuizmo/ImGuizmo.h"
+   "ThirdParty/ImGuizmo/ImGuizmo.cpp"
+   "ThirdParty/taskflow/taskflow/*.h"
+   "ThirdParty/taskflow/taskflow/*.cpp"
+   "ThirdParty/taskflow/taskflow/*.hpp"
+   "ThirdParty/tinyfiledialogs/tinyfiledialogs.c"
+   "ThirdParty/tinyfiledialogs/more_dialogs/tinyfd_moredialogs.c"
+)
+
+file (GLOB_RECURSE ENGINE_FILES
+    ${ENGINE_SOURCES}
+    ${ENGINE_THIRDPARTY_SOURCES}
 )
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ENGINE_FILES})
@@ -28,7 +54,7 @@ add_library(${ENGINE_TARGET} ${ENGINE_FILES})
 target_include_directories(${ENGINE_TARGET} 
     PUBLIC 
         "Source/"
-    SYSTEM PUBLIC
+    PUBLIC
         "ThirdParty/imgui"
         "ThirdParty/ImGuizmo"
         "ThirdParty/taskflow"
@@ -41,9 +67,10 @@ target_include_directories(${ENGINE_TARGET}
         "${CMAKE_CURRENT_SOURCE_DIR}/Shaders"
         "ThirdParty/tinyfiledialogs"
         "ThirdParty/miniaudio"
-    SYSTEM PRIVATE
+        "ThirdParty/slang/include"
         "${Vulkan_SDK}\\Include" 
         "${Vulkan_SDK}\\Source" 
+        "${LLVM_ROOT}\\include"
         "ThirdParty/stb"
         "ThirdParty/Jolt"
         "ThirdParty/mono/include/mono-2.0"
@@ -56,14 +83,18 @@ target_include_directories(${ENGINE_TARGET}
         "ThirdParty/libMETIS/include"
         "ThirdParty/GLFW/include"
         "ThirdParty/VulkanMemoryAllocator/include"
+        "ThirdParty/volk"
 )
 target_link_directories(${ENGINE_TARGET} PUBLIC 
     "${Vulkan_SDK}\\Lib" 
     "${Vulkan_SDK}\\Bin" 
     "ThirdParty/mono/lib" 
     "ThirdParty/NVAftermath/lib/x64"
+    "ThirdParty/slang"
+    "${LLVM_ROOT}\\lib"
 )
-target_compile_definitions(${ENGINE_TARGET} PUBLIC 
+target_compile_definitions(${ENGINE_TARGET} 
+PUBLIC 
     OMNIFORCE_STATIC 
     GLM_FORCE_DEPTH_ZERO_TO_ONE 
     GLM_FORCE_SSE2 
@@ -108,6 +139,8 @@ target_link_libraries(
         nv_libdeflate
         meshoptimizer
         fastgltf
+        slang.lib
+        libclang.lib
 )
 
 target_compile_options(
@@ -153,3 +186,54 @@ if(WIN32)
 else()
     message(FATAL_ERROR "This script is intended for Windows only.")
 endif()
+
+set(PARSE_TARGETS_FILE "${CMAKE_BINARY_DIR}/MetaToolGen/ParseTargets.txt")
+
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/MetaToolGen/DummyOut")
+file(TOUCH ${PARSE_TARGETS_FILE})
+
+add_custom_target(
+    ClearParseTargets ALL
+    COMMAND ${CMAKE_COMMAND} -E rm -f ${PARSE_TARGETS_FILE}
+    COMMAND ${CMAKE_COMMAND} -E touch ${PARSE_TARGETS_FILE}
+)
+
+set(GEN_OUT_FILES) 
+
+foreach(SOURCE_FILE ${ENGINE_HEADERS})
+    get_filename_component(FILE_NAME_WITH_EXTENSION ${SOURCE_FILE} NAME)
+    set(GEN_FILE "${CMAKE_BINARY_DIR}/MetaToolGen/DummyOut/${FILE_NAME_WITH_EXTENSION}.gen")
+
+    if(NOT GEN_FILE IN_LIST GEN_OUT_FILES)
+        list(APPEND GEN_OUT_FILES ${GEN_FILE})
+        add_custom_command(
+            OUTPUT ${GEN_FILE}
+            COMMAND ${CMAKE_COMMAND} -E echo ${SOURCE_FILE} >> ${PARSE_TARGETS_FILE}
+            COMMAND ${CMAKE_COMMAND} -E touch ${GEN_FILE}
+            COMMENT ""
+            DEPENDS ${SOURCE_FILE}
+            VERBATIM
+        )
+    endif()
+endforeach()
+
+add_custom_target(
+    MetaToolRunner ALL
+    COMMAND ${METATOOL_TARGET}
+    DEPENDS ${GEN_OUT_FILES} ${METATOOL_TARGET} ClearParseTargets
+)
+
+set_target_properties(ClearParseTargets PROPERTIES FOLDER "MetaToolActions")
+set_target_properties(MetaToolRunner PROPERTIES FOLDER "MetaToolActions")
+
+# setup slangdconfig.json
+# Read the file content
+file(READ "${CMAKE_SOURCE_DIR}/Omniforce/Shaders/slangdconfig.json" SLANG_CONFIG_CONTENTS)
+
+# Replace "World" with "CMake"
+string(REPLACE "CMAKE_GENERATED_SHADER_PATH" "${CMAKE_SOURCE_DIR}/Omniforce/Shaders/" SLANG_CONFIG_CONTENTS "${SLANG_CONFIG_CONTENTS}")
+
+# Write the modified content to a new file
+file(WRITE "${CMAKE_SOURCE_DIR}/Omniforce/Shaders/slangdconfig.json" "${SLANG_CONFIG_CONTENTS}")
+
+add_dependencies(${ENGINE_TARGET} MetaToolRunner)

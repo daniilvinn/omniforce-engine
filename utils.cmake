@@ -29,3 +29,28 @@ function(omni_set_project_ide_folder TARGET_NAME PROJECT_SOURCE_DIR)
   set_property(TARGET ${TARGET_NAME} PROPERTY FOLDER ${IDE_FOLDER})
   
 endfunction()
+
+set(SLANG_DLL_PATH "${CMAKE_SOURCE_DIR}/Omniforce/ThirdParty/slang/slang.dll")
+
+function(SetupTarget target)
+    if(NOT TARGET ${target})
+        message(WARNING "Target ${target} does not exist.")
+        return()
+    endif()
+
+    get_target_property(target_type ${target} TYPE)
+
+    if(target_type STREQUAL "EXECUTABLE")
+        get_target_property(target_link_libraries ${target} INTERFACE_LINK_LIBRARIES)
+        
+        if(target_link_libraries AND ${ENGINE_TARGET} IN_LIST target_link_libraries)
+            add_custom_command(
+                TARGET ${target} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${SLANG_DLL_PATH}"
+                    "$<TARGET_FILE_DIR:${target}>"
+                COMMENT "Copying slang.dll to the directory of target ${target}"
+            )
+        endif()
+    endif()
+endfunction()

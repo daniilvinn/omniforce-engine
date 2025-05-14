@@ -10,6 +10,14 @@
 
 #include <glm/glm.hpp>
 
+namespace glm {
+
+	using hvec2 = glm::u16vec2;
+	using hvec3 = glm::u16vec3;
+	using hvec4 = glm::u16vec4;
+
+}
+
 namespace Omni {
 
 	typedef uint64_t uint64;
@@ -25,6 +33,7 @@ namespace Omni {
 	typedef uint8_t byte;
 	typedef float float32;
 	typedef double float64;
+	typedef glm::uint16_t half;
 
 	using BitMask = uint64;
 	using Flag = uint64;
@@ -67,25 +76,25 @@ namespace Omni {
 	using RGB32 = glm::u8vec3;
 	using RGBA32 = glm::u8vec4;
 
-	struct Sphere {
+	struct META(ShaderExpose, Module = "BasicTypes") Sphere {
 		glm::vec3 center = {};
 		float32 radius = {};
 	};
 
-	struct AABB {
+	struct META(ShaderExpose, Module = "BasicTypes") AABB {
 		glm::vec3 min = {}, max = {};
 	};
 
-	struct AABB_2D {
+	struct META(ShaderExpose, Module = "BasicTypes") AABB_2D {
 		glm::vec2 min = {}, max = {};
 	};
 
-	struct Bounds {
+	struct META(ShaderExpose, Module = "BasicTypes") Bounds {
 		Sphere sphere = {};
 		AABB aabb = {};
 	};
 
-	struct Plane {
+	struct META(ShaderExpose, Module = "BasicTypes") Plane {
 		glm::vec3 normal = {};
 		float32 distance = {};
 
@@ -101,12 +110,16 @@ namespace Omni {
 
 	};
 
-	struct Frustum {
+	struct META(ShaderExpose, Module = "BasicTypes") Frustum {
 		Plane planes[6] = {}; // top, bottom, right, left, far, near planes
 	};
 
-	// Macro table is usually being iterated, so I use an array of pairs and not a map, because map
-	// fits better for random access
 	using ShaderMacroTable = std::map<std::string, std::string>;
+
+	struct META(ShaderExpose, Module = "BasicTypes") Transform {
+		glm::vec3 translation;
+		glm::hvec4 rotation;
+		glm::vec3 scale;
+	};
 
 }

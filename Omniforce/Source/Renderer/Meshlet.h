@@ -18,23 +18,30 @@ namespace Omni {
 		} metadata;
 	};
 
-	struct MeshletLODCullingData {
-		Sphere sphere;
+	struct META(ShaderExpose, Module = "RenderingGenerated") ClusterLODCullingData {
+		Sphere sphere = {};
 		Sphere parent_sphere = { glm::vec3(+INFINITY), +INFINITY };
 
-		float32 error;
-		float32 parent_error;
+		float32 error = INFINITY;
+		float32 parent_error = INFINITY;
 	};
 
-	struct OMNIFORCE_API MeshletBounds {
+	struct META(ShaderExpose, Module = "RenderingGenerated") MeshClusterBounds {
 		// Visibility culling data
-		Sphere vis_culling_sphere;
-		glm::vec3 cone_apex;
-		glm::i8vec3 cone_axis;
-		int8 cone_cutoff;
+		Sphere vis_culling_sphere = {};
+		glm::vec3 cone_apex = {};
+		glm::i8vec3 cone_axis = {};
+		int8 cone_cutoff = {};
 
 		// LOD culling data
-		MeshletLODCullingData lod_culling;
+		ClusterLODCullingData lod_culling = {};
+	};
+
+	struct META(ShaderExpose, Module = "RenderingGenerated") ClusterGeometryMetadata {
+		uint32 vertex_bit_offset = 0; // offset within a bitstream of vertex geometry data
+		uint32 vertex_offset = 0;     // offset within an array of vertex attribute data
+		uint32 triangle_offset = 0;
+		uint32 metadata = 0;          // 7 bits of vertex count, then 8 bits of triangle count and then 6 bits of bitrate
 	};
 
 	using MeshClusterGroup = std::vector<uint32>;

@@ -16,7 +16,6 @@
 #include <DebugUtils/DebugRenderer.h>
 #include <Shaders/Shared/RenderObject.glslh>
 #include <Shaders/Shared/MeshData.glslh>
-#include <Shaders/Shared/Lights.glslh>
 
 #include <shared_mutex>
 
@@ -79,7 +78,7 @@ namespace Omni {
 		void RenderObject(Ref<Pipeline> pipeline, const GLSL::RenderObjectData& render_data);
 
 		// Lighting
-		void AddPointLight(const GLSL::PointLight& point_light) { m_HostPointLights.push_back(point_light); }
+		void AddPointLight(const PointLight& point_light) { m_HostPointLights.push_back(point_light); }
 
 	private:
 		Ref<Camera> m_Camera;
@@ -135,7 +134,7 @@ namespace Omni {
 		Ref<DeviceBuffer> m_VisibleClusters;
 		Ref<DeviceBuffer> m_SWRasterQueue;
 
-		std::vector<GLSL::PointLight> m_HostPointLights;
+		std::vector<PointLight> m_HostPointLights;
 		Ref<DeviceBuffer> m_DevicePointLights;
 		std::shared_mutex m_Mutex;
 

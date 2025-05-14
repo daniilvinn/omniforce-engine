@@ -11,18 +11,6 @@
 
 layout(binding = 0) uniform sampler2D texture_bank[65535];
 
-struct Sprite {
-	vec4 color_tint;
-	vec3 position;
-	vec2 size;
-	f16vec4 rotation;
-	uint texture_index;
-};
-
-layout(binding = 1, scalar) readonly buffer SpriteData {
-	Sprite sprites[];
-} sprite_data;
-
-layout(r64ui, binding = 2) uniform u64image2D visibility_buffer;
+layout(r64ui, binding = 1) uniform u64image2D visibility_buffer;
 
 #endif

@@ -4,6 +4,9 @@
 	#include <Windows.h>
 #endif
 
+#include <Foundation/Common.h>
+#include <Core/Subsystem.h>
+
 using namespace Omni;
 
 extern Ptr<Subsystem> ConstructRootSystem();

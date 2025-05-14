@@ -68,8 +68,8 @@ namespace Omni {
 	};
 
 	inline std::ostream& operator<< (std::ostream& stream, const AssetFile& file) {
-		stream.write((char*)&file.header, sizeof AssetFileHeader);
-		stream.write((char*)file.subresources_metadata.data(), sizeof AssetFileSubresourceMetadata * file.subresources_metadata.size());
+		stream.write((char*)&file.header, sizeof(AssetFileHeader));
+		stream.write((char*)file.subresources_metadata.data(), sizeof(AssetFileSubresourceMetadata) * file.subresources_metadata.size());
 		stream.write((char*)file.subresources_data, file.header.subresources_size);
 
 		return stream;

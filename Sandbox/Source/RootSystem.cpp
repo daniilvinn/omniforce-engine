@@ -42,7 +42,7 @@ public:
 	
 };
 
-Subsystem* ConstructRootSystem() 
+Ptr<Subsystem> ConstructRootSystem() 
 {
-	return new RootSubsystem;
+	return CreatePtr<RootSubsystem>(&g_PersistentAllocator);
 }

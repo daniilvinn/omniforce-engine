@@ -3,6 +3,7 @@
 
 #include <Filesystem/Filesystem.h>
 #include <Renderer/Private/ShaderSourceIncluder.h>
+#include <Core/Utils.h>
 
 #include <shaderc/shaderc.hpp>
 
@@ -17,6 +18,19 @@ namespace Omni {
 		case ShaderStage::TASK:			return shaderc_task_shader;
 		case ShaderStage::MESH:			return shaderc_mesh_shader;
 		default:						std::unreachable();
+		}
+	}
+
+	ShaderStage convert(const SlangStage stage) {
+		switch (stage)
+		{
+		case SLANG_STAGE_VERTEX:				return ShaderStage::VERTEX;
+		case SLANG_STAGE_FRAGMENT:				return ShaderStage::FRAGMENT;
+		case SLANG_STAGE_MESH:					return ShaderStage::MESH;
+		case SLANG_STAGE_AMPLIFICATION:			return ShaderStage::TASK;
+		case SLANG_STAGE_COMPUTE:				return ShaderStage::COMPUTE;
+		case SLANG_STAGE_NONE:					return ShaderStage::UNKNOWN;
+		default:								std::unreachable();
 		}
 	}
 
@@ -35,6 +49,39 @@ namespace Omni {
 		m_GlobalOptions.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
 		m_GlobalOptions.SetTargetSpirv(shaderc_spirv_version_1_6);
 		m_GlobalOptions.SetPreserveBindings(true);
+
+		// Slang test
+		{
+			Timer timer;
+			SlangResult slang_result = slang::createGlobalSession(m_GlobalSession.writeRef());
+			OMNIFORCE_ASSERT_TAGGED(SLANG_SUCCEEDED(slang_result), "Failed to create shader compiler global session");
+
+			OMNIFORCE_CORE_INFO("Created shader compiler global session. Taken time: {}s", timer.ElapsedMilliseconds() / 1000.0f);
+
+
+			// Create local session
+			slang::TargetDesc target_description = {};
+			target_description.format = SLANG_SPIRV;
+			target_description.profile = m_GlobalSession->findProfile("sm_6_8");
+			target_description.flags = SLANG_TARGET_FLAG_GENERATE_SPIRV_DIRECTLY;
+			target_description.forceGLSLScalarBufferLayout = true;
+
+			const char* IncludeDir[] = { "Resources/Shaders" };
+
+			slang::SessionDesc session_description = {};
+			session_description.targets = &target_description;
+			session_description.targetCount = 1;
+			session_description.defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_COLUMN_MAJOR;
+			session_description.searchPaths = IncludeDir;
+			session_description.searchPathCount = 1;
+
+			slang_result = m_GlobalSession->createSession(session_description, m_LocalSession.writeRef());
+		}
+	}
+
+	void ShaderCompiler::Init()
+	{
+		g_ShaderCompiler = CreatePtr<ShaderCompiler>(&g_PersistentAllocator);
 	}
 
 	bool ShaderCompiler::ReadShaderFile(std::filesystem::path path, std::stringstream* out)
@@ -166,4 +213,97 @@ namespace Omni {
 
 		return compilation_result;
 	}
+
+	bool ShaderCompiler::LoadModule(const stdfs::path& path, const ShaderMacroTable& macros /*= {}*/)
+	{
+		std::string path_string = path.string();
+
+		// Load code
+		slang::IModule* slang_module = nullptr;
+		{
+			Slang::ComPtr<slang::IBlob> diagnostics_blob;
+			slang_module = m_LocalSession->loadModule(path_string.c_str(), diagnostics_blob.writeRef());
+
+			uint32 x = m_LocalSession->getLoadedModuleCount();
+
+			if (!slang_module) {
+				return ValidateSlangResult(-1, diagnostics_blob);
+			}
+		}
+		
+		m_LoadedModules.emplace(path.stem().string().c_str(), slang_module);
+		return true;
+	}
+
+	ShaderEntryPointCode ShaderCompiler::GetEntryPointCode(IAllocator* allocator, const std::string& entry_point_full_name)
+	{
+		ShaderEntryPointCode compilation_result = {};
+		compilation_result.valid = false;
+		compilation_result.stage = ShaderStage::UNKNOWN;
+
+		// Split entry point name;
+		// Entry point name must in this format: SWRaster.EntryScanline
+		// Where `SWRaster` is a module name and `EntryScanline` is an entrypoint
+		Array<std::string> module_and_ep = Utils::SplitString(allocator, entry_point_full_name, '.');
+		OMNIFORCE_ASSERT_TAGGED(module_and_ep.Size() == 2, "Failed to split entry point name");
+
+		ByteArray output_code(allocator);
+
+		// Check if module is loaded
+		std::string& module_name = module_and_ep[0];
+		std::string& entry_point_name = module_and_ep[1];
+		OMNIFORCE_ASSERT_TAGGED(m_LoadedModules.contains(module_name), "Module is not loaded");
+
+		// Find entry point by its name in found module
+		slang::IModule* slang_module = m_LoadedModules.at(module_and_ep[0]);
+
+		Slang::ComPtr<slang::IEntryPoint> entry_point;
+		slang_module->findEntryPointByName(entry_point_name.c_str(), entry_point.writeRef());
+
+		Slang::ComPtr<slang::IComponentType> composed_program;
+		{
+			Slang::ComPtr<slang::IBlob> diagnostics;
+			SlangResult result = entry_point->link(composed_program.writeRef(), diagnostics.writeRef());
+
+			if (!ValidateSlangResult(result, diagnostics)) {
+				return compilation_result;
+			}
+		}
+
+		SlangStage stage = composed_program->getLayout()->findEntryPointByName(entry_point_name.c_str())->getStage();
+
+		// Generate code
+		Slang::ComPtr<slang::IBlob> spirv_code;
+		{
+			Slang::ComPtr<slang::IBlob> diagnostics;
+			SlangResult result = composed_program->getEntryPointCode(
+				0,
+				0,
+				spirv_code.writeRef(),
+				diagnostics.writeRef());
+
+			if (!ValidateSlangResult(result, diagnostics)) {
+				return compilation_result;
+			}
+		}
+
+		output_code.Resize(spirv_code->getBufferSize());
+		memcpy(output_code.Raw(), spirv_code->getBufferPointer(), output_code.Size());
+
+		compilation_result.bytecode = std::move(output_code);
+		compilation_result.stage = convert(composed_program->getLayout()->getEntryPointByIndex(0)->getStage());
+		compilation_result.valid = true;
+
+		return compilation_result;
+	}
+
+	bool ShaderCompiler::ValidateSlangResult(SlangResult result, Slang::ComPtr<slang::IBlob>& diagnosticsBlob)
+	{
+		bool result_success = SLANG_SUCCEEDED(result);
+		if (!result_success) {
+			OMNIFORCE_CORE_ERROR("Shader compiler error: {}", (const char*)diagnosticsBlob->getBufferPointer());
+		}
+		return result_success;
+	}
+
 }
