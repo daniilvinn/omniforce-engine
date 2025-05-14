@@ -114,8 +114,6 @@ namespace Omni {
 		Plane planes[6] = {}; // top, bottom, right, left, far, near planes
 	};
 
-	// Macro table is usually being iterated, so I use an array of pairs and not a map, because map
-	// fits better for random access
 	using ShaderMacroTable = std::map<std::string, std::string>;
 
 	struct META(ShaderExpose, Module = "BasicTypes") Transform {

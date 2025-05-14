@@ -90,7 +90,7 @@ void RenderClusters(
     uint ThreadIndex: SV_GroupIndex,
     uint GroupID: SV_GroupID,
     out vertices MSOutput Vertices[64],
-                    out indices uint3 Triangles[124],
+    out indices uint3 Triangles[124],
     in payload TaskPayload Payload
 ) {
     InstanceRenderData Instance = Input.Instances[Payload.DrawID];

@@ -1,16 +1,15 @@
 {
-    "Renderer": {
-        "AllowResourceStreaming": true,
-        "UseVirtualGeometry": true,
-        "ForceVTGPipeline": false,
-        "ForceFramesInFlight": 2
-    },
     "Core": {
-
         "ForceRecompileShaders": true,
         "Headless": false,
         "Log": {
             "TraceDeviceAllocations": false
         }
+    },
+    "Renderer": {
+        "AllowResourceStreaming": true,
+        "ForceFramesInFlight": 2,
+        "ForceVTGPipeline": false,
+        "UseVirtualGeometry": true
     }
 }
