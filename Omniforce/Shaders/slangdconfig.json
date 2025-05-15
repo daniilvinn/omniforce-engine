@@ -4,6 +4,6 @@
         "__OMNI_COMPILE_HOST_CODE=0"
     ],
     "slang.additionalSearchPaths": [
-        "E:/dev/omniforce-engine/Omniforce/Shaders/"
+        "CMAKE_GENERATED_SHADER_PATH"
     ]
 }
