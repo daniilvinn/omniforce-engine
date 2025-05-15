@@ -3,7 +3,9 @@
 #include <Foundation/Common.h>
 #include <Scene/SceneCommon.h>
 
-#include <Scene/SceneRenderer.h>
+#include <Scene/ISceneRenderer.h>
+#include <Scene/RasterSceneRenderer.h>
+#include <Scene/PathTracingSceneRenderer.h>
 #include <Scene/Sprite.h>
 #include <Scene/Component.h>
 #include <Core/Serializable.h>
@@ -48,7 +50,7 @@ namespace Omni {
 		Entity					GetEntity(std::string_view tag);
 		Ref<Image>				GetFinalImage() const { return m_Renderer->GetFinalImage(); }
 		Ref<Camera>				GetCamera() const { return m_Camera; };
-		WeakPtr<SceneRenderer>	GetRenderer() const { return m_Renderer; }
+		WeakPtr<ISceneRenderer>	GetRenderer() const { return m_Renderer; }
 		UUID					GetID() const { return m_Id; }
 		PhysicsSettings			GetPhysicsSettings() const { return m_PhysicsSettings; }
 		void					SetPhysicsSettings(const PhysicsSettings& settings);
@@ -64,7 +66,7 @@ namespace Omni {
 	private:
 		UUID m_Id;
 
-		Ref<SceneRenderer> m_Renderer;
+		Ref<ISceneRenderer> m_Renderer;
 		SceneType m_Type;
 		Ref<Camera> m_Camera = nullptr;
 		bool m_InRuntime = false;

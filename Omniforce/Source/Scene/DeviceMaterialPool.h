@@ -11,7 +11,8 @@ namespace Omni {
 	// Allocator with memory pool which holds all materials' data. Materials are accessed by BDA with offset relative to address of pool.
 	class DeviceMaterialPool {
 	public:
-		DeviceMaterialPool(SceneRenderer* context, uint64 size);
+		DeviceMaterialPool() {};
+		DeviceMaterialPool(ISceneRenderer* context, uint64 size);
 		~DeviceMaterialPool();
 
 		// @brief Allocates material in device memory
@@ -34,7 +35,7 @@ namespace Omni {
 		Ref<DeviceBuffer> m_StagingForCopy;
 		Ptr<VirtualMemoryBlock> m_VirtualAllocator;
 		rh::unordered_map<AssetHandle, uint32> m_OffsetsMap; // material id - offset map
-		SceneRenderer* m_Context;
+		ISceneRenderer* m_Context;
 	};
 
 }

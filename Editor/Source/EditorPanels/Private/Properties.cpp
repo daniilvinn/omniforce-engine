@@ -1,7 +1,7 @@
 #include "../Properties.h"
 
 #include <Scene/Component.h>
-#include <Scene/SceneRenderer.h>
+#include <Scene/ISceneRenderer.h>
 #include <Asset/AssetManager.h>
 #include <Core/Utils.h>
 #include <Filesystem/Filesystem.h>

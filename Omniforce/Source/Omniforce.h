@@ -33,7 +33,9 @@
 #include <Scene/Scene.h>
 #include <Scene/Entity.h>
 #include <Scene/Component.h>
-#include <Scene/SceneRenderer.h>
+#include <Scene/ISceneRenderer.h>
+#include <Scene/RasterSceneRenderer.h>
+#include <Scene/PathTracingSceneRenderer.h>
 
 // Asset
 #include <Asset/AssetManager.h>

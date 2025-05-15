@@ -16,6 +16,7 @@
 #include <DebugUtils/DebugRenderer.h>
 #include <Shaders/Shared/RenderObject.glslh>
 #include <Shaders/Shared/MeshData.glslh>
+#include <Asset/Model.h>
 
 #include <shared_mutex>
 
@@ -37,50 +38,48 @@ namespace Omni {
 		uint32 sprite_buffer_size = 2500;
 	};
 
-	class OMNIFORCE_API SceneRenderer {
+	class OMNIFORCE_API ISceneRenderer {
 	public:
-		static Ref<SceneRenderer> Create(IAllocator* allocator, SceneRendererSpecification& spec);
+		ISceneRenderer(const SceneRendererSpecification& spec);
+		virtual ~ISceneRenderer();
 
-		SceneRenderer(const SceneRendererSpecification& spec);
-		~SceneRenderer();
+		void EnterDebugMode(DebugSceneView mode) { m_CurrentViewMode = mode; };
+		void ExitDebugMode() { m_CurrentViewMode = DebugSceneView::NONE; };
+		bool IsInDebugMode() const { return m_CurrentViewMode != DebugSceneView::NONE; }
+		DebugSceneView GetCurrentDebugMode() const { return m_CurrentViewMode; }
 
-		void BeginScene(Ref<Camera> camera);
-		void EndScene();
-
-		void EnterDebugMode(DebugSceneView mode) { m_CurrentDebugMode = mode; };
-		void ExitDebugMode() { m_CurrentDebugMode = DebugSceneView::NONE; };
-		bool IsInDebugMode() const { return m_CurrentDebugMode != DebugSceneView::NONE; }
-		DebugSceneView GetCurrentDebugMode() const { return m_CurrentDebugMode; }
-
-		Ref<Image> GetFinalImage();
+		Ref<Image> GetFinalImage() { return m_RendererOutputs[Renderer::GetCurrentFrameIndex()]; };
 		Ref<ImageSampler> GetSamplerNearest() { return m_SamplerNearest; }
 		Ref<ImageSampler> GetSamplerLinear() { return m_SamplerLinear; }
 		AssetHandle GetDummyWhiteTexture() const { return m_DummyWhiteTexture->Handle; }
-		/*
-		* @brief Adds resource to a global renderer data
-		* @return returns an index the resource can be accessed with
-		*/
+
+		virtual void BeginScene(Ref<Camera> camera) = 0;
+		virtual void EndScene() = 0;
+
 		uint32 AcquireResourceIndex(Ref<Image> image, SamplerFilteringMode filtering_mode);
 		uint32 AcquireResourceIndex(Ref<Image> image);
 		uint32 AcquireResourceIndex(Ref<Mesh> mesh);
-		uint32 AcquireResourceIndex(Ref<Material> material); // WARNING: this returns offset in material pool, not index
+		uint32 AcquireResourceIndex(Ref<Material> material);
 
-		/*
-		* @brief Removes resource to a global renderer data
-		* @return true if successful, false if no resource found
-		*/
-		bool ReleaseResourceIndex(Ref<Image> image);
+		bool ReleaseResourceIndex(Ref<Image> image) {
+			uint16 index = m_TextureIndices.at(image->Handle);
+			m_TextureIndexAllocator->Free(sizeof(uint32) * index);
+			m_TextureIndices.erase(image->Handle);
+
+			return true;
+		}
+
 		uint32 GetTextureIndex(const AssetHandle& uuid) const { return m_TextureIndices.at(uuid); }
 		uint64 GetMaterialBDA(const AssetHandle& id) const { return m_MaterialDataPool.GetStorageBufferAddress() + m_MaterialDataPool.GetOffset(id); }
 		uint32 GetMeshIndex(const AssetHandle& uuid) const { return m_MeshResourcesBuffer.GetIndex(uuid); }
 
-		void RenderSprite(const Sprite& sprite);
-		void RenderObject(Ref<Pipeline> pipeline, const GLSL::RenderObjectData& render_data);
+		virtual void RenderObject(Ref<Pipeline> pipeline, const GLSL::RenderObjectData& render_data) = 0;
+		virtual void RenderSprite(const Sprite& sprite) { m_SpriteQueue.emplace_back(sprite); }
 
 		// Lighting
 		void AddPointLight(const PointLight& point_light) { m_HostPointLights.push_back(point_light); }
 
-	private:
+	protected:
 		Ref<Camera> m_Camera;
 		SceneRendererSpecification m_Specification;
 
@@ -93,52 +92,24 @@ namespace Omni {
 		Ref<ImageSampler> m_SamplerNearest;
 		Ref<ImageSampler> m_SamplerLinear;
 		Ref<Image> m_DummyWhiteTexture;
-		uint32 m_SpriteBufferSize; // size in bytes per frame in flight, not overall size
-		std::vector<Sprite> m_SpriteQueue;
 
-		Ref<Pipeline> m_SpritePass;
-		Ref<Pipeline> m_LinePass;
-		Ref<Pipeline> m_ClearPass;
-
-		// ~ Omni 2024 ~
 		Ref<DeviceBuffer> m_CameraDataBuffer;
 
 		Ptr<VirtualMemoryBlock> m_TextureIndexAllocator;
 		Ptr<VirtualMemoryBlock> m_StorageImageIndexAllocator;
 		rhumap<UUID, uint32> m_TextureIndices;
 		rhumap<UUID, uint32> m_StorageImageIndices;
-		Ref<DeviceBuffer> m_SpriteDataBuffer;
 
 		DeviceIndexedResourceBuffer<GLSL::MeshData> m_MeshResourcesBuffer;
 		DeviceMaterialPool m_MaterialDataPool;
 
-		rh::unordered_flat_set<Ref<Pipeline>> m_ActiveMaterialPipelines;
 		std::vector<GLSL::RenderObjectData> m_HostRenderQueue;
-		Ref<DeviceBuffer> m_DeviceRenderQueue;
-		Ref<DeviceBuffer> m_CulledDeviceRenderQueue;
-		Ref<DeviceBuffer> m_DeviceIndirectDrawParams;
-
-		Ref<Pipeline> m_IndirectFrustumCullPipeline;
-
-		struct GBuffer {
-			Ref<Image> positions;
-			Ref<Image> normals;
-			Ref<Image> base_color;
-			Ref<Image> metallic_roughness_occlusion;
-		} m_GBuffer;
-		Ref<Pipeline> m_PBRFullscreenPipeline;
-
-		Ref<Image> m_VisibilityBuffer;
-		Ref<Pipeline> m_VisBufferPass;
-		Ref<Pipeline> m_VisMaterialResolvePass;
-		Ref<DeviceBuffer> m_VisibleClusters;
-		Ref<DeviceBuffer> m_SWRasterQueue;
+		std::vector<Sprite> m_SpriteQueue;
 
 		std::vector<PointLight> m_HostPointLights;
-		Ref<DeviceBuffer> m_DevicePointLights;
 		std::shared_mutex m_Mutex;
 
-		DebugSceneView m_CurrentDebugMode = DebugSceneView::NONE;
+		DebugSceneView m_CurrentViewMode = DebugSceneView::NONE;
 
 	};
 

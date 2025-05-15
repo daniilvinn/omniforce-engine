@@ -3,11 +3,11 @@
 
 #include <Asset/AssetManager.h>
 #include <Renderer/DeviceCmdBuffer.h>
-#include <Scene/SceneRenderer.h>
+#include <Scene/ISceneRenderer.h>
 
 namespace Omni {
 
-	DeviceMaterialPool::DeviceMaterialPool(SceneRenderer* context, uint64 size)
+	DeviceMaterialPool::DeviceMaterialPool(ISceneRenderer* context, uint64 size)
 		: m_Context(context)
 	{
 		m_VirtualAllocator = VirtualMemoryBlock::Create(&g_PersistentAllocator, size);

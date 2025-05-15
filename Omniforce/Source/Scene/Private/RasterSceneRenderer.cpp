@@ -1,6 +1,7 @@
 #include <Foundation/Common.h>
-#include <Scene/SceneRenderer.h>
+#include <Scene/RasterSceneRenderer.h>
 
+#include <Scene/ISceneRenderer.h>
 #include <Core/Utils.h>
 #include <Renderer/DescriptorSet.h>
 #include <Renderer/Pipeline.h>
@@ -22,121 +23,30 @@
 
 namespace Omni {
 
-	Ref<SceneRenderer> SceneRenderer::Create(IAllocator* allocator, SceneRendererSpecification& spec)
+	Ref<ISceneRenderer> RasterSceneRenderer::Create(IAllocator* allocator, SceneRendererSpecification& spec)
 	{
-		return CreateRef<SceneRenderer>(allocator, spec);
+		return CreateRef<RasterSceneRenderer>(allocator, spec);
 	}
 
-	SceneRenderer::SceneRenderer(const SceneRendererSpecification& spec)
-		: m_Specification(spec), m_MaterialDataPool(this, 4096 * 256 /* 256Kb of data*/), m_TextureIndexAllocator(VirtualMemoryBlock::Create(&g_PersistentAllocator, 4 * UINT16_MAX)),
-		m_MeshResourcesBuffer(4096 * sizeof GLSL::MeshData), // allow up to 4096 meshes be allocated at once
-		m_StorageImageIndexAllocator(VirtualMemoryBlock::Create(&g_PersistentAllocator, 4 * UINT16_MAX))
+	RasterSceneRenderer::RasterSceneRenderer(const SceneRendererSpecification& spec)
+		: ISceneRenderer(spec)
 	{
 		AssetManager* asset_manager = AssetManager::Get();
-
-		// Descriptor data
+			
+		// Create sprite data buffer. Creating SSBO because I need more than 65kb.
 		{
-			std::vector<DescriptorBinding> bindings;
-			bindings.push_back({ 0, DescriptorBindingType::SAMPLED_IMAGE, UINT16_MAX, (uint64)DescriptorFlags::PARTIALLY_BOUND });
-			bindings.push_back({ 1, DescriptorBindingType::STORAGE_IMAGE, 1, 0 });
+			uint32 per_frame_size = sizeof(Sprite) * 2048;
 
-			DescriptorSetSpecification global_set_spec = {};
-			global_set_spec.bindings = std::move(bindings);
-
-			for (int i = 0; i < Renderer::GetConfig().frames_in_flight; i++) {
-				auto set = DescriptorSet::Create(&g_PersistentAllocator, global_set_spec);
-				m_SceneDescriptorSet.push_back(set);
-			}
-
-			// Create sprite data buffer. Creating SSBO because I need more than 65kb.
-			{
-				uint32 per_frame_size = sizeof(Sprite) * 2048;
-
-				DeviceBufferSpecification buffer_spec = {};
-				buffer_spec.size = per_frame_size * Renderer::GetConfig().frames_in_flight;
-				buffer_spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
-				buffer_spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
-				buffer_spec.heap = DeviceBufferMemoryHeap::DEVICE;
-
-				m_SpriteDataBuffer = DeviceBuffer::Create(&g_PersistentAllocator, buffer_spec);
-				m_SpriteBufferSize = per_frame_size;
-			}
-
-			// Initialize render targets
-			{
-				ImageSpecification attachment_spec = ImageSpecification::Default();
-				attachment_spec.usage = ImageUsage::RENDER_TARGET;
-				attachment_spec.extent = Renderer::GetSwapchainImage()->GetSpecification().extent;
-				attachment_spec.format = ImageFormat::RGB32_HDR;
-				OMNI_DEBUG_ONLY_CODE(attachment_spec.debug_name = "SceneRenderer output");
-				for (int i = 0; i < Renderer::GetConfig().frames_in_flight; i++)
-					m_RendererOutputs.push_back(Image::Create(&g_PersistentAllocator, attachment_spec));
-
-				attachment_spec.usage = ImageUsage::DEPTH_BUFFER;
-				attachment_spec.format = ImageFormat::D32;
-
-				for (int i = 0; i < Renderer::GetConfig().frames_in_flight; i++)
-					m_DepthAttachments.push_back(Image::Create(&g_PersistentAllocator, attachment_spec));
-
-			}
-
-		}
-
-		{
-			// Initialize camera buffer
 			DeviceBufferSpecification buffer_spec = {};
+			buffer_spec.size = per_frame_size * Renderer::GetConfig().frames_in_flight;
 			buffer_spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
-			buffer_spec.heap = DeviceBufferMemoryHeap::DEVICE;
 			buffer_spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
-			buffer_spec.size = sizeof GLSL::CameraData * Renderer::GetConfig().frames_in_flight;
-			m_CameraDataBuffer = DeviceBuffer::Create(&g_PersistentAllocator, buffer_spec);
+			buffer_spec.heap = DeviceBufferMemoryHeap::DEVICE;
+
+			m_SpriteDataBuffer = DeviceBuffer::Create(&g_PersistentAllocator, buffer_spec);
+			m_SpriteBufferSize = per_frame_size;
 		}
 
-		// Initialize nearest filtration sampler
-		{
-			ImageSamplerSpecification sampler_spec = {};
-			sampler_spec.min_filtering_mode = SamplerFilteringMode::LINEAR;
-			sampler_spec.mag_filtering_mode = SamplerFilteringMode::NEAREST;
-			sampler_spec.mipmap_filtering_mode = SamplerFilteringMode::LINEAR;
-			sampler_spec.address_mode = SamplerAddressMode::REPEAT;
-			sampler_spec.min_lod = 0.0f;
-			sampler_spec.max_lod = 1000.0f;
-			sampler_spec.lod_bias = 0.0f;
-			sampler_spec.anisotropic_filtering_level = m_Specification.anisotropic_filtering;
-
-			m_SamplerNearest = ImageSampler::Create(&g_PersistentAllocator, sampler_spec);
-		}
-		// Initializing linear filtration sampler
-		{
-			ImageSamplerSpecification sampler_spec = {};
-			sampler_spec.min_filtering_mode = SamplerFilteringMode::LINEAR;
-			sampler_spec.mag_filtering_mode = SamplerFilteringMode::LINEAR;
-			sampler_spec.mipmap_filtering_mode = SamplerFilteringMode::LINEAR;
-			sampler_spec.address_mode = SamplerAddressMode::REPEAT;
-			sampler_spec.min_lod = 0.0f;
-			sampler_spec.max_lod = 1000.0f;
-			sampler_spec.lod_bias = 0.0f;
-			sampler_spec.anisotropic_filtering_level = m_Specification.anisotropic_filtering;
-
-			m_SamplerLinear = ImageSampler::Create(&g_PersistentAllocator, sampler_spec);
-		}
-		// Load dummy white texture
-		{
-			RGBA32 image_data(255, 255, 255, 255);
-
-			ImageSpecification image_spec = ImageSpecification::Default();
-			image_spec.usage = ImageUsage::TEXTURE;
-			image_spec.extent = { 1, 1, 1 };
-			image_spec.pixels = std::vector<byte>((byte*)&image_data, (byte*)(&image_data + 1));
-			image_spec.format = ImageFormat::RGBA32_UNORM;
-			image_spec.type = ImageType::TYPE_2D;
-			image_spec.mip_levels = 1;
-			image_spec.array_layers = 1;
-			OMNI_DEBUG_ONLY_CODE(image_spec.debug_name = "Dummy white texture");
-
-			m_DummyWhiteTexture = Image::Create(&g_PersistentAllocator, image_spec, 0);
-			AcquireResourceIndex(m_DummyWhiteTexture, SamplerFilteringMode::LINEAR);
-		}
 		// Initialize pipelines
 		{
 			// Load shaders
@@ -156,9 +66,9 @@ namespace Omni {
 			};
 
 			tf::Task shaders_load_task = taskflow.emplace([&](tf::Subflow& sf) {
-				sf.emplace([&, shader_name = "VisibilityBuffer.ofs"]() { 
+				sf.emplace([&, shader_name = "VisibilityBuffer.ofs"]() {
 					shader_library->LoadShader(shader_prefix + shader_name, m(shader_name_to_uuid_table[shader_name]));
-				});
+					});
 			});
 			JobSystem::GetExecutor()->run(taskflow).wait();
 
@@ -249,11 +159,11 @@ namespace Omni {
 		// Initialize device render queue and all buffers for indirect drawing
 		{
 			uint8 frames_in_flight = Renderer::GetConfig().frames_in_flight;
-			
+
 			// allow for 2^16 objects for beginning.
 			// TODO: allow recreating buffer with bigger size when limit is reached
 			DeviceBufferSpecification spec;
-			
+
 			// Create initial render queue
 			spec.size = sizeof(GLSL::RenderObjectData) * std::pow(2, 16) * frames_in_flight;
 			spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
@@ -328,7 +238,7 @@ namespace Omni {
 			// Allocate maximum 2^25 clusters, since it is maximum index in vis buffer.
 			// Actually a pretty big buffer (256 MB), so need to consider reducing its size
 			// + 4 bytes for size
-			buffer_spec.size = 4 + glm::pow(2, 25) * sizeof(SceneVisibleCluster) ; 
+			buffer_spec.size = 4 + glm::pow(2, 25) * sizeof(SceneVisibleCluster);
 
 			m_VisibleClusters = DeviceBuffer::Create(&g_PersistentAllocator, buffer_spec);
 		}
@@ -358,12 +268,12 @@ namespace Omni {
 		}
 	}
 
-	SceneRenderer::~SceneRenderer()
+	RasterSceneRenderer::~RasterSceneRenderer()
 	{
-		int x = 5;
+
 	}
 
-	void SceneRenderer::BeginScene(Ref<Camera> camera)
+	void RasterSceneRenderer::BeginScene(Ref<Camera> camera)
 	{
 		// Clear host render queue
 		m_HostRenderQueue.clear();
@@ -420,11 +330,11 @@ namespace Omni {
 				(BitMask)PipelineAccess::UNIFORM_READ,
 				(BitMask)PipelineAccess::COLOR_ATTACHMENT_WRITE
 			);
-		});
+			});
 
 	}
 
-	void SceneRenderer::EndScene()
+	void RasterSceneRenderer::EndScene()
 	{
 		uint64 camera_data_device_address = m_CameraDataBuffer->GetDeviceAddress() + m_CameraDataBuffer->GetFrameOffset();
 
@@ -440,7 +350,7 @@ namespace Omni {
 			Renderer::Submit([=]() {
 				m_DeviceIndirectDrawParams->Clear(Renderer::GetCmdBuffer(), 0, 4, 0);
 				m_VisibleClusters->Clear(Renderer::GetCmdBuffer(), 0, 4, 0);
-			});
+				});
 
 			Renderer::ClearImage(m_VisibilityBuffer, { 0.0f, 0.0f, 0.0f, 0.0f });
 
@@ -454,7 +364,7 @@ namespace Omni {
 			indirect_params_barrier.buffer_barrier_size = m_DeviceIndirectDrawParams->GetSpecification().size;
 
 			buffers_clear_barriers.push_back({ m_DeviceIndirectDrawParams, indirect_params_barrier });
-			
+
 			// Early transition of PBR attachments' layout
 			PipelineResourceBarrierInfo pbr_attachment_barrier = {};
 			pbr_attachment_barrier.src_stages = (BitMask)PipelineStage::FRAGMENT_SHADER;
@@ -721,10 +631,10 @@ namespace Omni {
 			}
 		}
 		else {
-			DebugRenderer::RenderSceneDebugView(m_VisibleClusters, m_CurrentDebugMode, m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()]);
+			DebugRenderer::RenderSceneDebugView(m_VisibleClusters, m_CurrentViewMode, m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()]);
 		}
 
-		DebugRenderer::Render(m_CurrectMainRenderTarget, m_CurrentDepthAttachment, IsInDebugMode() ? fvec4{0.0f, 0.0f, 0.0f, 1.0f} : fvec4{0.0f, 0.0f, 0.0f, 0.0f});
+		DebugRenderer::Render(m_CurrectMainRenderTarget, m_CurrentDepthAttachment, IsInDebugMode() ? fvec4{ 0.0f, 0.0f, 0.0f, 1.0f } : fvec4{ 0.0f, 0.0f, 0.0f, 0.0f });
 
 		Renderer::Submit([=]() {
 			m_CurrectMainRenderTarget->SetLayout(
@@ -735,79 +645,10 @@ namespace Omni {
 				(BitMask)PipelineAccess::COLOR_ATTACHMENT_WRITE,
 				(BitMask)PipelineAccess::MEMORY_READ | (BitMask)PipelineAccess::MEMORY_WRITE
 			);
-		});
+			});
 	}
 
-	Ref<Image> SceneRenderer::GetFinalImage()
-	{
-		return m_RendererOutputs[Renderer::GetCurrentFrameIndex()];
-	}
-
-	uint32 SceneRenderer::AcquireResourceIndex(Ref<Image> image, SamplerFilteringMode filtering_mode)
-	{
-		std::lock_guard lock(m_Mutex);
-		uint32 index = m_TextureIndexAllocator->Allocate(4, 1) / sizeof uint32;
-
-		Ref<ImageSampler> sampler;
-
-		switch (filtering_mode)
-		{
-		case SamplerFilteringMode::NEAREST:		sampler = m_SamplerNearest; break;
-		case SamplerFilteringMode::LINEAR:		sampler = m_SamplerLinear;  break;
-		default:								OMNIFORCE_ASSERT_TAGGED(false, "Invalid sampler filtering mode"); break;
-		}
-
-		for (auto& set : m_SceneDescriptorSet)
-			set->Write(0, index, image, sampler);
-		m_TextureIndices.emplace(image->Handle, index);
-
-		return index;
-	}
-
-	uint32 SceneRenderer::AcquireResourceIndex(Ref<Material> material)
-	{
-		return m_MaterialDataPool.Allocate(material->Handle);
-	}
-
-	uint32 SceneRenderer::AcquireResourceIndex(Ref<Mesh> mesh)
-	{
-		std::lock_guard lock(m_Mutex);
-
-		GLSL::MeshData mesh_data = {};
-		mesh_data.lod_distance_multiplier = 1.0f;
-		mesh_data.bounding_sphere = mesh->GetBoundingSphere();
-		mesh_data.meshlet_count = mesh->GetMeshletCount();
-		mesh_data.quantization_grid_size = mesh->GetQuantizationGridSize();
-		mesh_data.vertices = mesh->GetBuffer(MeshBufferKey::GEOMETRY)->GetDeviceAddress();
-		mesh_data.attributes = mesh->GetBuffer(MeshBufferKey::ATTRIBUTES)->GetDeviceAddress();
-		mesh_data.meshlets_data = mesh->GetBuffer(MeshBufferKey::MESHLETS)->GetDeviceAddress();
-		mesh_data.micro_indices = mesh->GetBuffer(MeshBufferKey::MICRO_INDICES)->GetDeviceAddress();
-		mesh_data.meshlets_cull_bounds = mesh->GetBuffer(MeshBufferKey::MESHLETS_CULL_DATA)->GetDeviceAddress();
-
-		return m_MeshResourcesBuffer.Allocate(mesh->Handle, mesh_data);
-	}
-
-	uint32 SceneRenderer::AcquireResourceIndex(Ref<Image> image)
-	{
-		OMNIFORCE_ASSERT_TAGGED(false, "Not implemented");
-		std::unreachable();
-	}
-
-	bool SceneRenderer::ReleaseResourceIndex(Ref<Image> image)
-	{
-		uint16 index = m_TextureIndices.at(image->Handle);
-		m_TextureIndexAllocator->Free(sizeof(uint32) * index);
-		m_TextureIndices.erase(image->Handle);
-
-		return true;
-	}
-
-	void SceneRenderer::RenderSprite(const Sprite& sprite)
-	{
-		m_SpriteQueue.push_back(sprite);
-	}
-
-	void SceneRenderer::RenderObject(Ref<Pipeline> pipeline, const GLSL::RenderObjectData& render_data)
+	void RasterSceneRenderer::RenderObject(Ref<Pipeline> pipeline, const GLSL::RenderObjectData& render_data)
 	{
 		m_ActiveMaterialPipelines.emplace(pipeline);
 		m_HostRenderQueue.emplace_back(render_data);
