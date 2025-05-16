@@ -17,6 +17,9 @@ namespace Omni {
 		INDEX_TYPE_UINT16		= BIT(3),
 		INDEX_TYPE_UINT32		= BIT(4),
 		CREATE_STAGING_BUFFER	= BIT(5),
+		AS_STORAGE				= BIT(6),
+		AS_INPUT				= BIT(7),
+		AS_SCRATCH				= BIT(8)
 	};
 
 	enum class OMNIFORCE_API DeviceBufferUsage : uint32 {

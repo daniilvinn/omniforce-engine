@@ -3,7 +3,7 @@
 
 #include <Scene/Camera.h>
 #include <Scene/ISceneRenderer.h>
-#include <Scene/RasterSceneRenderer.h>
+#include <Scene/PathTracingSceneRenderer.h>
 #include <Scene/Entity.h>
 #include <Scene/Component.h>
 #include <Scene/Lights.h>
@@ -39,7 +39,7 @@ namespace Omni {
 		SceneRendererSpecification renderer_spec = {};
 		renderer_spec.anisotropic_filtering = 16;
 
-		m_Renderer = RasterSceneRenderer::Create(&g_PersistentAllocator, renderer_spec);
+		m_Renderer = PathTracingSceneRenderer::Create(&g_PersistentAllocator, renderer_spec);
 	}
 
 	Scene::Scene(Scene* other)

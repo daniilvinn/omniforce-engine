@@ -42,6 +42,10 @@ namespace Omni {
 		{}
 
 	public:
+		WeakPtr() {
+			m_Object = nullptr;
+		}
+
 		WeakPtr(MemoryAllocation allocation)
 			: m_Object(allocation.As<T>())
 		{}
@@ -74,6 +78,7 @@ namespace Omni {
 		WeakPtr<T>& operator=(const PtrType<U>& other) noexcept
 		{
 			m_Object = (T*)other.Raw();
+			return *this;
 		}
 
 		// Forbid move assignment
@@ -110,10 +115,7 @@ namespace Omni {
 		inline operator bool() const {
 			return m_Object != nullptr;
 		}
-
-	private:
 		
-
 	private:
 		T* m_Object;
 	};
