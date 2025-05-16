@@ -10,9 +10,4 @@ namespace Omni {
 		return CreateRef<VulkanRTPipeline>(allocator, spec);
 	}
 
-	const RTPipelineSpecification& RTPipeline::GetSpecification() const
-	{
-
-	}
-
 }

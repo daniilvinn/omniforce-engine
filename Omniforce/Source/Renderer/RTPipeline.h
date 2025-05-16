@@ -9,16 +9,16 @@
 
 namespace Omni {
 
-	struct ShaderGroup {
-		Ref<Shader> ray_generation;
-		Ref<Shader> closest_hit;
-		Ref<Shader> any_hit;
-		Ref<Shader> miss;
-		Ref<Shader> intersection;
+	struct RTShaderGroup {
+		Ref<Shader> ray_generation = nullptr;
+		Ref<Shader> closest_hit = nullptr;
+		Ref<Shader> any_hit = nullptr;
+		Ref<Shader> miss = nullptr;
+		Ref<Shader> intersection = nullptr;
 	};
 
 	struct OMNIFORCE_API RTPipelineSpecification {
-		Array<ShaderGroup> groups;
+		Array<RTShaderGroup> groups;
 		uint32 recursion_depth = 1;
 	};
 
@@ -32,11 +32,12 @@ namespace Omni {
 
 	protected:
 		RTPipeline(const RTPipelineSpecification& spec)
-			: m_Specification(spec)
-		{}
+		{
+			m_Specification = spec;
+		}
 
 	protected:
-		RTPipelineSpecification m_Specification;
+		RTPipelineSpecification m_Specification = {};
 	};
 
 }

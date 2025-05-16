@@ -14,7 +14,7 @@ namespace Omni {
 	// =======
 	// BLAS constructor
 	// =======
-	VulkanAccelerationStructure::VulkanAccelerationStructure(const BLASBuildInfo& build_info)
+	VulkanRTAccelerationStructure::VulkanRTAccelerationStructure(const BLASBuildInfo& build_info)
 	{
 		auto device = VulkanGraphicsContext::Get()->GetDevice();
 
@@ -112,7 +112,7 @@ namespace Omni {
 	// =======
 	// TLAS constructor
 	// =======
-	VulkanAccelerationStructure::VulkanAccelerationStructure(const TLASBuildInfo& build_info)
+	VulkanRTAccelerationStructure::VulkanRTAccelerationStructure(const TLASBuildInfo& build_info)
 	{
 		auto device = VulkanGraphicsContext::Get()->GetDevice();
 
@@ -120,7 +120,7 @@ namespace Omni {
 		Array<VkAccelerationStructureInstanceKHR> instances(&g_TransientAllocator);
 		for (const auto& instance : build_info.instances) {
 			// Get BlAS address
-			WeakPtr<VulkanAccelerationStructure> vk_blas = instance.blas;
+			WeakPtr<VulkanRTAccelerationStructure> vk_blas = instance.blas;
 
 			VkAccelerationStructureDeviceAddressInfoKHR blas_address_info = {};
 			blas_address_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
@@ -248,7 +248,7 @@ namespace Omni {
 		cmd_buffer.Execute(true);
 	}
 
-	VulkanAccelerationStructure::~VulkanAccelerationStructure()
+	VulkanRTAccelerationStructure::~VulkanRTAccelerationStructure()
 	{
 		auto device = VulkanGraphicsContext::Get()->GetDevice()->Raw();
 		auto as = m_AccelerationStructure;

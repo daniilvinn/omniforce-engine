@@ -15,7 +15,8 @@ namespace Omni {
 		SAMPLED_IMAGE,
 		STORAGE_IMAGE,
 		UNIFORM_BUFFER,
-		STORAGE_BUFFER
+		STORAGE_BUFFER,
+		ACCELERATION_STRUCTURE
 	};
 
 	enum class OMNIFORCE_API DescriptorFlags : uint32 {

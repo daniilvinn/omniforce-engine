@@ -29,6 +29,12 @@ namespace Omni {
 		case SLANG_STAGE_MESH:					return ShaderStage::MESH;
 		case SLANG_STAGE_AMPLIFICATION:			return ShaderStage::TASK;
 		case SLANG_STAGE_COMPUTE:				return ShaderStage::COMPUTE;
+		case SLANG_STAGE_RAY_GENERATION:		return ShaderStage::RAYGEN;
+		case SLANG_STAGE_CLOSEST_HIT:			return ShaderStage::CLOSESTHIT;
+		case SLANG_STAGE_ANY_HIT:				return ShaderStage::ANYHIT;
+		case SLANG_STAGE_MISS:					return ShaderStage::MISS;
+		case SLANG_STAGE_INTERSECTION:			return ShaderStage::INTERSECTION;
+		case SLANG_STAGE_CALLABLE:				return ShaderStage::CALLABLE;
 		case SLANG_STAGE_NONE:					return ShaderStage::UNKNOWN;
 		default:								std::unreachable();
 		}

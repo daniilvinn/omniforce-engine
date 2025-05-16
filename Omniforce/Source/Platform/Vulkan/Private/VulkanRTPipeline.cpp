@@ -16,6 +16,7 @@ namespace Omni {
 		std::vector<DescriptorBinding> global_bindings;
 		global_bindings.push_back({ 0, DescriptorBindingType::SAMPLED_IMAGE, UINT16_MAX, (uint64)DescriptorFlags::PARTIALLY_BOUND });
 		global_bindings.push_back({ 1, DescriptorBindingType::STORAGE_IMAGE, 1, 0 });
+		global_bindings.push_back({ 2, DescriptorBindingType::ACCELERATION_STRUCTURE, 1, 0 });
 
 		DescriptorSetSpecification dummy_descriptor_set_spec = {};
 		dummy_descriptor_set_spec.bindings = std::move(global_bindings);
@@ -44,16 +45,8 @@ namespace Omni {
 
 		VK_CHECK_RESULT(vkCreatePipelineLayout(device->Raw(), &pipeline_layout_create_info, nullptr, &m_PipelineLayout));
 
-		// Create dynamic states
-		VkDynamicState dynamic_states[] = {
-			VK_DYNAMIC_STATE_VIEWPORT,
-			VK_DYNAMIC_STATE_SCISSOR
-		};
-
 		VkPipelineDynamicStateCreateInfo dynamic_state = {};
 		dynamic_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-		dynamic_state.pDynamicStates = dynamic_states;
-		dynamic_state.dynamicStateCount = 2;
 
 		Array<VkPipelineShaderStageCreateInfo> all_stages(&g_TransientAllocator);
 		Array<VkRayTracingShaderGroupCreateInfoKHR> groups = AssembleVulkanGroups(all_stages, m_Specification.groups);
@@ -68,7 +61,14 @@ namespace Omni {
 		rt_pipeline_create_info.pGroups = groups.Raw();
 		rt_pipeline_create_info.groupCount = groups.Size();
 		
-		vkCreateRayTracingPipelinesKHR(device->Raw(), VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &rt_pipeline_create_info, nullptr, &m_Pipeline);
+		VK_CHECK_RESULT(vkCreateRayTracingPipelinesKHR(device->Raw(), VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &rt_pipeline_create_info, nullptr, &m_Pipeline));
+		
+		if (m_Pipeline) {
+			OMNIFORCE_CORE_INFO("Created ray tracing pipeline");
+		}
+		else {
+			OMNIFORCE_CORE_CRITICAL("Failed to create ray tracing pipeline");
+		}
 	}
 
 	VulkanRTPipeline::~VulkanRTPipeline()
@@ -95,10 +95,10 @@ namespace Omni {
 		return index; 
 	}
 
-	Array<VkRayTracingShaderGroupCreateInfoKHR> VulkanRTPipeline::AssembleVulkanGroups(Array<VkPipelineShaderStageCreateInfo>& all_stages, const Array<ShaderGroup>& groups)
+	Array<VkRayTracingShaderGroupCreateInfoKHR> VulkanRTPipeline::AssembleVulkanGroups(Array<VkPipelineShaderStageCreateInfo>& all_stages, const Array<RTShaderGroup>& groups)
 	{
 		Array<VkRayTracingShaderGroupCreateInfoKHR> vk_shader_groups(&g_TransientAllocator);
-		for (const ShaderGroup& group : groups)
+		for (const RTShaderGroup& group : groups)
 		{
 			if (group.ray_generation)
 			{

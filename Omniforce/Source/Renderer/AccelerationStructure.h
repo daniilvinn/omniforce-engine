@@ -5,7 +5,7 @@
 
 namespace Omni {
 
-	class AccelerationStructure;
+	class RTAccelerationStructure;
 
 	struct BLASBuildInfo {
 		Ref<DeviceBuffer> geometry		= nullptr;
@@ -16,7 +16,7 @@ namespace Omni {
 	};
 
 	struct TLASInstance {
-		WeakPtr<AccelerationStructure> blas;
+		WeakPtr<RTAccelerationStructure> blas;
 		Transform transform = {};
 		uint32 custom_index = -1;
 		uint32 mask = -1;
@@ -27,15 +27,15 @@ namespace Omni {
 		Array<TLASInstance> instances;
 	};
 
-	class AccelerationStructure {
+	class RTAccelerationStructure {
 	public:
-		static Ptr<AccelerationStructure> Create(IAllocator* allocator, const BLASBuildInfo& build_info);
-		static Ptr<AccelerationStructure> Create(IAllocator* allocator, const TLASBuildInfo& build_info);
+		static Ptr<RTAccelerationStructure> Create(IAllocator* allocator, const BLASBuildInfo& build_info);
+		static Ptr<RTAccelerationStructure> Create(IAllocator* allocator, const TLASBuildInfo& build_info);
 
-		virtual ~AccelerationStructure() {};
+		virtual ~RTAccelerationStructure() {};
 
 	protected:
-		AccelerationStructure()
+		RTAccelerationStructure()
 		{}
 	};
 

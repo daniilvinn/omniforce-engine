@@ -54,7 +54,6 @@ namespace Omni {
 		Array(const Array<T>& other) {
 			if (this == &other) {
 				OMNIFORCE_CORE_WARNING("Attempted to assign an array to itself");
-				return *this;
 			}
 
 			if (m_Allocation.IsValid()) {
@@ -297,10 +296,15 @@ namespace Omni {
 
 			if (m_Allocation.IsValid()) {
 				Clear();
-				m_Allocator->FreeBase(m_Allocation);
+			}
+			else {
+				if (m_Allocator == nullptr)
+					m_Allocator = other.m_Allocator;
+
+				Reallocate(other.Size());
 			}
 
-			if (HasEnoughMemory(other.Size())) {
+			if (!HasEnoughMemory(other.Size())) {
 				Reallocate(other.Size());
 			}
 

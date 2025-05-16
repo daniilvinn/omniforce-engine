@@ -5,14 +5,14 @@
 
 namespace Omni {
 
-	Ptr<AccelerationStructure> AccelerationStructure::Create(IAllocator* allocator, const BLASBuildInfo& build_info)
+	Ptr<RTAccelerationStructure> RTAccelerationStructure::Create(IAllocator* allocator, const BLASBuildInfo& build_info)
 	{
-		return CreatePtr<VulkanAccelerationStructure>(allocator, build_info);
+		return CreatePtr<VulkanRTAccelerationStructure>(allocator, build_info);
 	}
 
-	Ptr<AccelerationStructure> AccelerationStructure::Create(IAllocator* allocator, const TLASBuildInfo& build_info)
+	Ptr<RTAccelerationStructure> RTAccelerationStructure::Create(IAllocator* allocator, const TLASBuildInfo& build_info)
 	{
-		return CreatePtr<VulkanAccelerationStructure>(allocator, build_info);
+		return CreatePtr<VulkanRTAccelerationStructure>(allocator, build_info);
 	}
 
 }

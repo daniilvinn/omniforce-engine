@@ -13,6 +13,9 @@ public Sampler2D TextureHeap[];
 [[vk::binding(1, 0)]]
 public RWTexture2D<uint64_t> SceneVisibilityBuffer;
 
+[[vk::binding(2, 0)]]
+public RaytracingAccelerationStructure SceneTLAS;
+
 public float3 QuaternionRotate(float4 Quat, float3 Point) {
     float3 uv = cross(Quat.xyz, Point);
     float3 uuv = cross(Quat.xyz, uv);

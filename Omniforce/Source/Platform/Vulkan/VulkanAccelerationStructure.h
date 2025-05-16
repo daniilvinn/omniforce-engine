@@ -8,11 +8,11 @@
 
 namespace Omni {
 
-	class VulkanAccelerationStructure : public AccelerationStructure {
+	class VulkanRTAccelerationStructure : public RTAccelerationStructure {
 	public:
-		VulkanAccelerationStructure(const BLASBuildInfo& build_info);
-		VulkanAccelerationStructure(const TLASBuildInfo& build_info);
-		~VulkanAccelerationStructure();
+		VulkanRTAccelerationStructure(const BLASBuildInfo& build_info);
+		VulkanRTAccelerationStructure(const TLASBuildInfo& build_info);
+		~VulkanRTAccelerationStructure();
 
 		VkAccelerationStructureKHR Raw() const { return m_AccelerationStructure; }
 

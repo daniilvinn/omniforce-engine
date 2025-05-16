@@ -22,10 +22,11 @@ namespace Omni {
 	constexpr VkDescriptorType convert(const DescriptorBindingType& type) {
 		switch (type)
 		{
-		case DescriptorBindingType::SAMPLED_IMAGE:		return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		case DescriptorBindingType::STORAGE_IMAGE:		return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-		case DescriptorBindingType::UNIFORM_BUFFER:		return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		case DescriptorBindingType::STORAGE_BUFFER:		return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		case DescriptorBindingType::SAMPLED_IMAGE:				return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		case DescriptorBindingType::STORAGE_IMAGE:				return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+		case DescriptorBindingType::UNIFORM_BUFFER:				return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		case DescriptorBindingType::STORAGE_BUFFER:				return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		case DescriptorBindingType::ACCELERATION_STRUCTURE:		return VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
 		default:										std::unreachable();
 		}
 	}

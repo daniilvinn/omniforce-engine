@@ -16,6 +16,12 @@ namespace Omni {
 		case ShaderStage::COMPUTE:		return VK_SHADER_STAGE_COMPUTE_BIT;
 		case ShaderStage::TASK:			return VK_SHADER_STAGE_TASK_BIT_EXT;
 		case ShaderStage::MESH:			return VK_SHADER_STAGE_MESH_BIT_EXT;
+		case ShaderStage::RAYGEN:		return VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+		case ShaderStage::CLOSESTHIT:	return VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+		case ShaderStage::ANYHIT:		return VK_SHADER_STAGE_ANY_HIT_BIT_KHR;
+		case ShaderStage::MISS:		return VK_SHADER_STAGE_MISS_BIT_KHR;
+		case ShaderStage::INTERSECTION:	return VK_SHADER_STAGE_INTERSECTION_BIT_KHR;
+		case ShaderStage::CALLABLE:		return VK_SHADER_STAGE_MISS_BIT_KHR;
 		}
 
 		return (VkShaderStageFlagBits)0;

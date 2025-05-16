@@ -17,7 +17,7 @@ namespace Omni {
 
 	private:
 		uint32 AppendStage(Array<VkPipelineShaderStageCreateInfo>& stages, Ref<Shader> shader);
-		Array<VkRayTracingShaderGroupCreateInfoKHR> AssembleVulkanGroups(Array<VkPipelineShaderStageCreateInfo>& all_stages, const Array<ShaderGroup>& groups);
+		Array<VkRayTracingShaderGroupCreateInfoKHR> AssembleVulkanGroups(Array<VkPipelineShaderStageCreateInfo>& all_stages, const Array<RTShaderGroup>& groups);
 
 	private:
 		VkPipeline m_Pipeline;

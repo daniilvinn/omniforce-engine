@@ -14,6 +14,12 @@ namespace Omni {
 		MESH,
 		FRAGMENT,
 		COMPUTE,
+		RAYGEN,
+		CLOSESTHIT,
+		ANYHIT,
+		MISS,
+		INTERSECTION,
+		CALLABLE,
 		UNKNOWN
 	};
 

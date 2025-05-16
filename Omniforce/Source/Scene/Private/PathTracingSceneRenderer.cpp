@@ -2,6 +2,8 @@
 
 #include <Renderer/AccelerationStructure.h>
 #include <Renderer/DeviceBuffer.h>
+#include <Renderer/ShaderLibrary.h>
+#include <Renderer/RTPipeline.h>
 
 namespace Omni {
 
@@ -40,7 +42,7 @@ namespace Omni {
 		blas_build_info.vertex_count = 3;
 		blas_build_info.vertex_stride = 12;
 
-		Ptr<AccelerationStructure> blas = AccelerationStructure::Create(&g_TransientAllocator, blas_build_info);
+		Ptr<RTAccelerationStructure> blas = RTAccelerationStructure::Create(&g_TransientAllocator, blas_build_info);
 
 		TLASInstance tlas_instance = {};
 		tlas_instance.blas = blas;
@@ -53,7 +55,49 @@ namespace Omni {
 		tlas_build_info.instances = Array<TLASInstance>(&g_TransientAllocator);
 		tlas_build_info.instances.Add(tlas_instance);
 
-		Ptr<AccelerationStructure> tlas = AccelerationStructure::Create(&g_TransientAllocator, tlas_build_info);
+		Ptr<RTAccelerationStructure> tlas = RTAccelerationStructure::Create(&g_TransientAllocator, tlas_build_info);
+
+		ShaderLibrary* shader_library = ShaderLibrary::Get();
+		shader_library->LoadShader2(
+			"PathConstruction",
+			{
+				"PathTracing.PathConstruction"
+			},
+			{}
+		);
+		shader_library->LoadShader2(
+			"ClosestHit",
+			{
+				"PathTracing.PathVertex"
+			},
+			{}
+		);
+		shader_library->LoadShader2(
+			"Miss",
+			{
+				"PathTracing.Miss"
+			},
+			{}
+		);
+
+		RTPipelineSpecification rt_pipeline_spec = {};
+		rt_pipeline_spec.groups = Array<RTShaderGroup>(&g_TransientAllocator);
+		rt_pipeline_spec.recursion_depth = 1;
+
+		RTShaderGroup raygen_group = {};
+		raygen_group.ray_generation = shader_library->GetShader("PathConstruction");
+
+		RTShaderGroup closest_hit_group = {};
+		closest_hit_group.closest_hit = shader_library->GetShader("ClosestHit");
+
+		RTShaderGroup miss_group = {};
+		miss_group.miss = shader_library->GetShader("Miss");
+
+		rt_pipeline_spec.groups.Add(raygen_group);
+		rt_pipeline_spec.groups.Add(closest_hit_group);
+		rt_pipeline_spec.groups.Add(miss_group);
+
+		RTPipeline::Create(&g_TransientAllocator, rt_pipeline_spec);
 	}
 
 	PathTracingSceneRenderer::~PathTracingSceneRenderer()
