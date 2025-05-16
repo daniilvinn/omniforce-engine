@@ -87,7 +87,7 @@ namespace Omni {
 		{
 		case PipelineType::GRAPHICS:		CreateGraphics(); break;
 		case PipelineType::COMPUTE:			CreateCompute(); break;
-		case PipelineType::RAY_TRACING:		std::unreachable(); break;
+		case PipelineType::RAY_TRACING:		CreateRayTracing(); break;
 		default:							std::unreachable(); break;
 		}
 
@@ -364,6 +364,14 @@ namespace Omni {
 		}
 
 		OMNIFORCE_CORE_TRACE("Pipeline \"{0}\" created successfully", m_Specification.debug_name);
+
+	}
+
+	void VulkanPipeline::CreateRayTracing()
+	{
+		VkRayTracingShaderGroupCreateInfoKHR rt_shader_group_create_info = {};
+
+		VkRayTracingPipelineCreateInfoKHR rt_pipeline_create_info = {};
 
 	}
 

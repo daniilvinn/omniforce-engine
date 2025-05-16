@@ -1,0 +1,28 @@
+#pragma once
+
+#include <Foundation/Common.h>
+#include <Platform/Vulkan/VulkanCommon.h>
+
+#include <Renderer/RTPipeline.h>
+
+namespace Omni {
+
+	class VulkanRTPipeline : public RTPipeline {
+	public:
+		VulkanRTPipeline(const RTPipelineSpecification& spec);
+		~VulkanRTPipeline();
+
+		VkPipeline Raw() const { return m_Pipeline; }
+		VkPipelineLayout RawLayout() const { return m_PipelineLayout; }
+
+	private:
+		uint32 AppendStage(Array<VkPipelineShaderStageCreateInfo>& stages, Ref<Shader> shader);
+		Array<VkRayTracingShaderGroupCreateInfoKHR> AssembleVulkanGroups(Array<VkPipelineShaderStageCreateInfo>& all_stages, const Array<ShaderGroup>& groups);
+
+	private:
+		VkPipeline m_Pipeline;
+		VkPipelineLayout m_PipelineLayout;
+
+	};
+
+}
