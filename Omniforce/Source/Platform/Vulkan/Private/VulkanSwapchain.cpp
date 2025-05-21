@@ -145,7 +145,7 @@ namespace Omni {
 
 		VK_CHECK_RESULT(vkGetSwapchainImagesKHR(device->Raw(), *m_Swapchain, (uint32*)&m_SwachainImageCount, pure_swapchain_images.data()));
 
-		VulkanDeviceCmdBuffer image_layout_transition_command_buffer = device->AllocateTransientCmdBuffer();
+		Ref<VulkanDeviceCmdBuffer> image_layout_transition_command_buffer = device->AllocateTransientCmdBuffer();
 
 		for (auto& image : m_Images) {
 			RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueObjectDeletion(
@@ -199,7 +199,7 @@ namespace Omni {
 			image_memory_barrier.subresourceRange.levelCount = 1;
 
 			vkCmdPipelineBarrier(
-				image_layout_transition_command_buffer,
+				image_layout_transition_command_buffer->Raw(),
 				VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
 				0,

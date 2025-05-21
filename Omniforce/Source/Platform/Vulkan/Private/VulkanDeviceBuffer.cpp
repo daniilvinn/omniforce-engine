@@ -149,9 +149,10 @@ namespace Omni {
 			buffer_copy.size = data_size;
 			buffer_copy.srcOffset = 0;
 			buffer_copy.dstOffset = 0;
-						VulkanDeviceCmdBuffer cmd_buffer = device->AllocateTransientCmdBuffer();
 
-			vkCmdCopyBuffer(cmd_buffer, staging_buffer.Raw(), m_Buffer, 1, &buffer_copy);
+			Ref<VulkanDeviceCmdBuffer> cmd_buffer = device->AllocateTransientCmdBuffer();
+
+			vkCmdCopyBuffer(cmd_buffer->Raw(), staging_buffer.Raw(), m_Buffer, 1, &buffer_copy);
 
 			VkBufferMemoryBarrier buffer_memory_barrier = {};
 			buffer_memory_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
@@ -162,7 +163,7 @@ namespace Omni {
 			buffer_memory_barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
 
 			vkCmdPipelineBarrier(
-				cmd_buffer,
+				cmd_buffer->Raw(),
 				VK_PIPELINE_STAGE_TRANSFER_BIT,
 				VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
 				0,

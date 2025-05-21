@@ -284,19 +284,18 @@ namespace Omni {
 		m_Device = VK_NULL_HANDLE;
 	}
 
-	VulkanDeviceCmdBuffer VulkanDevice::AllocateTransientCmdBuffer()
+	Ref<VulkanDeviceCmdBuffer> VulkanDevice::AllocateTransientCmdBuffer()
 	{
-		VulkanDeviceCmdBuffer cmd_buffer(DeviceCmdBufferLevel::PRIMARY, DeviceCmdBufferType::TRANSIENT, DeviceCmdType::GENERAL);
-		cmd_buffer.Begin();
+		Ref<DeviceCmdBuffer> cmd_buffer = DeviceCmdBuffer::Create(&g_TransientAllocator, DeviceCmdBufferLevel::PRIMARY, DeviceCmdBufferType::TRANSIENT, DeviceCmdType::GENERAL);
+		cmd_buffer->Begin();
 
 		return cmd_buffer;
 	}
 
-	void VulkanDevice::ExecuteTransientCmdBuffer(VulkanDeviceCmdBuffer cmd_buffer, bool wait /*= false*/) const
+	void VulkanDevice::ExecuteTransientCmdBuffer(Ref<VulkanDeviceCmdBuffer> cmd_buffer, bool wait /*= false*/) const
 	{
-		cmd_buffer.End();
-		cmd_buffer.Execute(true); // TODO: make such feature that cmd buffer can be launched asynchronously and will be self-destroyed on work finished
-		cmd_buffer.Destroy();
+		cmd_buffer->End();
+		cmd_buffer->Execute(true); // TODO: make such feature that cmd buffer can be launched asynchronously and will be self-destroyed on work finished
 	}
 
 	std::vector<const char*> VulkanDevice::GetRequiredExtensions()

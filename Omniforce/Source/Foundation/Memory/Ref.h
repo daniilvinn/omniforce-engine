@@ -96,9 +96,9 @@ namespace Omni {
 		Ref(Ref<U>&& other) noexcept
 			: m_Allocator(other.m_Allocator)
 			, m_Allocation(other.m_Allocation)
-			, m_CachedObject(other.m_CachedObject)
+			, m_CachedObject((T*)other.m_CachedObject)
 		{
-			static_assert(std::is_same_v<T, U> || std::is_base_of_v<T, U>, "Types are not related to each other");
+			static_assert(std::is_same_v<T, U> || std::is_base_of_v<T, U> || std::is_base_of_v<U, T>, "Types are not related to each other");
 
 			IncrementRefCounter();
 

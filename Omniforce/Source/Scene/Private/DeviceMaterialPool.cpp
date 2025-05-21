@@ -85,7 +85,6 @@ namespace Omni {
 		m_StagingForCopy->CopyRegionTo(cmd_buffer, m_PoolBuffer, 0, dst_offset, material_size);
 		cmd_buffer->End();
 		cmd_buffer->Execute(true);
-		cmd_buffer->Destroy();
 
 		return dst_offset;
 	}

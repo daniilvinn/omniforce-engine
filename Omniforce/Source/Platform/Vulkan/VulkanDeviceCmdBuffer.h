@@ -14,8 +14,6 @@ namespace Omni {
 		VulkanDeviceCmdBuffer(DeviceCmdBufferLevel level, DeviceCmdBufferType buffer_type, DeviceCmdType cmd_type);
 		~VulkanDeviceCmdBuffer();
 
-		void Destroy() override;
-
 		void Begin() override;
 		void End() override;
 		void Reset() override;

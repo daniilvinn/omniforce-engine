@@ -25,8 +25,6 @@ namespace Omni {
 	public:
 		static Ref<DeviceCmdBuffer> Create(IAllocator* allocator, DeviceCmdBufferLevel level, DeviceCmdBufferType buffer_type, DeviceCmdType cmd_type);
 
-		virtual void Destroy() = 0;
-
 		virtual void Begin() = 0;
 		virtual void End() = 0;
 		virtual void Reset() = 0;

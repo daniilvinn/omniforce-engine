@@ -44,9 +44,9 @@ namespace Omni {
 		Ref<VulkanPhysicalDevice> GetPhysicalDevice() const { return m_PhysicalDevice; }
 		VkQueue GetGeneralQueue() const { return m_GeneralQueue; }
 		VkQueue GetAsyncComputeQueue() const { return m_GeneralQueue; }
-
-		VulkanDeviceCmdBuffer AllocateTransientCmdBuffer();
-		void ExecuteTransientCmdBuffer(VulkanDeviceCmdBuffer cmd_buffer, bool wait = false) const;
+		
+		Ref<VulkanDeviceCmdBuffer> AllocateTransientCmdBuffer();
+		void ExecuteTransientCmdBuffer(Ref<VulkanDeviceCmdBuffer> cmd_buffer, bool wait = false) const;
 
 	private:
 		std::vector<const char*> GetRequiredExtensions();

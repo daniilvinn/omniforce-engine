@@ -154,7 +154,7 @@ namespace Omni {
 		VulkanDeviceBuffer staging_buffer(staging_buffer_spec, m_Specification.pixels.data(), m_Specification.pixels.size());
 
 		auto device = VulkanGraphicsContext::Get()->GetDevice();
-		VulkanDeviceCmdBuffer cmd_buffer = device->AllocateTransientCmdBuffer();
+		Ref<VulkanDeviceCmdBuffer> cmd_buffer = device->AllocateTransientCmdBuffer();
 
 		// So here we need to load and transition layout of all mip-levels of a texture
 		// Firstly we transition all of them into transfer destination layout
@@ -171,7 +171,7 @@ namespace Omni {
 		barrier.subresourceRange.baseMipLevel = 0;
 		barrier.subresourceRange.levelCount = texture_create_info.mipLevels;
 
-		vkCmdPipelineBarrier(cmd_buffer,
+		vkCmdPipelineBarrier(cmd_buffer->Raw(),
 			VK_PIPELINE_STAGE_TRANSFER_BIT,
 			VK_PIPELINE_STAGE_TRANSFER_BIT,
 			0,
@@ -205,7 +205,7 @@ namespace Omni {
 		}
 
 		// Submit copy command
-		vkCmdCopyBufferToImage(cmd_buffer, staging_buffer.Raw(), m_Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, copy_regions.size(), copy_regions.data());
+		vkCmdCopyBufferToImage(cmd_buffer->Raw(), staging_buffer.Raw(), m_Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, copy_regions.size(), copy_regions.data());
 		
 		// Transition layout to shader read only
 		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
@@ -215,7 +215,7 @@ namespace Omni {
 		barrier.subresourceRange.baseMipLevel = 0;
 		barrier.subresourceRange.levelCount = texture_create_info.mipLevels;
 
-		vkCmdPipelineBarrier(cmd_buffer,
+		vkCmdPipelineBarrier(cmd_buffer->Raw(),
 			VK_PIPELINE_STAGE_TRANSFER_BIT,
 			VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
 			0,
@@ -314,7 +314,6 @@ namespace Omni {
 		);
 		cmd_buffer->End();
 		cmd_buffer->Execute(true);
-		cmd_buffer->Destroy();
 	}
 
 	void VulkanImage::CreateDepthBuffer()
@@ -372,7 +371,6 @@ namespace Omni {
 		);
 		cmd_buffer->End();
 		cmd_buffer->Execute(true);
-		cmd_buffer->Destroy();
 	}
 
 	void VulkanImage::CreateStorageImage()
@@ -430,7 +428,6 @@ namespace Omni {
 		);
 		cmd_buffer->End();
 		cmd_buffer->Execute(true);
-		cmd_buffer->Destroy();
 	}
 
 	void VulkanImage::CreateFromRaw(const ImageSpecification& spec, VkImage image, VkImageView view)

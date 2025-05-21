@@ -46,7 +46,6 @@ namespace Omni {
 			cmd_buffer->Execute(true);
 
 			m_Indices.emplace(id, index);
-			cmd_buffer->Destroy();
 
 			return offset;
 		}
