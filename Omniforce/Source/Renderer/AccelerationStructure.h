@@ -10,17 +10,17 @@ namespace Omni {
 	struct BLASBuildInfo {
 		Ref<DeviceBuffer> geometry		= nullptr;
 		Ref<DeviceBuffer> indices		= nullptr;
-		uint32 vertex_stride			= -1;
-		uint32 vertex_count				= -1;
-		uint32 index_count				= -1;
+		uint32 vertex_stride			= (uint32)-1;
+		uint32 vertex_count				= (uint32)-1;
+		uint32 index_count				= (uint32)-1;
 	};
 
 	struct TLASInstance {
 		WeakPtr<RTAccelerationStructure> blas;
-		Transform transform = {};
-		uint32 custom_index = -1;
-		uint32 mask = -1;
-		uint32 SBT_record_offset = -1;
+		Transform transform							= {};
+		uint32 custom_index							= (uint32)-1;
+		uint32 mask									= (uint32)-1;
+		uint32 SBT_record_offset					= (uint32)-1;
 	};
 
 	struct TLASBuildInfo {

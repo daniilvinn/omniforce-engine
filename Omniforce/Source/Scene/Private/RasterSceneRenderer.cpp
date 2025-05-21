@@ -15,10 +15,6 @@
 #include <DebugUtils/DebugRenderer.h>
 #include <Scene/SceneRendererPrimitives.h>
 
-#include <Shaders/Shared/CameraData.glslh>
-#include <Shaders/Shared/MeshData.glslh>
-#include <Shaders/Shared/RenderObject.glslh>
-
 #include <taskflow/taskflow.hpp>
 
 namespace Omni {
@@ -165,7 +161,7 @@ namespace Omni {
 			DeviceBufferSpecification spec;
 
 			// Create initial render queue
-			spec.size = sizeof(GLSL::RenderObjectData) * std::pow(2, 16) * frames_in_flight;
+			spec.size = sizeof(InstanceRenderData) * std::pow(2, 16) * frames_in_flight;
 			spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
 			spec.heap = DeviceBufferMemoryHeap::DEVICE;
 			spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
@@ -174,7 +170,7 @@ namespace Omni {
 			m_DeviceRenderQueue = DeviceBuffer::Create(&g_PersistentAllocator, spec);
 
 			// Create post-cull render queue
-			spec.size = sizeof(GLSL::RenderObjectData) * std::pow(2, 16);
+			spec.size = sizeof(InstanceRenderData) * std::pow(2, 16);
 			spec.memory_usage = DeviceBufferMemoryUsage::NO_HOST_ACCESS;
 			OMNI_DEBUG_ONLY_CODE(spec.debug_name = "Device culled render queue buffer");
 
@@ -288,7 +284,7 @@ namespace Omni {
 		m_HostPointLights.clear();
 
 		// Change current render target
-		m_CurrectMainRenderTarget = m_RendererOutputs[Renderer::GetCurrentFrameIndex()];
+		m_CurrentMainRenderTarget = m_RendererOutputs[Renderer::GetCurrentFrameIndex()];
 		m_CurrentDepthAttachment = m_DepthAttachments[Renderer::GetCurrentFrameIndex()];
 
 		// Write camera data to device buffer
@@ -297,7 +293,7 @@ namespace Omni {
 
 			WeakPtr<Camera3D> camera_3D = m_Camera;
 
-			GLSL::CameraData camera_data;
+			ViewData camera_data;
 			camera_data.view = m_Camera->GetViewMatrix();
 			camera_data.proj = m_Camera->GetProjectionMatrix();
 			camera_data.view_proj = m_Camera->GetViewProjectionMatrix();
@@ -306,8 +302,8 @@ namespace Omni {
 			camera_data.forward_vector = m_Camera->GetForwardVector();
 			// If camera is 3D (very likely to be truth though) cast it to 3D camera and get FOV, otherwise use fixed 90 degree FOV
 			camera_data.fov = m_Camera->GetType() == CameraProjectionType::PROJECTION_3D ? camera_3D->GetFOV() : glm::radians(90.0f);
-			camera_data.viewport_width = m_CurrectMainRenderTarget->GetSpecification().extent.r;
-			camera_data.viewport_height = m_CurrectMainRenderTarget->GetSpecification().extent.g;
+			camera_data.viewport_width = m_CurrentMainRenderTarget->GetSpecification().extent.r;
+			camera_data.viewport_height = m_CurrentMainRenderTarget->GetSpecification().extent.g;
 			camera_data.near_clip_distance = m_Camera->GetNearClip();
 			camera_data.far_clip_distance = m_Camera->GetFarClip();
 
@@ -322,7 +318,7 @@ namespace Omni {
 
 		// Change layout of render target
 		Renderer::Submit([=]() {
-			m_CurrectMainRenderTarget->SetLayout(
+			m_CurrentMainRenderTarget->SetLayout(
 				Renderer::GetCmdBuffer(),
 				ImageLayout::COLOR_ATTACHMENT,
 				PipelineStage::FRAGMENT_SHADER,
@@ -344,7 +340,7 @@ namespace Omni {
 			m_DeviceRenderQueue->UploadData(
 				m_DeviceRenderQueue->GetFrameOffset(),
 				m_HostRenderQueue.data(),
-				m_HostRenderQueue.size() * sizeof(GLSL::RenderObjectData)
+				m_HostRenderQueue.size() * sizeof(InstanceRenderData)
 			);
 
 			Renderer::Submit([=]() {
@@ -461,7 +457,7 @@ namespace Omni {
 
 			Renderer::BeginRender(
 				{ },
-				m_CurrectMainRenderTarget->GetSpecification().extent,
+				m_CurrentMainRenderTarget->GetSpecification().extent,
 				{ 0, 0 },
 				{ 0.2f, 0.2f, 0.3f, 1.0 }
 			);
@@ -511,7 +507,7 @@ namespace Omni {
 			{
 				Renderer::BeginRender(
 					{ m_CurrentDepthAttachment },
-					m_CurrectMainRenderTarget->GetSpecification().extent,
+					m_CurrentMainRenderTarget->GetSpecification().extent,
 					{ 0, 0 },
 					{ 0.0f, 0.0f, 0.0f, 0.0f }
 				);
@@ -545,7 +541,7 @@ namespace Omni {
 			{
 				Renderer::BeginRender(
 					{ m_GBuffer.positions, m_GBuffer.base_color, m_GBuffer.normals, m_GBuffer.metallic_roughness_occlusion, m_CurrentDepthAttachment },
-					m_CurrectMainRenderTarget->GetSpecification().extent,
+					m_CurrentMainRenderTarget->GetSpecification().extent,
 					{ 0, 0 },
 					{ 0.2f, 0.2f, 0.3f, 1.0 },
 					false
@@ -567,7 +563,7 @@ namespace Omni {
 					Renderer::RenderQuads(pipeline, pc);
 				}
 
-				Renderer::EndRender(m_CurrectMainRenderTarget);
+				Renderer::EndRender(m_CurrentMainRenderTarget);
 			}
 			// PBR full screen pass
 			{
@@ -601,14 +597,14 @@ namespace Omni {
 				pbr_pc.size = sizeof PBRLightingInput;
 
 				// Submit full screen quad
-				Renderer::BeginRender({ m_CurrectMainRenderTarget }, m_CurrectMainRenderTarget->GetSpecification().extent, { 0, 0 }, { INFINITY, INFINITY, INFINITY, 1.0f });
+				Renderer::BeginRender({ m_CurrentMainRenderTarget }, m_CurrentMainRenderTarget->GetSpecification().extent, { 0, 0 }, { INFINITY, INFINITY, INFINITY, 1.0f });
 				Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], m_PBRFullscreenPipeline, 0);
 				Renderer::RenderQuads(m_PBRFullscreenPipeline, pbr_pc);
-				Renderer::EndRender(m_CurrectMainRenderTarget);
+				Renderer::EndRender(m_CurrentMainRenderTarget);
 			}
 			// Render 2D
 			{
-				Renderer::BeginRender({ m_CurrectMainRenderTarget, m_CurrentDepthAttachment }, m_CurrectMainRenderTarget->GetSpecification().extent, { 0, 0 }, { 1.0f, 1.0f, 1.0f, 0.0f });
+				Renderer::BeginRender({ m_CurrentMainRenderTarget, m_CurrentDepthAttachment }, m_CurrentMainRenderTarget->GetSpecification().extent, { 0, 0 }, { 1.0f, 1.0f, 1.0f, 0.0f });
 				m_SpriteDataBuffer->UploadData(
 					Renderer::GetCurrentFrameIndex() * m_SpriteBufferSize,
 					m_SpriteQueue.data(),
@@ -627,17 +623,17 @@ namespace Omni {
 
 				Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], m_SpritePass, 0);
 				Renderer::RenderQuads(m_SpritePass, m_SpriteQueue.size(), pc);
-				Renderer::EndRender({ m_CurrectMainRenderTarget });
+				Renderer::EndRender({ m_CurrentMainRenderTarget });
 			}
 		}
 		else {
 			DebugRenderer::RenderSceneDebugView(m_VisibleClusters, m_CurrentViewMode, m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()]);
 		}
 
-		DebugRenderer::Render(m_CurrectMainRenderTarget, m_CurrentDepthAttachment, IsInDebugMode() ? fvec4{ 0.0f, 0.0f, 0.0f, 1.0f } : fvec4{ 0.0f, 0.0f, 0.0f, 0.0f });
+		DebugRenderer::Render(m_CurrentMainRenderTarget, m_CurrentDepthAttachment, IsInDebugMode() ? fvec4{ 0.0f, 0.0f, 0.0f, 1.0f } : fvec4{ 0.0f, 0.0f, 0.0f, 0.0f });
 
 		Renderer::Submit([=]() {
-			m_CurrectMainRenderTarget->SetLayout(
+			m_CurrentMainRenderTarget->SetLayout(
 				Renderer::GetCmdBuffer(),
 				ImageLayout::SHADER_READ_ONLY,
 				PipelineStage::COLOR_ATTACHMENT_OUTPUT,
@@ -646,12 +642,6 @@ namespace Omni {
 				(BitMask)PipelineAccess::MEMORY_READ | (BitMask)PipelineAccess::MEMORY_WRITE
 			);
 			});
-	}
-
-	void RasterSceneRenderer::RenderObject(Ref<Pipeline> pipeline, const GLSL::RenderObjectData& render_data)
-	{
-		m_ActiveMaterialPipelines.emplace(pipeline);
-		m_HostRenderQueue.emplace_back(render_data);
 	}
 
 }

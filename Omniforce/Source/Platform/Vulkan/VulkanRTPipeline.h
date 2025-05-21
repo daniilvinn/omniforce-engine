@@ -4,6 +4,7 @@
 #include <Platform/Vulkan/VulkanCommon.h>
 
 #include <Renderer/RTPipeline.h>
+#include <Renderer/ShaderBindingTable.h>
 
 namespace Omni {
 
@@ -14,6 +15,7 @@ namespace Omni {
 
 		VkPipeline Raw() const { return m_Pipeline; }
 		VkPipelineLayout RawLayout() const { return m_PipelineLayout; }
+		const ShaderBindingTable& GetSBT() const override { return m_SBT; };
 
 	private:
 		uint32 AppendStage(Array<VkPipelineShaderStageCreateInfo>& stages, Ref<Shader> shader);
@@ -22,6 +24,7 @@ namespace Omni {
 	private:
 		VkPipeline m_Pipeline;
 		VkPipelineLayout m_PipelineLayout;
+		ShaderBindingTable m_SBT;
 
 	};
 

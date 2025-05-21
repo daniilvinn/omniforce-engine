@@ -5,7 +5,8 @@
 
 #include <Scene/ISceneRenderer.h>
 #include <Scene/Camera.h>
-#include <Shaders/Shared/RenderObject.glslh>
+#include <Renderer/AccelerationStructure.h>
+#include <Renderer/RTPipeline.h>
 
 #include <glm/glm.hpp>
 
@@ -21,9 +22,13 @@ namespace Omni {
 		void BeginScene(Ref<Camera> camera) override;
 		void EndScene() override;
 
-		void RenderObject(Ref<Pipeline> pipeline, const GLSL::RenderObjectData& render_data) override;
-
 	private:
+		Ref<RTPipeline> m_RTPipeline;
+
+		Ptr<RTAccelerationStructure> m_SceneTLAS;
+		Ptr<RTAccelerationStructure> m_BLAS;
+
+		Ref<Image> m_VisibilityBuffer;
 
 	};
 

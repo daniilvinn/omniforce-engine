@@ -16,17 +16,13 @@
 #include <DebugUtils/DebugRenderer.h>
 #include <Scene/SceneRendererPrimitives.h>
 
-#include <Shaders/Shared/CameraData.glslh>
-#include <Shaders/Shared/MeshData.glslh>
-#include <Shaders/Shared/RenderObject.glslh>
-
 namespace Omni {
 
 	ISceneRenderer::ISceneRenderer(const SceneRendererSpecification& spec)
 		: m_Specification(spec)
 		, m_MaterialDataPool(this, 4096 * 256 /* 256Kb of data*/)
 		, m_TextureIndexAllocator(VirtualMemoryBlock::Create(&g_PersistentAllocator, 4 * UINT16_MAX))
-		, m_MeshResourcesBuffer(4096 * sizeof GLSL::MeshData) // allow up to 4096 meshes be allocated at once
+		, m_MeshResourcesBuffer(4096 * sizeof(GeometryMeshData)) // allow up to 4096 meshes be allocated at once
 		, m_StorageImageIndexAllocator(VirtualMemoryBlock::Create(&g_PersistentAllocator, 4 * UINT16_MAX)) 
 	{
 		// Descriptor data
@@ -34,6 +30,7 @@ namespace Omni {
 			std::vector<DescriptorBinding> bindings;
 			bindings.push_back({ 0, DescriptorBindingType::SAMPLED_IMAGE, UINT16_MAX, (uint64)DescriptorFlags::PARTIALLY_BOUND });
 			bindings.push_back({ 1, DescriptorBindingType::STORAGE_IMAGE, 1, 0 });
+			bindings.push_back({ 2, DescriptorBindingType::ACCELERATION_STRUCTURE, 1, 0 });
 
 			DescriptorSetSpecification global_set_spec = {};
 			global_set_spec.bindings = std::move(bindings);
@@ -69,7 +66,7 @@ namespace Omni {
 			buffer_spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
 			buffer_spec.heap = DeviceBufferMemoryHeap::DEVICE;
 			buffer_spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
-			buffer_spec.size = sizeof GLSL::CameraData * Renderer::GetConfig().frames_in_flight;
+			buffer_spec.size = sizeof(ViewData) * Renderer::GetConfig().frames_in_flight;
 			m_CameraDataBuffer = DeviceBuffer::Create(&g_PersistentAllocator, buffer_spec);
 		}
 
@@ -155,7 +152,7 @@ namespace Omni {
 	{
 		std::lock_guard lock(m_Mutex);
 
-		GLSL::MeshData mesh_data = {};
+		GeometryMeshData mesh_data = {};
 		mesh_data.lod_distance_multiplier = 1.0f;
 		mesh_data.bounding_sphere = mesh->GetBoundingSphere();
 		mesh_data.meshlet_count = mesh->GetMeshletCount();

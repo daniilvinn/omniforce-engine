@@ -14,9 +14,8 @@
 #include <Renderer/Mesh.h>
 #include <Core/CallbackRHUMap.h>
 #include <DebugUtils/DebugRenderer.h>
-#include <Shaders/Shared/RenderObject.glslh>
-#include <Shaders/Shared/MeshData.glslh>
 #include <Asset/Model.h>
+#include <CodeGeneration/Device/RenderObject.h>
 
 #include <shared_mutex>
 
@@ -73,7 +72,14 @@ namespace Omni {
 		uint64 GetMaterialBDA(const AssetHandle& id) const { return m_MaterialDataPool.GetStorageBufferAddress() + m_MaterialDataPool.GetOffset(id); }
 		uint32 GetMeshIndex(const AssetHandle& uuid) const { return m_MeshResourcesBuffer.GetIndex(uuid); }
 
-		virtual void RenderObject(Ref<Pipeline> pipeline, const GLSL::RenderObjectData& render_data) = 0;
+		virtual void RenderObject(Ref<Pipeline> pipeline, const HostInstanceRenderData& render_data) {
+			InstanceRenderData device_render_data = {};
+			device_render_data.transform = render_data.transform;
+			device_render_data.geometry_data_id = GetMeshIndex(render_data.mesh_handle);
+			device_render_data.material_address = BDA<byte>(GetMaterialBDA(render_data.material_handle));
+
+			m_HostRenderQueue.push_back(device_render_data);
+		};
 		virtual void RenderSprite(const Sprite& sprite) { m_SpriteQueue.emplace_back(sprite); }
 
 		// Lighting
@@ -85,7 +91,7 @@ namespace Omni {
 
 		std::vector<Ref<Image>> m_RendererOutputs;
 		std::vector<Ref<Image>> m_DepthAttachments;
-		Ref<Image> m_CurrectMainRenderTarget;
+		Ref<Image> m_CurrentMainRenderTarget;
 		Ref<Image> m_CurrentDepthAttachment;
 
 		std::vector<Ref<DescriptorSet>> m_SceneDescriptorSet;
@@ -100,10 +106,10 @@ namespace Omni {
 		rhumap<UUID, uint32> m_TextureIndices;
 		rhumap<UUID, uint32> m_StorageImageIndices;
 
-		DeviceIndexedResourceBuffer<GLSL::MeshData> m_MeshResourcesBuffer;
+		DeviceIndexedResourceBuffer<GeometryMeshData> m_MeshResourcesBuffer;
 		DeviceMaterialPool m_MaterialDataPool;
 
-		std::vector<GLSL::RenderObjectData> m_HostRenderQueue;
+		std::vector<InstanceRenderData> m_HostRenderQueue;
 		std::vector<Sprite> m_SpriteQueue;
 
 		std::vector<PointLight> m_HostPointLights;

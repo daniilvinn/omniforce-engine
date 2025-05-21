@@ -6,6 +6,7 @@
 #include <Renderer/ShaderLibrary.h>
 #include <Renderer/DeviceBuffer.h>
 #include <Renderer/Pipeline.h>
+#include <Renderer/RTPipeline.h>
 #include <Renderer/DescriptorSet.h>
 #include <Core/Windowing/WindowSystem.h>
 #include <Scene/PipelineLibrary.h>
@@ -73,6 +74,11 @@ namespace Omni {
 		s_RendererAPI->BindSet(set, pipeline, index);
 	}
 
+	void Renderer::BindSet(Ref<DescriptorSet> set, Ref<RTPipeline> pipeline, uint8 index)
+	{
+		s_RendererAPI->BindSet(set, pipeline, index);
+	}
+
 	Ref<Image> Renderer::GetSwapchainImage()
 	{
 		return s_RendererAPI->GetSwapchain()->GetCurrentImage();
@@ -123,6 +129,11 @@ namespace Omni {
 		s_RendererAPI->RenderUnindexed(pipeline, vertex_buffer, data);
 	}
 
+	void Renderer::DispatchRayTracing(Ref<RTPipeline> pipeline, const glm::uvec3& grid, MiscData data)
+	{
+		s_RendererAPI->DispatchRayTracing(pipeline, grid, data);
+	}
+
 	uint32 Renderer::GetCurrentFrameIndex()
 	{
 		return s_RendererAPI->GetCurrentFrameIndex();
@@ -151,6 +162,11 @@ namespace Omni {
 	uint32 Renderer::GetDeviceOptimalComputeWorkGroupSize()
 	{
 		return s_RendererAPI->GetDeviceOptimalComputeWorkGroupSize();
+	}
+
+	RendererCapabilities Renderer::GetCapabilities()
+	{
+		return s_RendererAPI->GetCapabilities();
 	}
 
 	Ref<ImageSampler> Renderer::GetNearestSampler()

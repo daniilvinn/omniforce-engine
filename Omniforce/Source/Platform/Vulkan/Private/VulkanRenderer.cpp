@@ -8,6 +8,7 @@
 #include <Platform/Vulkan/VulkanDeviceBuffer.h>
 #include <Platform/Vulkan/VulkanImage.h>
 #include <Platform/Vulkan/VulkanDescriptorSet.h>
+#include <Platform/Vulkan/VulkanRTPipeline.h>
 #include <Renderer/PipelineBarrier.h>
 #include <Renderer/ShaderLibrary.h>
 #include <Threading/JobSystem.h>
@@ -72,6 +73,26 @@ namespace Omni {
 
 			OMNIFORCE_CORE_INFO("Initialized global renderer descriptor pool");
 		}
+
+		VkPhysicalDeviceRayTracingPipelinePropertiesKHR rt_props = {};
+		rt_props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
+
+		VkPhysicalDeviceMeshShaderPropertiesEXT mesh_shader_props = {};
+		mesh_shader_props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT;
+		mesh_shader_props.pNext = &rt_props;
+
+		VkPhysicalDeviceProperties2 device_props2 = {};
+		device_props2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
+		device_props2.pNext = &mesh_shader_props;
+
+		vkGetPhysicalDeviceProperties2(m_Device->GetPhysicalDevice()->Raw(), &device_props2);
+
+		// TODO
+		m_Caps.mesh_shading = true; 
+		m_Caps.ray_tracing.support = true;
+		m_Caps.ray_tracing.shader_handle_size = rt_props.shaderGroupHandleSize;
+		m_Caps.ray_tracing.shader_handle_alignment= rt_props.shaderGroupHandleAlignment;
+		m_Caps.ray_tracing.shader_base_alignment = rt_props.shaderGroupBaseAlignment;
 	}
 
 	VulkanRenderer::~VulkanRenderer()
@@ -284,6 +305,11 @@ namespace Omni {
 		return 0;
 	}
 
+	RendererCapabilities VulkanRenderer::GetCapabilities() const
+	{
+		return m_Caps;
+	}
+
 	void VulkanRenderer::RenderQuad(Ref<Pipeline> pipeline, MiscData data)
 	{
 		Renderer::Submit([=]() mutable {
@@ -347,6 +373,55 @@ namespace Omni {
 
 			vkCmdBindPipeline(m_CurrentCmdBuffer->Raw(), VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline->Raw());
 			vkCmdDraw(m_CurrentCmdBuffer->Raw(), vertex_count, 1, 0, 0);
+		});
+	}
+
+	void VulkanRenderer::DispatchRayTracing(Ref<RTPipeline> pipeline, const glm::uvec3& grid, MiscData data)
+	{
+		Renderer::Submit([=]() {
+			WeakPtr<VulkanRTPipeline> vk_pipeline = pipeline;
+
+			if (data.size) {
+				vkCmdPushConstants(m_CurrentCmdBuffer->Raw(), vk_pipeline->RawLayout(), VK_SHADER_STAGE_ALL, 0, data.size, data.data);
+				delete[] data.data;
+			}
+			
+			const ShaderBindingTable& SBT = vk_pipeline->GetSBT();
+
+			SBTRegion raygen_sbt_region = SBT.GetRayGenTableRegion();
+			SBTRegion miss_sbt_region = SBT.GetMissTableRegion();
+			SBTRegion hit_sbt_region = SBT.GetHitTableRegion();
+
+			VkStridedDeviceAddressRegionKHR raygen_region = {};
+			raygen_region.deviceAddress = raygen_sbt_region.buffer->GetDeviceAddress() + raygen_sbt_region.bda_offset;
+			raygen_region.size = raygen_sbt_region.size;
+			raygen_region.stride = raygen_sbt_region.stride;
+
+			VkStridedDeviceAddressRegionKHR miss_region = {};
+			miss_region.deviceAddress = miss_sbt_region.buffer->GetDeviceAddress() + miss_sbt_region.bda_offset;
+			miss_region.size = miss_sbt_region.size;
+			miss_region.stride = miss_sbt_region.stride;
+
+			VkStridedDeviceAddressRegionKHR hit_region = {};
+			hit_region.deviceAddress = hit_sbt_region.buffer->GetDeviceAddress() + hit_sbt_region.bda_offset;
+			hit_region.size = hit_sbt_region.size;
+			hit_region.stride = hit_sbt_region.stride;
+
+			VkStridedDeviceAddressRegionKHR callable_region = {};
+
+			vkCmdBindPipeline(m_CurrentCmdBuffer->Raw(), VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, vk_pipeline->Raw());
+
+			vkCmdTraceRaysKHR(
+				m_CurrentCmdBuffer->Raw(),
+				&raygen_region,
+				&miss_region,
+				&hit_region,
+				&callable_region,
+				grid.x,
+				grid.y,
+				grid.z
+			);
+
 		});
 	}
 
@@ -594,6 +669,22 @@ namespace Omni {
 			}
 
 			vkCmdBindDescriptorSets(m_CurrentCmdBuffer->Raw(), bind_point, vk_pipeline->RawLayout(), index, 1, &raw_set, 0, nullptr);
+		});
+	}
+
+	void VulkanRenderer::BindSet(Ref<DescriptorSet> set, Ref<RTPipeline> pipeline, uint8 index)
+	{
+		Renderer::Submit([=]() mutable {
+			const RTPipelineSpecification& pipeline_spec = pipeline->GetSpecification();
+
+			WeakPtr<VulkanRTPipeline> vk_pipeline = pipeline;
+			WeakPtr<VulkanDescriptorSet> vk_set = set;
+
+			VkDescriptorSet raw_set = vk_set->Raw();
+
+			VkPipelineBindPoint bind_point;
+
+			vkCmdBindDescriptorSets(m_CurrentCmdBuffer->Raw(), VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, vk_pipeline->RawLayout(), index, 1, &raw_set, 0, nullptr);
 		});
 	}
 

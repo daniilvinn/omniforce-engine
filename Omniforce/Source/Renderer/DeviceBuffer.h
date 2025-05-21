@@ -19,7 +19,8 @@ namespace Omni {
 		CREATE_STAGING_BUFFER	= BIT(5),
 		AS_STORAGE				= BIT(6),
 		AS_INPUT				= BIT(7),
-		AS_SCRATCH				= BIT(8)
+		AS_SCRATCH				= BIT(8),
+		SBT
 	};
 
 	enum class OMNIFORCE_API DeviceBufferUsage : uint32 {

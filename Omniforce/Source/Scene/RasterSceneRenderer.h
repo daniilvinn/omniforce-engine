@@ -15,8 +15,6 @@
 #include <Renderer/Mesh.h>
 #include <Core/CallbackRHUMap.h>
 #include <DebugUtils/DebugRenderer.h>
-#include <Shaders/Shared/RenderObject.glslh>
-#include <Shaders/Shared/MeshData.glslh>
 
 #include <shared_mutex>
 
@@ -34,8 +32,6 @@ namespace Omni {
 
 		void BeginScene(Ref<Camera> camera) override;
 		void EndScene() override;
-
-		void RenderObject(Ref<Pipeline> pipeline, const GLSL::RenderObjectData& render_data) override;
 
 	private:
 		uint32 m_SpriteBufferSize; // size in bytes per frame in flight, not overall size

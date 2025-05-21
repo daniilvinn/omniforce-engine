@@ -11,7 +11,11 @@ namespace Omni {
 	struct BDA {
 		BDA() {}
 
-		BDA(WeakPtr<DeviceBuffer> buffer, uint64 offset = 0)
+		BDA(uint64 addr)
+			: address(addr)
+		{}
+
+		BDA(Ref<DeviceBuffer> buffer, uint64 offset = 0)
 			: address(buffer->GetDeviceAddress() + offset)
 		{}
 

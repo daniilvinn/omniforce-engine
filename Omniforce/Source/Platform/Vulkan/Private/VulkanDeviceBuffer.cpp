@@ -51,6 +51,7 @@ namespace Omni {
 		buffer_create_info.usage |= spec.flags & (BitMask)DeviceBufferFlags::AS_STORAGE ? VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR : 0;
 		buffer_create_info.usage |= spec.flags & (BitMask)DeviceBufferFlags::AS_INPUT ? VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR : 0;
 		buffer_create_info.usage |= spec.flags & (BitMask)DeviceBufferFlags::AS_SCRATCH ? VK_BUFFER_USAGE_STORAGE_BUFFER_BIT : 0;
+		buffer_create_info.usage |= spec.flags & (BitMask)DeviceBufferFlags::SBT ? VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR : 0;
 		
 		if (m_Specification.memory_usage == DeviceBufferMemoryUsage::NO_HOST_ACCESS) {
 			buffer_create_info.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
@@ -86,6 +87,7 @@ namespace Omni {
 		buffer_create_info.usage |= spec.flags & (BitMask)DeviceBufferFlags::AS_STORAGE ? VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR : 0;
 		buffer_create_info.usage |= spec.flags & (BitMask)DeviceBufferFlags::AS_INPUT ? VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR : 0;
 		buffer_create_info.usage |= spec.flags & (BitMask)DeviceBufferFlags::AS_SCRATCH ? VK_BUFFER_USAGE_STORAGE_BUFFER_BIT : 0;
+		buffer_create_info.usage |= spec.flags & (BitMask)DeviceBufferFlags::SBT ? VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR : 0;
 
 		if (m_Specification.memory_usage == DeviceBufferMemoryUsage::NO_HOST_ACCESS) {
 			buffer_create_info.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;

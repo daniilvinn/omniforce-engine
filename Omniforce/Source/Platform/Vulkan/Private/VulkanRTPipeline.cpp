@@ -4,6 +4,7 @@
 #include <Platform/Vulkan/VulkanDescriptorSet.h>
 #include <Platform/Vulkan/VulkanGraphicsContext.h>
 #include <Platform/Vulkan/VulkanShader.h>
+#include <Renderer/ShaderBindingTable.h>
 
 namespace Omni {
 
@@ -69,6 +70,13 @@ namespace Omni {
 		else {
 			OMNIFORCE_CORE_CRITICAL("Failed to create ray tracing pipeline");
 		}
+
+		Array<byte> group_handles(&g_TransientAllocator);
+		group_handles.Resize(spec.groups.Size() * Renderer::GetCapabilities().ray_tracing.shader_handle_size);
+
+		VK_CHECK_RESULT(vkGetRayTracingShaderGroupHandlesKHR(device->Raw(), m_Pipeline, 0, spec.groups.Size(), group_handles.Size(), group_handles.Raw()));
+
+		m_SBT = ShaderBindingTable(group_handles, spec.groups);
 	}
 
 	VulkanRTPipeline::~VulkanRTPipeline()
@@ -98,6 +106,8 @@ namespace Omni {
 	Array<VkRayTracingShaderGroupCreateInfoKHR> VulkanRTPipeline::AssembleVulkanGroups(Array<VkPipelineShaderStageCreateInfo>& all_stages, const Array<RTShaderGroup>& groups)
 	{
 		Array<VkRayTracingShaderGroupCreateInfoKHR> vk_shader_groups(&g_TransientAllocator);
+		bool group_active = false;
+
 		for (const RTShaderGroup& group : groups)
 		{
 			if (group.ray_generation)
@@ -113,6 +123,7 @@ namespace Omni {
 				group_info.intersectionShader = VK_SHADER_UNUSED_KHR;
 
 				vk_shader_groups.Add(group_info);
+				group_active = true;
 			}
 
 			if (group.miss)
@@ -128,6 +139,7 @@ namespace Omni {
 				group_info.intersectionShader = VK_SHADER_UNUSED_KHR;
 
 				vk_shader_groups.Add(group_info);
+				group_active = true;
 			}
 
 			// HIT GROUP
@@ -147,7 +159,10 @@ namespace Omni {
 				group_info.intersectionShader = AppendStage(all_stages, group.intersection);
 
 				vk_shader_groups.Add(group_info);
+				group_active = true;
 			}
+
+			OMNIFORCE_ASSERT_TAGGED(group_active, "Null group provided");
 		}
 
 		return vk_shader_groups;

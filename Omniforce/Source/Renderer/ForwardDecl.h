@@ -19,4 +19,9 @@ namespace Omni
 	struct DeviceBufferLayoutElement;
 	class DescriptorSet;
 	class DeviceCmdBuffer;
+	struct RendererConfig;
+	struct RendererCapabilities;
+	class RTPipeline;
+	class ShaderBindingTable;
+	class RTAccelerationStructure;
 };

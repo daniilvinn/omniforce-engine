@@ -17,7 +17,13 @@ namespace Omni {
 
 	struct RendererCapabilities {
 		bool mesh_shading;
-		bool ray_tracing;
+
+		struct {
+			bool support;
+			uint32 shader_handle_size;
+			uint32 shader_handle_alignment;
+			uint32 shader_base_alignment;
+		} ray_tracing;
 	};
 
 	class OMNIFORCE_API Renderer {
@@ -35,6 +41,7 @@ namespace Omni {
 		static uint32 GetDeviceOptimalTaskWorkGroupSize();
 		static uint32 GetDeviceOptimalMeshWorkGroupSize();
 		static uint32 GetDeviceOptimalComputeWorkGroupSize();
+		static RendererCapabilities GetCapabilities();
 		static Ref<ImageSampler> GetNearestSampler();
 		static Ref<ImageSampler> GetLinearSampler();
 		static Ref<Image> GetSwapchainImage();
@@ -49,6 +56,7 @@ namespace Omni {
 		static void EndRender(Ref<Image> target);
 		static void WaitDevice(); // to be used ONLY while shutting down the engine.
 		static void BindSet(Ref<DescriptorSet> set, Ref<Pipeline> pipeline, uint8 index);
+		static void BindSet(Ref<DescriptorSet> set, Ref<RTPipeline> pipeline, uint8 index);
 		static void CopyToSwapchain(Ref<Image> image);
 		static void InsertBarrier(const PipelineBarrierInfo& barrier_info);
 
@@ -59,13 +67,13 @@ namespace Omni {
 		static void RenderQuads(Ref<Pipeline> pipeline, uint32 amount, MiscData data);
 		static void DispatchCompute(Ref<Pipeline> pipeline, const glm::uvec3& dimensions, MiscData data);
 		static void RenderUnindexed(Ref<Pipeline> pipeline, Ref<DeviceBuffer> vertex_buffer, MiscData data);
+		static void DispatchRayTracing(Ref<RTPipeline> pipeline, const glm::uvec3& grid, MiscData data);
 
 		static void Render();
 		static void RenderImGui();
 
 	private:
 		static RendererAPI* s_RendererAPI;
-
 	};
 
 }

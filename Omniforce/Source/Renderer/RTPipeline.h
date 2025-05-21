@@ -29,6 +29,7 @@ namespace Omni {
 		virtual ~RTPipeline() {};
 
 		const RTPipelineSpecification& GetSpecification() const { return m_Specification; };
+		virtual const ShaderBindingTable& GetSBT() const = 0;
 
 	protected:
 		RTPipeline(const RTPipelineSpecification& spec)
