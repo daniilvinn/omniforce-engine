@@ -169,6 +169,10 @@ namespace Omni {
 										std::string runtime_array_type = GetShaderType(field_type_name.substr(runtime_array_type_begin_index, num_chars));
 										field_type_name = runtime_array_type + "[]";
 									}
+									else if (clang_Cursor_isBitField(field_cursor)) {
+										uint32_t bit_width = clang_getFieldDeclBitWidth(field_cursor);
+										field_name += fmt::format(" : {}", bit_width);
+									}
 
 									field_output["Fields"].emplace(
 										field_name,
