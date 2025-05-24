@@ -96,7 +96,7 @@ namespace Omni {
 		{
 			m_Object = other.Raw();
 			other.m_Object = nullptr;
-			*this;
+			return *this;
 		}
 
 		inline T* operator->() const {

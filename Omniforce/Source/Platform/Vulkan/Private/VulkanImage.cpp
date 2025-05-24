@@ -272,7 +272,7 @@ namespace Omni {
 		render_target_create_info.arrayLayers = 1;
 		render_target_create_info.format = convert(m_Specification.format);
 		render_target_create_info.samples = VK_SAMPLE_COUNT_1_BIT; // HACK
-		render_target_create_info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+		render_target_create_info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
 		render_target_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
 		render_target_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		

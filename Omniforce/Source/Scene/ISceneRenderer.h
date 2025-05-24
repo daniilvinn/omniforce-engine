@@ -79,6 +79,7 @@ namespace Omni {
 			device_render_data.material_address = BDA<byte>(GetMaterialBDA(render_data.material_handle));
 
 			m_HostRenderQueue.push_back(device_render_data);
+			m_HighLevelInstanceQueue.push_back(render_data);
 		};
 		virtual void RenderSprite(const Sprite& sprite) { m_SpriteQueue.emplace_back(sprite); }
 
@@ -109,6 +110,8 @@ namespace Omni {
 		DeviceIndexedResourceBuffer<GeometryMeshData> m_MeshResourcesBuffer;
 		DeviceMaterialPool m_MaterialDataPool;
 
+		Ref<DeviceBuffer> m_DeviceRenderQueue;
+		std::vector<HostInstanceRenderData> m_HighLevelInstanceQueue;
 		std::vector<InstanceRenderData> m_HostRenderQueue;
 		std::vector<Sprite> m_SpriteQueue;
 

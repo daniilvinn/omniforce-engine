@@ -46,6 +46,16 @@ namespace Omni {
 		void ReadVertexMetadata(VertexAttributeMetadataTable* out_table, uint32* out_size, const ftf::Asset* asset, const ftf::Primitive* mesh);
 
 		/*
+		*  Build acceleration structure for ray tracing
+		*/
+		Ptr<RTAccelerationStructure> BuildAccelerationStructure(const std::vector<byte>& vertex_data, const std::vector<uint32>& index_data, uint32 vertex_stride);
+
+		/*
+		*  Builds device struct of attribute layout
+		*/
+		GeometryLayoutTable BuildLayoutTable(uint32 vertex_stride, const VertexAttributeMetadataTable& vertex_metadata);
+
+		/*
 		*  Read vertex and index data to buffers
 		*/
 		void ReadVertexAttributes(std::vector<byte>* out_vertex_data, std::vector<uint32>* out_index_data, const ftf::Asset* asset,
@@ -55,12 +65,12 @@ namespace Omni {
 		*  Process vertex data: optimize, generate lods, meshlets and create Mesh objects
 		*/
 		void ProcessMeshData(
-			Ref<Mesh>* out_mesh, 
-			AABB* out_lod0_aabb, 
-			const std::vector<byte>* vertex_data, 
-			const std::vector<uint32>* index_data, 
-			uint32 vertex_stride, 
-			const VertexAttributeMetadataTable& vertex_metadata, 
+			Ref<Mesh>* out_mesh,
+			AABB* out_lod0_aabb,
+			const std::vector<byte>* vertex_data,
+			const std::vector<uint32>* index_data,
+			uint32 vertex_stride,
+			const VertexAttributeMetadataTable& vertex_metadata,
 			std::shared_mutex* mtx
 		);
 

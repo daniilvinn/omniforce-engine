@@ -46,6 +46,13 @@ namespace Omni {
 		template<typename T>
 		Ptr(T*) = delete;
 
+		Ptr(Ptr<T>&& other) noexcept
+			: m_Allocator(other.m_Allocator)
+			, m_Allocation(other.m_Allocation)
+		{
+			other.ReleaseNoFree();
+		}
+
 		template<typename U>
 		Ptr(Ptr<U>&& other) noexcept
 			: m_Allocator(other.m_Allocator)
@@ -69,6 +76,18 @@ namespace Omni {
 		}
 
 		Ptr<T>& operator=(const Ptr<T>& other) = delete;
+
+		Ptr<T>& operator=(Ptr<T>&& other) noexcept {
+			if (m_Allocation.IsValid())
+				m_Allocator->Free<T>(m_Allocation);
+
+			m_Allocator = other.m_Allocator;
+			m_Allocation = other.m_Allocation;
+
+			other.ReleaseNoFree();
+
+			return *this;
+		};
 
 		template<typename U>
 		Ptr<T>& operator=(Ptr<U>&& other) noexcept {

@@ -50,7 +50,6 @@ namespace Omni {
 		uint32 value;
 	};
 
-	// Just so I can do `sizeof()` with it
 	struct META(ShaderExpose, Module = "RenderingGenerated") SceneVisibleCluster {
 		uint32 InstanceIndex;
 		uint32 ClusterIndex;
@@ -78,6 +77,13 @@ namespace Omni {
 		BDA<InstanceRenderData> Instances;
 		BDA<SceneVisibleClusters> OutputVisibleClusters;
 		BDA<SWRasterQueue> SoftwareRasterQueue;
+	};
+
+	struct META(ShaderExpose, ShaderInput, Module = "PathTracingInput") PathTracingInput {
+		BDA<ViewData> View;
+		BDA<InstanceRenderData> Instances;
+		BDA<GeometryMeshData> Meshes;
+		uint32 RandomSeed;
 	};
 
 }

@@ -26,7 +26,7 @@ namespace Omni {
 		Ref<RTPipeline> m_RTPipeline;
 
 		Ptr<RTAccelerationStructure> m_SceneTLAS;
-		Ptr<RTAccelerationStructure> m_BLAS;
+		Ptr<RTAccelerationStructure> m_SphereBLAS;
 
 		Ref<Image> m_VisibilityBuffer;
 

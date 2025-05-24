@@ -4,6 +4,7 @@
 #include <Asset/AssetManager.h>
 #include <Renderer/DeviceCmdBuffer.h>
 #include <Scene/ISceneRenderer.h>
+#include <CodeGeneration/Device/RTMaterial.h>
 
 namespace Omni {
 
@@ -40,14 +41,14 @@ namespace Omni {
 
 		auto material_table = m->GetTable();
 
-		// Reserve first 4 bytes for pipeline UUID
-		uint16 material_size = 4;
+		// Reserve first 4 bytes for pipeline UUID and RT material
+		uint16 material_size = 4 + sizeof(RTMaterial);
 
 		for (auto& entry : material_table)
 			material_size += Material::GetRuntimeEntrySize(entry.second.index());
 
 		byte* material_data = new byte[material_size];
-		uint32 current_offset = 4;
+		uint32 current_offset = 4 + sizeof(RTMaterial); // also add padding due to RTMaterial
 
 		for (auto& material_entry : material_table) {
 			if (material_entry.second.index() == 0) {
@@ -61,9 +62,33 @@ namespace Omni {
 			}
 		}
 
+		// Create RT material
+		RTMaterial rt_material = {};
+
+		// Fill-in flags
+		rt_material.Metadata.HasBaseColor				= material_table.contains("BASE_COLOR_MAP");
+		rt_material.Metadata.HasNormal					= material_table.contains("NORMAL_MAP");
+		rt_material.Metadata.HasMetallicRoughness		= material_table.contains("METALLIC_ROUGHNESS_MAP");
+		rt_material.Metadata.HasOcclusion				= material_table.contains("OCCLUSION_MAP");
+
+		// Fill-in data
+		if (rt_material.Metadata.HasBaseColor) {
+			memcpy(&rt_material.BaseColor, &material_table["BASE_COLOR_MAP"], sizeof(DeviceTexture));
+		}
+		if (rt_material.Metadata.HasNormal) {
+			memcpy(&rt_material.Normal, &material_table["NORMAL_MAP"], sizeof(DeviceTexture));
+		}
+		if (rt_material.Metadata.HasMetallicRoughness) {
+			memcpy(&rt_material.MetallicRoughness, &material_table["METALLIC_ROUGHNESS_MAP"], sizeof(DeviceTexture));
+		}
+		if (rt_material.Metadata.HasOcclusion) {
+			memcpy(&rt_material.Occlusion, &material_table["OCCLUSION_MAP"], sizeof(DeviceTexture));
+		}
+		memcpy(material_data, &rt_material, sizeof(RTMaterial));
+
 		// Copy pipeline device id to first 4 bytes
 		uint32 device_pipeline_id = m->GetPipeline()->GetDeviceID();
-		memcpy(material_data, &device_pipeline_id, sizeof(device_pipeline_id));
+		memcpy(material_data + sizeof(RTMaterial), &device_pipeline_id, sizeof(device_pipeline_id));
 
 		for (auto& entry : material_table) {			
 			uint8 entry_size = Material::GetRuntimeEntrySize(entry.second.index());

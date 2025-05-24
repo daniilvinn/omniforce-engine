@@ -10,11 +10,17 @@
 #include <span>
 #include <ranges>
 
-#include <metis.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/norm.hpp>
 #include <glm/gtc/packing.hpp>
 #include <meshoptimizer.h>
+
+// Workaround for warning
+#undef INT32_MIN
+#undef INT32_MAX
+#undef INT64_MIN
+#undef INT64_MAX
+#include <metis.h>
 
 namespace Omni {
 

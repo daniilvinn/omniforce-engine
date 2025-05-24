@@ -1,12 +1,13 @@
 #include <Foundation/Common.h>
 #include <Renderer/Mesh.h>
 
-#include <memory>
+#include <Renderer/AccelerationStructure.h>
 
+#include <memory>
 
 namespace Omni {
 
-	Mesh::Mesh(IAllocator* allocator, const MeshData& mesh_data, const AABB& aabb)
+	Mesh::Mesh(IAllocator* allocator, MeshData& mesh_data, const AABB& aabb)
 		: m_AABB(aabb)
 	{
 		DeviceBufferSpecification buffer_spec = {};
@@ -29,9 +30,18 @@ namespace Omni {
 		buffer_spec.size = mesh_data.cull_data.size() * sizeof MeshClusterBounds;
 		m_Buffers.emplace(MeshBufferKey::MESHLETS_CULL_DATA, DeviceBuffer::Create(allocator, buffer_spec, (void*)mesh_data.cull_data.data(), buffer_spec.size));
 
+		buffer_spec.size = mesh_data.ray_tracing.attributes.size();
+		m_Buffers.emplace(MeshBufferKey::RT_ATTRIBUTES, DeviceBuffer::Create(allocator, buffer_spec, (void*)mesh_data.ray_tracing.attributes.data(), buffer_spec.size));
+		
+		buffer_spec.size = mesh_data.ray_tracing.indices.size() * sizeof(uint32);
+		m_Buffers.emplace(MeshBufferKey::RT_INDICES, DeviceBuffer::Create(allocator, buffer_spec, (void*)mesh_data.ray_tracing.indices.data(), buffer_spec.size));
+
 		m_MeshletCount = mesh_data.meshlets.size();
 		m_BoundingSphere = mesh_data.bounding_sphere;
 		m_QuantizationGridSize = mesh_data.quantization_grid_size;
+		m_AttributeLayout = mesh_data.ray_tracing.layout;
+
+		m_BLAS = std::move(mesh_data.acceleration_structure);
 	}
 
 	Mesh::~Mesh()
@@ -39,9 +49,9 @@ namespace Omni {
 
 	}
 
-	Ref<Mesh> Mesh::Create(IAllocator* allocator, const MeshData& lod0, const AABB& aabb)
+	Ref<Mesh> Mesh::Create(IAllocator* allocator, MeshData& mesh_data, const AABB& aabb)
 	{
-		return CreateRef<Mesh>(allocator, allocator, lod0, aabb);
+		return CreateRef<Mesh>(allocator, allocator, mesh_data, aabb);
 	}
 
 	void Mesh::Destroy()

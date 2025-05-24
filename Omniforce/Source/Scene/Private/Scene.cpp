@@ -4,6 +4,7 @@
 #include <Scene/Camera.h>
 #include <Scene/ISceneRenderer.h>
 #include <Scene/PathTracingSceneRenderer.h>
+#include <Scene/RasterSceneRenderer.h>
 #include <Scene/Entity.h>
 #include <Scene/Component.h>
 #include <Scene/Lights.h>

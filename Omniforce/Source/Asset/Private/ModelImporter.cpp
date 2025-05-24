@@ -13,6 +13,7 @@
 #include <Asset/VirtualMeshBuilder.h>
 #include <Renderer/Mesh.h>
 #include <Renderer/Image.h>
+#include <Renderer/AccelerationStructure.h>
 #include <Threading/JobSystem.h>
 #include <Platform/Vulkan/Private/VulkanMemoryAllocator.h>
 #include <Core/BitStream.h>
@@ -27,7 +28,6 @@
 #include <fastgltf/tools.hpp>
 #include <spdlog/fmt/fmt.h>
 #include <taskflow/taskflow.hpp>
-#include <metis.h>
 
 namespace Omni {
 
@@ -222,7 +222,73 @@ namespace Omni {
 		*out_size = attribute_stride;
 	}
 
-	void ModelImporter::ReadVertexAttributes(std::vector<byte>* out_vertex_data, std::vector<uint32>* out_index_data, const ftf::Asset* asset, 
+	Ptr<RTAccelerationStructure> ModelImporter::BuildAccelerationStructure(const std::vector<byte>& vertex_data, const std::vector<uint32>& index_data, uint32 vertex_stride)
+	{
+		DeviceBufferSpecification vertex_buffer_spec = {};
+		vertex_buffer_spec.size = vertex_data.size();
+		vertex_buffer_spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
+		vertex_buffer_spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
+		vertex_buffer_spec.heap = DeviceBufferMemoryHeap::HOST;
+		vertex_buffer_spec.flags = (BitMask)DeviceBufferFlags::AS_INPUT;
+
+		Ref<DeviceBuffer> vertex_buffer = DeviceBuffer::Create(&g_TransientAllocator, vertex_buffer_spec, (void*)vertex_data.data(), vertex_data.size());
+
+		DeviceBufferSpecification index_buffer_spec = {};
+		index_buffer_spec.size = index_data.size() * sizeof(uint32);
+		index_buffer_spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
+		index_buffer_spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
+		index_buffer_spec.heap = DeviceBufferMemoryHeap::HOST;
+		index_buffer_spec.flags = (BitMask)DeviceBufferFlags::AS_INPUT;
+
+		Ref<DeviceBuffer> index_buffer = DeviceBuffer::Create(&g_TransientAllocator, index_buffer_spec, (void*)index_data.data(), index_data.size() * sizeof(uint32));
+
+		BLASBuildInfo blas_build_info = {};
+		blas_build_info.geometry = vertex_buffer;
+		blas_build_info.indices = index_buffer;
+		blas_build_info.vertex_count = vertex_data.size() / vertex_stride;
+		blas_build_info.index_count = index_data.size();
+		blas_build_info.vertex_stride = vertex_stride;
+
+		Ptr<RTAccelerationStructure> as = RTAccelerationStructure::Create(&g_PersistentAllocator, blas_build_info);
+
+		return as;
+	}
+
+	GeometryLayoutTable ModelImporter::BuildLayoutTable(uint32 vertex_stride, const VertexAttributeMetadataTable& vertex_metadata)
+	{
+		GeometryLayoutTable layout = {};
+		layout.Stride = vertex_stride - sizeof(glm::vec3);
+		
+		for (auto& metadata_entry : vertex_metadata) {
+			if (metadata_entry.first.find("TEXCOORD") != std::string::npos) {
+				layout.AttributeMask.HasUV = true;
+				layout.AttributeMask.UVCount++;
+
+				const std::string& entry_key = metadata_entry.first;
+				
+				std::string UV_index_string = entry_key.substr(entry_key.length() - 1);
+				uint32 UV_index = std::atoi(UV_index_string.c_str());
+
+				layout.Offsets.UV[UV_index] = metadata_entry.second - sizeof(glm::vec3);
+			}
+			if (metadata_entry.first.find("NORMAL") != std::string::npos) {
+				layout.AttributeMask.HasNormals = true;
+				layout.Offsets.Normal = metadata_entry.second - sizeof(glm::vec3);
+			}
+			if (metadata_entry.first.find("TANGENT") != std::string::npos) {
+				layout.AttributeMask.HasTangents = true;
+				layout.Offsets.Tangent = metadata_entry.second - sizeof(glm::vec3);
+			}
+			if (metadata_entry.first.find("COLOR") != std::string::npos) {
+				layout.AttributeMask.HasColor = true;
+				layout.Offsets.Color = metadata_entry.second - sizeof(glm::vec3);
+			}
+		}
+
+		return layout;
+	}
+
+	void ModelImporter::ReadVertexAttributes(std::vector<byte>* out_vertex_data, std::vector<uint32>* out_index_data, const ftf::Asset* asset,
 		const ftf::Primitive* primitive, const VertexAttributeMetadataTable* metadata, uint32 vertex_stride)
 	{
 		// Load indices
@@ -289,16 +355,34 @@ namespace Omni {
 		}
 	}
 
-	void ModelImporter::ProcessMeshData(Ref<Mesh>* out_mesh, AABB* out_lod0_aabb, const std::vector<byte>* vertex_data, const std::vector<uint32>* index_data, uint32 vertex_stride, const VertexAttributeMetadataTable& vertex_metadata, std::shared_mutex* mtx)
-	{
+	void ModelImporter::ProcessMeshData(
+		Ref<Mesh>* out_mesh,
+		AABB* out_lod0_aabb,
+		const std::vector<byte>* vertex_data,
+		const std::vector<uint32>* index_data,
+		uint32 vertex_stride,
+		const VertexAttributeMetadataTable& vertex_metadata,
+		std::shared_mutex* mtx
+	) {
 		// Init crucial data
 		MeshData mesh_data;
+
 		AABB lod0_aabb = {};
 		VirtualMesh vmesh = {};
 
-		// Process mesh data on per-LOD basis. It involves generating LOD index buffer, optimizing mesh, generating meshlets and remapping data
-		
 		MeshPreprocessor mesh_preprocessor = {};
+
+		// Prepare storage for ray tracing data
+		std::vector<byte> as_position_data(vertex_data->size() / vertex_stride * sizeof(glm::vec3));
+		mesh_data.ray_tracing.attributes.resize(vertex_data->size() / vertex_stride * (vertex_stride - sizeof(glm::vec3)));
+		mesh_data.ray_tracing.indices = *index_data;
+		mesh_data.ray_tracing.layout = BuildLayoutTable(vertex_stride, vertex_metadata);
+
+		// Split lod 0 data for ray tracing
+		mesh_preprocessor.SplitVertexData(&as_position_data, &mesh_data.ray_tracing.attributes, vertex_data, vertex_stride);
+
+		// Build acceleration structure
+		mesh_data.acceleration_structure = BuildAccelerationStructure(as_position_data, *index_data, sizeof(glm::vec3));
 
 		// Optimize mesh (remove redundant vertices, optimize for vertex cache etc.)
 		std::vector<byte> optimized_vertices;

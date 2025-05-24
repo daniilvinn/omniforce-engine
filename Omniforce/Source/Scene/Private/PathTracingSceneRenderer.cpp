@@ -6,6 +6,7 @@
 #include <Renderer/ShaderLibrary.h>
 #include <Renderer/RTPipeline.h>
 #include <Renderer/DescriptorSet.h>
+#include <Asset/AssetManager.h>
 
 namespace Omni {
 
@@ -128,85 +129,116 @@ namespace Omni {
 		m_CurrentMainRenderTarget = m_RendererOutputs[Renderer::GetCurrentFrameIndex()];
 		m_CurrentDepthAttachment = m_DepthAttachments[Renderer::GetCurrentFrameIndex()];
 
+		m_HighLevelInstanceQueue.clear();
+		m_HostRenderQueue.clear();
+		m_HostPointLights.clear();
+
+		// Write camera data to device buffer
+		if (camera) {
+			m_Camera = camera;
+
+			WeakPtr<Camera3D> camera_3D = m_Camera;
+
+			ViewData camera_data;
+			camera_data.view = m_Camera->GetViewMatrix();
+			camera_data.proj = m_Camera->GetProjectionMatrix();
+			camera_data.view_proj = m_Camera->GetViewProjectionMatrix();
+			camera_data.position = m_Camera->GetPosition();
+			camera_data.frustum = m_Camera->GenerateFrustum();
+			camera_data.forward_vector = m_Camera->GetForwardVector();
+			// If camera is 3D (very likely to be truth though) cast it to 3D camera and get FOV, otherwise use fixed 90 degree FOV
+			camera_data.fov = m_Camera->GetType() == CameraProjectionType::PROJECTION_3D ? camera_3D->GetFOV() : glm::radians(90.0f);
+			camera_data.viewport_width = m_CurrentMainRenderTarget->GetSpecification().extent.r;
+			camera_data.viewport_height = m_CurrentMainRenderTarget->GetSpecification().extent.g;
+			camera_data.near_clip_distance = m_Camera->GetNearClip();
+			camera_data.far_clip_distance = m_Camera->GetFarClip();
+
+			m_CameraDataBuffer->UploadData(
+				Renderer::GetCurrentFrameIndex() * (m_CameraDataBuffer->GetSpecification().size / Renderer::GetConfig().frames_in_flight),
+				&camera_data,
+				sizeof camera_data
+			);
+
+			DebugRenderer::SetCameraBuffer(m_CameraDataBuffer);
+		}
+
 		Renderer::Submit([=]() {
 			m_CurrentMainRenderTarget->SetLayout(
 				Renderer::GetCmdBuffer(),
 				ImageLayout::COLOR_ATTACHMENT,
 				PipelineStage::FRAGMENT_SHADER,
-				PipelineStage::COLOR_ATTACHMENT_OUTPUT,
-				(BitMask)PipelineAccess::UNIFORM_READ,
-				(BitMask)PipelineAccess::COLOR_ATTACHMENT_WRITE
+				PipelineStage::RAY_TRACING_SHADER,
+				(BitMask)PipelineAccess::SHADER_READ,
+				(BitMask)PipelineAccess::SHADER_WRITE
 			);
 		});
-
-		glm::vec3 triangle_vertices[] = {
-			{ 0.0f, 1.0f, 0.0f },
-			{ -1.0f, -1.0f, 0.0f },
-			{ 1.0f, -1.0f, 0.0f }
-		};
-
-		uint32 indices[] = { 0,1,2 };
-
-		DeviceBufferSpecification buffer_spec = {};
-		buffer_spec.size = sizeof(triangle_vertices);
-		buffer_spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
-		buffer_spec.memory_usage = DeviceBufferMemoryUsage::NO_HOST_ACCESS;
-		buffer_spec.heap = DeviceBufferMemoryHeap::DEVICE;
-		buffer_spec.flags = (BitMask)DeviceBufferFlags::AS_INPUT;
-
-		Ref<DeviceBuffer> vbo = DeviceBuffer::Create(&g_TransientAllocator, buffer_spec, triangle_vertices, sizeof(triangle_vertices));
-
-		buffer_spec.size = sizeof(indices);
-		Ref<DeviceBuffer> ibo = DeviceBuffer::Create(&g_TransientAllocator, buffer_spec, indices, sizeof(indices));
-
-		BLASBuildInfo blas_build_info = {};
-		blas_build_info.geometry = vbo;
-		blas_build_info.indices = ibo;
-		blas_build_info.index_count = 3;
-		blas_build_info.vertex_count = 3;
-		blas_build_info.vertex_stride = 12;
-
-		m_BLAS = RTAccelerationStructure::Create(&g_PersistentAllocator, blas_build_info);
-
-		TLASInstance tlas_instance = {};
-		tlas_instance.blas = m_BLAS;
-		tlas_instance.custom_index = 0;
-		tlas_instance.mask = 0xFF;
-		tlas_instance.SBT_record_offset = 0;
-		tlas_instance.transform.scale = {1,1,1};
-
-		glm::mat4 null_rotation = glm::rotate(glm::mat4(1.0f), 0.0f, { 1, 0, 0 });
-		glm::quat q = glm::quat_cast(null_rotation);
-		tlas_instance.transform.rotation = glm::packHalf(glm::vec4{ q.x, q.y, q.y, q.w });
-
-		TLASBuildInfo tlas_build_info = {};
-		tlas_build_info.instances = Array<TLASInstance>(&g_TransientAllocator);
-		tlas_build_info.instances.Add(tlas_instance);
-
-		m_SceneTLAS = RTAccelerationStructure::Create(&g_PersistentAllocator, tlas_build_info);
-
-		m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()]->Write(2, 0, m_SceneTLAS);
 	}
 
 	void PathTracingSceneRenderer::EndScene()
 	{
-		Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], m_RTPipeline, 0);
+		if(!m_HighLevelInstanceQueue.empty()) {
+			// Upload data to the render queue
+			m_DeviceRenderQueue->UploadData(
+				m_DeviceRenderQueue->GetFrameOffset(),
+				m_HostRenderQueue.data(),
+				m_HostRenderQueue.size() * sizeof(InstanceRenderData)
+			);
 
-		glm::uvec3 dispatch_grid = {};
-		dispatch_grid.x = m_VisibilityBuffer->GetSpecification().extent.x;
-		dispatch_grid.y = m_VisibilityBuffer->GetSpecification().extent.y;
-		dispatch_grid.z = m_VisibilityBuffer->GetSpecification().extent.z;
+			// Gather instances
+			Array<TLASInstance> tlas_instances(&g_TransientAllocator);
+			uint32 i = 0;
+			for (const auto& instance : m_HighLevelInstanceQueue) {
+				Ref<Mesh> mesh = AssetManager::Get()->GetAsset<Mesh>(instance.mesh_handle);
 
-		Renderer::DispatchRayTracing(m_RTPipeline, dispatch_grid, {});
+				TLASInstance tlas_instance = {};
+				tlas_instance.blas = mesh->GetAccelerationStructure();
+				tlas_instance.custom_index = i;
+				tlas_instance.mask = 0xFF;
+				tlas_instance.SBT_record_offset = 0;
+				tlas_instance.transform = instance.transform;
 
+				tlas_instances.Add(tlas_instance);
+				i++;
+			}
+
+			// Build TLAS
+			TLASBuildInfo tlas_build_info = {};
+			tlas_build_info.instances = std::move(tlas_instances);
+
+			m_SceneTLAS = RTAccelerationStructure::Create(&g_PersistentAllocator, tlas_build_info);
+
+			m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()]->Write(2, 0, m_SceneTLAS);
+
+			// Trace rays
+			Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], m_RTPipeline, 0);
+
+			glm::uvec3 dispatch_grid = {};
+			dispatch_grid.x = m_VisibilityBuffer->GetSpecification().extent.x;
+			dispatch_grid.y = m_VisibilityBuffer->GetSpecification().extent.y;
+			dispatch_grid.z = m_VisibilityBuffer->GetSpecification().extent.z;
+
+			PathTracingInput* path_tracing_input = new PathTracingInput;
+			path_tracing_input->View = BDA<ViewData>(m_CameraDataBuffer, m_CameraDataBuffer->GetFrameOffset());
+			path_tracing_input->Instances = BDA<InstanceRenderData>(m_DeviceRenderQueue, m_DeviceRenderQueue->GetFrameOffset());
+			path_tracing_input->Meshes = m_MeshResourcesBuffer.GetStorageBDA();
+			path_tracing_input->RandomSeed = 54238794;
+
+			MiscData pc = {};
+			pc.data = (byte*)path_tracing_input;
+			pc.size = sizeof(PathTracingInput);
+
+			Renderer::DispatchRayTracing(m_RTPipeline, dispatch_grid, pc);
+		}
+
+		// Transition final image barrier
 		Renderer::Submit([=]() {
 			m_CurrentMainRenderTarget->SetLayout(
 				Renderer::GetCmdBuffer(),
 				ImageLayout::SHADER_READ_ONLY,
-				PipelineStage::COLOR_ATTACHMENT_OUTPUT,
-				PipelineStage::ALL_COMMANDS,
-				(BitMask)PipelineAccess::COLOR_ATTACHMENT_WRITE,
-				(BitMask)PipelineAccess::MEMORY_READ | (BitMask)PipelineAccess::MEMORY_WRITE
+				PipelineStage::RAY_TRACING_SHADER,
+				PipelineStage::FRAGMENT_SHADER,
+				(BitMask)PipelineAccess::SHADER_WRITE,
+				(BitMask)PipelineAccess::SHADER_READ
 			);
 		});
 	}

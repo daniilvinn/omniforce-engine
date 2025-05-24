@@ -44,7 +44,6 @@ namespace Omni {
 		Ref<DeviceBuffer> m_SpriteDataBuffer;
 
 		rh::unordered_flat_set<Ref<Pipeline>> m_ActiveMaterialPipelines;
-		Ref<DeviceBuffer> m_DeviceRenderQueue;
 		Ref<DeviceBuffer> m_CulledDeviceRenderQueue;
 		Ref<DeviceBuffer> m_DeviceIndirectDrawParams;
 

@@ -128,7 +128,7 @@ namespace Omni {
 			m_PBRFullscreenPipeline = Pipeline::Create(&g_PersistentAllocator, pipeline_spec);
 
 			// Vis buffer pass
-			pipeline_spec.shader = shader_library->GetShader("VisibilityRendering");
+			pipeline_spec.shader = shader_library->GetShader("VisibilityBuffer.ofs");
 			pipeline_spec.debug_name = "Vis buffer pass";
 			pipeline_spec.output_attachments_formats = {};
 			pipeline_spec.culling_mode = PipelineCullingMode::BACK;
@@ -158,18 +158,11 @@ namespace Omni {
 
 			// allow for 2^16 objects for beginning.
 			// TODO: allow recreating buffer with bigger size when limit is reached
-			DeviceBufferSpecification spec;
-
-			// Create initial render queue
-			spec.size = sizeof(InstanceRenderData) * std::pow(2, 16) * frames_in_flight;
-			spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
-			spec.heap = DeviceBufferMemoryHeap::DEVICE;
-			spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
-			OMNI_DEBUG_ONLY_CODE(spec.debug_name = "Device render queue buffer");
-
-			m_DeviceRenderQueue = DeviceBuffer::Create(&g_PersistentAllocator, spec);
+			DeviceBufferSpecification spec = {};
 
 			// Create post-cull render queue
+			spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
+			spec.heap = DeviceBufferMemoryHeap::DEVICE;
 			spec.size = sizeof(InstanceRenderData) * std::pow(2, 16);
 			spec.memory_usage = DeviceBufferMemoryUsage::NO_HOST_ACCESS;
 			OMNI_DEBUG_ONLY_CODE(spec.debug_name = "Device culled render queue buffer");
@@ -346,7 +339,7 @@ namespace Omni {
 			Renderer::Submit([=]() {
 				m_DeviceIndirectDrawParams->Clear(Renderer::GetCmdBuffer(), 0, 4, 0);
 				m_VisibleClusters->Clear(Renderer::GetCmdBuffer(), 0, 4, 0);
-				});
+			});
 
 			Renderer::ClearImage(m_VisibilityBuffer, { 0.0f, 0.0f, 0.0f, 0.0f });
 
