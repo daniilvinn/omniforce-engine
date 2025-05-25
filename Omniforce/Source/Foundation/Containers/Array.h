@@ -259,11 +259,18 @@ namespace Omni {
 			MemoryAllocation new_allocation = m_Allocator->AllocateBase(new_size * sizeof(T));
 			if (m_Allocation.IsValid()) [[likely]]
 			{
-				memcpy(new_allocation.Memory, m_Allocation.Memory, std::min(new_size, m_Size) * sizeof(T));
+				// Init new bytes
+				if (new_size > m_Allocation.Size) {
+					memset(new_allocation.Memory + m_Allocation.Size, 0, new_allocation.Size - m_Allocation.Size);
+				}
 
+				memcpy(new_allocation.Memory, m_Allocation.Memory, std::min(new_size, m_Size) * sizeof(T));
 				m_Allocator->FreeBase(m_Allocation);
 			}
-			memset(new_allocation.Memory, 0, new_allocation.Size);
+			else {
+				memset(new_allocation.Memory, 0, new_allocation.Size);
+			}
+
 			m_Allocation = new_allocation;
 		}
 

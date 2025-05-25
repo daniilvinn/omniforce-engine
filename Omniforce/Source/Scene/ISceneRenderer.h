@@ -116,6 +116,8 @@ namespace Omni {
 		std::vector<Sprite> m_SpriteQueue;
 
 		std::vector<PointLight> m_HostPointLights;
+		Ref<DeviceBuffer> m_DevicePointLights;
+
 		std::shared_mutex m_Mutex;
 
 		DebugSceneView m_CurrentViewMode = DebugSceneView::NONE;

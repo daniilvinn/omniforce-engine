@@ -16,7 +16,6 @@ namespace Omni {
 	};
 
 	struct META(ShaderExpose, Module = "RenderingGenerated") GeometryAttributeOffsetTable {
-
 		uint8 Normal;
 		uint8 Tangent;
 		uint8 Color;

@@ -7,6 +7,7 @@
 #include <Renderer/RTPipeline.h>
 #include <Renderer/DescriptorSet.h>
 #include <Asset/AssetManager.h>
+#include <Asset/PrimitiveMeshGenerator.h>
 
 namespace Omni {
 
@@ -18,47 +19,29 @@ namespace Omni {
 	PathTracingSceneRenderer::PathTracingSceneRenderer(const SceneRendererSpecification& spec)
 		: ISceneRenderer(spec)
 	{
-		glm::vec3 triangle_vertices[] = {
-			{ 0.0f, 1.0f, 0.0f },
-			{ -1.0f, -1.0f, 0.0f },
-			{ 1.0f, -1.0f, 0.0f }
-		};
-
-		uint32 indices[] = { 0,1,2 };
+		PrimitiveMeshGenerator sphere_generator;
+		auto [sphere_vertices, sphere_indices] = sphere_generator.GenerateIcosphere(4);
 
 		DeviceBufferSpecification buffer_spec = {};
-		buffer_spec.size = sizeof(triangle_vertices);
+		buffer_spec.size = sphere_vertices.size() * sizeof(glm::vec3);
 		buffer_spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
 		buffer_spec.memory_usage = DeviceBufferMemoryUsage::NO_HOST_ACCESS;
 		buffer_spec.heap = DeviceBufferMemoryHeap::DEVICE;
 		buffer_spec.flags = (BitMask)DeviceBufferFlags::AS_INPUT;
 
-		Ref<DeviceBuffer> vbo = DeviceBuffer::Create(&g_TransientAllocator, buffer_spec, triangle_vertices, sizeof(triangle_vertices));
+		Ref<DeviceBuffer> sphere_vbo = DeviceBuffer::Create(&g_TransientAllocator, buffer_spec, sphere_vertices.data(), buffer_spec.size);
 
-		buffer_spec.size = sizeof(indices);
-		Ref<DeviceBuffer> ibo = DeviceBuffer::Create(&g_TransientAllocator, buffer_spec, indices, sizeof(indices));
+		buffer_spec.size = sphere_indices.size() * sizeof(uint32);
+		Ref<DeviceBuffer> sphere_ibo = DeviceBuffer::Create(&g_TransientAllocator, buffer_spec, sphere_indices.data(), buffer_spec.size);
 
 		BLASBuildInfo blas_build_info = {};
-		blas_build_info.geometry = vbo;
-		blas_build_info.indices = ibo;
-		blas_build_info.index_count = 3;
-		blas_build_info.vertex_count = 3;
-		blas_build_info.vertex_stride = 12;
+		blas_build_info.geometry = sphere_vbo;
+		blas_build_info.indices = sphere_ibo;
+		blas_build_info.index_count = sphere_indices.size();
+		blas_build_info.vertex_count = sphere_vertices.size();
+		blas_build_info.vertex_stride = sizeof(glm::vec3);
 
-		Ptr<RTAccelerationStructure> blas = RTAccelerationStructure::Create(&g_TransientAllocator, blas_build_info);
-
-		TLASInstance tlas_instance = {};
-		tlas_instance.blas = blas;
-		tlas_instance.custom_index = 0;
-		tlas_instance.mask = 0xFF;
-		tlas_instance.SBT_record_offset = 0;
-		tlas_instance.transform = {};
-
-		TLASBuildInfo tlas_build_info = {};
-		tlas_build_info.instances = Array<TLASInstance>(&g_TransientAllocator);
-		tlas_build_info.instances.Add(tlas_instance);
-
-		Ptr<RTAccelerationStructure> tlas = RTAccelerationStructure::Create(&g_TransientAllocator, tlas_build_info);
+		m_SphereBLAS = RTAccelerationStructure::Create(&g_PersistentAllocator, blas_build_info);
 
 		ShaderLibrary* shader_library = ShaderLibrary::Get();
 		shader_library->LoadShader2(
@@ -72,6 +55,13 @@ namespace Omni {
 			"ClosestHit",
 			{
 				"PathTracing.PathVertex"
+			},
+			{}
+		);
+		shader_library->LoadShader2(
+			"PointLightHit",
+			{
+				"PathTracing.PointLightHit"
 			},
 			{}
 		);
@@ -93,11 +83,15 @@ namespace Omni {
 		RTShaderGroup closest_hit_group = {};
 		closest_hit_group.closest_hit = shader_library->GetShader("ClosestHit");
 
+		RTShaderGroup point_light_hit_group = {};
+		point_light_hit_group.closest_hit = shader_library->GetShader("PointLightHit");
+
 		RTShaderGroup miss_group = {};
 		miss_group.miss = shader_library->GetShader("Miss");
 
 		rt_pipeline_spec.groups.Add(raygen_group);
 		rt_pipeline_spec.groups.Add(closest_hit_group);
+		rt_pipeline_spec.groups.Add(point_light_hit_group);
 		rt_pipeline_spec.groups.Add(miss_group);
 
 		m_RTPipeline = RTPipeline::Create(&g_PersistentAllocator, rt_pipeline_spec);
@@ -154,7 +148,7 @@ namespace Omni {
 			camera_data.far_clip_distance = m_Camera->GetFarClip();
 
 			m_CameraDataBuffer->UploadData(
-				Renderer::GetCurrentFrameIndex() * (m_CameraDataBuffer->GetSpecification().size / Renderer::GetConfig().frames_in_flight),
+				m_CameraDataBuffer->GetFrameOffset(),
 				&camera_data,
 				sizeof camera_data
 			);
@@ -176,13 +170,20 @@ namespace Omni {
 
 	void PathTracingSceneRenderer::EndScene()
 	{
-		if(!m_HighLevelInstanceQueue.empty()) {
+		//Renderer::ClearImage(m_CurrentMainRenderTarget, { 0.0f, 0.0f, 0.0f, 1.0f });
+
+		if(!(m_HighLevelInstanceQueue.empty() && m_HostPointLights.empty())) {
 			// Upload data to the render queue
 			m_DeviceRenderQueue->UploadData(
 				m_DeviceRenderQueue->GetFrameOffset(),
 				m_HostRenderQueue.data(),
 				m_HostRenderQueue.size() * sizeof(InstanceRenderData)
 			);
+
+			// Copy light sources data
+			uint32 num_point_lights = m_HostPointLights.size();
+			m_DevicePointLights->UploadData(m_DevicePointLights->GetFrameOffset(), &num_point_lights, sizeof(num_point_lights));
+			m_DevicePointLights->UploadData(m_DevicePointLights->GetFrameOffset() + 4, m_HostPointLights.data(), m_HostPointLights.size() * sizeof(PointLight));
 
 			// Gather instances
 			Array<TLASInstance> tlas_instances(&g_TransientAllocator);
@@ -196,6 +197,21 @@ namespace Omni {
 				tlas_instance.mask = 0xFF;
 				tlas_instance.SBT_record_offset = 0;
 				tlas_instance.transform = instance.transform;
+
+				tlas_instances.Add(tlas_instance);
+				i++;
+			}
+			i = 0;
+
+			// Gather point lights
+			for (const auto& light : m_HostPointLights) {
+				TLASInstance tlas_instance = {};
+				tlas_instance.blas = m_SphereBLAS;
+				tlas_instance.custom_index = i;
+				tlas_instance.mask = 0xFF;
+				tlas_instance.SBT_record_offset = 1;
+				tlas_instance.transform.translation = light.Position;
+				tlas_instance.transform.scale = glm::vec3(light.MinRadius);
 
 				tlas_instances.Add(tlas_instance);
 				i++;
@@ -222,6 +238,7 @@ namespace Omni {
 			path_tracing_input->Instances = BDA<InstanceRenderData>(m_DeviceRenderQueue, m_DeviceRenderQueue->GetFrameOffset());
 			path_tracing_input->Meshes = m_MeshResourcesBuffer.GetStorageBDA();
 			path_tracing_input->RandomSeed = 54238794;
+			path_tracing_input->PointLights = BDA<ScenePointLights>(m_DevicePointLights, m_DevicePointLights->GetFrameOffset());
 
 			MiscData pc = {};
 			pc.data = (byte*)path_tracing_input;

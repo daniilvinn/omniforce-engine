@@ -25,6 +25,22 @@ public struct VertexDecoder {
 
         return normalize(n);
     }
+
+    public half4 DecodeTangent(half2 f)
+    {
+        half4 t;
+        t.xyz = OctahedronDecode(f);
+
+        // Check if lowest bit of Y's mantissa is set. If so, bitangent sign is positive, otherwise negative.
+        t.w = bool(reinterpret<uint16_t>(f.y) & 1u) ? 1.0hf : -1.0hf;
+
+        return t;
+    }
+
+    public half3 DecodeNormalMap(half3 Normal) {
+        return Normal * 2.0hf - 1.0hf;
+    }
+
 }
 
 }

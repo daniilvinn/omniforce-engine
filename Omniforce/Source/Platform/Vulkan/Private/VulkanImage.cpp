@@ -43,11 +43,13 @@ namespace Omni {
 
 			vkSetDebugUtilsObjectNameEXT(VulkanGraphicsContext::Get()->GetDevice()->Raw(), &name_info);
 
+			std::string object_name = fmt::format("{} view", spec.debug_name.c_str());
+
 			VkDebugUtilsObjectNameInfoEXT view_name_info = {};
 			view_name_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
 			view_name_info.objectType = VK_OBJECT_TYPE_IMAGE_VIEW;
 			view_name_info.objectHandle = (uint64)m_ImageView;
-			view_name_info.pObjectName = fmt::format("{} view", spec.debug_name.c_str()).c_str();
+			view_name_info.pObjectName = object_name.c_str();
 
 			vkSetDebugUtilsObjectNameEXT(VulkanGraphicsContext::Get()->GetDevice()->Raw(), &view_name_info);
 			VulkanMemoryAllocator::Get()->SetAllocationName(m_Allocation, m_Specification.debug_name);

@@ -63,8 +63,6 @@ namespace Omni {
 		Ref<DeviceBuffer> m_VisibleClusters;
 		Ref<DeviceBuffer> m_SWRasterQueue;
 
-		Ref<DeviceBuffer> m_DevicePointLights;
-
 	};
 
 }

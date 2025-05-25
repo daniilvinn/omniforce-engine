@@ -70,6 +70,18 @@ namespace Omni {
             return Result;
 		}
 
+        public float2 RTFetchUV(uint3 Indices, uint Index, float3 Barys) {
+            half2 UV = 0;
+            for (uint i = 0; i < 3; i++) {
+                uint AttrOffset = ray_tracing.layout.Stride * Indices[i];
+                half2 FetchedUV = *(half2 *)(ray_tracing.attributes + AttrOffset + ray_tracing.layout.Offsets.UV[Index]);
+                UV += FetchedUV * Barys[i];
+            }
+            UV.y = 1.0hf - UV.y;
+
+            return float2(UV);
+		}
+
 	}
 
 }

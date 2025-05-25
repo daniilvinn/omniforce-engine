@@ -243,18 +243,6 @@ namespace Omni {
 
 			m_SWRasterQueue = DeviceBuffer::Create(&g_PersistentAllocator, buffer_spec);
 		}
-		// Init host light source storage
-		{
-			m_HostPointLights.reserve(256);
-
-			DeviceBufferSpecification buffer_spec = {};
-			buffer_spec.heap = DeviceBufferMemoryHeap::HOST;
-			buffer_spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
-			buffer_spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
-			buffer_spec.size = sizeof(PointLight) * 256 * Renderer::GetConfig().frames_in_flight;
-
-			m_DevicePointLights = DeviceBuffer::Create(&g_PersistentAllocator, buffer_spec);
-		}
 	}
 
 	RasterSceneRenderer::~RasterSceneRenderer()

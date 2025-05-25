@@ -53,6 +53,7 @@ namespace Omni {
 
 				group_type_detected = true;
 			}
+
 		}
 
 		// Create table buffers

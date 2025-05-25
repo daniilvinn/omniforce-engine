@@ -84,6 +84,7 @@ namespace Omni {
 		BDA<InstanceRenderData> Instances;
 		BDA<GeometryMeshData> Meshes;
 		uint32 RandomSeed;
+		BDA<ScenePointLights> PointLights;
 	};
 
 }

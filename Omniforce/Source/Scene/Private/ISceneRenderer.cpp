@@ -131,6 +131,20 @@ namespace Omni {
 
 			m_DeviceRenderQueue = DeviceBuffer::Create(&g_PersistentAllocator, spec);
 		}
+		// Init device light source storage
+		{
+			m_HostPointLights.reserve(256);
+
+			// Initialize camera buffer
+
+			DeviceBufferSpecification spec = {};
+			spec.size = (m_HostPointLights.capacity() * sizeof(PointLight) + 4) * Renderer::GetConfig().frames_in_flight;
+			spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
+			spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
+			spec.heap = DeviceBufferMemoryHeap::DEVICE;
+
+			m_DevicePointLights = DeviceBuffer::Create(&g_PersistentAllocator, spec);
+		}
 	}
 
 	ISceneRenderer::~ISceneRenderer()
