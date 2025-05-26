@@ -113,7 +113,7 @@ namespace Omni {
 			PipelineSpecification pipeline_spec = PipelineSpecification::Default();
 			pipeline_spec.shader = shader_library->GetShader("SpriteRendering");
 			pipeline_spec.debug_name = "Sprite pass";
-			pipeline_spec.output_attachments_formats = { ImageFormat::RGB32_HDR };
+			pipeline_spec.output_attachments_formats = { ImageFormat::RGBA64_HDR };
 			pipeline_spec.culling_mode = PipelineCullingMode::NONE;
 
 			m_SpritePass = Pipeline::Create(&g_PersistentAllocator, pipeline_spec);
@@ -314,7 +314,6 @@ namespace Omni {
 	void RasterSceneRenderer::EndScene()
 	{
 		uint64 camera_data_device_address = m_CameraDataBuffer->GetDeviceAddress() + m_CameraDataBuffer->GetFrameOffset();
-
 		// Copy data to render queues and clear culling pipeline output buffers
 		{
 			std::vector<std::pair<Ref<DeviceBuffer>, PipelineResourceBarrierInfo>> buffers_clear_barriers;
@@ -420,6 +419,7 @@ namespace Omni {
 			Renderer::InsertBarrier(culling_barrier_info);
 		}
 
+
 		// Render 3D
 		// Vis buffer pass
 		{
@@ -483,6 +483,7 @@ namespace Omni {
 
 			Renderer::InsertBarrier(barrier_info);
 		}
+
 		if (!IsInDebugMode()) {
 			// Visible materials resolve pass
 			{
@@ -546,6 +547,7 @@ namespace Omni {
 
 				Renderer::EndRender(m_CurrentMainRenderTarget);
 			}
+
 			// PBR full screen pass
 			{
 				// Transition PBR attachments to SHADER_READ_ONLY layout, so we can sample them during lighting pass
@@ -583,6 +585,8 @@ namespace Omni {
 				Renderer::RenderQuads(m_PBRFullscreenPipeline, pbr_pc);
 				Renderer::EndRender(m_CurrentMainRenderTarget);
 			}
+
+			goto testttt;
 			// Render 2D
 			{
 				Renderer::BeginRender({ m_CurrentMainRenderTarget, m_CurrentDepthAttachment }, m_CurrentMainRenderTarget->GetSpecification().extent, { 0, 0 }, { 1.0f, 1.0f, 1.0f, 0.0f });
@@ -610,7 +614,7 @@ namespace Omni {
 		else {
 			DebugRenderer::RenderSceneDebugView(m_VisibleClusters, m_CurrentViewMode, m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()]);
 		}
-
+		testttt:
 		DebugRenderer::Render(m_CurrentMainRenderTarget, m_CurrentDepthAttachment, IsInDebugMode() ? fvec4{ 0.0f, 0.0f, 0.0f, 1.0f } : fvec4{ 0.0f, 0.0f, 0.0f, 0.0f });
 
 		Renderer::Submit([=]() {

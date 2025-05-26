@@ -37,7 +37,7 @@ namespace Omni {
 		SceneRendererSpecification renderer_spec = {};
 		renderer_spec.anisotropic_filtering = 16;
 
-		m_Renderer = PathTracingSceneRenderer::Create(&g_PersistentAllocator, renderer_spec);
+		m_Renderer = RasterSceneRenderer::Create(&g_PersistentAllocator, renderer_spec);
 	}
 
 	Scene::Scene(Scene* other)

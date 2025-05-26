@@ -172,9 +172,14 @@ namespace Omni {
 		VkDeviceQueueCreateInfo queue_create_infos[2] = { general_queue_create_info, async_compute_queue_create_info };
 		std::vector<const char*> enabled_extensions = GetRequiredExtensions();
 
+		VkPhysicalDeviceRayQueryFeaturesKHR ray_query_features_struct = {};
+		ray_query_features_struct.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
+		ray_query_features_struct.rayQuery = true;
+
 		VkPhysicalDeviceRayTracingPositionFetchFeaturesKHR position_fetch_features_struct = {};
 		position_fetch_features_struct.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_POSITION_FETCH_FEATURES_KHR;
 		position_fetch_features_struct.rayTracingPositionFetch = true;
+		position_fetch_features_struct.pNext = &ray_query_features_struct;
 
 		VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure_features_struct = {};
 		acceleration_structure_features_struct.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
@@ -346,6 +351,10 @@ namespace Omni {
 
 		if (m_PhysicalDevice->IsExtensionSupported(VK_KHR_RAY_TRACING_POSITION_FETCH_EXTENSION_NAME)) {
 			extensions.push_back(VK_KHR_RAY_TRACING_POSITION_FETCH_EXTENSION_NAME);
+		}
+
+		if (m_PhysicalDevice->IsExtensionSupported(VK_KHR_RAY_QUERY_EXTENSION_NAME)) {
+			extensions.push_back(VK_KHR_RAY_QUERY_EXTENSION_NAME);
 		}
 
 		OMNIFORCE_CORE_TRACE("Enabled Vulkan device extensions:");

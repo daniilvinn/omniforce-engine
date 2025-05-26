@@ -63,6 +63,7 @@ layout(push_constant, scalar) uniform pc_ {
 
 
 layout(buffer_reference, scalar, buffer_reference_align = 16) readonly buffer Material {
+	uint padding[9];
 	uint pipeline_id;
 	#ifdef __OMNI_HAS_ALPHA_CUTOFF
         float alpha_cutoff;

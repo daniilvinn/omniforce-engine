@@ -201,7 +201,6 @@ namespace Omni {
 				compilation_result.valid = false;
 				continue;
 			}
-
 			stage_source.second = std::string(preprocessing_result.begin());
 
 			shaderc::CompilationResult result = m_Compiler.CompileGlslToSpv(stage_source.second, convert(stage_source.first), filename.c_str(), local_options);
