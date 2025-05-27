@@ -134,9 +134,10 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
             Normal
         );
 
-        Normal = mul(TBN, NormalMapTexel);
+        Normal = mul(NormalMapTexel, TBN);
     }
     float3 N = QuaternionRotate(float4(Instance.transform.rotation), Normal);
+    
 
     // Fetch metallic roughness
     float3 MetallicRoughnessOcclusion = float3(1.0f, 0.5f, 0.0f);
