@@ -228,16 +228,13 @@ namespace Omni {
 			// Trace rays
 			Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], m_RTPipeline, 0);
 
-			glm::uvec3 dispatch_grid = {};
-			dispatch_grid.x = m_VisibilityBuffer->GetSpecification().extent.x;
-			dispatch_grid.y = m_VisibilityBuffer->GetSpecification().extent.y;
-			dispatch_grid.z = m_VisibilityBuffer->GetSpecification().extent.z;
+			glm::uvec3 dispatch_grid = m_CurrentMainRenderTarget->GetSpecification().extent;
 
 			PathTracingInput* path_tracing_input = new PathTracingInput;
 			path_tracing_input->View = BDA<ViewData>(m_CameraDataBuffer, m_CameraDataBuffer->GetFrameOffset());
 			path_tracing_input->Instances = BDA<InstanceRenderData>(m_DeviceRenderQueue, m_DeviceRenderQueue->GetFrameOffset());
 			path_tracing_input->Meshes = m_MeshResourcesBuffer.GetStorageBDA();
-			path_tracing_input->RandomSeed = 54238794;
+			path_tracing_input->RandomSeed = RandomEngine::Generate<uint32>(1);
 			path_tracing_input->PointLights = BDA<ScenePointLights>(m_DevicePointLights, m_DevicePointLights->GetFrameOffset());
 
 			MiscData pc = {};
