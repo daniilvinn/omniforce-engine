@@ -254,6 +254,7 @@ namespace Omni {
 		global_bindings.push_back({ 1, DescriptorBindingType::STORAGE_IMAGE, 1, 0 });
 		global_bindings.push_back({ 2, DescriptorBindingType::ACCELERATION_STRUCTURE, 1, 0 });
 		global_bindings.push_back({ 3, DescriptorBindingType::STORAGE_IMAGE, 1, 0 });
+		global_bindings.push_back({ 4, DescriptorBindingType::STORAGE_IMAGE, 1, 0 });
 
 		DescriptorSetSpecification dummy_descriptor_set_spec = {};
 		dummy_descriptor_set_spec.bindings = std::move(global_bindings);

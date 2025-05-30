@@ -6,6 +6,12 @@ namespace Omni {
 
 public static const float PI = 3.141592653589;
 public static const float NaN = 0.0 / 0.0;
+public static const float InvPi = 0.31830988618379067154;
+public static const float Inv2Pi = 0.15915494309189533577;
+public static const float Inv4Pi = 0.07957747154594766788;
+public static const float PiOver2 = 1.57079632679489661923;
+public static const float PiOver4 = 0.78539816339744830961;
+public static const float Sqrt2 = 1.41421356237309504880;
 
 [[vk::binding(0, 0)]]
 public Sampler2D TextureHeap[];
@@ -18,6 +24,9 @@ public RaytracingAccelerationStructure SceneTLAS;
 
 [[vk::binding(3, 0)]]
 public RWTexture2D<float4> OutputImage;
+
+[[vk::binding(4, 0)]]
+public RWTexture2D<float4> History;
 
 public float3 QuaternionRotate(float4 Quat, float3 Point) {
     float3 uv = cross(Quat.xyz, Point);

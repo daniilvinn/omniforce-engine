@@ -84,7 +84,12 @@ namespace Omni {
 		BDA<InstanceRenderData> Instances;
 		BDA<GeometryMeshData> Meshes;
 		uint32 RandomSeed;
+		uint32 AccumulatedFrames;
 		BDA<ScenePointLights> PointLights;
+	};
+
+	struct META(ShaderExpose, ShaderInput, Module = "ToneMapping") ToneMappingPassInput {
+		BDA<ViewData> View;
 	};
 
 }

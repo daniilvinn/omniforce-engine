@@ -29,6 +29,8 @@ namespace Omni {
 		Ptr<RTAccelerationStructure> m_SphereBLAS;
 
 		Ref<Image> m_VisibilityBuffer;
+		ViewData m_PreviousFrameView = {};
+		uint64 m_AccumulatedFrameCount;
 
 	};
 

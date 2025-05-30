@@ -41,6 +41,10 @@ public struct VertexDecoder {
         return Normal * 2.0hf - 1.0hf;
     }
 
+    public float4 DecodeColor(uint8_t4 Color) {
+        return float4(Color) * rcp(255);
+    }
+
 }
 
 }

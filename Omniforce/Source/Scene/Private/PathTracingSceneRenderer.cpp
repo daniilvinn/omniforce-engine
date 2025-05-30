@@ -123,10 +123,6 @@ namespace Omni {
 		m_CurrentMainRenderTarget = m_RendererOutputs[Renderer::GetCurrentFrameIndex()];
 		m_CurrentDepthAttachment = m_DepthAttachments[Renderer::GetCurrentFrameIndex()];
 
-		m_HighLevelInstanceQueue.clear();
-		m_HostRenderQueue.clear();
-		m_HostPointLights.clear();
-
 		// Write camera data to device buffer
 		if (camera) {
 			m_Camera = camera;
@@ -153,8 +149,24 @@ namespace Omni {
 				sizeof camera_data
 			);
 
+			if (!m_HighLevelInstanceQueue.empty()) {
+				if (memcmp(&camera_data, &m_PreviousFrameView, sizeof(ViewData)) == 0) {
+					m_AccumulatedFrameCount++;
+				}
+				else {
+					m_AccumulatedFrameCount = 1;
+				}
+
+				m_PreviousFrameView = camera_data;
+			}
+
+
 			DebugRenderer::SetCameraBuffer(m_CameraDataBuffer);
 		}
+
+		m_HighLevelInstanceQueue.clear();
+		m_HostRenderQueue.clear();
+		m_HostPointLights.clear();
 
 		Renderer::Submit([=]() {
 			m_CurrentMainRenderTarget->SetLayout(
@@ -235,6 +247,8 @@ namespace Omni {
 			path_tracing_input->Instances = BDA<InstanceRenderData>(m_DeviceRenderQueue, m_DeviceRenderQueue->GetFrameOffset());
 			path_tracing_input->Meshes = m_MeshResourcesBuffer.GetStorageBDA();
 			path_tracing_input->RandomSeed = RandomEngine::Generate<uint32>(1);
+			//path_tracing_input->RandomSeed = 123123123;
+			path_tracing_input->AccumulatedFrames = glm::min(m_AccumulatedFrameCount, 8192ull);
 			path_tracing_input->PointLights = BDA<ScenePointLights>(m_DevicePointLights, m_DevicePointLights->GetFrameOffset());
 
 			MiscData pc = {};
@@ -255,6 +269,7 @@ namespace Omni {
 				(BitMask)PipelineAccess::SHADER_READ
 			);
 		});
+
 	}
 
 }
