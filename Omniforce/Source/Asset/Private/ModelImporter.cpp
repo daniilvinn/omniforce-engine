@@ -341,7 +341,12 @@ namespace Omni {
 				);
 			}
 			else if (attrib.first.find("COLOR") != std::string::npos) {
-				OMNIFORCE_ASSERT_TAGGED(false, "Vertex colors are not implemented");
+				ftf::iterateAccessorWithIndex<glm::vec4>(*asset, accessor,
+					[&](const glm::vec4 value, std::size_t idx) {
+						const glm::u8vec4 quantized_color = quantizer.QuantizeColor(value);
+						memcpy(out_vertex_data->data() + idx * vertex_stride + attrib.second, &quantized_color, sizeof(quantized_color));
+					}
+				);
 			}
 			else if (attrib.first.find("JOINTS") != std::string::npos) {
 				OMNIFORCE_ASSERT_TAGGED(false, "Skinned meshes are not supported");
