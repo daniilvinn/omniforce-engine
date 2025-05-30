@@ -25,9 +25,6 @@ public RaytracingAccelerationStructure SceneTLAS;
 [[vk::binding(3, 0)]]
 public RWTexture2D<float4> OutputImage;
 
-[[vk::binding(4, 0)]]
-public RWTexture2D<float4> History;
-
 public float3 QuaternionRotate(float4 Quat, float3 Point) {
     float3 uv = cross(Quat.xyz, Point);
     float3 uuv = cross(Quat.xyz, uv);

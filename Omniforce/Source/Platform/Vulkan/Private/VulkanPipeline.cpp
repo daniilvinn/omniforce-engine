@@ -254,7 +254,6 @@ namespace Omni {
 		global_bindings.push_back({ 1, DescriptorBindingType::STORAGE_IMAGE, 1, 0 });
 		global_bindings.push_back({ 2, DescriptorBindingType::ACCELERATION_STRUCTURE, 1, 0 });
 		global_bindings.push_back({ 3, DescriptorBindingType::STORAGE_IMAGE, 1, 0 });
-		global_bindings.push_back({ 4, DescriptorBindingType::STORAGE_IMAGE, 1, 0 });
 
 		DescriptorSetSpecification dummy_descriptor_set_spec = {};
 		dummy_descriptor_set_spec.bindings = std::move(global_bindings);
@@ -327,6 +326,8 @@ namespace Omni {
 		std::vector<DescriptorBinding> global_bindings;
 		global_bindings.push_back({ 0, DescriptorBindingType::SAMPLED_IMAGE, UINT16_MAX, (uint64)DescriptorFlags::PARTIALLY_BOUND });
 		global_bindings.push_back({ 1, DescriptorBindingType::STORAGE_IMAGE, 1, 0 });
+		global_bindings.push_back({ 2, DescriptorBindingType::ACCELERATION_STRUCTURE, 1, 0 });
+		global_bindings.push_back({ 3, DescriptorBindingType::STORAGE_IMAGE, 1, 0 });
 
 		DescriptorSetSpecification dummy_descriptor_set_spec = {};
 		dummy_descriptor_set_spec.bindings = std::move(global_bindings);
@@ -372,10 +373,7 @@ namespace Omni {
 
 	void VulkanPipeline::CreateRayTracing()
 	{
-		VkRayTracingShaderGroupCreateInfoKHR rt_shader_group_create_info = {};
-
-		VkRayTracingPipelineCreateInfoKHR rt_pipeline_create_info = {};
-
+		OMNIFORCE_ASSERT_TAGGED(false, "Use RTPipeline!");
 	}
 
 }

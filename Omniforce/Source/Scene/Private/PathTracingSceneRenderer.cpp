@@ -5,9 +5,13 @@
 #include <Renderer/DeviceBuffer.h>
 #include <Renderer/ShaderLibrary.h>
 #include <Renderer/RTPipeline.h>
+#include <Renderer/PipelineBarrier.h>
+#include <Renderer/PipelineStage.h>
 #include <Renderer/DescriptorSet.h>
 #include <Asset/AssetManager.h>
 #include <Asset/PrimitiveMeshGenerator.h>
+
+#include <imgui.h>
 
 namespace Omni {
 
@@ -72,6 +76,14 @@ namespace Omni {
 			},
 			{}
 		);
+		shader_library->LoadShader2(
+			"ToneMappingPass",
+			{
+				"FullScreenBase.GenerateQuad",
+				"ToneMapping.FragmentMain"
+			},
+			{}
+		);
 
 		RTPipelineSpecification rt_pipeline_spec = {};
 		rt_pipeline_spec.groups = Array<RTShaderGroup>(&g_TransientAllocator);
@@ -96,6 +108,18 @@ namespace Omni {
 
 		m_RTPipeline = RTPipeline::Create(&g_PersistentAllocator, rt_pipeline_spec);
 
+		PipelineSpecification tone_mapping_pass_spec = PipelineSpecification::Default();
+		tone_mapping_pass_spec.shader = shader_library->GetShader("ToneMappingPass");
+		tone_mapping_pass_spec.debug_name = "PathTracing.ToneMapping";
+		tone_mapping_pass_spec.output_attachments_formats = { ImageFormat::RGB32_HDR };
+		tone_mapping_pass_spec.culling_mode = PipelineCullingMode::NONE;
+		tone_mapping_pass_spec.color_blending_enable = false;
+		tone_mapping_pass_spec.depth_test_enable = false;
+		tone_mapping_pass_spec.depth_write_enable = false;
+
+		m_ToneMappingPass = Pipeline::Create(&g_PersistentAllocator, tone_mapping_pass_spec);
+
+		// TODO: remove
 		// Init visibility buffer
 		{
 			ImageSpecification image_spec = ImageSpecification::Default();
@@ -110,7 +134,20 @@ namespace Omni {
 				set->Write(1, 0, m_VisibilityBuffer, nullptr);
 			}
 		}
+		// Init final render target
+		{
+			ImageSpecification output_image_spec = ImageSpecification::Default();
+			output_image_spec.usage = ImageUsage::RENDER_TARGET;
+			output_image_spec.extent = Renderer::GetSwapchainImage()->GetSpecification().extent;
+			output_image_spec.format = ImageFormat::RGBA64_HDR;
+			OMNI_DEBUG_ONLY_CODE(output_image_spec.debug_name = "PathTracing.Output");
 
+			m_OutputImage = Image::Create(&g_PersistentAllocator, output_image_spec);
+
+			for (int i = 0; i < Renderer::GetConfig().frames_in_flight; i++) {
+				m_SceneDescriptorSet[i]->Write(3, 0, m_OutputImage, nullptr);
+			}
+		}
 	}
 
 	PathTracingSceneRenderer::~PathTracingSceneRenderer()
@@ -129,7 +166,11 @@ namespace Omni {
 
 			WeakPtr<Camera3D> camera_3D = m_Camera;
 
-			ViewData camera_data;
+			ImGui::Begin("Post-processing");
+			ImGui::SliderFloat("Exposure", &m_Exposure, 0.1, 20.0);
+			ImGui::End();
+
+			ViewData camera_data;// = m_PreviousFrameView;
 			camera_data.view = m_Camera->GetViewMatrix();
 			camera_data.proj = m_Camera->GetProjectionMatrix();
 			camera_data.view_proj = m_Camera->GetViewProjectionMatrix();
@@ -142,6 +183,8 @@ namespace Omni {
 			camera_data.viewport_height = m_CurrentMainRenderTarget->GetSpecification().extent.g;
 			camera_data.near_clip_distance = m_Camera->GetNearClip();
 			camera_data.far_clip_distance = m_Camera->GetFarClip();
+			camera_data.exposure = m_Exposure;
+			camera_data.gamma = 2.2;
 
 			m_CameraDataBuffer->UploadData(
 				m_CameraDataBuffer->GetFrameOffset(),
@@ -149,7 +192,7 @@ namespace Omni {
 				sizeof camera_data
 			);
 
-			if (!m_HighLevelInstanceQueue.empty()) {
+			if (!(m_HighLevelInstanceQueue.empty() && m_HostPointLights.empty())) {
 				if (memcmp(&camera_data, &m_PreviousFrameView, sizeof(ViewData)) == 0) {
 					m_AccumulatedFrameCount++;
 				}
@@ -182,8 +225,6 @@ namespace Omni {
 
 	void PathTracingSceneRenderer::EndScene()
 	{
-		//Renderer::ClearImage(m_CurrentMainRenderTarget, { 0.0f, 0.0f, 0.0f, 1.0f });
-
 		if(!(m_HighLevelInstanceQueue.empty() && m_HostPointLights.empty())) {
 			// Upload data to the render queue
 			m_DeviceRenderQueue->UploadData(
@@ -247,7 +288,6 @@ namespace Omni {
 			path_tracing_input->Instances = BDA<InstanceRenderData>(m_DeviceRenderQueue, m_DeviceRenderQueue->GetFrameOffset());
 			path_tracing_input->Meshes = m_MeshResourcesBuffer.GetStorageBDA();
 			path_tracing_input->RandomSeed = RandomEngine::Generate<uint32>(1);
-			//path_tracing_input->RandomSeed = 123123123;
 			path_tracing_input->AccumulatedFrames = glm::min(m_AccumulatedFrameCount, 8192ull);
 			path_tracing_input->PointLights = BDA<ScenePointLights>(m_DevicePointLights, m_DevicePointLights->GetFrameOffset());
 
@@ -256,6 +296,39 @@ namespace Omni {
 			pc.size = sizeof(PathTracingInput);
 
 			Renderer::DispatchRayTracing(m_RTPipeline, dispatch_grid, pc);
+
+			// Prepare a barrier so material resolve waits for rasterization
+			PipelineResourceBarrierInfo rt_output_barrier_info = {};
+			rt_output_barrier_info.src_stages = (BitMask)PipelineStage::RAY_TRACING_SHADER;
+			rt_output_barrier_info.dst_stages = (BitMask)PipelineStage::FRAGMENT_SHADER;
+			rt_output_barrier_info.src_access_mask = (BitMask)PipelineAccess::SHADER_WRITE;
+			rt_output_barrier_info.dst_access_mask = (BitMask)PipelineAccess::SHADER_READ;
+			rt_output_barrier_info.new_image_layout = ImageLayout::GENERAL;
+
+			PipelineBarrierInfo barrier_info = {};
+			barrier_info.image_barriers.push_back({ m_OutputImage, rt_output_barrier_info });
+
+			Renderer::InsertBarrier(barrier_info);
+
+			// Apply tone mapping
+			Renderer::BeginRender(
+				{ m_CurrentMainRenderTarget },
+				m_CurrentMainRenderTarget->GetSpecification().extent,
+				{ 0, 0 },
+				{ 0.0f, 0.0f, 0.0f, 1.0f }
+			);
+			{
+				ToneMappingPassInput* tone_mapping_input = new ToneMappingPassInput;
+				tone_mapping_input->View = BDA<ViewData>(m_CameraDataBuffer, m_CameraDataBuffer->GetFrameOffset());
+
+				MiscData tone_mapping_pc = {};
+				tone_mapping_pc.size = sizeof(tone_mapping_input);
+				tone_mapping_pc.data = (byte*)tone_mapping_input;
+
+				Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], m_ToneMappingPass, 0);
+				Renderer::RenderQuads(m_ToneMappingPass, tone_mapping_pc);
+			}
+			Renderer::EndRender({});
 		}
 
 		// Transition final image barrier
@@ -263,12 +336,12 @@ namespace Omni {
 			m_CurrentMainRenderTarget->SetLayout(
 				Renderer::GetCmdBuffer(),
 				ImageLayout::SHADER_READ_ONLY,
-				PipelineStage::RAY_TRACING_SHADER,
+				PipelineStage::COLOR_ATTACHMENT_OUTPUT,
 				PipelineStage::FRAGMENT_SHADER,
-				(BitMask)PipelineAccess::SHADER_WRITE,
+				(BitMask)PipelineAccess::COLOR_ATTACHMENT_WRITE,
 				(BitMask)PipelineAccess::SHADER_READ
 			);
-		});
+			});
 
 	}
 

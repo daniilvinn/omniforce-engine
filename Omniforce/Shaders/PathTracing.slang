@@ -101,7 +101,7 @@ void PathConstruction()
     if (Input.AccumulatedFrames == 1) {
         OutputImage[PixelIndex.xy] = float4(FinalColor, 1.0f);
     } else {
-        float3 History = History[PixelIndex.xy].rgb;
+        float3 History = OutputImage[PixelIndex.xy].rgb;
         OutputImage[PixelIndex.xy] = float4(lerp(History, FinalColor, 1.0f / Input.AccumulatedFrames), 1.0f);
     }
 }
@@ -155,8 +155,6 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
         }
         BaseColor *= VertexColor;
     }
-
-    // HACK
 
     // Fetch vertex normals
     half3 Normal = 0;
@@ -257,7 +255,7 @@ void PointLightHit(inout RayPayload Payload, in BuiltInTriangleIntersectionAttri
 [shader("miss")]
 void Miss(inout RayPayload Payload)
 {
-    return;
+    //return;
     if (WorldRayDirection().y >= 0.0f) {
         Payload.LightColor = float3(0.7, 0.9, 1.0) * 20;
     } else {

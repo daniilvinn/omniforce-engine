@@ -32,7 +32,6 @@ namespace Omni {
 			bindings.push_back({ 1, DescriptorBindingType::STORAGE_IMAGE, 1, 0 });
 			bindings.push_back({ 2, DescriptorBindingType::ACCELERATION_STRUCTURE, 1, 0 });
 			bindings.push_back({ 3, DescriptorBindingType::STORAGE_IMAGE, 1, 0 });
-			bindings.push_back({ 4, DescriptorBindingType::STORAGE_IMAGE, 1, 0 });
 
 			DescriptorSetSpecification global_set_spec = {};
 			global_set_spec.bindings = std::move(bindings);
@@ -47,14 +46,11 @@ namespace Omni {
 				ImageSpecification attachment_spec = ImageSpecification::Default();
 				attachment_spec.usage = ImageUsage::RENDER_TARGET;
 				attachment_spec.extent = Renderer::GetSwapchainImage()->GetSpecification().extent;
-				attachment_spec.format = ImageFormat::RGBA64_HDR;
+				attachment_spec.format = ImageFormat::RGB32_HDR;
 				OMNI_DEBUG_ONLY_CODE(attachment_spec.debug_name = "SceneRenderer output");
+
 				for (int i = 0; i < Renderer::GetConfig().frames_in_flight; i++) {
 					m_RendererOutputs.push_back(Image::Create(&g_PersistentAllocator, attachment_spec));
-					m_SceneDescriptorSet[i]->Write(3, 0, m_RendererOutputs[i], nullptr);
-
-					uint32 history_index = (i + 1) % Renderer::GetConfig().frames_in_flight;
-					m_SceneDescriptorSet[history_index]->Write(4, 0, m_RendererOutputs[i], nullptr);
 				}
 
 				attachment_spec.usage = ImageUsage::DEPTH_BUFFER;

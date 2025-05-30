@@ -24,13 +24,16 @@ namespace Omni {
 
 	private:
 		Ref<RTPipeline> m_RTPipeline;
+		Ref<Pipeline> m_ToneMappingPass;
 
 		Ptr<RTAccelerationStructure> m_SceneTLAS;
 		Ptr<RTAccelerationStructure> m_SphereBLAS;
 
 		Ref<Image> m_VisibilityBuffer;
+		Ref<Image> m_OutputImage;
 		ViewData m_PreviousFrameView = {};
-		uint64 m_AccumulatedFrameCount;
+		uint64 m_AccumulatedFrameCount = 0;
+		float32 m_Exposure = 1.0f;
 
 	};
 
