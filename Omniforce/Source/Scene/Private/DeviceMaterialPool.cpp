@@ -5,8 +5,11 @@
 #include <Renderer/DeviceCmdBuffer.h>
 #include <Scene/ISceneRenderer.h>
 #include <CodeGeneration/Device/RTMaterial.h>
+#include <Core/EngineConfig.h>
 
 namespace Omni {
+
+	static EngineConfigValue<bool> s_BuildVirtualGeometry("Renderer.UseVirtualGeometry", "Enables virtual geometry raster renderer");
 
 	DeviceMaterialPool::DeviceMaterialPool(ISceneRenderer* context, uint64 size)
 		: m_Context(context)
@@ -87,7 +90,7 @@ namespace Omni {
 		memcpy(material_data, &rt_material, sizeof(RTMaterial));
 
 		// Copy pipeline device id to first 4 bytes
-		uint32 device_pipeline_id = m->GetPipeline()->GetDeviceID();
+		uint32 device_pipeline_id = s_BuildVirtualGeometry.Get() ? m->GetPipeline()->GetDeviceID() : 0;
 		memcpy(material_data + sizeof(RTMaterial), &device_pipeline_id, sizeof(device_pipeline_id));
 
 		for (auto& entry : material_table) {			

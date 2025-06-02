@@ -183,17 +183,21 @@ namespace Omni {
 		std::lock_guard lock(m_Mutex);
 
 		GeometryMeshData mesh_data = {};
-		mesh_data.lod_distance_multiplier = 1.0f;
-		mesh_data.bounding_sphere = mesh->GetBoundingSphere();
-		mesh_data.meshlet_count = mesh->GetMeshletCount();
-		mesh_data.quantization_grid_size = mesh->GetQuantizationGridSize();
-		mesh_data.ray_tracing.layout = mesh->GetAttributeLayout();
-		mesh_data.vertices = mesh->GetBuffer(MeshBufferKey::GEOMETRY)->GetDeviceAddress();
-		mesh_data.attributes = mesh->GetBuffer(MeshBufferKey::ATTRIBUTES)->GetDeviceAddress();
-		mesh_data.meshlets_data = mesh->GetBuffer(MeshBufferKey::MESHLETS)->GetDeviceAddress();
-		mesh_data.micro_indices = mesh->GetBuffer(MeshBufferKey::MICRO_INDICES)->GetDeviceAddress();
-		mesh_data.meshlets_cull_bounds = mesh->GetBuffer(MeshBufferKey::MESHLETS_CULL_DATA)->GetDeviceAddress();
+
+		if (mesh->IsVirtual()) {
+			mesh_data.lod_distance_multiplier = 1.0f;
+			mesh_data.bounding_sphere = mesh->GetBoundingSphere();
+			mesh_data.meshlet_count = mesh->GetMeshletCount();
+			mesh_data.quantization_grid_size = mesh->GetQuantizationGridSize();
+			mesh_data.vertices = mesh->GetBuffer(MeshBufferKey::GEOMETRY)->GetDeviceAddress();
+			mesh_data.attributes = mesh->GetBuffer(MeshBufferKey::ATTRIBUTES)->GetDeviceAddress();
+			mesh_data.meshlets_data = mesh->GetBuffer(MeshBufferKey::MESHLETS)->GetDeviceAddress();
+			mesh_data.micro_indices = mesh->GetBuffer(MeshBufferKey::MICRO_INDICES)->GetDeviceAddress();
+			mesh_data.meshlets_cull_bounds = mesh->GetBuffer(MeshBufferKey::MESHLETS_CULL_DATA)->GetDeviceAddress();
+		}
+
 		mesh_data.ray_tracing.indices = mesh->GetBuffer(MeshBufferKey::RT_INDICES)->GetDeviceAddress();
+		mesh_data.ray_tracing.layout = mesh->GetAttributeLayout();
 		mesh_data.ray_tracing.attributes = mesh->GetBuffer(MeshBufferKey::RT_ATTRIBUTES)->GetDeviceAddress();
 
 		return m_MeshResourcesBuffer.Allocate(mesh->Handle, mesh_data);

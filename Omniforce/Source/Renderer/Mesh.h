@@ -23,13 +23,16 @@ namespace Omni {
 	};
 
 	struct MeshData {
-		Ptr<BitStream> geometry;
-		std::vector<byte> attributes;
-		std::vector<RenderableMeshlet> meshlets;
-		std::vector<byte> local_indices;
-		std::vector<MeshClusterBounds> cull_data;
-		int32 quantization_grid_size;
-		Sphere bounding_sphere;
+		struct {
+			Ptr<BitStream> geometry;
+			std::vector<byte> attributes;
+			std::vector<RenderableMeshlet> meshlets;
+			std::vector<byte> local_indices;
+			std::vector<MeshClusterBounds> cull_data;
+			int32 quantization_grid_size;
+			Sphere bounding_sphere;
+			bool use;
+		} virtual_geometry;
 		struct {
 			std::vector<uint32> indices;
 			GeometryLayoutTable layout;
@@ -56,6 +59,7 @@ namespace Omni {
 		const AABB& GetAABB() const { return m_AABB; }
 		GeometryLayoutTable GetAttributeLayout() const { return m_AttributeLayout; }
 		WeakPtr<RTAccelerationStructure> GetAccelerationStructure() const { return m_BLAS; }
+		bool IsVirtual() const { return m_IsVirtualizedGeometry; }
 
 	private:
 		std::map<MeshBufferKey, Ref<DeviceBuffer>> m_Buffers;
@@ -65,6 +69,7 @@ namespace Omni {
 		Sphere m_BoundingSphere = {};
 		AABB m_AABB = {}; // of lod 0
 		GeometryLayoutTable m_AttributeLayout = {};
+		bool m_IsVirtualizedGeometry;
 	};
 
 }

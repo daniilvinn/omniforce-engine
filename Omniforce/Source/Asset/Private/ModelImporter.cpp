@@ -17,6 +17,7 @@
 #include <Threading/JobSystem.h>
 #include <Platform/Vulkan/Private/VulkanMemoryAllocator.h>
 #include <Core/BitStream.h>
+#include <Core/EngineConfig.h>
 
 #include <map>
 #include <atomic>
@@ -33,6 +34,8 @@ namespace Omni {
 
 	// just an alias for readability
 	namespace ftf = fastgltf;
+
+	static EngineConfigValue<bool> s_BuildVirtualGeometry("Renderer.UseVirtualGeometry", "Enables virtual geometry raster renderer");
 
 	AssetHandle ModelImporter::Import(std::filesystem::path path)
 	{
@@ -389,6 +392,20 @@ namespace Omni {
 		// Build acceleration structure
 		mesh_data.acceleration_structure = BuildAccelerationStructure(as_position_data, *index_data, sizeof(glm::vec3));
 
+		// Check config for virtual geometry usage
+		mesh_data.virtual_geometry.use = s_BuildVirtualGeometry.Get();
+		if (!s_BuildVirtualGeometry.Get()) {
+			std::lock_guard lock(*mtx);
+			*out_mesh = Mesh::Create(
+				&g_PersistentAllocator,
+				mesh_data,
+				lod0_aabb
+			);
+
+			AssetManager::Get()->RegisterAsset(*out_mesh);
+			return;
+		}
+
 		// Optimize mesh (remove redundant vertices, optimize for vertex cache etc.)
 		std::vector<byte> optimized_vertices;
 		std::vector<uint32> optimized_indices;
@@ -411,17 +428,17 @@ namespace Omni {
 		// Split vertex data into two data streams: geometry and attributes.
 		// It is an optimization used for depth-prepass and shadow maps rendering to speed up data reads.
 		std::vector<glm::vec3> deinterleaved_vertex_data(remapped_vertices.size() / vertex_stride);
-		mesh_data.attributes.resize(remapped_vertices.size() / vertex_stride * (vertex_stride - sizeof glm::vec3));
-		mesh_preprocessor.SplitVertexData(&deinterleaved_vertex_data, &mesh_data.attributes, &remapped_vertices, vertex_stride);
+		mesh_data.virtual_geometry.attributes.resize(remapped_vertices.size() / vertex_stride * (vertex_stride - sizeof glm::vec3));
+		mesh_preprocessor.SplitVertexData(&deinterleaved_vertex_data, &mesh_data.virtual_geometry.attributes, &remapped_vertices, vertex_stride);
 
 		// Generate mesh bounds
 		Bounds mesh_bounds = mesh_preprocessor.GenerateMeshBounds(&deinterleaved_vertex_data);
 
 		// Copy data
-		mesh_data.meshlets = vmesh.meshlets;
-		mesh_data.local_indices = vmesh.local_indices;
-		mesh_data.cull_data = vmesh.cull_bounds;
-		mesh_data.bounding_sphere = mesh_bounds.sphere;
+		mesh_data.virtual_geometry.meshlets = vmesh.meshlets;
+		mesh_data.virtual_geometry.local_indices = vmesh.local_indices;
+		mesh_data.virtual_geometry.cull_data = vmesh.cull_bounds;
+		mesh_data.virtual_geometry.bounding_sphere = mesh_bounds.sphere;
 
 		// test on OOB
 		for (auto& meshlet : vmesh.meshlets) {
@@ -442,7 +459,7 @@ namespace Omni {
 		// Quantize vertex positions
 		VertexDataQuantizer quantizer;
 		const uint32 vertex_bitrate = quantizer.ComputeOptimalVertexBitrate(lod0_aabb);
-		mesh_data.quantization_grid_size = vertex_bitrate;
+		mesh_data.virtual_geometry.quantization_grid_size = vertex_bitrate;
 		uint32 mesh_bitrate = quantizer.ComputeMeshBitrate(vertex_bitrate, lod0_aabb);
 		uint32 vertex_bitstream_bit_size = deinterleaved_vertex_data.size() * mesh_bitrate * 3;
 		uint32 grid_size = 1u << vertex_bitrate;
@@ -453,19 +470,19 @@ namespace Omni {
 		Ptr<BitStream> vertex_stream = CreatePtr<BitStream>(&g_PersistentAllocator, (vertex_bitstream_bit_size + BitStream::StorageTypeBitSize - 1) / BitStream::StorageTypeBitSize * 4u);
 		uint32 meshlet_idx = 0;
 
-		for (auto& meshlet_bounds : mesh_data.cull_data) {
+		for (auto& meshlet_bounds : mesh_data.virtual_geometry.cull_data) {
 			uint32 meshlet_bitrate = std::clamp((uint32)std::ceil(std::log2(meshlet_bounds.vis_culling_sphere.radius * 2 * grid_size)), 1u, BitStream::StorageTypeBitSize); // we need diameter of a sphere, not radius
 
 			OMNIFORCE_ASSERT_TAGGED(meshlet_bitrate <= BitStream::StorageTypeBitSize, "Bit stream overflow");
 
-			RenderableMeshlet& meshlet = mesh_data.meshlets[meshlet_idx];
+			RenderableMeshlet& meshlet = mesh_data.virtual_geometry.meshlets[meshlet_idx];
 
 			meshlet.vertex_bit_offset = vertex_stream->GetNumBitsUsed();
 			meshlet.metadata.bitrate = meshlet_bitrate;
 
 			meshlet_bounds.vis_culling_sphere.center = glm::round(meshlet_bounds.vis_culling_sphere.center * float32(grid_size)) / float32(grid_size);
 
-			uint32 base_vertex_offset = mesh_data.meshlets[meshlet_idx].vertex_offset;
+			uint32 base_vertex_offset = mesh_data.virtual_geometry.meshlets[meshlet_idx].vertex_offset;
 			for (uint32 vertex_idx = 0; vertex_idx < meshlet.metadata.vertex_count; vertex_idx++) {
 				for (uint32 vertex_channel = 0; vertex_channel < 3; vertex_channel++) {
 					float32 original_vertex = deinterleaved_vertex_data[base_vertex_offset + vertex_idx][vertex_channel];
@@ -483,7 +500,7 @@ namespace Omni {
 			meshlet_idx++;
 		}
 
-		mesh_data.geometry = std::move(vertex_stream);
+		mesh_data.virtual_geometry.geometry = std::move(vertex_stream);
 
 		// Create mesh under mutex
 		{
@@ -524,6 +541,9 @@ namespace Omni {
 
 		// All data is gathered - compile material pipeline
 		std::lock_guard lock(*mtx);
-		mat->CompilePipeline();
+
+		if (s_BuildVirtualGeometry.Get()) {
+			mat->CompilePipeline();
+		}
 	}
 }
