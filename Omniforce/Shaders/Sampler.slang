@@ -44,4 +44,32 @@ namespace Omni {
         }
     }
 
+    public struct GGXVNDFSampler {
+        public float3 Sample(float3 ViewDir, float Alpha, float2 Xi)
+        {
+            // 1. Transform view vector to hemisphere configuration
+            float3 V = normalize(ViewDir);
+            float3 Vh = normalize(float3(Alpha * V.x, Alpha * V.y, V.z));
+
+            // 2. Orthonormal basis
+            float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
+            float3 T1 = lensq > 0.0 ? normalize(float3(-Vh.y, Vh.x, 0.0)) : float3(1.0, 0.0, 0.0);
+            float3 T2 = cross(Vh, T1);
+
+            // 3. Sample point on disk
+            float r = sqrt(Xi.x);
+            float phi = 2.0 * PI * Xi.y;
+            float t1 = r * cos(phi);
+            float t2 = r * sin(phi);
+
+            // 4. Reproject onto hemisphere
+            float s = 0.5f * (1.0f + Vh.z);
+            float t3 = sqrt(max(0.0, 1.0 - t1 * t1 - t2 * t2));
+            float3 Nh = t1 * T1 + t2 * T2 + t3 * Vh;
+
+            // 5. Transform normal back to ellipsoid space
+            float3 H = normalize(float3(Alpha * Nh.x, Alpha * Nh.y, max(0.0, Nh.z)));
+            return H;
+        }
+    }
 }
