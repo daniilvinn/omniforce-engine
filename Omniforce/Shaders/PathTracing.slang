@@ -135,7 +135,7 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
 
     // Fetch base color
     float2 UV = 0;
-    float3 BaseColor = 1;
+    float3 BaseColor = Material.UniformColor.xyz;
     if (Material.Metadata.HasBaseColor == 1) {
         UV = Geometry.RTFetchUV(HitTriangleIndices, Material.BaseColor.UVChannelIndex, Barys);
         BaseColor = TextureHeap[Material.BaseColor.TextureIndex].SampleLevel(UV, 0.0).rgb;
@@ -170,7 +170,7 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
     }
 
     // Fetch normal map
-    float3 Normal = 0.0;
+    float3 Normal = GeometryNormal;
     if (Material.Metadata.HasNormal == 1 && Layout.AttributeMask.HasTangents == 1) {
         // Check if corresponding UVs are loaded; reload otherwise
         if (LastFetchedUVIndex != Material.Normal.UVChannelIndex) {
@@ -218,6 +218,17 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
             Payload.Hit = false;
             return;
         }
+    }
+    else { // Oherwise just derive tangents and bitangents
+        half3 Tangent = cross(Payload.IncomingDirection, GeometryNormal);
+        half3 Bitangent = cross(Tangent, GeometryNormal);
+        half3x3 TBN = half3x3(
+            Tangent,
+            Bitangent,
+            GeometryNormal
+        );
+
+        Payload.OutgoingDirection = QuaternionRotate(float4(Instance.transform.rotation), mul(Payload.OutgoingDirection, TBN));
     }
     float3 N = QuaternionRotate(float4(Instance.transform.rotation), Normal);
     Payload.HitPoint = WorldPosition + N * 0.0001f;
@@ -270,10 +281,10 @@ void PointLightHit(inout RayPayload Payload, in BuiltInTriangleIntersectionAttri
 [shader("miss")]
 void Miss(inout RayPayload Payload)
 {
+    return;
     if (WorldRayDirection().y >= 0.0f) {
         Payload.LightColor = float3(0.7, 0.9, 1.0) * 20;
     } else {
         Payload.LightColor = float3(0.0, 0.0, 0.0);
-    }
-        
+    } 
 }

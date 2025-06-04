@@ -87,6 +87,16 @@ namespace Omni {
 		if (rt_material.Metadata.HasOcclusion) {
 			memcpy(&rt_material.Occlusion, &material_table["OCCLUSION_MAP"], sizeof(DeviceTexture));
 		}
+
+		// Handle uniform color
+		if (material_table.contains("BASE_COLOR_FACTOR")) {
+			memcpy(&rt_material.UniformColor, &material_table["BASE_COLOR_FACTOR"], sizeof(glm::vec4));
+		}
+		else {
+			glm::vec4 default_value = glm::vec4(1.0f);
+			memcpy(&rt_material.UniformColor, &default_value, sizeof(glm::vec4));
+		}
+
 		memcpy(material_data, &rt_material, sizeof(RTMaterial));
 
 		// Copy pipeline device id to first 4 bytes

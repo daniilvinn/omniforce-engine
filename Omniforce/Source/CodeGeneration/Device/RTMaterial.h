@@ -18,6 +18,7 @@ namespace Omni {
 		DeviceTexture Normal;
 		DeviceTexture MetallicRoughness;
 		DeviceTexture Occlusion;
+		glm::vec4 UniformColor;
 	};
 
 }
