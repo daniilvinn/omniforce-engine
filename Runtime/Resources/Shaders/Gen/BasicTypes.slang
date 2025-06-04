@@ -1,0 +1,10 @@
+module BasicTypes;
+__include Gen.Implementations.BasicTypes.AABB;
+__include Gen.Implementations.BasicTypes.AABB_2D;
+__include Gen.Implementations.BasicTypes.Bounds;
+__include Gen.Implementations.BasicTypes.Frustum;
+__include Gen.Implementations.BasicTypes.Plane;
+__include Gen.Implementations.BasicTypes.Sphere;
+__include Gen.Implementations.BasicTypes.Sprite;
+__include Gen.Implementations.BasicTypes.Transform;
+__include Gen.Implementations.BasicTypes.ViewData;

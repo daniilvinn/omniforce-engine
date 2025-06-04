@@ -161,7 +161,7 @@ INSTALL(FILES "${Vulkan_SDK}\\Bin\\shaderc_shared.dll" DESTINATION "${CMAKE_INST
 project(CreateCoreShadersSymlink)
 
 # Define symbolic link and target folder paths
-set(SHADERS_FOLDER_SYMLINK_NAME "${CMAKE_SOURCE_DIR}/Editor/Resources/Shaders")
+set(SHADERS_FOLDER_SYMLINK_NAME "${CMAKE_SOURCE_DIR}/Runtime/Resources/Shaders")
 set(SHADERS_FOLDER_TARGET_NAME "${CMAKE_CURRENT_SOURCE_DIR}/Shaders")
 
 if(WIN32)
@@ -237,3 +237,9 @@ string(REPLACE "CMAKE_GENERATED_SHADER_PATH" "${CMAKE_SOURCE_DIR}/Omniforce/Shad
 file(WRITE "${CMAKE_SOURCE_DIR}/Omniforce/Shaders/slangdconfig.json" "${SLANG_CONFIG_CONTENTS}")
 
 add_dependencies(${ENGINE_TARGET} MetaToolRunner)
+
+# Copy slang.dll to Runtime directory
+set(SLANG_DLL_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/slang/slang.dll")
+set(SLANG_DLL_DESTINATION "${CMAKE_SOURCE_DIR}/Runtime/slang.dll")
+
+file(COPY "${SLANG_DLL_SOURCE}" DESTINATION "${CMAKE_SOURCE_DIR}/Runtime")

@@ -1,0 +1,44 @@
+#pragma lang : glsl
+#pragma stage : vertex
+#version 460 core
+
+#extension GL_EXT_scalar_block_layout : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
+#extension GL_EXT_buffer_reference2 : require
+
+#include <Shared/Transform.glslh>
+#include <Shared/CameraData.glslh>
+
+layout(location = 0) in vec3 position;
+
+layout(push_constant, scalar) uniform PushConstants {
+    CameraData camera;
+    Transform transform;
+    u8vec3 color;
+} pc;
+
+void main() {
+    gl_Position = pc.camera.view_proj * vec4(TransformPoint(position, pc.transform), 1.0f);
+}
+
+#pragma stage : fragment
+#version 460 core
+
+#extension GL_EXT_scalar_block_layout : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
+#extension GL_EXT_buffer_reference2 : require
+
+#include <Shared/Transform.glslh>
+#include <Shared/CameraData.glslh>
+
+layout(location = 0) out vec4 color;
+
+layout(push_constant, scalar) uniform PushConstants {
+    CameraData camera;
+    Transform transform;
+    u8vec3 color;
+} pc;
+
+void main() {
+    color = vec4(pc.color.r / 255, pc.color.g / 255, pc.color.b / 255, 1.0f);
+}

@@ -1,0 +1,2 @@
+module ResolveVisibleMaterialsMaskInput;
+__include Gen.Implementations.ResolveVisibleMaterialsMaskInput.ResolveVisibleMaterialsMaskInput;

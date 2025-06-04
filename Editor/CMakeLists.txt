@@ -17,9 +17,6 @@ target_include_directories(${EDITOR_TARGET} SYSTEM PUBLIC ${IMGUI_INCLUDE_PATH} 
 
 add_dependencies(${EDITOR_TARGET} OmniforceEngine)
 
-set_target_properties(${EDITOR_TARGET} PROPERTIES
-    VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/Editor"
-)
 target_link_options(${EDITOR_TARGET} PRIVATE "/ignore:4099")
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
@@ -32,7 +29,7 @@ set_target_properties(${EDITOR_TARGET} PROPERTIES
 )
 endif()
 
-# Setup target, copy dependencies
+# Setup target
 SetupTarget(${EDITOR_TARGET})
 
 # Install and setup IDE filters

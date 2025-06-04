@@ -32,25 +32,14 @@ endfunction()
 
 set(SLANG_DLL_PATH "${CMAKE_SOURCE_DIR}/Omniforce/ThirdParty/slang/slang.dll")
 
-function(SetupTarget target)
-    if(NOT TARGET ${target})
-        message(WARNING "Target ${target} does not exist.")
+function(SetupTarget TARGET)
+    if(NOT TARGET ${TARGET})
+        message(WARNING "Target '${TARGET}' does not exist.")
         return()
     endif()
-
-    get_target_property(target_type ${target} TYPE)
-
-    if(target_type STREQUAL "EXECUTABLE")
-        get_target_property(target_link_libraries ${target} INTERFACE_LINK_LIBRARIES)
-        
-        if(target_link_libraries AND ${ENGINE_TARGET} IN_LIST target_link_libraries)
-            add_custom_command(
-                TARGET ${target} POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                    "${SLANG_DLL_PATH}"
-                    "$<TARGET_FILE_DIR:${target}>"
-                COMMENT "Copying slang.dll to the directory of target ${target}"
-            )
-        endif()
+    if(MSVC)
+        set_target_properties(${TARGET} PROPERTIES
+            VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/Runtime"
+        )
     endif()
 endfunction()
