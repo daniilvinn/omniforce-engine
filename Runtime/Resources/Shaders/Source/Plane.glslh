@@ -1,9 +1,0 @@
-#ifndef PLANE_GLSLH
-#define PLANE_GLSLH
-
-struct Plane {
-	vec3 normal;
-	float distance;
-};
-
-#endif

@@ -1,2 +1,0 @@
-module IndirectRendering;
-__include Gen.Implementations.IndirectRendering.MeshShadingDrawParams;

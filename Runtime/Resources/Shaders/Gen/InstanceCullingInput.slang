@@ -1,2 +1,0 @@
-module InstanceCullingInput;
-__include Gen.Implementations.InstanceCullingInput.InstanceCullingInput;
