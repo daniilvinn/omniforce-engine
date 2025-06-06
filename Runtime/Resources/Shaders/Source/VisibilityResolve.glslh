@@ -1,0 +1,130 @@
+#ifndef VISIBILITY_RESOLVE_GLSLH
+#define VISIBILITY_RESOLVE_GLSLH
+
+struct BarycentricDerivative
+{
+    vec3 lambda;
+    vec3 ddx;
+    vec3 ddy;
+};
+
+// Compute barycentric coordinates of a pixel between 3 vertices
+// Also analytically compute derivates
+// Vertices are in clip-space, just after MVP transformation
+BarycentricDerivative CalculateFullBary(vec4 v0, vec4 v1, vec4 v2, vec2 pixel_ndc, vec2 image_size)
+{
+    BarycentricDerivative ret;
+
+    vec3 inverse_w = 1.0 / vec3(v0.w, v1.w, v2.w);
+
+    vec2 ndc0 = v0.xy * inverse_w.x;
+    vec2 ndc1 = v1.xy * inverse_w.y;
+    vec2 ndc2 = v2.xy * inverse_w.z;
+
+    float inverse_determinant = 1.0 / determinant(mat2(ndc2 - ndc1, ndc0 - ndc1));
+    
+    ret.ddx = vec3(ndc1.y - ndc2.y, ndc2.y - ndc0.y, ndc0.y - ndc1.y) * inverse_determinant * inverse_w;
+    ret.ddy = vec3(ndc2.x - ndc1.x, ndc0.x - ndc2.x, ndc1.x - ndc0.x) * inverse_determinant * inverse_w;
+
+    float ddx_sum = dot(ret.ddx, vec3(1.0));
+    float ddy_sum = dot(ret.ddy, vec3(1.0));
+
+    vec2 delta_vector = pixel_ndc - ndc0;
+    float interpolated_inverse_w = inverse_w.x + delta_vector.x * ddx_sum + delta_vector.y * ddy_sum;
+    float interpolated_w = 1.0 / interpolated_inverse_w;
+
+    ret.lambda.x = interpolated_w * (inverse_w[0] + delta_vector.x * ret.ddx.x + delta_vector.y * ret.ddy.x);
+    ret.lambda.y = interpolated_w * (0.0          + delta_vector.x * ret.ddx.y + delta_vector.y * ret.ddy.y);
+    ret.lambda.z = interpolated_w * (0.0          + delta_vector.x * ret.ddx.z + delta_vector.y * ret.ddy.z);
+
+    ret.ddx *= (2.0 / image_size.x);
+    ret.ddy *= (2.0 / image_size.y);
+    ddx_sum *= (2.0 / image_size.x);
+    ddy_sum *= (2.0 / image_size.y);
+
+    ret.ddy *= -1.0;
+    ddy_sum *= -1.0;
+
+    float interpolated_w_ddx = 1.0 / (interpolated_inverse_w + ddx_sum);
+    float interpolated_w_ddy = 1.0 / (interpolated_inverse_w + ddy_sum);
+
+    ret.ddx = interpolated_w_ddx * (ret.lambda * interpolated_inverse_w + ret.ddx) - ret.lambda;
+    ret.ddy = interpolated_w_ddy * (ret.lambda * interpolated_inverse_w + ret.ddy) - ret.lambda;
+
+    return ret;
+}
+
+// Scalar float interpolation utils
+float InterpolateVertexData(BarycentricDerivative deriv, float v0, float v1, float v2)
+{
+    vec3 merged_vertex = vec3(v0, v1, v2);
+
+    return dot(merged_vertex, deriv.lambda);
+}
+
+float InterpolateVertexData(BarycentricDerivative deriv, float v0, float v1, float v2, out float ddx, out float ddy)
+{
+    vec3 merged_vertex = vec3(v0, v1, v2);
+
+    ddx = dot(merged_vertex, deriv.ddx);
+    ddy = dot(merged_vertex, deriv.ddy);
+
+    return dot(merged_vertex, deriv.lambda);
+}
+
+// vec2 interpolation utils
+vec2 InterpolateVertexData(BarycentricDerivative deriv, vec2 v0, vec2 v1, vec2 v2)
+{
+    vec2 merged_vertex = v0 * deriv.lambda.x + v1 * deriv.lambda.y + v2 * deriv.lambda.z;
+
+    return merged_vertex;
+}
+
+vec2 InterpolateVertexData(BarycentricDerivative deriv, vec2 v0, vec2 v1, vec2 v2, out vec2 ddx, out vec2 ddy)
+{
+    vec2 merged_vertex = v0 * deriv.lambda.x + v1 * deriv.lambda.y + v2 * deriv.lambda.z;
+
+    ddx = v0 * deriv.ddx.x + v1 * deriv.ddx.y + v2 * deriv.ddx.z;
+    ddy = v0 * deriv.ddy.x + v1 * deriv.ddy.y + v2 * deriv.ddy.z;
+
+    return merged_vertex;
+}
+
+
+// vec3 interpolation utils
+vec3 InterpolateVertexData(BarycentricDerivative deriv, vec3 v0, vec3 v1, vec3 v2)
+{
+    vec3 merged_vertex = v0 * deriv.lambda.x + v1 * deriv.lambda.y + v2 * deriv.lambda.z;
+
+    return merged_vertex;
+}
+
+vec3 InterpolateVertexData(BarycentricDerivative deriv, vec3 v0, vec3 v1, vec3 v2, out vec3 ddx, out vec3 ddy)
+{
+    vec3 merged_vertex = v0 * deriv.lambda.x + v1 * deriv.lambda.y + v2 * deriv.lambda.z;
+
+    ddx = v0 * deriv.ddx.x + v1 * deriv.ddx.y + v2 * deriv.ddx.z;
+    ddy = v0 * deriv.ddy.x + v1 * deriv.ddy.y + v2 * deriv.ddy.z;
+
+    return merged_vertex;
+}
+
+// vec4 interpolation utils
+vec4 InterpolateVertexData(BarycentricDerivative deriv, vec4 v0, vec4 v1, vec4 v2)
+{
+    vec4 merged_vertex = v0 * deriv.lambda.x + v1 * deriv.lambda.y + v2 * deriv.lambda.z;
+
+    return merged_vertex;
+}
+
+vec4 InterpolateVertexData(BarycentricDerivative deriv, vec4 v0, vec4 v1, vec4 v2, out vec4 ddx, out vec4 ddy)
+{
+    vec4 merged_vertex = v0 * deriv.lambda.x + v1 * deriv.lambda.y + v2 * deriv.lambda.z;
+
+    ddx = v0 * deriv.ddx.x + v1 * deriv.ddx.y + v2 * deriv.ddx.z;
+    ddy = v0 * deriv.ddy.x + v1 * deriv.ddy.y + v2 * deriv.ddy.z;
+
+    return merged_vertex;
+}
+
+#endif

@@ -1,0 +1,2 @@
+module SpriteRenderingInput;
+__include Gen.Implementations.SpriteRenderingInput.SpriteRenderingInput;

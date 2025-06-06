@@ -1,0 +1,2 @@
+module PathTracingInput;
+__include Gen.Implementations.PathTracingInput.PathTracingInput;

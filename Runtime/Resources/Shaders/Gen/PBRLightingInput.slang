@@ -1,0 +1,2 @@
+module PBRLightingInput;
+__include Gen.Implementations.PBRLightingInput.PBRLightingInput;
