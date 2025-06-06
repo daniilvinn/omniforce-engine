@@ -13,9 +13,8 @@ struct RayPayload
     float3 LightColor;
     float3 PathThroughput;
     float3 IncomingDirection;
-    float3 OutgoingDirection;
     float3 HitPoint;
-    bool Hit;
+    uint RandomSeed;
 };
 
 using namespace Omni;
@@ -47,19 +46,10 @@ void PathConstruction()
     Payload.LightColor = 0.0f;
     Payload.PathThroughput = 1.0f;
     Payload.IncomingDirection = Direction;
-    Payload.OutgoingDirection = 0;
     Payload.HitPoint = Origin;
-    Payload.Hit = false;
 
-    // Generate initial bounce
     RandomNumber<PCGGenerator> Random = RandomNumber<PCGGenerator>(Input.RandomSeed + RayID);
-    CosineWeightedHemisphereSampler Sampler;
-    Payload.OutgoingDirection = Sampler.Sample(
-        float2(
-            1.0f / 0xFFFF * ((Random.Get() & 0xFFFF)), 
-            1.0f / 0xFFFF * ((Random.Get() & 0xFFFF)),
-        )
-    );
+    Payload.RandomSeed = Random.Get();
 
     const uint NumBounces = 4;
 
@@ -72,6 +62,8 @@ void PathConstruction()
         Ray.TMin = 0.001;
         Ray.TMax = Camera.far_clip_distance;
 
+        Payload.HitPoint = FloatMax;
+
         TraceRay(
             SceneTLAS,
             RAY_FLAG_NONE,
@@ -83,19 +75,9 @@ void PathConstruction()
             Payload
         );
 
-        if (!Payload.Hit) {
+        if (IsInvalidHitPoint(Payload.HitPoint)) {
             break;
-        } else {
-            Payload.Hit = false;
         }
-
-        Payload.IncomingDirection = Payload.OutgoingDirection;
-        Payload.OutgoingDirection = Sampler.Sample(
-            float2(
-                1.0f / 0xFFFF * ((Random.Get() & 0xFFFF)), 
-                1.0f / 0xFFFF * ((Random.Get() & 0xFFFF)),
-            )   
-        );
     }
 
     // Compute final color, get history, blend and write back
@@ -112,8 +94,6 @@ void PathConstruction()
 [shader("closesthit")]
 void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttributes Attr)
 {
-    // Register hit
-    Payload.Hit = true;
 
     InstanceRenderData Instance = Input.Instances[InstanceID()];
     GeometryMeshData Geometry = Input.Meshes[Instance.geometry_data_id];
@@ -171,6 +151,14 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
 
     // Fetch normal map
     float3 Normal = GeometryNormal;
+    CosineWeightedHemisphereSampler Sampler;
+    RandomNumber<PCGGenerator> Random = RandomNumber<PCGGenerator>(Payload.RandomSeed);
+    float3 OutgoingDirection = Sampler.Sample(
+        float2(
+            1.0f / 0xFFFF * ((Random.Get() & 0xFFFF)), 
+            1.0f / 0xFFFF * ((Random.Get() & 0xFFFF)),
+        )
+    );
     if (Material.Metadata.HasNormal == 1 && Layout.AttributeMask.HasTangents == 1) {
         // Check if corresponding UVs are loaded; reload otherwise
         if (LastFetchedUVIndex != Material.Normal.UVChannelIndex) {
@@ -211,11 +199,10 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
             Normal
         );
 
-        Payload.OutgoingDirection = QuaternionRotate(float4(Instance.transform.rotation), mul(Payload.OutgoingDirection, TBN));
+        OutgoingDirection = QuaternionRotate(float4(Instance.transform.rotation), mul(OutgoingDirection, TBN));
 
         // Check for light leak, terminate tracing if trying to generate a path inside a geometry
-        if (dot(Payload.OutgoingDirection, GeometryNormal) < 0.0) {
-            Payload.Hit = false;
+        if (dot(OutgoingDirection, GeometryNormal) < 0.0) {
             return;
         }
     }
@@ -228,7 +215,7 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
             GeometryNormal
         );
 
-        Payload.OutgoingDirection = QuaternionRotate(float4(Instance.transform.rotation), mul(Payload.OutgoingDirection, TBN));
+        OutgoingDirection = QuaternionRotate(float4(Instance.transform.rotation), mul(OutgoingDirection, TBN));
     }
     float3 N = QuaternionRotate(float4(Instance.transform.rotation), Normal);
     Payload.HitPoint = WorldPosition + N * 0.0001f;
@@ -245,12 +232,18 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
     }
 
     // Compute BRDF
+    float Metallic = MetallicRoughnessOcclusion.b;
+    float Roughness = MetallicRoughnessOcclusion.g;
     float3 V = -Payload.IncomingDirection;
 
     float3 F0 = 0.04f;
     F0 = lerp(F0, BaseColor, MetallicRoughnessOcclusion.b);
 
-    float3 L = Payload.OutgoingDirection;
+    float3 L = OutgoingDirection;
+    if (Metallic == 1.0 && Roughness < 0.01f) {
+        L = reflect(-V, N);
+    }
+
     float3 H = normalize(V + L);
 
     float NDF = DistributionGGX(N, H, MetallicRoughnessOcclusion.g);
@@ -270,6 +263,8 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
 
     // No division by NdotL because cosine-weighted hemisphere sampler cancels it out
     Payload.PathThroughput *= (kD * BaseColor / PI + Specular) * PI;
+    Payload.IncomingDirection = L;
+    Payload.RandomSeed = Random.Get();
 }
 
 [shader("closesthit")]
@@ -281,7 +276,7 @@ void PointLightHit(inout RayPayload Payload, in BuiltInTriangleIntersectionAttri
 [shader("miss")]
 void Miss(inout RayPayload Payload)
 {
-    return;
+    //return;
     if (WorldRayDirection().y >= 0.0f) {
         Payload.LightColor = float3(0.7, 0.9, 1.0) * 20;
     } else {

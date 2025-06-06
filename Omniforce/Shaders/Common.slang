@@ -12,6 +12,8 @@ public static const float Inv4Pi = 0.07957747154594766788;
 public static const float PiOver2 = 1.57079632679489661923;
 public static const float PiOver4 = 0.78539816339744830961;
 public static const float Sqrt2 = 1.41421356237309504880;
+public static const float FloatMax = 3.402823466e+38F;
+public static const float FloatMin = 1.175494351e-38F;
 
 [[vk::binding(0, 0)]]
 public Sampler2D TextureHeap[];
@@ -82,6 +84,15 @@ public float3 Invert(float3 x) {
 
 public float4 Invert(float4 x) {
     return 1.0f - x;
+}
+
+public bool IsInvalidHitPoint<T>(T x) where T : IFloat {
+    return any(x == T(FloatMax));
+}
+
+public bool SameHemisphere(float3 a, float3 b, float3 N)
+{
+    return (dot(N, a) > 0.0) && (dot(N, b) > 0.0);
 }
 
 }
