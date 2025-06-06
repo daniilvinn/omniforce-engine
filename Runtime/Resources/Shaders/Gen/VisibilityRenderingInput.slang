@@ -1,2 +1,0 @@
-module VisibilityRenderingInput;
-__include Gen.Implementations.VisibilityRenderingInput.VisibilityRenderingInput;

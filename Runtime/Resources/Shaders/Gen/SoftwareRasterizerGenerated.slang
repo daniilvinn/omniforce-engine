@@ -1,2 +1,0 @@
-module SoftwareRasterizerGenerated;
-__include Gen.Implementations.SoftwareRasterizerGenerated.SWRasterQueue;
