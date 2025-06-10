@@ -225,7 +225,7 @@ namespace Omni {
 
 	void PathTracingSceneRenderer::EndScene()
 	{
-		if(!(m_HighLevelInstanceQueue.empty() && m_HostPointLights.empty())) {
+		if(!(m_HighLevelInstanceQueue.empty() && m_HostPointLights.empty()) && m_AccumulatedFrameCount < 4096) {
 			// Upload data to the render queue
 			m_DeviceRenderQueue->UploadData(
 				m_DeviceRenderQueue->GetFrameOffset(),
@@ -288,7 +288,7 @@ namespace Omni {
 			path_tracing_input->Instances = BDA<InstanceRenderData>(m_DeviceRenderQueue, m_DeviceRenderQueue->GetFrameOffset());
 			path_tracing_input->Meshes = m_MeshResourcesBuffer.GetStorageBDA();
 			path_tracing_input->RandomSeed = RandomEngine::Generate<uint32>(1);
-			path_tracing_input->AccumulatedFrames = glm::min(m_AccumulatedFrameCount, 8192ull);
+			path_tracing_input->AccumulatedFrames = m_AccumulatedFrameCount;
 			path_tracing_input->PointLights = BDA<ScenePointLights>(m_DevicePointLights, m_DevicePointLights->GetFrameOffset());
 
 			MiscData pc = {};
