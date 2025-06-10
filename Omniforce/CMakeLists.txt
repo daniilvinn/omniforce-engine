@@ -67,8 +67,9 @@ target_include_directories(${ENGINE_TARGET}
         "${CMAKE_CURRENT_SOURCE_DIR}/Shaders"
         "ThirdParty/tinyfiledialogs"
         "ThirdParty/miniaudio"
-        "ThirdParty/slang/include"
+        #"ThirdParty/slang/include"
         "${Vulkan_SDK}\\Include" 
+        "${Vulkan_SDK}\\Include\\slang" 
         "${Vulkan_SDK}\\Source" 
         "${LLVM_ROOT}\\include"
         "ThirdParty/stb"
@@ -90,7 +91,7 @@ target_link_directories(${ENGINE_TARGET} PUBLIC
     "${Vulkan_SDK}\\Bin" 
     "ThirdParty/mono/lib" 
     "ThirdParty/NVAftermath/lib/x64"
-    "ThirdParty/slang"
+    #"ThirdParty/slang"
     "${LLVM_ROOT}\\lib"
 )
 target_compile_definitions(${ENGINE_TARGET} 
@@ -123,7 +124,7 @@ target_link_libraries(
 
 target_link_libraries(
     ${ENGINE_TARGET}
-    PRIVATE 
+    PUBLIC 
         debug shaderc_sharedd.lib optimized shaderc_shared.lib
         debug shaderc_utild.lib optimized shaderc_util.lib
         glfw
@@ -239,7 +240,7 @@ file(WRITE "${CMAKE_SOURCE_DIR}/Omniforce/Shaders/slangdconfig.json" "${SLANG_CO
 add_dependencies(${ENGINE_TARGET} MetaToolRunner)
 
 # Copy slang.dll to Runtime directory
-set(SLANG_DLL_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/slang/slang.dll")
+set(SLANG_DLL_SOURCE "${Vulkan_SDK}\\Bin\\slang.dll" )
 set(SLANG_DLL_DESTINATION "${CMAKE_SOURCE_DIR}/Runtime/slang.dll")
 
 file(COPY "${SLANG_DLL_SOURCE}" DESTINATION "${CMAKE_SOURCE_DIR}/Runtime")

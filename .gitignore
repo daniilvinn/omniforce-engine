@@ -8,5 +8,5 @@ Editor/Resources/Shaders
 Sandbox/Resources
 Omniforce/Shaders/Gen
 Omniforce/Shaders/slangdconfig.json
-Runtime/slang.dll
+Runtime/*.dll
 Runtime/Resources/Shaders

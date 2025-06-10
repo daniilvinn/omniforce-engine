@@ -36,6 +36,3 @@ SetupTarget(${EDITOR_TARGET})
 omni_set_project_ide_folder(${EDITOR_TARGET} ${CMAKE_CURRENT_SOURCE_DIR})
 
 install(TARGETS Editor DESTINATION "${CMAKE_SOURCE_DIR}/Install")
-
-install(DIRECTORY Resources DESTINATION "${CMAKE_INSTALL_PREFIX}")
-install(FILES imgui.ini DESTINATION "${CMAKE_INSTALL_PREFIX}")
