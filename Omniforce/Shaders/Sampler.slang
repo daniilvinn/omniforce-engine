@@ -104,7 +104,7 @@ namespace Omni {
         float3 V_world,
         float3 BaseColor, 
         float Metallic,
-                           float RoughnessIn, 
+        float RoughnessIn, 
         float3 F0,
         float2 Xi,
         out float3 L, 
@@ -112,7 +112,7 @@ namespace Omni {
         out float pdf
     ) {
             // Initialize outputs
-            L = float3(0, 0, 0);
+            L = FloatMax;
             weight = float3(0, 0, 0);
             pdf = 0.0;
 
@@ -122,6 +122,7 @@ namespace Omni {
 
             // Early exit for grazing angles
             if (NdotV < 1e-6) {
+                L = FloatMax;
                 return;
             }
 
@@ -190,7 +191,7 @@ namespace Omni {
             }
             else
             {
-                // No valid sampling direction
+                L = FloatMax;
                 return;
             }
 
@@ -202,6 +203,7 @@ namespace Omni {
 
             // Early exit for invalid geometry
             if (NdotL < 1e-6 || NdotH < 1e-6 || VdotH < 1e-6) {
+                L = FloatMax;
                 return;
             }
 
@@ -221,6 +223,7 @@ namespace Omni {
             pdf = pSpec * pdfSpec + pDiff * pdfDiff;
 
             if (pdf < 1e-8) {
+                L = FloatMax;
                 return;
             }
 
@@ -245,16 +248,11 @@ namespace Omni {
             // Importance sampling weight: f * cos(theta) / pdf
             weight = f * NdotL / pdf;
 
-            return;
-
-            // Safety clamp to prevent energy amplification
-            weight = min(weight, float3(10.0, 10.0, 10.0));
-
-
             // Check for invalid values
             if (!isfinite(weight.x) || !isfinite(weight.y) || !isfinite(weight.z)) {
                 weight = float3(0.0, 0.0, 0.0);
                 pdf = 0.0;
+                L = FloatMax;
             }
         }
     };

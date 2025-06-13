@@ -95,4 +95,128 @@ public bool SameHemisphere(float3 a, float3 b, float3 N)
     return (dot(N, a) > 0.0) && (dot(N, b) > 0.0);
 }
 
+public struct BarycentricDerivative
+{
+    float3 Lambda;
+    float3 ddx;
+    float3 ddy;
+
+    // Compute barycentric coordinates of a pixel between 3 vertices
+    // Also analytically compute derivates
+    // Vertices are in clip-space, just after MVP transformation
+    [mutating]
+    public void Setup(float4 v0, float4 v1, float4 v2, float2 PixelNDC, float2 ImageSize)
+    {
+        float3 inverse_w = 1.0 / float3(v0.w, v1.w, v2.w);
+
+        float2 ndc0 = v0.xy * inverse_w.x;
+        float2 ndc1 = v1.xy * inverse_w.y;
+        float2 ndc2 = v2.xy * inverse_w.z;
+
+        float inverse_determinant = 1.0 / determinant(float2x2(ndc2 - ndc1, ndc0 - ndc1));
+
+        ddx = float3(ndc1.y - ndc2.y, ndc2.y - ndc0.y, ndc0.y - ndc1.y) * inverse_determinant * inverse_w;
+        ddy = float3(ndc2.x - ndc1.x, ndc0.x - ndc2.x, ndc1.x - ndc0.x) * inverse_determinant * inverse_w;
+
+        float ddx_sum = dot(ddx, float3(1.0));
+        float ddy_sum = dot(ddy, float3(1.0));
+
+        float2 delta_vector = PixelNDC - ndc0;
+        float interpolated_inverse_w = inverse_w.x + delta_vector.x * ddx_sum + delta_vector.y * ddy_sum;
+        float interpolated_w = 1.0 / interpolated_inverse_w;
+
+        Lambda.x = interpolated_w * (inverse_w[0] + delta_vector.x * ddx.x + delta_vector.y * ddy.x);
+        Lambda.y = interpolated_w * (0.0 + delta_vector.x * ddx.y + delta_vector.y * ddy.y);
+        Lambda.z = interpolated_w * (0.0 + delta_vector.x * ddx.z + delta_vector.y * ddy.z);
+
+        ddx *= (2.0 / ImageSize.x);
+        ddy *= (2.0 / ImageSize.y);
+        ddx_sum *= (2.0 / ImageSize.x);
+        ddy_sum *= (2.0 / ImageSize.y);
+
+        ddy *= -1.0;
+        ddy_sum *= -1.0;
+
+        float interpolated_w_ddx = 1.0 / (interpolated_inverse_w + ddx_sum);
+        float interpolated_w_ddy = 1.0 / (interpolated_inverse_w + ddy_sum);
+
+        ddx = interpolated_w_ddx * (Lambda * interpolated_inverse_w + ddx) - Lambda;
+        ddy = interpolated_w_ddy * (Lambda * interpolated_inverse_w + ddy) - Lambda;
+    }
+
+    // Scalar float interpolation utils
+    public float Interpolate(float v0, float v1, float v2)
+    {
+        float3 MergedVertex = float3(v0, v1, v2);
+
+        return dot(MergedVertex, Lambda);
+    }
+
+    public float Interpolate(float v0, float v1, float v2, out float OutDdx, out float OutDdy)
+    {
+        float3 MergedVertex = float3(v0, v1, v2);
+
+        OutDdx = dot(MergedVertex, ddx);
+        OutDdy = dot(MergedVertex, ddy);
+
+        return dot(MergedVertex, Lambda);
+    }
+
+    // float2 interpolation utils
+    public float2 Interpolate(float2 v0, float2 v1, float2 v2)
+    {
+        float2 MergedVertex = v0 * Lambda.x + v1 * Lambda.y + v2 * Lambda.z;
+
+        return MergedVertex;
+    }
+
+    public float2 Interpolate(float2 v0, float2 v1, float2 v2, out float2 OutDdx, out float2 OutDdy)
+    {
+        float2 MergedVertex = v0 * Lambda.x + v1 * Lambda.y + v2 * Lambda.z;
+
+        OutDdx = v0 * ddx.x + v1 * ddx.y + v2 * ddx.z;
+        OutDdy = v0 * ddy.x + v1 * ddy.y + v2 * ddy.z;
+
+        return MergedVertex;
+    }
+
+    // float3 interpolation utils
+    public float3 Interpolate(float3 v0, float3 v1, float3 v2)
+    {
+        float3 MergedVertex = v0 * Lambda.x + v1 * Lambda.y + v2 * Lambda.z;
+
+        return MergedVertex;
+    }
+
+    public float3 Interpolate(float3 v0, float3 v1, float3 v2, out float3 OutDdx, out float3 OutDdy)
+    {
+        float3 MergedVertex = v0 * Lambda.x + v1 * Lambda.y + v2 * Lambda.z;
+
+        OutDdx = v0 * ddx.x + v1 * ddx.y + v2 * ddx.z;
+        OutDdy = v0 * ddy.x + v1 * ddy.y + v2 * ddy.z;
+
+        return MergedVertex;
+    }
+
+    // float4 interpolation utils
+    public float4 Interpolate(float4 v0, float4 v1, float4 v2)
+    {
+        float4 MergedVertex = v0 * Lambda.x + v1 * Lambda.y + v2 * Lambda.z;
+
+        return MergedVertex;
+    }
+
+    public float4 Interpolate(float4 v0, float4 v1, float4 v2, out float4 OutDdx, out float4 OutDdy)
+    {
+        float4 MergedVertex = v0 * Lambda.x + v1 * Lambda.y + v2 * Lambda.z;
+
+        OutDdx = v0 * ddx.x + v1 * ddx.y + v2 * ddx.z;
+        OutDdy = v0 * ddy.x + v1 * ddy.y + v2 * ddy.z;
+
+        return MergedVertex;
+    }
+
+};
+
+
 }
