@@ -80,8 +80,6 @@ void PathConstruction()
         }
     }
 
-    Payload.PathThroughput = saturate(Payload.PathThroughput);
-
     // Compute final color, get history, blend and write back
     float3 FinalColor = Payload.LightColor * Payload.PathThroughput;
 
@@ -96,7 +94,6 @@ void PathConstruction()
 [shader("closesthit")]
 void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttributes Attr)
 {
-
     InstanceRenderData Instance = Input.Instances[InstanceID()];
     GeometryMeshData Geometry = Input.Meshes[Instance.geometry_data_id];
     GeometryLayoutTable Layout = Geometry.ray_tracing.layout;
@@ -169,7 +166,8 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
             half2 FetchedTangent = *(half2 *)(Geometry.ray_tracing.attributes + AttrOffset + Layout.Offsets.Tangent);
             Tangent += Decoder.DecodeTangent(FetchedTangent) * Barys[i];
         }
-
+        Tangent = normalize(Tangent);
+        
         // Compute bitangent
         Bitangent = cross(GeometryNormal, Tangent.xyz) * Tangent.w;
 
@@ -212,10 +210,12 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
     // Compute BRDF
     float Metallic = MetallicRoughnessOcclusion.b;
     float Roughness = MetallicRoughnessOcclusion.g;
-    float3 V = -Payload.IncomingDirection;
+
+    // Ensure consistent view direction (toward surface)
+    float3 V = normalize(-Payload.IncomingDirection);
 
     float3 F0 = 0.04f;
-    F0 = lerp(F0, BaseColor, MetallicRoughnessOcclusion.b);
+    F0 = lerp(F0, BaseColor, Metallic);
 
     float3 L;
 
@@ -232,7 +232,7 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
         N,
         Tangent.xyz,
         Bitangent,
-        -Payload.IncomingDirection,
+        V,
         BaseColor,
         Metallic,
         Roughness,
@@ -243,8 +243,15 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
         PDF
     );
 
-    Payload.PathThroughput *= BRDFWeight;
-    Payload.IncomingDirection = L;
+    // Validate and apply BRDF weight
+    if (PDF > 1e-8 && isfinite(BRDFWeight.x) && isfinite(BRDFWeight.y) && isfinite(BRDFWeight.z)) {
+        Payload.PathThroughput *= BRDFWeight;
+        Payload.IncomingDirection = L;
+    } else {
+        // Terminate path on invalid sample
+        Payload.PathThroughput = float3(0.0, 0.0, 0.0);
+    }
+
     Payload.RandomSeed = Random.Get();
     Payload.HitPoint = WorldPosition + N * 0.0001f;
 }

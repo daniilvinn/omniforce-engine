@@ -61,16 +61,17 @@ namespace Omni {
         public float3 Sample(float3 ViewDir, float Roughness, float2 Xi)
         {
             float alpha = Roughness * Roughness;
-            float alpha2 = alpha * alpha;
 
+            // Normalize view direction (should point toward surface)
             float3 V = normalize(ViewDir);
 
+            // Transform view to hemisphere configuration
             float3 Vh = normalize(float3(alpha * V.x, alpha * V.y, V.z));
 
             float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
             float3 T1 = (lensq > 0.0)
-                       ? normalize(float3(-Vh.y, Vh.x, 0.0))
-                       : float3(1.0, 0.0, 0.0);
+                   ? normalize(float3(-Vh.y, Vh.x, 0.0))
+                   : float3(1.0, 0.0, 0.0);
             float3 T2 = cross(Vh, T1);
 
             float r = sqrt(Xi.x);
@@ -85,6 +86,7 @@ namespace Omni {
 
             float3 Nh = t1 * T1 + t2 * T2 + t3 * Vh;
 
+            // Transform back to world space
             float3 H = normalize(float3(alpha * Nh.x, alpha * Nh.y, max(0.0, Nh.z)));
             return H;
         }
@@ -96,28 +98,44 @@ namespace Omni {
     public struct CookTorranceBRDFSampler
     {
         public void Sample(
-            float3 N, 
-            float3 T, 
-            float3 B, 
-            float3 V_world,
-            float3 BaseColor, 
-            float Metallic, 
-            float RoughnessIn, 
-            float3 F0,
-            float2 Xi,
-            out float3 L, 
-            out float3 weight, 
-            out float pdf
-        ) {
+        float3 N, 
+        float3 T, 
+        float3 B, 
+        float3 V_world,
+        float3 BaseColor, 
+        float Metallic,
+                           float RoughnessIn, 
+        float3 F0,
+        float2 Xi,
+        out float3 L, 
+        out float3 weight, 
+        out float pdf
+    ) {
+            // Initialize outputs
+            L = float3(0, 0, 0);
+            weight = float3(0, 0, 0);
+            pdf = 0.0;
+
+            // Ensure view direction points toward surface
+            float3 V = normalize(V_world);
+            float NdotV = max(dot(N, V), 0.0);
+
+            // Early exit for grazing angles
+            if (NdotV < 1e-6) {
+                return;
+            }
+
             // --- 1) Perfect mirror shortcut -------------------------------
             if (Metallic >= 1.0 && RoughnessIn < 0.01)
             {
-                // reflect view around normal
-                float3 R = reflect(-V_world, N);
-                L = normalize(R);
+                L = normalize(reflect(-V, N));
+                float NdotL = max(dot(N, L), 0.0);
+
+                if (NdotL < 1e-6) {
+                    return;
+                }
 
                 // Fresnel at view angle
-                float NdotV = max(dot(N, V_world), 0.0);
                 float3 Fm = F0 + (1.0 - F0) * pow(clamp(1.0 - NdotV, 0.0, 1.0), 5.0);
 
                 pdf = 1.0;
@@ -127,32 +145,29 @@ namespace Omni {
 
             // --- 2) Common precomputations ---------------------------------
             float Roughness = max(RoughnessIn, 0.001); // avoid singularities
-            float NdotV = max(dot(N, V_world), 0.0);  
 
-            // Fresnel at view direction for specular weight kS
+            // Fresnel at view direction for energy distribution
             float3 Fv = F0 + (1.0 - F0) * pow(clamp(1.0 - NdotV, 0.0, 1.0), 5.0);
             float3 kS = Fv;
             float3 kD = (1.0 - kS) * (1.0 - Metallic); // energy conserving diffuse
 
-            // base diffuse term (Lambertian)
-            float3 Diffuse = kD * BaseColor * InvPi;
-
-            // MIS mixing probabilities
-            float wS = dot(kS, float3(1.0, 1.0, 1.0)) / 3.0;
-            float wD = dot(kD, float3(1.0, 1.0, 1.0)) / 3.0;
-            float pSpec = (wS + 1e-6) / (wS + wD + 1e-6);
-            float pDiff = 1.0 - pSpec;
-
-            // placeholders for branch outputs
-            float3 H;
-            float pdfLocal;
+            // Use luminance weights for MIS probabilities
+            float wS = dot(kS, float3(0.299, 0.587, 0.114));
+            float wD = dot(kD, float3(0.299, 0.587, 0.114));
+            float totalWeight = wS + wD + 1e-8;
+            float pSpec = wS / totalWeight;
+            float pDiff = wD / totalWeight;
 
             // --- 3) Branch: Specular vs Diffuse sampling ------------------
-            if (Xi.x < pSpec && pSpec > 1e-5)
+            float3 H;
+
+            if (Xi.x < pSpec && pSpec > 1e-6)
             {
                 // ---- Specular (GGX VNDF) sampling ----
                 float2 xi_spec = float2(Xi.x / pSpec, Xi.y);
-                float3 V_local = float3(dot(V_world, T), dot(V_world, B), dot(V_world, N));
+
+                // Transform view to local tangent space
+                float3 V_local = float3(dot(V, T), dot(V, B), dot(V, N));
 
                 // Sample microfacet normal H in local space
                 GGXVNDFSampler vndf;
@@ -160,68 +175,87 @@ namespace Omni {
                 H = normalize(H_local.x * T + H_local.y * B + H_local.z * N);
 
                 // Reflect view around H to get outgoing direction L
-                L = normalize(reflect(-V_world, H));
-
-                // PDF = pSpec * D(H) * cosH / (4 V*H)
-                float NdotH = max(dot(N, H), 0.0);
-                float VdotH = max(dot(V_world, H), 0.0);
-                float D = DistributionGGX(N, H, Roughness);
-
-                pdfLocal = D * NdotH / (4.0 * (VdotH + 1e-7));
-                pdf = pSpec * pdfLocal;
+                L = normalize(reflect(-V, H));
             }
-            else
+            else if (pDiff > 1e-6)
             {
                 // ---- Diffuse (cosine) sampling ----
-                float2 xi_diff = (pDiff > 1e-5) 
-                ? float2((Xi.x - pSpec) / pDiff, Xi.y) 
-                : Xi;
+                float2 xi_diff = float2((Xi.x - pSpec) / pDiff, Xi.y);
 
                 CosineWeightedHemisphereSampler cosSamp;
                 float3 L_local = cosSamp.Sample(xi_diff);
 
                 L = normalize(L_local.x * T + L_local.y * B + L_local.z * N);
-                H = normalize(V_world + L);
-
-                // PDF = pDiff * cos(eta) / Pi
-                float NdotL = max(dot(N, L), 0.0);
-                pdfLocal = NdotL * InvPi;
-                pdf = pDiff * pdfLocal;
+                H = normalize(V + L);
             }
-
-            // --- 4) Early exits on invalid PDF or geometry ---------------
-            if (pdf <= 1e-7 || !isfinite(pdf))
+            else
             {
-                weight = float3(0.0, 0.0, 0.0);
-                pdf = 0.0;
+                // No valid sampling direction
                 return;
             }
 
+            // --- 4) Validate geometry and calculate final terms -----------
             float NdotL = max(dot(N, L), 0.0);
-            if (NdotL <= 0.0)
-            {
-                weight = float3(0.0, 0.0, 0.0);
-                pdf = 0.0;
+            float NdotH = max(dot(N, H), 0.0);
+            float VdotH = max(dot(V, H), 0.0);
+            float LdotH = max(dot(L, H), 0.0);
+
+            // Early exit for invalid geometry
+            if (NdotL < 1e-6 || NdotH < 1e-6 || VdotH < 1e-6) {
                 return;
             }
 
-            // --- 5) Final BRDF evaluation --------------------------------
-            float NdotH = max(dot(N, H), 0.0);
-            float VdotH = max(dot(V_world, H), 0.0);
+            // --- 5) Calculate PDF for MIS ----------------------------------
+            float pdfSpec = 0.0;
+            float pdfDiff = 0.0;
 
+            if (pSpec > 1e-6) {
+                float D = DistributionGGX(N, H, Roughness);
+                pdfSpec = D * NdotH / (4.0 * VdotH);
+            }
+
+            if (pDiff > 1e-6) {
+                pdfDiff = NdotL * InvPi;
+            }
+
+            pdf = pSpec * pdfSpec + pDiff * pdfDiff;
+
+            if (pdf < 1e-8) {
+                return;
+            }
+
+            // --- 6) Final BRDF evaluation --------------------------------
             float D = DistributionGGX(N, H, Roughness);
-            float G = GeometrySmith(N, V_world, L, Roughness);
+            float G = GeometrySmith(N, V, L, Roughness);
 
             // Fresnel at half-vector H
             float3 Fh = F0 + (1.0 - F0) * pow(clamp(1.0 - VdotH, 0.0, 1.0), 5.0);
 
             // Cook-Torrance specular term
-            float denom = 4.0 * NdotV * NdotL + 1e-7;
+            float denom = 4.0 * NdotV * NdotL + 1e-8;
             float3 Specular = (D * G * Fh) / denom;
 
-            // importance-sampled weight
+            // Lambertian diffuse term
+            float3 kD_final = (1.0 - Fh) * (1.0 - Metallic);
+            float3 Diffuse = kD_final * BaseColor * InvPi;
+
+            // Total BRDF
             float3 f = Diffuse + Specular;
+
+            // Importance sampling weight: f * cos(theta) / pdf
             weight = f * NdotL / pdf;
+
+            return;
+
+            // Safety clamp to prevent energy amplification
+            weight = min(weight, float3(10.0, 10.0, 10.0));
+
+
+            // Check for invalid values
+            if (!isfinite(weight.x) || !isfinite(weight.y) || !isfinite(weight.z)) {
+                weight = float3(0.0, 0.0, 0.0);
+                pdf = 0.0;
+            }
         }
     };
 
