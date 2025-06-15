@@ -121,7 +121,7 @@ namespace Omni {
             float NdotV = max(dot(N, V), 0.0);
 
             // Early exit for grazing angles
-            if (NdotV < 1e-6) {
+            if (NdotV < FloatMin) {
                 L = FloatMax;
                 return;
             }
@@ -132,7 +132,7 @@ namespace Omni {
                 L = normalize(reflect(-V, N));
                 float NdotL = max(dot(N, L), 0.0);
 
-                if (NdotL < 1e-6) {
+                if (NdotL < FloatMin) {
                     return;
                 }
 
@@ -162,7 +162,7 @@ namespace Omni {
             // --- 3) Branch: Specular vs Diffuse sampling ------------------
             float3 H;
 
-            if (Xi.x < pSpec && pSpec > 1e-6)
+            if (Xi.x < pSpec && pSpec > FloatMin)
             {
                 // ---- Specular (GGX VNDF) sampling ----
                 float2 xi_spec = float2(Xi.x / pSpec, Xi.y);
@@ -178,7 +178,7 @@ namespace Omni {
                 // Reflect view around H to get outgoing direction L
                 L = normalize(reflect(-V, H));
             }
-            else if (pDiff > 1e-6)
+            else if (pDiff > FloatMin)
             {
                 // ---- Diffuse (cosine) sampling ----
                 float2 xi_diff = float2((Xi.x - pSpec) / pDiff, Xi.y);
@@ -202,7 +202,7 @@ namespace Omni {
             float LdotH = max(dot(L, H), 0.0);
 
             // Early exit for invalid geometry
-            if (NdotL < 1e-6 || NdotH < 1e-6 || VdotH < 1e-6) {
+            if (NdotL < FloatMin || NdotH < FloatMin || VdotH < FloatMin) {
                 L = FloatMax;
                 return;
             }
@@ -211,12 +211,12 @@ namespace Omni {
             float pdfSpec = 0.0;
             float pdfDiff = 0.0;
 
-            if (pSpec > 1e-6) {
+            if (pSpec > FloatMin) {
                 float D = DistributionGGX(N, H, Roughness);
                 pdfSpec = D * NdotH / (4.0 * VdotH);
             }
 
-            if (pDiff > 1e-6) {
+            if (pDiff > FloatMin) {
                 pdfDiff = NdotL * InvPi;
             }
 
