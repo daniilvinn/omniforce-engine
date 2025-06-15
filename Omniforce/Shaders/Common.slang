@@ -74,16 +74,8 @@ public float4 VerticalInvert(float4 x) {
     return Result;
 }
 
-public float2 Invert(float2 x) {
-    return 1.0f - x;
-}
-
-public float3 Invert(float3 x) {
-    return 1.0f - x;
-}
-
-public float4 Invert(float4 x) {
-    return 1.0f - x;
+public T Invert<T>(T x) where T : IFloat {
+    return T(1.0f) - x;
 }
 
 public bool IsInvalidHitPoint<T>(T x) where T : IFloat {

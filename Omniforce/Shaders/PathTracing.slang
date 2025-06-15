@@ -256,7 +256,7 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
     float3 BRDFWeight;
     float PDF;
 
-    CookTorranceBRDFSampler Sampler;
+    PathTracingSamplingStrategy Sampler;
     Sampler.Sample(
         N,
         Tangent.xyz,
@@ -282,6 +282,12 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
     }
 
     Payload.RandomSeed = Random.Get();
+
+    if (IsInvalidHitPoint(L)) {
+        Payload.HitPoint = FloatMax;
+        return;
+    }
+
     Payload.HitPoint = WorldPosition + N * 0.0001f;
 }
 

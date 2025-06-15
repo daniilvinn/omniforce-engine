@@ -158,7 +158,6 @@ namespace Omni {
 				light_data.Position = trs_component.translation;
 				light_data.Color = point_light.color;
 				light_data.Intensity = point_light.intensity;
-				light_data.MinRadius = point_light.min_radius;
 				light_data.Radius = point_light.radius;
 
 				m_Renderer->AddPointLight(light_data);

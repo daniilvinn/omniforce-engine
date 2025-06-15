@@ -264,7 +264,7 @@ namespace Omni {
 				tlas_instance.mask = 0xFF;
 				tlas_instance.SBT_record_offset = 1;
 				tlas_instance.transform.translation = light.Position;
-				tlas_instance.transform.scale = glm::vec3(light.MinRadius);
+				tlas_instance.transform.scale = glm::vec3(light.Radius);
 
 				tlas_instances.Add(tlas_instance);
 				i++;

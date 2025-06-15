@@ -7,9 +7,11 @@ namespace Omni {
 
 public extension Omni.PointLight {
     public float ComputeAttenuation(float3 WorldPosition) {
-        float Distance = distance(Position, WorldPosition);
-        float Attenuation = clamp(1.0 - (Distance - MinRadius) / (Radius - MinRadius), 0.0, 1.0);
-        return Attenuation * Attenuation;
+        float DistanceSquared = distance(Position, WorldPosition);
+        DistanceSquared = max(DistanceSquared, 1e-4f);
+
+        return Intensity / DistanceSquared;
+    }
     }
 }
 

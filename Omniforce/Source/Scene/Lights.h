@@ -12,7 +12,6 @@ namespace Omni {
 		glm::vec3 Position;
 		glm::vec3 Color;
 		float32 Intensity;
-		float32 MinRadius;
 		float32 Radius;
 	};
 
