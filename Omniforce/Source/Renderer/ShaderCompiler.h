@@ -55,8 +55,8 @@ namespace Omni {
 		shaderc::Compiler m_Compiler;
 		shaderc::CompileOptions m_GlobalOptions;
 		
-		Slang::ComPtr<slang::IGlobalSession> m_GlobalSession;
-		Slang::ComPtr<slang::ISession> m_LocalSession;
+		inline static Slang::ComPtr<slang::IGlobalSession> m_GlobalSession = nullptr;
+		inline static Slang::ComPtr<slang::ISession> m_LocalSession = nullptr;
 		rhumap<std::string, slang::IModule*> m_LoadedModules;
 
 		std::map<std::string, std::string> m_GlobalMacros;

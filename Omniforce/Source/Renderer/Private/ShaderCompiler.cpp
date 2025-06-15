@@ -56,14 +56,12 @@ namespace Omni {
 		m_GlobalOptions.SetTargetSpirv(shaderc_spirv_version_1_6);
 		m_GlobalOptions.SetPreserveBindings(true);
 
-		// Slang test
-		{
+		if(m_GlobalSession == nullptr && m_LocalSession == nullptr) {
 			Timer timer;
 			SlangResult slang_result = slang::createGlobalSession(m_GlobalSession.writeRef());
 			OMNIFORCE_ASSERT_TAGGED(SLANG_SUCCEEDED(slang_result), "Failed to create shader compiler global session");
 
 			OMNIFORCE_CORE_INFO("Created shader compiler global session. Taken time: {}s", timer.ElapsedMilliseconds() / 1000.0f);
-
 
 			// Create local session
 			slang::TargetDesc target_description = {};
@@ -81,7 +79,7 @@ namespace Omni {
 			session_description.searchPaths = IncludeDir;
 			session_description.searchPathCount = 1;
 
-			slang_result = m_GlobalSession->createSession(session_description, m_LocalSession.writeRef());
+			m_GlobalSession->createSession(session_description, m_LocalSession.writeRef());
 		}
 	}
 
