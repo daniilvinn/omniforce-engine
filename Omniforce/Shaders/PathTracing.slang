@@ -163,7 +163,7 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
 
     // Fetch vertex normals
     float3 GeometryNormal = 0;
-    if (Material.Metadata.HasNormal == 1) {
+    if (Layout.AttributeMask.HasNormals == 1) {
         VertexDecoder Decoder;
 
         for (uint i = 0; i < 3; i++) {
@@ -171,8 +171,9 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
             half2 FetchedNormal = *(half2 *)(Geometry.ray_tracing.attributes + AttrOffset + Layout.Offsets.Normal);
             GeometryNormal += Decoder.OctahedronDecode(FetchedNormal) * Barys[i];
         }
-    } else {
-        GeometryNormal = float3(0, 0, 1);
+    } else { // Terminate if no geometry normals
+        Payload.HitPoint = FloatMax;
+        return;
     }
 
     // Fetch normal map
@@ -211,18 +212,23 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
 
         Normal = mul(NormalMapTexel, TBN);
 
+        NormalFixer Fixer;
+        Normal = Fixer.PullNormal(Normal, Payload.IncomingDirection, GeometryNormal);
+
         // Build TBN matrix for a normal from normal map
         Tangent.xyz = normalize(Tangent.xyz - dot(Tangent.xyz, Normal) * Normal);
         Bitangent = cross(Normal, Tangent.xyz);
     } else {
-        Tangent.xyz = normalize(cross(Normal, float3(0, 1, 0)));
+        float3 UpVector = float3(0.0f, 1.0f, 0.0f);
+        float3 ReferenceVector = abs(dot(Normal, UpVector)) > 0.9 ? float3(1.0f, 0.0f, 0.0f) : UpVector;
+
+        Tangent.xyz = normalize(cross(Normal, ReferenceVector));
         Bitangent = cross(Normal, Tangent.xyz);
     }
 
     float3 N = QuaternionRotate(float4(Instance.transform.rotation), Normal);
     Tangent.xyz = QuaternionRotate(float4(Instance.transform.rotation), Tangent.xyz);
     Bitangent = QuaternionRotate(float4(Instance.transform.rotation), Bitangent);
-    Payload.HitPoint = WorldPosition + N * 0.0001f;
 
     // Fetch metallic roughness
     float3 MetallicRoughnessOcclusion = float3(1.0f, 1.0f, 0.0f);
@@ -288,7 +294,7 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
         return;
     }
 
-    Payload.HitPoint = WorldPosition + N * 0.0001f;
+    Payload.HitPoint = WorldPosition + GeometryNormal * 0.001f;
 }
 
 [shader("closesthit")]

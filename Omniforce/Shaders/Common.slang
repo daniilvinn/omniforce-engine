@@ -87,6 +87,42 @@ public bool SameHemisphere(float3 a, float3 b, float3 N)
     return (dot(N, a) > 0.0) && (dot(N, b) > 0.0);
 }
 
+// Normal pull up method to fix normals for path tracing
+// https://github.com/Devsh-Graphics-Programming/Nabla/blob/master/include/nbl/builtin/glsl/bxdf/common.glsl
+public struct NormalFixer {
+    internal bool IsNormalValid(float3 N, float3 V, float3 G, out float VdotN, out float NdotG, out float VdotG, out float firstReflectionPart)
+    {
+        VdotN = dot(V, N);
+        NdotG = dot(N, G);
+        VdotG = dot(V, G);
+
+        firstReflectionPart = 2.f * VdotN * NdotG;
+
+        return (sign(VdotG) * firstReflectionPart) >= abs(VdotG);
+    }
+
+    internal bool IsNormalValid(float3 N, float3 V, float3 G, out float VdotN, out float NdotG, out float VdotG)
+    {
+        float dummy;
+        return IsNormalValid(N, V, G, VdotN, NdotG, VdotG, dummy);
+    }
+
+    public float3 PullNormal(float3 N, float3 V, float3 G)
+    {
+        float VdotN, NdotG, VdotG;
+        if (IsNormalValid(N, V, G, VdotN, NdotG, VdotG))
+            return N;
+
+        float3 R = N * VdotG - V * NdotG;
+        float lenR2 = dot(R, R);
+        
+        float3 newN = normalize(R + V * sqrt(lenR2));
+
+        NdotG = dot(newN, G);
+        return (NdotG < 0.f) ? (-newN) : newN;
+    }
+};
+
 public struct BarycentricDerivative
 {
     float3 Lambda;
