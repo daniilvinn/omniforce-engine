@@ -48,7 +48,12 @@ namespace Omni {
 		/*
 		*  Build acceleration structure for ray tracing
 		*/
-		Ptr<RTAccelerationStructure> BuildAccelerationStructure(const std::vector<byte>& vertex_data, const std::vector<uint32>& index_data, uint32 vertex_stride);
+		Ptr<RTAccelerationStructure> BuildAccelerationStructure(
+			const std::vector<byte>& vertex_data,
+			const std::vector<uint32>& index_data,
+			uint32 vertex_stride,
+			bool opaque_geometry
+		);
 
 		/*
 		*  Builds device struct of attribute layout
@@ -71,6 +76,7 @@ namespace Omni {
 			const std::vector<uint32>* index_data,
 			uint32 vertex_stride,
 			const VertexAttributeMetadataTable& vertex_metadata,
+			ftf::Material& material,
 			std::shared_mutex* mtx
 		);
 

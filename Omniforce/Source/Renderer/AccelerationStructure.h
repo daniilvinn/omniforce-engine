@@ -13,6 +13,7 @@ namespace Omni {
 		uint32 vertex_stride			= (uint32)-1;
 		uint32 vertex_count				= (uint32)-1;
 		uint32 index_count				= (uint32)-1;
+		bool is_opaque_geometry			= true;
 	};
 
 	struct TLASInstance {

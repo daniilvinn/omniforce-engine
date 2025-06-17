@@ -32,7 +32,7 @@ namespace Omni {
 		VkAccelerationStructureGeometryKHR geometry = {};
 		geometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
 		geometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-		geometry.flags = VK_GEOMETRY_OPAQUE_BIT_KHR;
+		geometry.flags = build_info.is_opaque_geometry ? VK_GEOMETRY_OPAQUE_BIT_KHR : 0;
 		geometry.geometry.triangles = geometry_triangle_data;
 
 		VkAccelerationStructureBuildGeometryInfoKHR build_geometry_info = {};

@@ -85,15 +85,15 @@ namespace Omni {
 					// 3. Process mesh data - generate lods, optimize mesh, generate meshlets etc.
 					Ref<Mesh> mesh;
 					AABB lod0_aabb = {};
+					ftf::Material& ftf_material = ftf_asset.materials[primitive.materialIndex.value()];
 
 					auto mesh_process_task = subflow.emplace([&, this]() {
-						ProcessMeshData(&mesh, &lod0_aabb, &vertex_data, &index_data, vertex_stride, attribute_metadata_table, &mtx);
+						ProcessMeshData(&mesh, &lod0_aabb, &vertex_data, &index_data, vertex_stride, attribute_metadata_table, ftf_material, &mtx);
 						OMNIFORCE_CORE_TRACE("[{}/{}] Loaded mesh: {}", ++mesh_load_progress_counter, ftf_asset.meshes.size(), ftf_mesh.name);
 					}).succeed(attribute_read_task);
 
 					// 4. Process material data - load textures, generate mip-maps, compress. Also copies scalar material properties
 					//    Material processing requires additional steps in order to make sure that no duplicates will be created.
-					const ftf::Material& ftf_material = ftf_asset.materials[primitive.materialIndex.value()];
 					Ref<Material> material;
 
 					auto material_process_task = subflow.emplace([&, this](tf::Subflow& sf) {
@@ -225,7 +225,12 @@ namespace Omni {
 		*out_size = attribute_stride;
 	}
 
-	Ptr<RTAccelerationStructure> ModelImporter::BuildAccelerationStructure(const std::vector<byte>& vertex_data, const std::vector<uint32>& index_data, uint32 vertex_stride)
+	Ptr<RTAccelerationStructure> ModelImporter::BuildAccelerationStructure(
+		const std::vector<byte>& vertex_data, 
+		const std::vector<uint32>& index_data, 
+		uint32 vertex_stride, 
+		bool opaque_geometry
+	)
 	{
 		DeviceBufferSpecification vertex_buffer_spec = {};
 		vertex_buffer_spec.size = vertex_data.size();
@@ -251,6 +256,7 @@ namespace Omni {
 		blas_build_info.vertex_count = vertex_data.size() / vertex_stride;
 		blas_build_info.index_count = index_data.size();
 		blas_build_info.vertex_stride = vertex_stride;
+		blas_build_info.is_opaque_geometry = opaque_geometry;
 
 		Ptr<RTAccelerationStructure> as = RTAccelerationStructure::Create(&g_PersistentAllocator, blas_build_info);
 
@@ -370,6 +376,7 @@ namespace Omni {
 		const std::vector<uint32>* index_data,
 		uint32 vertex_stride,
 		const VertexAttributeMetadataTable& vertex_metadata,
+		ftf::Material& material,
 		std::shared_mutex* mtx
 	) {
 		// Init crucial data
@@ -390,7 +397,7 @@ namespace Omni {
 		mesh_preprocessor.SplitVertexData(&as_position_data, &mesh_data.ray_tracing.attributes, vertex_data, vertex_stride);
 
 		// Build acceleration structure
-		mesh_data.acceleration_structure = BuildAccelerationStructure(as_position_data, *index_data, sizeof(glm::vec3));
+		mesh_data.acceleration_structure = BuildAccelerationStructure(as_position_data, *index_data, sizeof(glm::vec3), material.alphaMode == ftf::AlphaMode::Opaque);
 
 		// Check config for virtual geometry usage
 		mesh_data.virtual_geometry.use = s_BuildVirtualGeometry.Get();

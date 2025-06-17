@@ -313,3 +313,56 @@ void Miss(inout RayPayload Payload)
         Payload.LightColor = float3(0.0, 0.0, 0.0);
     } 
 }
+
+[shader("anyhit")]
+void AnyHitCheckTransparency(inout RayPayload Payload, in BuiltInTriangleIntersectionAttributes Attr) {
+    InstanceRenderData Instance = Input.Instances[InstanceID()];
+    GeometryMeshData Geometry = Input.Meshes[Instance.geometry_data_id];
+    GeometryLayoutTable Layout = Geometry.ray_tracing.layout;
+    uint3 HitTriangleIndices = Geometry.ray_tracing.indices[PrimitiveIndex()];
+
+    float3 Barys = float3(1.0 - Attr.barycentrics.x - Attr.barycentrics.y, Attr.barycentrics);
+
+    RTMaterial *Material = (RTMaterial *)Instance.material_address;
+
+    // Fetch triangle positions
+    float3 WorldPosition = 0;
+    float4 TriangleVerticesClip[3];
+
+    for (uint i = 0; i < 3; i++) {
+        float3 Vertex = HitTriangleVertexPosition(i);
+
+        WorldPosition += Vertex * Barys[i];
+        TriangleVerticesClip[i] = mul(Input.View.view_proj, float4(Vertex, 1.0f));
+    }
+    WorldPosition = Instance.transform.TransformPoint(WorldPosition);
+
+    // Calculate analytic derivatives
+    float2 ImageSize;
+    OutputImage.GetDimensions(ImageSize.x, ImageSize.y);
+
+    uint3 PixelIndex = DispatchRaysIndex();
+
+    float2 PixelNDC = (float2(PixelIndex.xy) + 0.5) / float2(Input.View.viewport_width, Input.View.viewport_height) * 2.0 - 1.0;
+    PixelNDC.y = -PixelNDC.y;
+
+    BarycentricDerivative Gradient;
+    Gradient.Setup(TriangleVerticesClip[0], TriangleVerticesClip[1], TriangleVerticesClip[2], PixelNDC, ImageSize);
+
+    // Fetch base color
+    float2 UV = 0;
+    float2 Ddx = 0;
+    float2 Ddy = 0;
+
+    float4 BaseColor = Material.UniformColor;
+    if (Material.Metadata.HasBaseColor == 1) {
+        UV = Geometry.RTFetchUV(HitTriangleIndices, Material.BaseColor.UVChannelIndex, Barys);
+        Geometry.RTFetchUVGradients(HitTriangleIndices, Material.BaseColor.UVChannelIndex, Gradient, Ddx, Ddy);
+
+        BaseColor = TextureHeap[Material.BaseColor.TextureIndex].SampleGrad(UV, Ddx, Ddy);
+    }
+
+    if (BaseColor.a < 0.5f) {
+        IgnoreHit();
+    }
+}

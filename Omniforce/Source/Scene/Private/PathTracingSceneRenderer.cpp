@@ -63,6 +63,13 @@ namespace Omni {
 			{}
 		);
 		shader_library->LoadShader2(
+			"AnyHitCheckTransparency",
+			{
+				"PathTracing.AnyHitCheckTransparency"
+			},
+			{}
+		);
+		shader_library->LoadShader2(
 			"PointLightHit",
 			{
 				"PathTracing.PointLightHit"
@@ -92,8 +99,9 @@ namespace Omni {
 		RTShaderGroup raygen_group = {};
 		raygen_group.ray_generation = shader_library->GetShader("PathConstruction");
 
-		RTShaderGroup closest_hit_group = {};
-		closest_hit_group.closest_hit = shader_library->GetShader("ClosestHit");
+		RTShaderGroup hit_group = {};
+		hit_group.closest_hit = shader_library->GetShader("ClosestHit");
+		hit_group.any_hit = shader_library->GetShader("AnyHitCheckTransparency");
 
 		RTShaderGroup point_light_hit_group = {};
 		point_light_hit_group.closest_hit = shader_library->GetShader("PointLightHit");
@@ -102,7 +110,7 @@ namespace Omni {
 		miss_group.miss = shader_library->GetShader("Miss");
 
 		rt_pipeline_spec.groups.Add(raygen_group);
-		rt_pipeline_spec.groups.Add(closest_hit_group);
+		rt_pipeline_spec.groups.Add(hit_group);
 		rt_pipeline_spec.groups.Add(point_light_hit_group);
 		rt_pipeline_spec.groups.Add(miss_group);
 
