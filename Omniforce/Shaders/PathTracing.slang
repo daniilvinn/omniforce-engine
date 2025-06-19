@@ -32,10 +32,10 @@ void PathConstruction()
 
     RandomNumber<PCGGenerator> Random = RandomNumber<PCGGenerator>(Input.RandomSeed + RayID);
     float2 SubpixelJitter = float2(
-        (Random.Get() & 0xFF) / 0xFF,
-        (Random.Get() & 0xFF) / 0xFF
+        rcp(0xFF) * (Random.Get() & 0xFF),
+        rcp(0xFF) * (Random.Get() & 0xFF)
     ) - 0.5;
-
+    
     // Setup primary rays
     float2 Ndc = (float2(PixelIndex.xy) + SubpixelJitter) / float2(Camera.viewport_width, Camera.viewport_height) * 2.0 - 1.0;
     Ndc.y = -Ndc.y;
