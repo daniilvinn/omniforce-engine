@@ -197,9 +197,9 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
     }
 
     // Fetch normal map
-    float3 Normal = normalize(GeometryNormal);
-    float4 Tangent = 0.0;
-    float3 Bitangent = 0.0;
+    float4 T = 0.0;
+    float3 B = 0.0;
+    float3 N = normalize(GeometryNormal);
     if (Material.Metadata.HasNormal == 1 && Layout.AttributeMask.HasTangents == 1) {
         // Check if corresponding UVs are loaded; reload otherwise
         if (LastFetchedUVIndex != Material.Normal.UVChannelIndex) {
@@ -213,12 +213,12 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
         for (uint i = 0; i < 3; i++) {
             uint AttrOffset = Layout.Stride * HitTriangleIndices[i];
             half2 FetchedTangent = *(half2 *)(Geometry.ray_tracing.attributes + AttrOffset + Layout.Offsets.Tangent);
-            Tangent += Decoder.DecodeTangent(FetchedTangent) * Barys[i];
+            T += Decoder.DecodeTangent(FetchedTangent) * Barys[i];
         }
-        Tangent = normalize(Tangent);
-        
+        T = normalize(T);
+
         // Compute bitangent
-        Bitangent = cross(GeometryNormal, Tangent.xyz) * Tangent.w;
+        B = cross(GeometryNormal, T.xyz) * T.w;
 
         // Fetch normal map, decode and transform
         float3 NormalMapTexel = TextureHeap[Material.Normal.TextureIndex].SampleGrad(UV, Ddx, Ddy).rgb;
@@ -226,28 +226,30 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
 
         // Build TBN matrix for a normal from normal map
         float3x3 TBN = float3x3(
-            Tangent.xyz,
-            Bitangent,
+            T.xyz,
+            B,
             GeometryNormal
         );
 
-        Normal = mul(NormalMapTexel, TBN);
+        N = mul(NormalMapTexel, TBN);
 
         NormalFixer Fixer;
-        Normal = Fixer.PullNormal(Normal, Payload.IncomingDirection, GeometryNormal);
+        N = Fixer.PullNormal(N, Payload.IncomingDirection, GeometryNormal);
 
-        Tangent.xyz = normalize(Tangent.xyz - dot(Tangent.xyz, Normal) * Normal);
-        Bitangent = cross(Normal, Tangent.xyz);
+        T.xyz = normalize(T.xyz - dot(T.xyz, N) * N);
+        B = cross(N, T.xyz);
     } else {
-        float3 UpVector = float3(0.0f, 1.0f, 0.0f);
-
-        Tangent.xyz = normalize(cross(Normal, UpVector));
-        Bitangent = cross(Normal, Tangent.xyz);
+        TangentSpace TangentSpace = TangentSpace(N);
+        T.xyz = TangentSpace.T;
+        B = TangentSpace.B;
     }
 
-    float3 N = QuaternionRotate(float4(Instance.transform.rotation), Normal);
-    Tangent.xyz = QuaternionRotate(float4(Instance.transform.rotation), Tangent.xyz);
-    Bitangent = QuaternionRotate(float4(Instance.transform.rotation), Bitangent);
+    // Setup tangent space
+    TangentSpace TangentSpace = TangentSpace(
+        QuaternionRotate(float4(Instance.transform.rotation), N),
+        QuaternionRotate(float4(Instance.transform.rotation), T.xyz),
+        QuaternionRotate(float4(Instance.transform.rotation), B)
+    );
 
     // Fetch metallic roughness
     float3 MetallicRoughnessOcclusion = float3(1.0f, 1.0f, 0.0f);
@@ -282,9 +284,7 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
 
     PathTracingSamplingStrategy Sampler;
     Sampler.Sample(
-        N,
-        Tangent.xyz,
-        Bitangent,
+        TangentSpace,
         V,
         BaseColor,
         Metallic,

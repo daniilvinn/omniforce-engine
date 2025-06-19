@@ -246,5 +246,31 @@ public struct BarycentricDerivative
 
 };
 
+public struct TangentSpace {
+    public float3 T, B, N;
+
+    public __init() {}
+    public __init(float3 InNormal) {
+        float3 UpVector = float3(0.0f, 1.0f, 0.0f);
+        float3 ReferenceVector = abs(dot(UpVector, InNormal)) > 0.9 ? float3(1.0f, 0.0f, 0.0f) : UpVector;
+
+        T = normalize(cross(InNormal, ReferenceVector));
+        B = cross(InNormal, T);
+    }
+
+    public __init(float3 InTangent, float3 InBitangent, float3 InNormal) {
+        T = InTangent;
+        B = InBitangent;
+        N = InNormal;
+    }
+
+    property float3x3 TBN {
+        get {
+            return float3x3(T, B, N);
+        }
+    private set {}
+    }
+}
+
 
 }
