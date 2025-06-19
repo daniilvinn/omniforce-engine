@@ -1,9 +1,13 @@
 # Omniforce Engine
-![photo_2024-02-29_00-40-08](https://github.com/daniilvinn/omniforce-engine/assets/86977774/f8d4fcad-d846-4c93-b531-887861119f7c)
+<div align="center">
+ <img src="https://github.com/user-attachments/assets/ee73bddb-8a9f-4747-a64b-5d20ebd2c256">
+ <img src="https://github.com/user-attachments/assets/5358ed9c-4c21-41ab-9c08-689600c40b28">
+</div>
 
 ## Features
+* Path tracing using hardware ray-tracing API
 * Physics based rendering (PBR) based on mesh shaders
-* Virtual geometry (WIP)
+* Virtual geometry
 * Completely custom mesh compression algorithm for runtime decoding
 * Instance frustum culling, meshlet frustum / backface culling
 * High-performance 2D sprite renderer
