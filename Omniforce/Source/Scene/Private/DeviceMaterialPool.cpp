@@ -73,6 +73,7 @@ namespace Omni {
 		rt_material.Metadata.HasNormal					= material_table.contains("NORMAL_MAP");
 		rt_material.Metadata.HasMetallicRoughness		= material_table.contains("METALLIC_ROUGHNESS_MAP");
 		rt_material.Metadata.HasOcclusion				= material_table.contains("OCCLUSION_MAP");
+		rt_material.Metadata.DoubleSided				= std::get<uint32>(material_table.at("DOUBLE_SIDED"));
 
 		// Fill-in data
 		if (rt_material.Metadata.HasBaseColor) {

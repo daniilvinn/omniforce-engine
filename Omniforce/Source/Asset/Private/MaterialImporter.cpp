@@ -158,6 +158,7 @@ namespace Omni {
 		else
 			material->AddShaderMacro("__OMNI_SHADING_MODEL_NON_PBR");
 
+		material->AddProperty("DOUBLE_SIDED", (uint32)in_material->doubleSided);
 		subflow.emplace([=]() { HandleProperty("ALPHA_CUTOFF", in_material->alphaCutoff, material, root, m_Mutex); });
 		subflow.emplace([=]() { HandleProperty("BASE_COLOR_FACTOR", c(in_material->pbrData.baseColorFactor), material, root, m_Mutex); });
 		subflow.emplace([=]() { HandleProperty("METALLIC_FACTOR", in_material->pbrData.metallicFactor, material, root, m_Mutex); });

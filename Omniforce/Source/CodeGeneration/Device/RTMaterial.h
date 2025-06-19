@@ -10,6 +10,7 @@ namespace Omni {
 		uint32 HasNormal : 1;
 		uint32 HasMetallicRoughness : 1;
 		uint32 HasOcclusion : 1;
+		uint32 DoubleSided : 1;
 	};
 
 	struct META(ShaderExpose, Module = "RenderingGenerated") RTMaterial {

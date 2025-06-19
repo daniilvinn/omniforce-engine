@@ -163,6 +163,18 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
 
     // Fetch vertex normals
     float3 GeometryNormal = 0;
+    float3 TrueGeometryNormal = 0;
+    {
+        float3 v0 = HitTriangleVertexPosition(0);
+        float3 v1 = HitTriangleVertexPosition(1);
+        float3 v2 = HitTriangleVertexPosition(2);
+
+        float3 edge1 = v1 - v0;
+        float3 edge2 = v2 - v0;
+
+        TrueGeometryNormal = normalize(cross(edge1, edge2));
+    }
+
     if (Layout.AttributeMask.HasNormals == 1) {
         VertexDecoder Decoder;
 
@@ -171,9 +183,17 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
             half2 FetchedNormal = *(half2 *)(Geometry.ray_tracing.attributes + AttrOffset + Layout.Offsets.Normal);
             GeometryNormal += Decoder.OctahedronDecode(FetchedNormal) * Barys[i];
         }
-    } else { // Terminate if no geometry normals
-        Payload.HitPoint = FloatMax;
-        return;
+
+        if (dot(GeometryNormal, -Payload.IncomingDirection) < 0) {
+            if (Material.Metadata.DoubleSided == 1) {
+                GeometryNormal = -GeometryNormal;
+            } else {
+                NormalFixer Fixer;
+                GeometryNormal = Fixer.PullNormal(GeometryNormal, Payload.IncomingDirection, TrueGeometryNormal);
+            }
+        }
+    } else {
+        GeometryNormal = TrueGeometryNormal;
     }
 
     // Fetch normal map
@@ -204,6 +224,7 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
         float3 NormalMapTexel = TextureHeap[Material.Normal.TextureIndex].SampleGrad(UV, Ddx, Ddy).rgb;
         NormalMapTexel = Decoder.DecodeNormalMap(NormalMapTexel);
 
+        // Build TBN matrix for a normal from normal map
         float3x3 TBN = float3x3(
             Tangent.xyz,
             Bitangent,
@@ -215,14 +236,12 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
         NormalFixer Fixer;
         Normal = Fixer.PullNormal(Normal, Payload.IncomingDirection, GeometryNormal);
 
-        // Build TBN matrix for a normal from normal map
         Tangent.xyz = normalize(Tangent.xyz - dot(Tangent.xyz, Normal) * Normal);
         Bitangent = cross(Normal, Tangent.xyz);
     } else {
         float3 UpVector = float3(0.0f, 1.0f, 0.0f);
-        float3 ReferenceVector = abs(dot(Normal, UpVector)) > 0.9 ? float3(1.0f, 0.0f, 0.0f) : UpVector;
 
-        Tangent.xyz = normalize(cross(Normal, ReferenceVector));
+        Tangent.xyz = normalize(cross(Normal, UpVector));
         Bitangent = cross(Normal, Tangent.xyz);
     }
 
@@ -246,7 +265,6 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
     float Metallic = MetallicRoughnessOcclusion.b;
     float Roughness = MetallicRoughnessOcclusion.g;
 
-    // Ensure consistent view direction (toward surface)
     float3 V = normalize(-Payload.IncomingDirection);
 
     float3 F0 = 0.04f;
