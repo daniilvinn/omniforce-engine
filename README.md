@@ -1,7 +1,7 @@
 # Omniforce Engine
 <div align="center">
-![photo_3_2025-06-19_15-30-02](https://github.com/user-attachments/assets/ee73bddb-8a9f-4747-a64b-5d20ebd2c256)
-![photo_1_2025-06-19_15-30-02](https://github.com/user-attachments/assets/5358ed9c-4c21-41ab-9c08-689600c40b28)
+ <img src="https://github.com/user-attachments/assets/ee73bddb-8a9f-4747-a64b-5d20ebd2c256">
+ <img src="https://github.com/user-attachments/assets/5358ed9c-4c21-41ab-9c08-689600c40b28">
 </div>
 
 ## Features
