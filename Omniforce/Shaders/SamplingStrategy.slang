@@ -16,18 +16,15 @@ public struct SamplingResult {
 }
 
 // ------------------------------------
-// Main sampling strategy.
-// Uses MIS for combining BSDF sampling and
-// cosine-weighted hemisphere sampling.
+// BSDF sampling strategy
+// Probabilistically chooses between
+// specular and diffuse lobes sampling
 // ------------------------------------
 public struct BSDFSamplingStrategy
 {
     public SamplingResult Sample(
-        TangentSpace TBN,
+        PBRSurface Surface,
         float3 V_world,
-        float3 BaseColor, 
-        float Metallic,
-        float Roughness,
         float3 F0,
         float2 Xi
     ) {
@@ -38,7 +35,7 @@ public struct BSDFSamplingStrategy
 
         // Ensure view direction points toward surface
         float3 V = normalize(V_world);
-        float NdotV = max(dot(TBN.N, V), 0.0);
+        float NdotV = max(dot(Surface.TangentSpace.N, V), 0.0);
 
         // Early exit for grazing angles
         if (NdotV < FloatMin) {
@@ -47,10 +44,10 @@ public struct BSDFSamplingStrategy
         }
 
         // --- 1) Perfect mirror shortcut -------------------------------
-        if (Metallic >= 1.0 && Roughness < 0.01)
+        if (Surface.Metallic >= 1.0 && Surface.Roughness < 0.01)
         {
-            Result.Direction = normalize(reflect(-V, TBN.N));
-            float NdotL = max(dot(TBN.N, Result.Direction), 0.0);
+            Result.Direction = normalize(reflect(-V, Surface.TangentSpace.N));
+            float NdotL = max(dot(Surface.TangentSpace.N, Result.Direction), 0.0);
 
             if (NdotL < FloatMin) {
                 return Result;
@@ -65,12 +62,12 @@ public struct BSDFSamplingStrategy
         }
 
         // --- 2) Common precomputations ---------------------------------
-        Roughness = max(Roughness, 0.001); // avoid singularities
+        Surface.Roughness = max(Surface.Roughness, 0.001); // avoid singularities
 
         // Fresnel at view direction for energy distribution
         float3 Fv = F0 + (1.0 - F0) * pow(clamp(1.0 - NdotV, 0.0, 1.0), 5.0);
         float3 kS = Fv;
-        float3 kD = (1.0 - kS) * (1.0 - Metallic); // energy conserving diffuse
+        float3 kD = (1.0 - kS) * (1.0 - Surface.Metallic); // energy conserving diffuse
 
         // Use luminance weights for MIS probabilities
         float wS = dot(kS, float3(0.299, 0.587, 0.114));
@@ -88,12 +85,16 @@ public struct BSDFSamplingStrategy
             float2 xi_spec = float2(Xi.x / pSpec, Xi.y);
 
             // Transform view to local tangent space
-            float3 V_local = float3(dot(V, TBN.T), dot(V, TBN.B), dot(V, TBN.N));
+            float3 V_local = float3(
+                dot(V, Surface.TangentSpace.T), 
+                dot(V, Surface.TangentSpace.B), 
+                dot(V, Surface.TangentSpace.N)
+            );
 
             // Sample microfacet normal H in local space
             GGXVNDFSampler vndf;
-            float3 H_local = vndf.Sample(V_local, Roughness, xi_spec);
-            H = normalize(H_local.x * TBN.T + H_local.y * TBN.B + H_local.z * TBN.N);
+            float3 H_local = vndf.Sample(V_local, Surface.Roughness, xi_spec);
+            H = normalize(mul(H_local, Surface.TangentSpace.TBN));
 
             // Reflect view around H to get outgoing direction L
             Result.Direction = normalize(reflect(-V, H));
@@ -106,7 +107,7 @@ public struct BSDFSamplingStrategy
             CosineWeightedHemisphereSampler cosSamp;
             float3 L_local = cosSamp.Sample(xi_diff);
 
-            Result.Direction = normalize(L_local.x * TBN.T + L_local.y * TBN.B + L_local.z * TBN.N);
+            Result.Direction = normalize(mul(L_local, Surface.TangentSpace.TBN));
             H = normalize(V + Result.Direction);
         }
         else
@@ -116,8 +117,8 @@ public struct BSDFSamplingStrategy
         }
 
         // --- 4) Direct BRDF evaluation (optimized path) ---------------
-        float NdotL = max(dot(TBN.N, Result.Direction), 0.0);
-        float NdotH = max(dot(TBN.N, H), 0.0);
+        float NdotL = max(dot(Surface.TangentSpace.N, Result.Direction), 0.0);
+        float NdotH = max(dot(Surface.TangentSpace.N, H), 0.0);
         float VdotH = max(dot(V, H), 0.0);
         float LdotH = max(dot(Result.Direction, H), 0.0);
 
@@ -132,7 +133,7 @@ public struct BSDFSamplingStrategy
         float pdfDiff = 0.0;
 
         if (pSpec > FloatMin) {
-            float D = DistributionGGX(TBN.N, H, Roughness);
+            float D = DistributionGGX(Surface.TangentSpace.N, H, Surface.Roughness);
             pdfSpec = D * NdotH / (4.0 * VdotH);
         }
 
@@ -148,8 +149,8 @@ public struct BSDFSamplingStrategy
         }
 
         // --- 6) Final BRDF evaluation (reuse calculations) -----------
-        float D = DistributionGGX(TBN.N, H, Roughness);
-        float G = GeometrySmith(TBN.N, V, Result.Direction, Roughness);
+        float D = DistributionGGX(Surface.TangentSpace.N, H, Surface.Roughness);
+        float G = GeometrySmith(Surface.TangentSpace.N, V, Result.Direction, Surface.Roughness);
 
         // Fresnel at half-vector H
         float3 Fh = F0 + (1.0 - F0) * pow(clamp(1.0 - VdotH, 0.0, 1.0), 5.0);
@@ -159,8 +160,8 @@ public struct BSDFSamplingStrategy
         float3 Specular = (D * G * Fh) / denom;
 
         // Lambertian diffuse term
-        float3 kD_final = (1.0 - Fh) * (1.0 - Metallic);
-        float3 Diffuse = kD_final * BaseColor * InvPi;
+        float3 kD_final = (1.0 - Fh) * (1.0 - Surface.Metallic);
+        float3 Diffuse = kD_final * Surface.Color * InvPi;
 
         // Total BRDF
         float3 f = Diffuse + Specular;
@@ -179,5 +180,22 @@ public struct BSDFSamplingStrategy
     }
 };
 
+// ------------------------------------
+// Next Event Estimation sampling strategy
+// Performs direct sampling of light sources
+// ------------------------------------
+public struct NEESamplingStrategy {
+    public SamplingResult Sample(
+        TangentSpace TBN,
+        float3 V_world,
+        float3 BaseColor, 
+        float Metallic,
+        float Roughness, 
+        float3 F0,
+        float2 Xi
+    ) {
+
+    }
+}
 
 }

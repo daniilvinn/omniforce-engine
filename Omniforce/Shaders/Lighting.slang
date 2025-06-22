@@ -1,3 +1,5 @@
+#pragma once
+
 module Lighting;
 
 import Common;
@@ -55,4 +57,11 @@ public float3 FresnelSchlick(float CosTheta, float3 F0)
     return F0 + (1.0 - F0) * pow(clamp(1.0 - CosTheta, 0.0, 1.0), 5.0);
 }
 
+public struct PBRSurface {
+    public TangentSpace TangentSpace;
+    public float3 Position;
+    public float3 Color;
+    public float Metallic;
+    public float Roughness;
+}
 }

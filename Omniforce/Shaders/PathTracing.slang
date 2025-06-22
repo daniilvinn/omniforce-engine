@@ -276,15 +276,19 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
     float u2 = rcp(65535.0f) * float(Random.Get() & 0xFFFF);
     float2 Xi = float2(u1, u2);
 
+    PBRSurface Surface;
+    Surface.TangentSpace = TangentSpace;
+    Surface.Position = WorldPosition;
+    Surface.Color = BaseColor;
+    Surface.Metallic = Metallic;
+    Surface.Roughness = Roughness;
+
     SamplingResult Result;
 
     BSDFSamplingStrategy BSDFStrategy;
     Result = BSDFStrategy.Sample(
-        TangentSpace,
+        Surface,
         V,
-        BaseColor,
-        Metallic,
-        Roughness,
         F0,
         Xi
     );
