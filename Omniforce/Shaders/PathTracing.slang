@@ -271,47 +271,36 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
     float3 F0 = 0.04f;
     F0 = lerp(F0, BaseColor, Metallic);
 
-    float3 L;
-
     RandomNumber<PCGGenerator> Random = RandomNumber<PCGGenerator>(Payload.RandomSeed);
-    float u1 = float(Random.Get() & 0xFFFF) / 65535.0f;
-    float u2 = float(Random.Get() & 0xFFFF) / 65535.0f;
+    float u1 = rcp(65535.0f) * float(Random.Get() & 0xFFFF);
+    float u2 = rcp(65535.0f) * float(Random.Get() & 0xFFFF);
     float2 Xi = float2(u1, u2);
 
-    float3 BRDFWeight;
-    float PDF;
+    SamplingResult Result;
 
     BSDFSamplingStrategy BSDFStrategy;
-    BSDFStrategy.Sample(
+    Result = BSDFStrategy.Sample(
         TangentSpace,
         V,
         BaseColor,
         Metallic,
         Roughness,
         F0,
-        Xi,
-        L,
-        BRDFWeight,
-        PDF
+        Xi
     );
 
     // Validate and apply BRDF weight
-    if (PDF > 1e-8 && isfinite(BRDFWeight.x) && isfinite(BRDFWeight.y) && isfinite(BRDFWeight.z)) {
-        Payload.PathThroughput *= BRDFWeight;
-        Payload.IncomingDirection = L;
+    if (Result.PDF > 1e-8 && all(isfinite(Result.Weight)) && !IsInvalidHitPoint(Result.Direction)) {
+        Payload.PathThroughput *= Result.Weight;
+        Payload.IncomingDirection = Result.Direction;
+        Payload.RandomSeed = Random.Get();
+        Payload.HitPoint = WorldPosition + GeometryNormal * 0.001f;
     } else {
         // Terminate path on invalid sample
+        Payload.HitPoint = FloatMax;
         Payload.PathThroughput = float3(0.0, 0.0, 0.0);
     }
 
-    Payload.RandomSeed = Random.Get();
-
-    if (IsInvalidHitPoint(L)) {
-        Payload.HitPoint = FloatMax;
-        return;
-    }
-
-    Payload.HitPoint = WorldPosition + GeometryNormal * 0.001f;
 }
 
 [shader("closesthit")]
