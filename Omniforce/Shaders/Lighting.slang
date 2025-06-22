@@ -56,6 +56,14 @@ public float3 FresnelSchlick(float CosTheta, float3 F0)
     return F0 + (1.0 - F0) * pow(clamp(1.0 - CosTheta, 0.0, 1.0), 5.0);
 }
 
+public struct LightSample {
+    public float3 Position;
+    public float3 Normal;
+    public float3 LightPosition;
+    public float PDF;
+    public bool Valid;
+}
+
 public struct PBRSurface {
     public TangentSpace TangentSpace;
     public float3 Position;
@@ -63,4 +71,23 @@ public struct PBRSurface {
     public float Metallic;
     public float Roughness;
 }
+
+public struct AreaToSolidAngleJacobian {
+    public float Convert(float3 P, LightSample Sample) {
+        float3 Wi = Sample.LightPosition - P;
+        float DistanceSquared = dot(Wi, Wi);
+        float3 WiDir = normalize(Wi);
+
+        float CosTheta = dot(Sample.Normal, -WiDir);
+
+        // Avoid division by zero or backfacing surfaces
+        if (CosTheta <= 0.0f)
+            return 0.0f;
+
+        return Sample.PDF * DistanceSquared / CosTheta;
+
+    }
+
+};
+
 }

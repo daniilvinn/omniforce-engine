@@ -94,7 +94,7 @@ namespace Omni {
 
 		RTPipelineSpecification rt_pipeline_spec = {};
 		rt_pipeline_spec.groups = Array<RTShaderGroup>(&g_TransientAllocator);
-		rt_pipeline_spec.recursion_depth = 1;
+		rt_pipeline_spec.recursion_depth = 2;
 
 		RTShaderGroup raygen_group = {};
 		raygen_group.ray_generation = shader_library->GetShader("PathConstruction");

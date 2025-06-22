@@ -6,6 +6,8 @@ import Common;
 import Sampler;
 import Lighting;
 import BSDF;
+import NextEventEstimation;
+import InlineRayTracing;
 
 namespace Omni {
 
@@ -13,6 +15,15 @@ public struct SamplingResult {
     public float3 Direction;
     public float3 Weight;
     public float PDF;
+
+    static SamplingResult Invalid() {
+        SamplingResult Result;
+        Result.Weight = 0;
+        Result.PDF = 0;
+        Result.Direction = FloatMax;
+
+        return Result;
+    }
 }
 
 // ------------------------------------
@@ -41,7 +52,7 @@ public struct BSDFSamplingStrategy
         // Early exit for grazing angles
         if (NdotV < FloatMin) {
             Result.Direction = FloatMax;
-            return Result;
+            return SamplingResult.Invalid();
         }
 
         // --- 1) Perfect mirror shortcut -------------------------------
@@ -51,7 +62,7 @@ public struct BSDFSamplingStrategy
             float NdotL = max(dot(Surface.TangentSpace.N, Result.Direction), 0.0);
 
             if (NdotL < FloatMin) {
-                return Result;
+                return SamplingResult.Invalid();
             }
 
             // Fresnel at view angle
@@ -59,6 +70,7 @@ public struct BSDFSamplingStrategy
 
             Result.PDF = 1.0;
             Result.Weight = Fm;
+
             return Result;
         }
 
@@ -113,23 +125,20 @@ public struct BSDFSamplingStrategy
         }
         else
         {
-            Result.Direction = FloatMax;
-            return Result;
+            return SamplingResult.Invalid();
         }
 
         // --- 4) Direct BRDF evaluation (optimized path) ---------------
         float NdotL = max(dot(Surface.TangentSpace.N, Result.Direction), 0.0);
         float NdotH = max(dot(Surface.TangentSpace.N, H), 0.0);
         float VdotH = max(dot(V, H), 0.0);
-        float LdotH = max(dot(Result.Direction, H), 0.0);
 
         // Early exit for invalid geometry
         if (NdotL < FloatMin || NdotH < FloatMin || VdotH < FloatMin) {
-            Result.Direction = FloatMax;
-            return Result;
+            return SamplingResult.Invalid();
         }
 
-        // --- 5) Calculate PDF for MIS (reuse from original) -----------
+        // --- 5) Calculate PDF -----------------------------------------
         float pdfSpec = 0.0;
         float pdfDiff = 0.0;
 
@@ -145,8 +154,7 @@ public struct BSDFSamplingStrategy
         Result.PDF = pSpec * pdfSpec + pDiff * pdfDiff;
 
         if (Result.PDF < 1e-8) {
-            Result.Direction = FloatMax;
-            return Result;
+            return SamplingResult.Invalid();
         }
 
         // --- 6) Final BRDF evaluation (reuse calculations) -----------
@@ -172,9 +180,7 @@ public struct BSDFSamplingStrategy
 
         // Check for invalid values
         if (!all(isfinite(Result.Weight))) {
-            Result.Weight = float3(0.0, 0.0, 0.0);
-            Result.PDF = 0.0;
-            Result.Direction = FloatMax;
+            return SamplingResult.Invalid();
         }
 
         return Result;
@@ -187,15 +193,90 @@ public struct BSDFSamplingStrategy
 // ------------------------------------
 public struct NEESamplingStrategy {
     public SamplingResult Sample(
-        TangentSpace TBN,
+        PBRSurface Surface,
         float3 V_world,
-        float3 BaseColor, 
-        float Metallic,
-        float Roughness, 
-        float3 F0,
-        float2 Xi
+        float2 Xi,
+        NextEventEstimator NEE
     ) {
+        SamplingResult Result;
+        Result.Weight = 0;
+        Result.PDF = 0;
+        Result.Direction = FloatMax;
 
+        // Ensure view direction points toward surface
+        float3 V = normalize(V_world);
+        float NdotV = max(dot(Surface.TangentSpace.N, V), 0.0);
+
+        float3 F0 = lerp(0.04f, Surface.Color, Surface.Metallic);
+
+        // Early exit for grazing angles
+        if (NdotV < FloatMin) {
+            return SamplingResult.Invalid();
+        }
+
+        // --- 1) Perfect mirror shortcut -------------------------------
+        if (Surface.Metallic >= 1.0 && Surface.Roughness < 0.01)
+        {
+            return SamplingResult.Invalid();
+        }
+
+        // --- 2) NEE Sampling ------------------------------------------
+        LightSample NEESample = NEE.Sample(Xi, Surface.Position, Surface.TangentSpace.N);
+
+        // Check if sample if valid
+        if (!NEESample.Valid) {
+            return SamplingResult.Invalid();
+        }
+
+        // --- 3) Shadow ray tracing ------------------------------------
+        float3 L = normalize(NEESample.Position - Surface.Position);
+
+        RayDesc ShadowRayDesc;
+        ShadowRayDesc.Origin = Surface.Position;
+        ShadowRayDesc.Direction = L;
+        ShadowRayDesc.TMin = 0.001f;
+        ShadowRayDesc.TMax = distance(NEESample.Position, Surface.Position) - 0.01f;
+
+        InlineRayTracer ShadowRayTracer;
+        HitInfo NEEHitInfo = ShadowRayTracer.TraceRay(ShadowRayDesc);
+
+        if (NEEHitInfo.Hit) {
+            return SamplingResult.Invalid();
+        }
+
+        // --- 4) Compute BRDF ------------------------------------------
+        float3 H = normalize(V + L); 
+        float NdotL = dot(Surface.TangentSpace.N, L);
+        float VdotH = dot(V, H);
+
+        float D = DistributionGGX(Surface.TangentSpace.N, H, Surface.Roughness);
+        float G = GeometrySmith(Surface.TangentSpace.N, V, Result.Direction, Surface.Roughness);
+
+        // Fresnel at half-vector H
+        float3 Fh = F0 + (1.0 - F0) * pow(clamp(1.0 - VdotH, 0.0, 1.0), 5.0);
+
+        // Cook-Torrance specular term
+        float denom = 4.0 * NdotV * NdotL + 1e-8;
+        float3 Specular = (D * G * Fh) / denom;
+
+        // Lambertian diffuse term
+        float3 kD_final = (1.0 - Fh) * (1.0 - Surface.Metallic);
+        float3 Diffuse = kD_final * Surface.Color * InvPi;
+
+        // Total BRDF
+        float3 f = Diffuse + Specular;
+
+        // --- 5) Gather results ----------------------------------------
+        Result.Weight = f * NdotL;
+        Result.PDF = NEESample.PDF;
+        Result.Direction = L;
+
+        // Check for invalid values
+        if (!all(isfinite(Result.Weight))) {
+            return SamplingResult.Invalid();
+        }
+
+        return Result;
     }
 }
 

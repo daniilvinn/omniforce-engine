@@ -24,7 +24,7 @@ PSOutput LightFunction(VSOutput StageInput) {
 
     float3 F0 = 0.04f;
     F0 = lerp(F0, BaseColor, MetallicRoughnessOcclusion.b);
-
+    
     float3 Lo = 0.0f;
     for (int i = 0; i < Input.PointLightCount; i++) {
         PointLight Light = Input.PointLights[i];
