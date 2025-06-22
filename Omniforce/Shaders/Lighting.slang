@@ -14,7 +14,6 @@ public extension Omni.PointLight {
 
         return Intensity / DistanceSquared;
     }
-    }
 }
 
 public float DistributionGGX(float3 N, float3 H, float Roughness)
