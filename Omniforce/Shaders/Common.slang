@@ -264,12 +264,13 @@ public struct TangentSpace {
         N = InNormal;
     }
 
-    property float3x3 TBN {
-        get {
+    public property float3x3 TBN {
+        public get {
             return float3x3(T, B, N);
         }
-    private set {}
+        private set {}
     }
+    
 }
 
 
