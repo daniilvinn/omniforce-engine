@@ -25,7 +25,6 @@ public struct BSDFSamplingStrategy
     public SamplingResult Sample(
         PBRSurface Surface,
         float3 V_world,
-        float3 F0,
         float2 Xi
     ) {
         SamplingResult Result;
@@ -36,6 +35,8 @@ public struct BSDFSamplingStrategy
         // Ensure view direction points toward surface
         float3 V = normalize(V_world);
         float NdotV = max(dot(Surface.TangentSpace.N, V), 0.0);
+
+        float3 F0 = lerp(0.04f, Surface.Color, Surface.Metallic);
 
         // Early exit for grazing angles
         if (NdotV < FloatMin) {

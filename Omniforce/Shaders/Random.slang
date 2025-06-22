@@ -42,6 +42,22 @@ public struct RandomNumber<RNG> where RNG : IRNG {
         return Generator.Generate(Seed_);
     }
 
+    [mutating]
+    public float GetNorm(uint Precision = 0xFFFF) {
+        return rcp(Precision) * float(Get() & Precision);
+    }
+
+    [mutating]
+    public T GetXi<T>(uint Precision = 0xFFFF) where T : IRWArray<float> {
+        T Result;
+
+        [unroll]
+        for (uint i = 0; i < Result.getCount(); i++) {
+            Result[i] = GetNorm(Precision);
+        }
+        return Result;
+    }
+
     private uint Seed_;
 }
 

@@ -30,10 +30,7 @@ void PathConstruction()
     ViewData* Camera = Input.View;
 
     RandomNumber<PCGGenerator> Random = RandomNumber<PCGGenerator>(Input.RandomSeed + RayID);
-    float2 SubpixelJitter = float2(
-        rcp(0xFF) * (Random.Get() & 0xFF),
-        rcp(0xFF) * (Random.Get() & 0xFF)
-    ) - 0.5;
+    float2 SubpixelJitter = Random.GetXi<float2>(0xFF) - 0.5;
     
     // Setup primary rays
     float2 Ndc = (float2(PixelIndex.xy) + SubpixelJitter) / float2(Camera.viewport_width, Camera.viewport_height) * 2.0 - 1.0;
@@ -262,34 +259,26 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
         MetallicRoughnessOcclusion = TextureHeap[Material.MetallicRoughness.TextureIndex].SampleGrad(UV, Ddx, Ddy).rgb;
     }
 
-    // Compute BRDF
-    float Metallic = MetallicRoughnessOcclusion.b;
-    float Roughness = MetallicRoughnessOcclusion.g;
-
+    // Setup sampling data
     float3 V = normalize(-Payload.IncomingDirection);
 
-    float3 F0 = 0.04f;
-    F0 = lerp(F0, BaseColor, Metallic);
-
     RandomNumber<PCGGenerator> Random = RandomNumber<PCGGenerator>(Payload.RandomSeed);
-    float u1 = rcp(65535.0f) * float(Random.Get() & 0xFFFF);
-    float u2 = rcp(65535.0f) * float(Random.Get() & 0xFFFF);
-    float2 Xi = float2(u1, u2);
+    float2 Xi = Random.GetXi<float2>();
 
     PBRSurface Surface;
     Surface.TangentSpace = TangentSpace;
     Surface.Position = WorldPosition;
     Surface.Color = BaseColor;
-    Surface.Metallic = Metallic;
-    Surface.Roughness = Roughness;
+    Surface.Metallic = MetallicRoughnessOcclusion.b;
+    Surface.Roughness = MetallicRoughnessOcclusion.g;
 
+    // Perform BSDF sampling
     SamplingResult Result;
 
     BSDFSamplingStrategy BSDFStrategy;
     Result = BSDFStrategy.Sample(
         Surface,
         V,
-        F0,
         Xi
     );
 
