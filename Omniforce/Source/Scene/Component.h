@@ -135,8 +135,7 @@ namespace Omni {
 	struct OMNIFORCE_API PointLightComponent {
 		glm::vec3 color = glm::vec3(1.0f);
 		float32 intensity = 1.0f;
-		float32 min_radius = 15.0f;
-		float32 radius = 150.0f;
+		float32 radius = 1.0f;
 
 		PointLightComponent() = default;
 		static const char* GetSerializableKey() { return "PointLightComponent"; }
