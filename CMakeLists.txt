@@ -9,6 +9,11 @@ if(MSVC)
 	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 endif()
 
+# Enable compile_commands.json for Ninja generator (for clangd/Cursor)
+if(CMAKE_GENERATOR STREQUAL "Ninja")
+	set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+endif()
+
 set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/Install")
 
 find_package(OpenMP REQUIRED)
@@ -20,7 +25,12 @@ set(METATOOL_TARGET MetaTool CACHE INTERNAL "") # HACK
 add_subdirectory (Omniforce)
 add_subdirectory (Sandbox)
 add_subdirectory (Editor)
-add_subdirectory (ScriptEngine)
+
+# Only include ScriptEngine for MSBuild generator (C# projects not compatible with Ninja)
+if(NOT CMAKE_GENERATOR STREQUAL "Ninja")
+	add_subdirectory (ScriptEngine)
+endif()
+
 add_subdirectory ("Tools/MetaTool")
 
 if(MSVC)
