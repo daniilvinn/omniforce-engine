@@ -2,8 +2,7 @@ out/
 .vs/
 bin/
 obj/
-build/
-BuildClangd/
+Build/
 Install/
 Editor/Resources/Shaders
 Sandbox/Resources

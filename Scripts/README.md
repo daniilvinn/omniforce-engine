@@ -35,16 +35,18 @@ If you prefer to set up manually:
 
 2. **Generate compile_commands.json**:
    ```bash
+   mkdir Build
+   cd Build
    mkdir BuildClangd
    cd BuildClangd
-   cmake -G "Ninja" ..
-   copy compile_commands.json ..\compile_commands.json
+   cmake -G "Ninja" ..\..
+   copy compile_commands.json ..\..\compile_commands.json
    ```
 
 ### How it Works
 
-- **MSBuild projects** (in `build/` directory): Used for normal development and C# project generation
-- **Ninja projects** (in `BuildClangd/` directory): Used only to generate `compile_commands.json` for clangd
+- **MSBuild projects** (in `Build/` directory): Used for normal development and C# project generation
+- **Ninja projects** (in `Build/BuildClangd/` directory): Used only to generate `compile_commands.json` for clangd
 - **Single CMakeLists.txt**: Automatically detects the generator and includes/excludes C# projects accordingly
 - **compile_commands.json**: Copied to project root for clangd/Cursor to find
 
@@ -57,7 +59,7 @@ If you prefer to set up manually:
 
 ### Files Generated
 
-- `build/`: MSBuild solution and project files
-- `BuildClangd/`: Ninja build files (for compile_commands.json generation)
+- `Build/`: MSBuild solution and project files
+- `Build/BuildClangd/`: Ninja build files (for compile_commands.json generation)
 - `compile_commands.json`: Clangd configuration file (in project root)
 - `Install/`: Installed binaries and resources 

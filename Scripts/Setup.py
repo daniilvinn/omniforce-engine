@@ -246,7 +246,12 @@ def generate_compile_commands():
     
     # Get the project root directory (parent of Scripts)
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    build_clangd_dir = os.path.join(project_root, "BuildClangd")
+    build_dir = os.path.join(project_root, "Build")
+    build_clangd_dir = os.path.join(build_dir, "BuildClangd")
+    
+    # Create Build directory if it doesn't exist
+    if not os.path.exists(build_dir):
+        os.makedirs(build_dir)
     
     # Create BuildClangd directory if it doesn't exist
     if not os.path.exists(build_clangd_dir):

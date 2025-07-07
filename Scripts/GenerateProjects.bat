@@ -19,8 +19,8 @@ exit /b 1
 echo.
 echo Generating MSBuild projects...
 cd ..
-mkdir build
-cd build
+mkdir Build
+cd Build
 cmake ..
 echo MSBuild projects generated successfully!
 goto :end
@@ -29,11 +29,13 @@ goto :end
 echo.
 echo Generating compile_commands.json for Cursor/clangd...
 cd ..
+mkdir Build
+cd Build
 if not exist "BuildClangd" mkdir BuildClangd
 cd BuildClangd
-cmake -G "Ninja" ..
+cmake -G "Ninja" ..\..
 if exist "compile_commands.json" (
-    copy "compile_commands.json" "..\compile_commands.json"
+    copy "compile_commands.json" "..\..\compile_commands.json"
     echo compile_commands.json generated and copied to project root
 ) else (
     echo Failed to generate compile_commands.json
@@ -44,15 +46,14 @@ goto :end
 echo.
 echo Generating both MSBuild projects and compile_commands.json...
 cd ..
-mkdir build
-cd build
+mkdir Build
+cd Build
 cmake ..
-cd ..
 if not exist "BuildClangd" mkdir BuildClangd
 cd BuildClangd
-cmake -G "Ninja" ..
+cmake -G "Ninja" ..\..
 if exist "compile_commands.json" (
-    copy "compile_commands.json" "..\compile_commands.json"
+    copy "compile_commands.json" "..\..\compile_commands.json"
     echo compile_commands.json generated and copied to project root
 ) else (
     echo Failed to generate compile_commands.json
