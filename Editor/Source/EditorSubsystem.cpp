@@ -457,7 +457,7 @@ public:
 		FileSystem::SetWorkingDirectory(m_ProjectPath);
 
 		auto textures_dir = m_ProjectPath.string() + "Assets/Textures";
-		auto scripts_dir = m_ProjectPath.string() +  "Assets/Scripts";
+		auto scripts_dir = m_ProjectPath.string() +  "Assets/Scripts/Assemblies";
 		auto audio_dir = m_ProjectPath.string() + "Assets/Audio";
 		auto mesh_dir = m_ProjectPath.string() + "Assets/Meshes";
 
@@ -466,7 +466,7 @@ public:
 		std::filesystem::create_directories(audio_dir);
 		std::filesystem::create_directories(mesh_dir);
 
-		std::filesystem::copy("Resources/Scripting/ScriptsProject", m_ProjectPath.string() + "/Assets/Scripts", std::filesystem::copy_options::recursive);
+		std::filesystem::copy("Resources/Scripts/ScriptsProject", m_ProjectPath.string() + "/Assets/Scripts", std::filesystem::copy_options::recursive);
 		std::filesystem::copy("Resources/Scripting/Build/ScriptEngine.dll", m_ProjectPath / "Assets/Scripts/Assemblies/ScriptEngine.dll");
 
 		if(m_ProjectPath.string().length())
