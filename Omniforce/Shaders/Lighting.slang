@@ -9,10 +9,11 @@ namespace Omni {
 
 public extension Omni.PointLight {
     public float ComputeAttenuation(float3 WorldPosition) {
-        float DistanceSquared = distance(Position, WorldPosition);
+        float Distance = distance(Position, WorldPosition);
+        float DistanceSquared = Distance * Distance;
         DistanceSquared = max(DistanceSquared, 1e-4f);
 
-        return Intensity / DistanceSquared;
+        return 1.0f / DistanceSquared;
     }
 }
 
@@ -60,6 +61,8 @@ public struct LightSample {
     public float3 Position;
     public float3 Normal;
     public float3 LightPosition;
+    public float3 Color;
+    public float Intensity;
     public float PDF;
     public bool Valid;
 }
@@ -74,7 +77,7 @@ public struct PBRSurface {
 
 public struct AreaToSolidAngleJacobian {
     public float Convert(float3 P, LightSample Sample) {
-        float3 Wi = Sample.LightPosition - P;
+        float3 Wi = Sample.Position - P;
         float DistanceSquared = dot(Wi, Wi);
         float3 WiDir = normalize(Wi);
 

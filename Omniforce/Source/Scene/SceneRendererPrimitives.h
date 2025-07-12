@@ -88,7 +88,7 @@ namespace Omni {
 		BDA<ScenePointLights> PointLights;
 	};
 
-	struct META(ShaderExpose, ShaderInput, Module = "ToneMapping") ToneMappingPassInput {
+	struct META(ShaderExpose, ShaderInput, Module = "ToneMappingInput") ToneMappingInput {
 		BDA<ViewData> View;
 	};
 

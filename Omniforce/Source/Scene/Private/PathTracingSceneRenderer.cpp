@@ -326,7 +326,7 @@ namespace Omni {
 				{ 0.0f, 0.0f, 0.0f, 1.0f }
 			);
 			{
-				ToneMappingPassInput* tone_mapping_input = new ToneMappingPassInput;
+				ToneMappingInput* tone_mapping_input = new ToneMappingInput;
 				tone_mapping_input->View = BDA<ViewData>(m_CameraDataBuffer, m_CameraDataBuffer->GetFrameOffset());
 
 				MiscData tone_mapping_pc = {};

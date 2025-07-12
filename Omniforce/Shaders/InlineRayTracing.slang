@@ -1,6 +1,6 @@
 #pragma once
 
-module InlineRT;
+module InlineRayTracing;
 
 import Common;
 

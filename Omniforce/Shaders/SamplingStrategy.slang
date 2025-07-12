@@ -8,6 +8,7 @@ import Lighting;
 import BSDF;
 import NextEventEstimation;
 import InlineRayTracing;
+import MIS;
 
 namespace Omni {
 
@@ -198,6 +199,10 @@ public struct NEESamplingStrategy {
         float2 Xi,
         NextEventEstimator NEE
     ) {
+        if (NEE.GetLightCount() == 0) {
+            return SamplingResult.Invalid();
+        }
+
         SamplingResult Result;
         Result.Weight = 0;
         Result.PDF = 0;
@@ -249,8 +254,13 @@ public struct NEESamplingStrategy {
         float NdotL = dot(Surface.TangentSpace.N, L);
         float VdotH = dot(V, H);
 
+        // Early exit if light is behind the surface
+        if (NdotL <= 0.0) {
+            return SamplingResult.Invalid();
+        }
+
         float D = DistributionGGX(Surface.TangentSpace.N, H, Surface.Roughness);
-        float G = GeometrySmith(Surface.TangentSpace.N, V, Result.Direction, Surface.Roughness);
+        float G = GeometrySmith(Surface.TangentSpace.N, V, L, Surface.Roughness);
 
         // Fresnel at half-vector H
         float3 Fh = F0 + (1.0 - F0) * pow(clamp(1.0 - VdotH, 0.0, 1.0), 5.0);
@@ -266,9 +276,47 @@ public struct NEESamplingStrategy {
         // Total BRDF
         float3 f = Diffuse + Specular;
 
-        // --- 5) Gather results ----------------------------------------
-        Result.Weight = f * NdotL;
-        Result.PDF = NEESample.PDF;
+        // --- 5) Calculate BSDF PDF for MIS --------------------------
+        float3 F0_bsdf = lerp(0.04f, Surface.Color, Surface.Metallic);
+        float3 Fv_bsdf = F0_bsdf + (1.0 - F0_bsdf) * pow(clamp(1.0 - max(dot(Surface.TangentSpace.N, V), 0.0), 0.0, 1.0), 5.0);
+        float3 kS_bsdf = Fv_bsdf;
+        float3 kD_bsdf = (1.0 - kS_bsdf) * (1.0 - Surface.Metallic);
+        
+        float wS_bsdf = dot(kS_bsdf, float3(0.299, 0.587, 0.114));
+        float wD_bsdf = dot(kD_bsdf, float3(0.299, 0.587, 0.114));
+        float totalWeight_bsdf = wS_bsdf + wD_bsdf + 1e-8;
+        float pSpec_bsdf = wS_bsdf / totalWeight_bsdf;
+        float pDiff_bsdf = wD_bsdf / totalWeight_bsdf;
+        
+        float pdfSpec_bsdf = 0.0;
+        float pdfDiff_bsdf = 0.0;
+        
+        if (pSpec_bsdf > FloatMin) {
+            float D_bsdf = DistributionGGX(Surface.TangentSpace.N, H, Surface.Roughness);
+            pdfSpec_bsdf = D_bsdf * max(dot(Surface.TangentSpace.N, H), 0.0) / (4.0 * VdotH);
+        }
+        
+        if (pDiff_bsdf > FloatMin) {
+            pdfDiff_bsdf = NdotL * InvPi;
+        }
+        
+        float BSDFPdf = pSpec_bsdf * pdfSpec_bsdf + pDiff_bsdf * pdfDiff_bsdf;
+
+        // --- 6) Gather results ----------------------------------------
+        AreaToSolidAngleJacobian Jacobian;
+        float SolidAnglePDF = Jacobian.Convert(Surface.Position, NEESample);
+
+        if (SolidAnglePDF < 1e-8) {
+            return SamplingResult.Invalid();
+        }
+
+        // Apply MIS weights
+        PowerHeuristic MISHeuristic;
+        float MISWeight = MISHeuristic.Compute(SolidAnglePDF, BSDFPdf);
+        
+        float3 LightEmission = NEESample.Color * NEESample.Intensity;
+        Result.Weight = f * NdotL * LightEmission * MISWeight / SolidAnglePDF;
+        Result.PDF = SolidAnglePDF;
         Result.Direction = L;
 
         // Check for invalid values

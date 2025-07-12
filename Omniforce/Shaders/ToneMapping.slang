@@ -3,7 +3,7 @@
 module ToneMapping;
 
 import Common;
-import Gen.ToneMapping;
+import Gen.ToneMappingInput;
 import FullScreenBase;
 
 using namespace Omni;

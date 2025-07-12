@@ -255,6 +255,7 @@ public struct TangentSpace {
 
         T = normalize(cross(InNormal, ReferenceVector));
         B = cross(InNormal, T);
+        N = InNormal;
     }
 
     public __init(float3 InTangent, float3 InBitangent, float3 InNormal) {
