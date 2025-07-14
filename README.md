@@ -7,8 +7,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Platform](https://img.shields.io/badge/Platform-Windows-blue.svg)](https://www.microsoft.com/windows)
-[![Vulkan](https://img.shields.io/badge/Vulkan-1.3-red.svg)](https://www.vulkan.org/)
-[![C++](https://img.shields.io/badge/C++-17-blue.svg)](https://isocpp.org/)
+[![Vulkan](https://img.shields.io/badge/Vulkan-1.4-red.svg)](https://www.vulkan.org/)
+[![C++](https://img.shields.io/badge/C++-23-blue.svg)](https://isocpp.org/)
 
 *A high-performance, real-time rendering engine with hardware-accelerated ray tracing and advanced graphics features*
 
@@ -59,10 +59,10 @@ Omniforce Engine is a cutting-edge real-time rendering engine that leverages mod
 
 ### Prerequisites
 - Windows 10/11
-- GPU with mesh shader support (NVIDIA Turing+ / AMD RDNA2+)
-- Vulkan SDK 1.3+
+- GPU with mesh shader support and hardware ray tracing (NVIDIA Turing+ / AMD RDNA3+)
+- Vulkan SDK 1.4+
 - CMake 3.23+
-- Python 3.13.1
+- Python 3.13.1+
 
 ### Installation
 
@@ -97,7 +97,7 @@ For detailed build instructions, see [BUILD.md](BUILD.md).
 
 ### Development Requirements
 - **Compiler**: MSVC (Visual Studio 2019 or newer)
-- **Vulkan SDK**: 1.3.280 or newer
+- **Vulkan SDK**: 1.4.313.2 or newer
 - **CMake**: 3.23 or newer
 - **Python**: 3.13.1
 
@@ -122,27 +122,23 @@ The engine uses CMake for build configuration. Several build scripts are provide
 ## 📚 Documentation
 
 - **[BUILD.md](BUILD.md)** - Detailed build instructions
-- **[Shader Hot Reload](Docs/ShaderHotReload.md)** - Shader development workflow
-- **[Translucency](Docs/Translucency.md)** - Translucency rendering guide
+- More documentation soon!
 
 ## 🎯 Roadmap
 
 ### Planned Features
-- **Virtual Geometry Renderer**: High-fidelity mesh rendering in real-time
-- **Software Rasterizer**: Micro-polygon rendering system
-- **Enhanced Ray Tracing**: Hardware-accelerated shadows and reflections
-- **Post-Processing Pipeline**: Chromatic aberration, vignette, and more effects
-- **Skeletal Animation**: Advanced animation system for meshletized geometry
+- **Path tracing**: complete path tracing PBR pipeline
+- **Machine learning**: custom AI graphics solutions
+- **Denoising**: SVGF, DLSS RR, custom ML denoiser
 
 ### Current Development Focus
+- Graphics fidelity
 - Performance optimization and stability improvements
-- Enhanced asset pipeline
-- Extended scripting capabilities
 - Additional rendering features
 
 ## 🤝 Contributing
 
-We welcome contributions! Please feel free to submit issues, feature requests, or pull requests.
+I welcome contributions! Please feel free to submit issues, feature requests, or pull requests.
 
 ### Development Setup
 1. Fork the repository
