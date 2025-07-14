@@ -51,28 +51,30 @@ namespace Omni {
 			}
 		}
 
-		Array(const Array<T>& other) {
+		Array(const Array<T>& other) 
+			: m_Allocator(other.m_Allocator)
+			, m_Size(0)
+			, m_GrowthFactor(other.m_GrowthFactor)
+		{
 			if (this == &other) {
 				OMNIFORCE_CORE_WARNING("Attempted to assign an array to itself");
+				return;
 			}
 
-			if (m_Allocation.IsValid()) {
-				Clear();
-				m_Allocator->FreeBase(m_Allocation);
+			if (other.m_Size > 0 && other.m_Allocator) {
+				// Allocate memory for the new array
+				Reallocate(other.m_Size);
+				
+				// Copy construct all elements
+				T* typed_array = m_Allocation.As<T>();
+				const T* other_array = other.m_Allocation.As<T>();
+
+				for (SizeType i = 0; i < other.m_Size; ++i) {
+					new (&typed_array[i]) T(other_array[i]);
+				}
+
+				m_Size = other.m_Size;
 			}
-
-			if (HasEnoughMemory(other.Size())) {
-				Reallocate(other.Size());
-			}
-
-			T* typed_array = m_Allocation.As<T>();
-			const T* other_array = other.m_Allocation.As<T>();
-
-			for (SizeType i = 0; i < other.m_Size; ++i) {
-				new (&typed_array[i]) T(other_array[i]);
-			}
-
-			m_Size = other.m_Size;
 		}
 
 		Array(Array<T>&& other) noexcept {
@@ -301,28 +303,31 @@ namespace Omni {
 				return *this;
 			}
 
+			// Clear existing data
 			if (m_Allocation.IsValid()) {
 				Clear();
-			}
-			else {
-				if (m_Allocator == nullptr)
-					m_Allocator = other.m_Allocator;
-
-				Reallocate(other.Size());
+				m_Allocator->FreeBase(m_Allocation);
+				m_Allocation.Invalidate();
 			}
 
-			if (!HasEnoughMemory(other.Size())) {
-				Reallocate(other.Size());
+			// Copy allocator and growth factor
+			m_Allocator = other.m_Allocator;
+			m_GrowthFactor = other.m_GrowthFactor;
+			m_Size = 0;
+
+			// Copy data if other has elements
+			if (other.m_Size > 0 && other.m_Allocator) {
+				Reallocate(other.m_Size);
+				
+				T* typed_array = m_Allocation.As<T>();
+				const T* other_array = other.m_Allocation.As<T>();
+
+				for (SizeType i = 0; i < other.m_Size; ++i) {
+					new (&typed_array[i]) T(other_array[i]);
+				}
+
+				m_Size = other.m_Size;
 			}
-
-			T* typed_array = m_Allocation.As<T>();
-			const T* other_array = other.m_Allocation.As<T>();
-
-			for (SizeType i = 0; i < other.m_Size; ++i) {
-				new (&typed_array[i]) T(other_array[i]);
-			}
-
-			m_Size = other.m_Size;
 
 			return *this;
 		}

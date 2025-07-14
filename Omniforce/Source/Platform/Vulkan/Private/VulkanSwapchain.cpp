@@ -1,4 +1,5 @@
 #include <Foundation/Common.h>
+#include <Foundation/BasicTypes.h>
 #include <Platform/Vulkan/VulkanSwapchain.h>
 
 #include <Platform/Vulkan/VulkanGraphicsContext.h>
@@ -6,15 +7,19 @@
 #include <Platform/Vulkan/VulkanImage.h>
 #include <Platform/Vulkan/VulkanDeviceCmdBuffer.h>
 #include <Core/RuntimeExecutionContext.h>
+#include <Core/EngineConfig.h>
 
 #include <GLFW/glfw3.h>
 
 namespace Omni {
 
+	static EngineConfigValue<int32> s_FramesInFlight("Renderer.ForceFramesInFlight", "Num of frames in flight to use");
+
 	VulkanSwapchain::VulkanSwapchain(const SwapchainSpecification& spec)
 		: m_Surface(VK_NULL_HANDLE), m_Swapchain(VK_NULL_HANDLE), m_Specification(spec)
 	{
 		m_Swapchain = new VkSwapchainKHR(VK_NULL_HANDLE);
+		m_FramesInFlight = s_FramesInFlight.Get();
 	}
 
 	VulkanSwapchain::~VulkanSwapchain()
@@ -24,6 +29,27 @@ namespace Omni {
 			RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueObjectDeletion(
 				[vk_device = device->Raw(), vk_view = image->RawView()]() {
 					vkDestroyImageView(vk_device, vk_view, nullptr);
+				}
+			);
+		}
+		for (auto sem : m_AcquireSemaphores) {
+			RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueCoreObjectDelection(
+				[vk_device = device->Raw(), sem]() {
+					vkDestroySemaphore(vk_device, sem, nullptr);
+				}
+			);
+		}
+		for (auto sem : m_RenderSemaphores) {
+			RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueCoreObjectDelection(
+				[vk_device = device->Raw(), sem]() {
+					vkDestroySemaphore(vk_device, sem, nullptr);
+				}
+			);
+		}
+		for (auto fence : m_Fences) {
+			RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueCoreObjectDelection(
+				[vk_device = device->Raw(), fence]() {
+					vkDestroyFence(vk_device, fence, nullptr);
 				}
 			);
 		}
@@ -100,8 +126,8 @@ namespace Omni {
 		auto device = VulkanGraphicsContext::Get()->GetDevice();
 
 		m_Specification = spec;
+		m_FramesInFlight = s_FramesInFlight.Get();
 		m_Images.reserve(m_SwachainImageCount);
-		m_Semaphores.reserve(spec.frames_in_flight);
 
 		if (*m_Swapchain) [[likely]]
 		{
@@ -154,12 +180,27 @@ namespace Omni {
 				}
 			);
 		}
-
 		m_Images.clear();
+
+		for (auto sem : m_AcquireSemaphores) {
+			RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueCoreObjectDelection(
+				[vk_device = device->Raw(), sem]() {
+					vkDestroySemaphore(vk_device, sem, nullptr);
+				}
+			);
+		}
+		for (auto sem : m_RenderSemaphores) {
+			RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueCoreObjectDelection(
+				[vk_device = device->Raw(), sem]() {
+					vkDestroySemaphore(vk_device, sem, nullptr);
+				}
+			);
+		}
+		m_AcquireSemaphores.clear();
+		m_RenderSemaphores.clear();
 
 		for (auto& image : pure_swapchain_images) {
 			VkImageView image_view = VK_NULL_HANDLE;
-
 			VkImageViewCreateInfo image_view_create_info = {};
 			image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 			image_view_create_info.image = image;
@@ -174,17 +215,13 @@ namespace Omni {
 			image_view_create_info.subresourceRange.layerCount = 1;
 			image_view_create_info.subresourceRange.baseMipLevel = 0;
 			image_view_create_info.subresourceRange.levelCount = 1;
-
 			VK_CHECK_RESULT(vkCreateImageView(device->Raw(), &image_view_create_info, nullptr, &image_view));
-
 			ImageSpecification swapchain_image_spec = {};
 			swapchain_image_spec.extent = { (uint32)m_Specification.extent.x, (uint32)m_Specification.extent.y, 1 };
 			swapchain_image_spec.usage = ImageUsage::RENDER_TARGET;
 			swapchain_image_spec.type = ImageType::TYPE_2D;
 			swapchain_image_spec.format = convert(m_SurfaceFormat.format);
-
 			m_Images.push_back(CreateRef<VulkanImage>(&g_PersistentAllocator, swapchain_image_spec, image, image_view));
-
 			VkImageMemoryBarrier image_memory_barrier = {};
 			image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 			image_memory_barrier.image = image;
@@ -197,7 +234,6 @@ namespace Omni {
 			image_memory_barrier.subresourceRange.layerCount = 1;
 			image_memory_barrier.subresourceRange.baseMipLevel = 0;
 			image_memory_barrier.subresourceRange.levelCount = 1;
-
 			vkCmdPipelineBarrier(
 				image_layout_transition_command_buffer->Raw(),
 				VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
@@ -211,71 +247,46 @@ namespace Omni {
 				&image_memory_barrier
 			);
 		}
-
 		device->ExecuteTransientCmdBuffer(image_layout_transition_command_buffer, true);
-
 		for (auto& image : m_Images) {
 			image->SetCurrentLayout(ImageLayout::PRESENT_SRC);
 		}
-
-		m_CurrentFrameIndex = 0;
-
-		/*  ===================
-		*	Create sync objects
-		*/
-
+		// Create per-image semaphores (as suggested by validation layer)
 		VkSemaphoreCreateInfo semaphore_create_info = {};
 		semaphore_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-		// Only create sync objects once
-		if (m_Semaphores.size() == 0) {
-			for (int32 i = 0; i < m_Specification.frames_in_flight; i++) {
-				VkSemaphore render_semaphore;
-				VkSemaphore present_semaphore;
-
-				VK_CHECK_RESULT(vkCreateSemaphore(device->Raw(), &semaphore_create_info, nullptr, &render_semaphore));
-				VK_CHECK_RESULT(vkCreateSemaphore(device->Raw(), &semaphore_create_info, nullptr, &present_semaphore));
-
-				m_Semaphores.push_back({ render_semaphore, present_semaphore });
-
-				RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueCoreObjectDelection(
-					[vk_device = device->Raw(), render_semaphore, present_semaphore]() {
-						vkDestroySemaphore(vk_device, render_semaphore, nullptr);
-						vkDestroySemaphore(vk_device, present_semaphore, nullptr);
-					}
-				);
-
-			}
-
-			m_Fences.reserve(spec.frames_in_flight);
-
-			m_Semaphores.shrink_to_fit();
-			m_Fences.shrink_to_fit();
-
-			VkFenceCreateInfo fence_create_info = {};
-			fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-			fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-			for (int32 i = 0; i < spec.frames_in_flight; i++) {
-				VkFence fence;
-				VK_CHECK_RESULT(vkCreateFence(device->Raw(), &fence_create_info, nullptr, &fence));
-				m_Fences.push_back(fence);
-
-				RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueCoreObjectDelection(
-					[vk_device = device->Raw(), fence]() {
-						vkDestroyFence(vk_device, fence, nullptr);
-					}
-				);
-
-			}
+		for (uint32 i = 0; i < m_SwachainImageCount; i++) {
+			VkSemaphore acquire_sem, render_sem;
+			VK_CHECK_RESULT(vkCreateSemaphore(device->Raw(), &semaphore_create_info, nullptr, &acquire_sem));
+			VK_CHECK_RESULT(vkCreateSemaphore(device->Raw(), &semaphore_create_info, nullptr, &render_sem));
+			m_AcquireSemaphores.push_back(acquire_sem);
+			m_RenderSemaphores.push_back(render_sem);
 		}
-		
+		// Create per-frame fences
+		for (auto fence : m_Fences) {
+			RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueCoreObjectDelection(
+				[vk_device = device->Raw(), fence]() {
+					vkDestroyFence(vk_device, fence, nullptr);
+				}
+			);
+		}
+		m_Fences.clear();
+		VkFenceCreateInfo fence_create_info = {};
+		fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+		fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+		for (uint32 i = 0; i < m_FramesInFlight; i++) {
+			VkFence fence;
+			VK_CHECK_RESULT(vkCreateFence(device->Raw(), &fence_create_info, nullptr, &fence));
+			m_Fences.push_back(fence);
+		}
+		m_CurrentFrame = 0;
+		m_CurrentImage = 0;
 		OMNIFORCE_CORE_INFO(
-			"Created window swapchain with extent: {0}x{1}, VSync: {2}, image count: {3}",
+			"Created window swapchain with extent: {0}x{1}, VSync: {2}, image count: {3}, frames in flight: {4}",
 			spec.extent.x,
 			spec.extent.y,
 			spec.vsync ? "on" : "off",
-			m_SwachainImageCount
+			m_SwachainImageCount,
+			m_FramesInFlight
 		);
 	}
 
@@ -295,32 +306,21 @@ namespace Omni {
 	void VulkanSwapchain::BeginFrame()
 	{
 		auto device = VulkanGraphicsContext::Get()->GetDevice();
-
-		VK_CHECK_RESULT(vkWaitForFences(device->Raw(), 1, &m_Fences[m_CurrentFrameIndex], VK_TRUE, UINT64_MAX));
-		VK_CHECK_RESULT(vkResetFences(device->Raw(), 1, &m_Fences[m_CurrentFrameIndex]));
-
-		VkResult acquisition_result = vkAcquireNextImageKHR(
+		// Wait for the current frame's fence - this ensures any previous use of our semaphores is complete
+		VK_CHECK_RESULT(vkWaitForFences(device->Raw(), 1, &m_Fences[m_CurrentFrame], VK_TRUE, UINT64_MAX));
+	
+		// Acquire next image using the acquire semaphore for the current frame
+		VK_CHECK_RESULT(vkAcquireNextImageKHR(
 			device->Raw(),
 			*m_Swapchain,
 			UINT64_MAX,
-			m_Semaphores[m_CurrentFrameIndex].present_complete,
+			m_AcquireSemaphores[m_CurrentFrame], // Use per-frame acquire semaphore
 			VK_NULL_HANDLE,
-			&m_CurrentImageIndex
-		);
-
-		if (acquisition_result == VK_ERROR_OUT_OF_DATE_KHR || acquisition_result == VK_SUBOPTIMAL_KHR)
-		{
-			VkSurfaceCapabilitiesKHR surface_capabilities = {};
-			vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device->GetPhysicalDevice()->Raw(), m_Surface, &surface_capabilities);
-
-			SwapchainSpecification new_spec = GetSpecification();
-			new_spec.extent = { (int32)surface_capabilities.currentExtent.width, (int32)surface_capabilities.currentExtent.height };
-
-			vkQueueWaitIdle(device->GetAsyncComputeQueue());
-
-			CreateSwapchain(new_spec);
-		}
-
+			&m_CurrentImage
+		));
+	
+		// Reset the fence for this frame
+		VK_CHECK_RESULT(vkResetFences(device->Raw(), 1, &m_Fences[m_CurrentFrame]));
 	}
 
 	void VulkanSwapchain::EndFrame()
@@ -329,14 +329,12 @@ namespace Omni {
 
 		VkPresentInfoKHR present_info = {};
 		present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-		present_info.pImageIndices = &m_CurrentImageIndex;
+		present_info.pImageIndices = &m_CurrentImage;
 		present_info.swapchainCount = 1;
 		present_info.pSwapchains = m_Swapchain;
 		present_info.waitSemaphoreCount = 1;
-		present_info.pWaitSemaphores = &m_Semaphores[m_CurrentFrameIndex].render_complete;
+		present_info.pWaitSemaphores = &m_RenderSemaphores[m_CurrentImage];
 		present_info.pResults = nullptr;
-
-		
 
 		VkResult present_result = vkQueuePresentKHR(device->GetGeneralQueue(), &present_info);
 
@@ -352,8 +350,8 @@ namespace Omni {
 
 			CreateSwapchain(new_spec);
 		}
-		
-		m_CurrentFrameIndex = (m_CurrentImageIndex + 1) % m_Specification.frames_in_flight;
+		// Advance frame
+		m_CurrentFrame = (m_CurrentFrame + 1) % m_FramesInFlight;
 	}
 
 }

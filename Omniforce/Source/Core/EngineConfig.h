@@ -151,6 +151,10 @@ namespace Omni {
 			return m_Description;
 		}
 
+		operator T() {
+			return EngineConfig::Get<T>(m_Name);
+		}
+
 	private:
 		std::string m_Name;
 		std::string m_Description;

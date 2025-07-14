@@ -46,13 +46,14 @@ namespace Omni {
 			uint32 descriptor_count = UINT16_MAX * config.frames_in_flight;;
 
 			std::vector<VkDescriptorPoolSize> pool_sizes = {
-				{ VK_DESCRIPTOR_TYPE_SAMPLER,					descriptor_count }, 
-				{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,	descriptor_count },
-				{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,				descriptor_count },
-				{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,				descriptor_count },
-				{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,			descriptor_count },
-				{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,			descriptor_count },
-				{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,			descriptor_count }
+				{ VK_DESCRIPTOR_TYPE_SAMPLER,						descriptor_count },
+				{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,		descriptor_count },
+				{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,					descriptor_count },
+				{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,					descriptor_count },
+				{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,				descriptor_count },
+				{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,				descriptor_count },
+				{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,				descriptor_count },
+				{ VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,	16 * config.frames_in_flight }
 			};
 
 			VkDescriptorPoolCreateInfo descriptor_pool_create_info = {};
@@ -135,22 +136,26 @@ namespace Omni {
 
 				WeakPtr<VulkanDeviceCmdBuffer> vk_cmd_buffer = m_CurrentCmdBuffer;
 				VkCommandBuffer raw_buffer = vk_cmd_buffer->Raw();
-				auto semaphores = m_Swapchain->GetSemaphores();
+
+				VkSemaphore wait_semaphore = m_Swapchain->GetAcquireSemaphore();
+				VkSemaphore signal_semaphore = m_Swapchain->GetRenderSemaphore();
+				VkFence fence = m_Swapchain->GetFence();
 
 				VkSubmitInfo submitinfo = {};
 				submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 				submitinfo.commandBufferCount = 1;
 				submitinfo.pCommandBuffers = &raw_buffer;
 				submitinfo.signalSemaphoreCount = 1;
-				submitinfo.pSignalSemaphores = &semaphores.render_complete;
+				submitinfo.pSignalSemaphores = &signal_semaphore;
 				submitinfo.waitSemaphoreCount = 1;
-				submitinfo.pWaitSemaphores = &semaphores.present_complete;
+				submitinfo.pWaitSemaphores = &wait_semaphore;
 				submitinfo.pWaitDstStageMask = stagemasks;
 
 				m_Mutex.lock();
-				VkResult result = vkQueueSubmit(m_Device->GetGeneralQueue(), 1, &submitinfo, m_Swapchain->GetCurrentFence());
+				VkResult result = vkQueueSubmit(m_Device->GetGeneralQueue(), 1, &submitinfo, fence);
 				m_Mutex.unlock();
-		});
+			}
+		);
 	}
 
 	void VulkanRenderer::ClearImage(Ref<Image> image, const fvec4& value)
@@ -269,7 +274,7 @@ namespace Omni {
 		void* node = m_Device->GetPhysicalDevice()->GetProperties().pNext;
 		VkStructureType type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT;
 		while (node != nullptr) {
-			if (memcmp(node, &type, sizeof VkStructureType) == 0) {
+			if (memcmp(node, &type, sizeof(VkStructureType)) == 0) {
 				// If allowed, use smaller work group size
 				return std::min(((VkPhysicalDeviceMeshShaderPropertiesEXT*)node)->maxPreferredTaskWorkGroupInvocations, 128u);
 			}
@@ -287,7 +292,7 @@ namespace Omni {
 		void* node = m_Device->GetPhysicalDevice()->GetProperties().pNext;
 		VkStructureType type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT;
 		while (node != nullptr) {
-			if (memcmp(node, &type, sizeof VkStructureType) == 0) {
+			if (memcmp(node, &type, sizeof(VkStructureType)) == 0) {
 				// If allowed, use smaller work group size
 				return std::min(((VkPhysicalDeviceMeshShaderPropertiesEXT*)node)->maxPreferredMeshWorkGroupInvocations, 64u);
 			}
