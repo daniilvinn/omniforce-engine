@@ -200,7 +200,7 @@ Omniforce Engine uses the following third-party libraries:
 
 <div align="center">
 
-**Made with ❤️ by the Omniforce Engine team**
+**Made with ❤️ by the Daniil Vinnik**
 
 [GitHub](https://github.com/daniilvinn/omniforce-engine) • [Issues](https://github.com/daniilvinn/omniforce-engine/issues) • [Discussions](https://github.com/daniilvinn/omniforce-engine/discussions)
 
