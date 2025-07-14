@@ -12,3 +12,4 @@ Runtime/*.dll
 Runtime/Resources/Shaders
 compile_commands.json
 .cache/
+Omniforce/ThirdParty/slang/
