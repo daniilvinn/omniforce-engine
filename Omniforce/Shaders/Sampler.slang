@@ -30,6 +30,30 @@ namespace Omni {
     }
 
     // ------------------------------------
+    // Uniform Sphere Sampler
+    // ------------------------------------
+
+    public struct UniformSphereSampler {
+        public float3 Sample(float2 Xi)
+        {
+            // Map Xi.y to z = cos(theta), where theta ∈ [0, π]
+            float z = 1.0f - 2.0f * Xi.y;
+
+            // Radius of the circle at height z
+            float r = sqrt(max(0.0f, 1.0f - z * z));
+
+            // Map Xi.x to azimuthal angle phi ∈ [0, 2π]
+            float phi = 2.0f * 3.14159265f * Xi.x;
+
+            // Convert spherical coordinates to Cartesian
+            float x = r * cos(phi);
+            float y = r * sin(phi);
+
+            return float3(x, y, z);
+        }
+    }
+
+    // ------------------------------------
     // Uniform Hemisphere Sampler
     // ------------------------------------
     public struct UniformHemisphereSampler {
@@ -92,5 +116,29 @@ namespace Omni {
             return H;
         }
     };
+
+    // GGX VNDF Sampler for Transmission (Walter et al. 2007)
+    public struct GGXTransmissionSampler {
+        public float3 Sample(float3 Wi, float3 N, float Roughness, float IOR, float2 Xi, out bool TotalInternalReflection) {
+            // Step 1: Determine which side of the surface we're on
+            bool Entering = dot(N, Wi) > 0.0f;
+            float3 Nf = Entering ? N : -N;
+            float Eta = Entering ? IOR : 1.0f / IOR;
+
+            // Step 2: Sample microfacet normal H using existing VNDF
+            GGXVNDFSampler vndf;
+            float3 H = vndf.Sample(Wi, Roughness, Xi);
+
+            // Step 3: Ensure H points to the same side as Nf
+            if (dot(H, Nf) < 0.0f) {
+                H = -H;
+            }
+
+            // Step 4: Refract through the microfacet (not reflect!)
+            float3 Wo = refract(Wi, H, Eta);
+
+            return Wo;
+        }
+    }
 
 } // namespace Omni

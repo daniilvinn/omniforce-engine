@@ -7,16 +7,7 @@ import Rendering;
 import Random;
 import SamplingStrategy;
 import MIS;
-
-struct RayPayload
-{
-    float3 Radiance;
-    float3 PathThroughput;
-    float3 IncomingDirection;
-    float3 HitPoint;
-    uint RandomSeed;
-    float BSDFPdf;
-};
+import PathTracingCommon;
 
 using namespace Omni;
 
@@ -97,192 +88,19 @@ void PathConstruction()
 }
 
 [shader("closesthit")]
-void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttributes Attr)
+void OpaqueHit(inout RayPayload Payload, in BuiltInTriangleIntersectionAttributes Attr)
 {
-    InstanceRenderData Instance = Input.Instances[InstanceID()];
-    GeometryMeshData Geometry = Input.Meshes[Instance.geometry_data_id];
-    GeometryLayoutTable Layout = Geometry.ray_tracing.layout;
-    uint3 HitTriangleIndices = Geometry.ray_tracing.indices[PrimitiveIndex()];
-
-    float3 Barys = float3(1.0 - Attr.barycentrics.x - Attr.barycentrics.y, Attr.barycentrics);
-
-    RTMaterial* Material = (RTMaterial*)Instance.material_address;
-
-    // Fetch triangle positions
-    float3 WorldPosition = 0;
-    float4 TriangleVerticesClip[3];
-
-    for (uint i = 0; i < 3; i++) {
-        float3 Vertex = HitTriangleVertexPosition(i);
-
-        WorldPosition += Vertex * Barys[i];
-        TriangleVerticesClip[i] = mul(Input.View.view_proj, float4(Vertex, 1.0f));
-    }
-    WorldPosition = Instance.transform.TransformPoint(WorldPosition);
-
-    uint LastFetchedUVIndex = (uint)-1;
-
-    // Calculate analytic derivatives
-    float2 ImageSize;
-    OutputImage.GetDimensions(ImageSize.x, ImageSize.y);
-
-    uint3 PixelIndex = DispatchRaysIndex();
-
-    float2 PixelNDC = (float2(PixelIndex.xy) + 0.5) / float2(Input.View.viewport_width, Input.View.viewport_height) * 2.0 - 1.0;
-    PixelNDC.y = -PixelNDC.y;
-
-    BarycentricDerivative Gradient;
-    Gradient.Setup(TriangleVerticesClip[0], TriangleVerticesClip[1], TriangleVerticesClip[2], PixelNDC, ImageSize);
-
-    // Fetch base color
-    float2 UV = 0;
-    float2 Ddx = 0;
-    float2 Ddy = 0;
-
-    float3 BaseColor = Material.UniformColor.xyz;
-    if (Material.Metadata.HasBaseColor == 1) {
-        UV = Geometry.RTFetchUV(HitTriangleIndices, Material.BaseColor.UVChannelIndex, Barys);
-        Geometry.RTFetchUVGradients(HitTriangleIndices, Material.BaseColor.UVChannelIndex, Gradient, Ddx, Ddy);
-
-        BaseColor = TextureHeap[Material.BaseColor.TextureIndex].SampleGrad(UV, Ddx, Ddy).rgb;
-        LastFetchedUVIndex = Material.BaseColor.UVChannelIndex;
-    }
-
-    // Fetch vertex colors
-    if (Layout.AttributeMask.HasColor == 1) {
-        VertexDecoder Decoder;
-
-        float3 VertexColor = 0;
-        for (uint i = 0; i < 3; i++) {
-            uint AttrOffset = Layout.Stride * HitTriangleIndices[i];
-            uint8_t4 FetchedColor = *(uint8_t4 *)(Geometry.ray_tracing.attributes + AttrOffset + Layout.Offsets.Color);
-            VertexColor += Decoder.DecodeColor(FetchedColor).rgb * Barys[i];
-        }
-        BaseColor *= VertexColor;
-    }
-
-    // Fetch vertex normals
-    float3 GeometryNormal = 0;
-    float3 TrueGeometryNormal = 0;
-    {
-        float3 v0 = HitTriangleVertexPosition(0);
-        float3 v1 = HitTriangleVertexPosition(1);
-        float3 v2 = HitTriangleVertexPosition(2);
-
-        float3 edge1 = v1 - v0;
-        float3 edge2 = v2 - v0;
-
-        TrueGeometryNormal = normalize(cross(edge1, edge2));
-    }
-
-    if (Layout.AttributeMask.HasNormals == 1) {
-        VertexDecoder Decoder;
-
-        for (uint i = 0; i < 3; i++) {
-            uint AttrOffset = Layout.Stride * HitTriangleIndices[i];
-            half2 FetchedNormal = *(half2 *)(Geometry.ray_tracing.attributes + AttrOffset + Layout.Offsets.Normal);
-            GeometryNormal += Decoder.OctahedronDecode(FetchedNormal) * Barys[i];
-        }
-
-        if (dot(GeometryNormal, -Payload.IncomingDirection) < 0) {
-            if (Material.Metadata.DoubleSided == 1) {
-                GeometryNormal = -GeometryNormal;
-            } else {
-                NormalFixer Fixer;
-                GeometryNormal = Fixer.PullNormal(GeometryNormal, Payload.IncomingDirection, TrueGeometryNormal);
-            }
-        }
-    } else {
-        GeometryNormal = TrueGeometryNormal;
-    }
-
-    // Fetch normal map
-    float4 T = 0.0;
-    float3 B = 0.0;
-    float3 N = normalize(GeometryNormal);
-    if (Material.Metadata.HasNormal == 1 && Layout.AttributeMask.HasTangents == 1) {
-        // Check if corresponding UVs are loaded; reload otherwise
-        if (LastFetchedUVIndex != Material.Normal.UVChannelIndex) {
-            UV = Geometry.RTFetchUV(HitTriangleIndices, Material.Normal.UVChannelIndex, Barys);
-            Geometry.RTFetchUVGradients(HitTriangleIndices, Material.BaseColor.UVChannelIndex, Gradient, Ddx, Ddy);
-            LastFetchedUVIndex = Material.BaseColor.UVChannelIndex;
-        }
-
-        // Fetch tangents
-        VertexDecoder Decoder;
-        for (uint i = 0; i < 3; i++) {
-            uint AttrOffset = Layout.Stride * HitTriangleIndices[i];
-            half2 FetchedTangent = *(half2 *)(Geometry.ray_tracing.attributes + AttrOffset + Layout.Offsets.Tangent);
-            T += Decoder.DecodeTangent(FetchedTangent) * Barys[i];
-        }
-        T = normalize(T);
-
-        // Compute bitangent
-        B = cross(GeometryNormal, T.xyz) * T.w;
-
-        // Fetch normal map, decode and transform
-        float3 NormalMapTexel = TextureHeap[Material.Normal.TextureIndex].SampleGrad(UV, Ddx, Ddy).rgb;
-        NormalMapTexel = Decoder.DecodeNormalMap(NormalMapTexel);
-
-        // Build TBN matrix for a normal from normal map
-        float3x3 TBN = float3x3(
-            T.xyz,
-            B,
-            GeometryNormal
-        );
-
-        N = mul(NormalMapTexel, TBN);
-
-        NormalFixer Fixer;
-        N = Fixer.PullNormal(N, Payload.IncomingDirection, GeometryNormal);
-
-        T.xyz = normalize(T.xyz - dot(T.xyz, N) * N);
-        B = cross(N, T.xyz);
-    } else {
-        TangentSpace TangentSpace = TangentSpace(N);
-        T.xyz = TangentSpace.T;
-        B = TangentSpace.B;
-    }
-
-    // Setup tangent space
-    TangentSpace TangentSpace = TangentSpace(
-        QuaternionRotate(float4(Instance.transform.rotation), T.xyz),
-        QuaternionRotate(float4(Instance.transform.rotation), B),
-        QuaternionRotate(float4(Instance.transform.rotation), N)
-    );
-
-    // Fetch metallic roughness
-    float3 MetallicRoughnessOcclusion = float3(1.0f, 1.0f, 0.0f);
-    if (Material.Metadata.HasMetallicRoughness == 1) {
-        if (LastFetchedUVIndex != Material.MetallicRoughness.UVChannelIndex) {
-            UV = Geometry.RTFetchUV(HitTriangleIndices, Material.MetallicRoughness.UVChannelIndex, Barys);
-            Geometry.RTFetchUVGradients(HitTriangleIndices, Material.BaseColor.UVChannelIndex, Gradient, Ddx, Ddy);
-            LastFetchedUVIndex = Material.BaseColor.UVChannelIndex;
-        }
-
-        MetallicRoughnessOcclusion = TextureHeap[Material.MetallicRoughness.TextureIndex].SampleGrad(UV, Ddx, Ddy).rgb;
-    }
-
-    // Setup sampling data
-    float3 V = normalize(-Payload.IncomingDirection);
+    HitSurfaceInfo SurfaceInfo;
+    SurfaceInfo.Gather(Payload, Attr);
 
     RandomNumber<PCGGenerator> Random = RandomNumber<PCGGenerator>(Payload.RandomSeed);
     float2 Xi = Random.GetXi<float2>();
 
-    PBRSurface Surface;
-    Surface.TangentSpace = TangentSpace;
-    Surface.Position = WorldPosition;
-    Surface.Color = BaseColor;
-    Surface.Metallic = MetallicRoughnessOcclusion.b;
-    Surface.Roughness = MetallicRoughnessOcclusion.g;
-
     // Perform BSDF sampling
-    SamplingResult Result;
-
-    BSDFSamplingStrategy BSDFStrategy;
-    Result = BSDFStrategy.Sample(
-        Surface,
-        V,
+    BRDFSamplingStrategy BRDFStrategy;
+    SamplingResult Result = BRDFStrategy.Sample(
+        SurfaceInfo.Surface,
+        normalize(-Payload.IncomingDirection),
         Xi
     );
 
@@ -293,7 +111,7 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
     if (!TerminatePath) {
         // Trace ray in BSDF direction to check for light hits
         RayDesc BSDFRay;
-        BSDFRay.Origin = Surface.Position;
+        BSDFRay.Origin = SurfaceInfo.Surface.Position;
         BSDFRay.Direction = Result.Direction;
         BSDFRay.TMin = 0.001f;
         BSDFRay.TMax = 1000.0f; // Large distance to catch lights
@@ -309,7 +127,7 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
                 if (BSDFHitInfo.InstanceIndex == lightIdx) {
                     // Calculate NEE PDF for this direction and light
                     NextEventEstimator NEEForPDF = NextEventEstimator(Input.PointLights);
-                    float NEEPdf = NEEForPDF.CalculateNEEPDF(Surface.Position, Result.Direction, lightIdx);
+                    float NEEPdf = NEEForPDF.CalculateNEEPDF(SurfaceInfo.Surface.Position, Result.Direction, lightIdx);
                     
                     if (NEEPdf > 1e-8) {
                         // Apply MIS weight for BSDF sample hitting light
@@ -334,7 +152,7 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
         Payload.PathThroughput *= Result.Weight;
         Payload.IncomingDirection = Result.Direction;
         Payload.RandomSeed = Random.Get();
-        Payload.HitPoint = WorldPosition + GeometryNormal * 0.001f;
+        Payload.HitPoint = SurfaceInfo.Surface.Position + SurfaceInfo.Surface.TangentSpace.N * 0.001f;
         Payload.BSDFPdf = Result.PDF;
     } else {
         // Reset BSDF PDF if no valid sample was produced
@@ -347,8 +165,8 @@ void PathVertex(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribut
 
     NEESamplingStrategy NEEStrategy;
     Result = NEEStrategy.Sample(
-        Surface, 
-        V, 
+        SurfaceInfo.Surface, 
+        normalize(-Payload.IncomingDirection), 
         Random.GetXi<float2>(),
         NEE
     );

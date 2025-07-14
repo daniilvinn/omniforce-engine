@@ -28,14 +28,14 @@ public struct SamplingResult {
 }
 
 // ------------------------------------
-// BSDF sampling strategy
+// BRDF sampling strategy
 // Probabilistically chooses between
 // specular and diffuse lobes sampling
 // ------------------------------------
-public struct BSDFSamplingStrategy
+public struct BRDFSamplingStrategy
 {
-    public SamplingResult Sample(
-        PBRSurface Surface,
+    public SamplingResult Sample<SurfaceDomain Domain = SurfaceDomain.Opaque>(
+        PBRSurface<Domain> Surface,
         float3 V_world,
         float2 Xi
     ) {
@@ -193,8 +193,8 @@ public struct BSDFSamplingStrategy
 // Performs direct sampling of light sources
 // ------------------------------------
 public struct NEESamplingStrategy {
-    public SamplingResult Sample(
-        PBRSurface Surface,
+    public SamplingResult Sample<SurfaceDomain Domain = SurfaceDomain.Opaque>(
+        PBRSurface<Domain> Surface,
         float3 V_world,
         float2 Xi,
         NextEventEstimator NEE
@@ -327,5 +327,20 @@ public struct NEESamplingStrategy {
         return Result;
     }
 }
+
+public struct BSDFSamplingStrategy {
+    public SamplingResult Sample<SurfaceDomain Domain = SurfaceDomain.Transmissive>(
+        PBRSurface<Domain> Surface,
+        float3 V_world,
+        float2 Xi
+    ) {
+        SamplingResult Result;
+        Result.Weight = 0;
+        Result.PDF = 0;
+        Result.Direction = FloatMax;
+
+        return Result;
+    }
+};
 
 }
