@@ -3,6 +3,10 @@
 #
 
 include("../utils.cmake")
+include("../CMake/DownloadSlang.cmake")
+
+# Download and setup Slang
+download_slang()
 
 # Add source to this project's executable.
 set(ENGINE_TARGET OmniforceEngine CACHE INTERNAL "")
@@ -67,10 +71,8 @@ target_include_directories(${ENGINE_TARGET}
         "${CMAKE_CURRENT_SOURCE_DIR}/Shaders"
         "ThirdParty/tinyfiledialogs"
         "ThirdParty/miniaudio"
-        #"ThirdParty/slang/include"
+        "${SLANG_INCLUDE_DIR}"
         "${Vulkan_SDK}\\Include" 
-        "${Vulkan_SDK}\\Include\\slang" 
-        "${Vulkan_SDK}\\Source" 
         "${LLVM_ROOT}\\include"
         "ThirdParty/stb"
         "ThirdParty/Jolt"
@@ -91,7 +93,7 @@ target_link_directories(${ENGINE_TARGET} PUBLIC
     "${Vulkan_SDK}\\Bin" 
     "ThirdParty/mono/lib" 
     "ThirdParty/NVAftermath/lib/x64"
-    #"ThirdParty/slang"
+    "${SLANG_LIBRARY_DIR}"
     "${LLVM_ROOT}\\lib"
 )
 target_compile_definitions(${ENGINE_TARGET} 
@@ -140,7 +142,7 @@ target_link_libraries(
         nv_libdeflate
         meshoptimizer
         fastgltf
-        slang.lib
+        "${SLANG_LIBRARY_DIR}/slang.lib"
         libclang.lib
 )
 
@@ -158,6 +160,7 @@ set_property(TARGET ${ENGINE_TARGET} PROPERTY CXX_STANDARD 23)
 omni_set_project_ide_folder(${ENGINE_TARGET} ${CMAKE_CURRENT_SOURCE_DIR})
 
 INSTALL(FILES "${Vulkan_SDK}\\Bin\\shaderc_shared.dll" DESTINATION "${CMAKE_INSTALL_PREFIX}")
+INSTALL(FILES "${SLANG_BINARY_DIR}/slang.dll" DESTINATION "${CMAKE_INSTALL_PREFIX}")
 
 project(CreateCoreShadersSymlink)
 
@@ -240,7 +243,7 @@ file(WRITE "${CMAKE_SOURCE_DIR}/Omniforce/Shaders/slangdconfig.json" "${SLANG_CO
 add_dependencies(${ENGINE_TARGET} MetaToolRunner)
 
 # Copy slang.dll to Runtime directory
-set(SLANG_DLL_SOURCE "${Vulkan_SDK}\\Bin\\slang.dll" )
+set(SLANG_DLL_SOURCE "${SLANG_BINARY_DIR}/slang.dll" )
 set(SLANG_DLL_DESTINATION "${CMAKE_SOURCE_DIR}/Runtime/slang.dll")
 
 file(COPY "${SLANG_DLL_SOURCE}" DESTINATION "${CMAKE_SOURCE_DIR}/Runtime")
