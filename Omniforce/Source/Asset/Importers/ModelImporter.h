@@ -52,7 +52,7 @@ namespace Omni {
 			const std::vector<byte>& vertex_data,
 			const std::vector<uint32>& index_data,
 			uint32 vertex_stride,
-			bool opaque_geometry
+			MaterialDomain domain
 		);
 
 		/*

@@ -56,9 +56,16 @@ namespace Omni {
 			{}
 		);
 		shader_library->LoadShader2(
-			"ClosestHit",
+			"OpaqueHit",
 			{
-				"PathTracing.PathVertex"
+				"PathTracing.OpaqueHit"
+			},
+			{}
+		);
+		shader_library->LoadShader2(
+			"TranslucentHit",
+			{
+				"PathTracing.TranslucentHit"
 			},
 			{}
 		);
@@ -100,11 +107,14 @@ namespace Omni {
 		raygen_group.ray_generation = shader_library->GetShader("PathConstruction");
 
 		RTShaderGroup hit_group = {};
-		hit_group.closest_hit = shader_library->GetShader("ClosestHit");
+		hit_group.closest_hit = shader_library->GetShader("OpaqueHit");
 		hit_group.any_hit = shader_library->GetShader("AnyHitCheckTransparency");
 
 		RTShaderGroup point_light_hit_group = {};
 		point_light_hit_group.closest_hit = shader_library->GetShader("PointLightHit");
+
+		RTShaderGroup translucent_hit_group = {};
+		translucent_hit_group.closest_hit = shader_library->GetShader("TranslucentHit");
 
 		RTShaderGroup miss_group = {};
 		miss_group.miss = shader_library->GetShader("Miss");
@@ -112,6 +122,7 @@ namespace Omni {
 		rt_pipeline_spec.groups.Add(raygen_group);
 		rt_pipeline_spec.groups.Add(hit_group);
 		rt_pipeline_spec.groups.Add(point_light_hit_group);
+		rt_pipeline_spec.groups.Add(translucent_hit_group);
 		rt_pipeline_spec.groups.Add(miss_group);
 
 		m_RTPipeline = RTPipeline::Create(&g_PersistentAllocator, rt_pipeline_spec);
@@ -252,10 +263,13 @@ namespace Omni {
 			for (const auto& instance : m_HighLevelInstanceQueue) {
 				Ref<Mesh> mesh = AssetManager::Get()->GetAsset<Mesh>(instance.mesh_handle);
 
+				Ref<Material> material = AssetManager::Get()->GetAsset<Material>(instance.material_handle);
+
 				TLASInstance tlas_instance = {};
 				tlas_instance.blas = mesh->GetAccelerationStructure();
 				tlas_instance.custom_index = i;
 				tlas_instance.mask = 0xFF;
+				//tlas_instance.SBT_record_offset = material->GetDomain() == MaterialDomain::OPAQUE ? 0 : 2;
 				tlas_instance.SBT_record_offset = 0;
 				tlas_instance.transform = instance.transform;
 

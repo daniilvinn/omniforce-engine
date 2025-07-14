@@ -3,6 +3,8 @@
 #include <Foundation/Common.h>
 #include <Renderer/RendererCommon.h>
 
+#include <Asset/Material.h>
+
 namespace Omni {
 
 	class RTAccelerationStructure;
@@ -13,7 +15,7 @@ namespace Omni {
 		uint32 vertex_stride			= (uint32)-1;
 		uint32 vertex_count				= (uint32)-1;
 		uint32 index_count				= (uint32)-1;
-		bool is_opaque_geometry			= true;
+		MaterialDomain domain	= MaterialDomain::NONE;
 	};
 
 	struct TLASInstance {

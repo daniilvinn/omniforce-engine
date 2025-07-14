@@ -229,7 +229,7 @@ namespace Omni {
 		const std::vector<byte>& vertex_data, 
 		const std::vector<uint32>& index_data, 
 		uint32 vertex_stride, 
-		bool opaque_geometry
+		MaterialDomain domain
 	)
 	{
 		DeviceBufferSpecification vertex_buffer_spec = {};
@@ -256,7 +256,7 @@ namespace Omni {
 		blas_build_info.vertex_count = vertex_data.size() / vertex_stride;
 		blas_build_info.index_count = index_data.size();
 		blas_build_info.vertex_stride = vertex_stride;
-		blas_build_info.is_opaque_geometry = opaque_geometry;
+		blas_build_info.domain = domain;
 
 		Ptr<RTAccelerationStructure> as = RTAccelerationStructure::Create(&g_PersistentAllocator, blas_build_info);
 
@@ -397,7 +397,29 @@ namespace Omni {
 		mesh_preprocessor.SplitVertexData(&as_position_data, &mesh_data.ray_tracing.attributes, vertex_data, vertex_stride);
 
 		// Build acceleration structure
-		mesh_data.acceleration_structure = BuildAccelerationStructure(as_position_data, *index_data, sizeof(glm::vec3), material.alphaMode == ftf::AlphaMode::Opaque);
+		MaterialDomain material_domain = MaterialDomain::NONE;
+
+		switch (material.alphaMode) {
+			case ftf::AlphaMode::Opaque:
+				material_domain = MaterialDomain::OPAQUE;
+				break;
+			case ftf::AlphaMode::Mask:
+				material_domain = MaterialDomain::MASKED;
+				break;
+			case ftf::AlphaMode::Blend:
+				material_domain = MaterialDomain::TRANSLUCENT;
+				break;
+			default:
+				material_domain = MaterialDomain::NONE;
+				break;
+		};
+
+		mesh_data.acceleration_structure = BuildAccelerationStructure(
+			as_position_data, 
+			*index_data, 
+			sizeof(glm::vec3), 
+			material_domain
+		);
 
 		// Check config for virtual geometry usage
 		mesh_data.virtual_geometry.use = s_BuildVirtualGeometry.Get();
@@ -435,7 +457,7 @@ namespace Omni {
 		// Split vertex data into two data streams: geometry and attributes.
 		// It is an optimization used for depth-prepass and shadow maps rendering to speed up data reads.
 		std::vector<glm::vec3> deinterleaved_vertex_data(remapped_vertices.size() / vertex_stride);
-		mesh_data.virtual_geometry.attributes.resize(remapped_vertices.size() / vertex_stride * (vertex_stride - sizeof glm::vec3));
+		mesh_data.virtual_geometry.attributes.resize(remapped_vertices.size() / vertex_stride * (vertex_stride - sizeof(glm::vec3)));
 		mesh_preprocessor.SplitVertexData(&deinterleaved_vertex_data, &mesh_data.virtual_geometry.attributes, &remapped_vertices, vertex_stride);
 
 		// Generate mesh bounds

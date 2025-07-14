@@ -108,7 +108,7 @@ namespace Omni {
 
 		AssetCompressor compressor;
 
-		std::vector<RGBA32> intermediate_storage (image_data.size() / sizeof RGBA32);
+		std::vector<RGBA32> intermediate_storage (image_data.size() / sizeof(RGBA32));
 		memcpy(intermediate_storage.data(), image_data.data(), image_data.size());
 
 		OMNIFORCE_ASSERT_TAGGED(image_width && image_height, "Image dimension can not be zero");
@@ -167,6 +167,25 @@ namespace Omni {
 		subflow.emplace([=]() { HandleProperty("METALLIC_ROUGHNESS_MAP", in_material->pbrData.metallicRoughnessTexture, material, root, m_Mutex); });
 		subflow.emplace([=]() { HandleProperty("NORMAL_MAP", in_material->normalTexture, material, root, m_Mutex); });
 		subflow.emplace([=]() { HandleProperty("OCCLUSION_MAP", in_material->occlusionTexture, material, root, m_Mutex); });
+
+		MaterialDomain domain = MaterialDomain::NONE;
+
+		switch (in_material->alphaMode) {
+			case ftf::AlphaMode::Opaque:
+				domain = MaterialDomain::OPAQUE;
+				break;
+			case ftf::AlphaMode::Mask:
+				domain = MaterialDomain::MASKED;
+				break;
+			case ftf::AlphaMode::Blend:
+				domain = MaterialDomain::TRANSLUCENT;
+				break;
+			default:
+				domain = MaterialDomain::NONE;
+				break;
+		}
+
+		material->SetDomain(domain);
 
 		return id;
 	}
