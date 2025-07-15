@@ -138,7 +138,6 @@ target_link_libraries(
         Version.lib
         Bcrypt.lib
         bc7enc_rdo
-        OpenMP::OpenMP_CXX
         nv_libdeflate
         meshoptimizer
         fastgltf

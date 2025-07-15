@@ -16,8 +16,6 @@ endif()
 
 set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/Install")
 
-find_package(OpenMP REQUIRED)
-
 # Include sub-projects.
 add_subdirectory ("Omniforce/ThirdParty")
 set(METATOOL_TARGET MetaTool CACHE INTERNAL "") # HACK

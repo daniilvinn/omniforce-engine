@@ -2,6 +2,7 @@
 #include <Asset/AssetCompressor.h>
 
 #include <Core/Utils.h>
+#include <Threading/JobSystem.h>
 
 #include <glm/glm.hpp>
 #include <rdo_bc_encoder.h>
@@ -63,31 +64,41 @@ namespace Omni {
 		for (int i = 0; i < num_mip_levels; i++) {
 
 			// First y - improve caching
-#pragma omp parallel for
-			for (int y = 0; y < current_image_height; y += 2) {
-				for (int x = 0; x < current_image_width; x += 2) {
-					// Fetch current 2x2 block (left upper pixel)
-					RGBA32* current_block = src_mip_pointer + (y * current_image_width + x);
+			tf::Taskflow taskflow;
+			
+			// Calculate the number of rows to process
+			uint32 num_rows = current_image_height / 2;
+			
+			for (uint32 row_idx = 0; row_idx < num_rows; row_idx++) {
+				taskflow.emplace([&, row_idx, current_image_width, current_image_height, src_mip_pointer, dst_mip_pointer]() {
+					int y = row_idx * 2;
+					for (int x = 0; x < current_image_width; x += 2) {
+						// Fetch current 2x2 block (left upper pixel)
+						RGBA32* current_block = src_mip_pointer + (y * current_image_width + x);
 
-					// Create storage for pixels we're filtering
-					glm::uvec4 pixels[4] = {};
+						// Create storage for pixels we're filtering
+						glm::uvec4 pixels[4] = {};
 
-					// Fill the data
-					pixels[0] = *(current_block);
-					pixels[1] = *(current_block + 1);
-					pixels[2] = *(current_block + current_image_width);
-					pixels[3] = *(current_block + current_image_width + 1);
+						// Fill the data
+						pixels[0] = *(current_block);
+						pixels[1] = *(current_block + 1);
+						pixels[2] = *(current_block + current_image_width);
+						pixels[3] = *(current_block + current_image_width + 1);
 
-					glm::uvec4 int_res = (pixels[0] + pixels[1] + pixels[2] + pixels[3]);
+						glm::uvec4 int_res = (pixels[0] + pixels[1] + pixels[2] + pixels[3]);
 
-					// Compute arithmetical mean of the block
-					glm::uvec4 result = int_res / 4U;
+						// Compute arithmetical mean of the block
+						glm::uvec4 result = int_res / 4U;
 
-					// Write results to storage
-					uint32 offset = (y / 2 * (current_image_width / 2)) + (x / 2);
-					*(dst_mip_pointer + offset) = result;
-				}
+						// Write results to storage
+						uint32 offset = (y / 2 * (current_image_width / 2)) + (x / 2);
+						*(dst_mip_pointer + offset) = result;
+					}
+				});
 			}
+			
+			// Execute all tasks and wait for completion
+			JobSystem::GetExecutor()->run(taskflow).wait();
 
 			// Also update the pointer
 			src_mip_pointer += current_image_width * current_image_height;
