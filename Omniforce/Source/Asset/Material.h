@@ -17,12 +17,14 @@ namespace Omni {
 	using MaterialTextureProperty = std::pair<AssetHandle, uint32>; // texture id - uv channel
 	using MaterialProperty = std::variant<MaterialTextureProperty, float32, uint32, glm::vec4>;
 
-	enum class MaterialDomain {
+	enum class META(ShaderExpose, Module = "RenderingGenerated") SurfaceDomain {
 		OPAQUE,
 		MASKED,
-		TRANSLUCENT,
+		TRANSMISSIVE,
 		NONE
 	};
+
+	using MaterialDomain = SurfaceDomain;
 
 	class OMNIFORCE_API Material : public AssetBase {
 	public:

@@ -27,4 +27,12 @@ namespace Omni {
 		const uint32 _;
 	};
 
+	// ShaderConditional now only takes the type - condition is handled via field-level META
+	template<typename T>
+	struct ShaderConditional {
+		T value;
+		bool enabled;
+	};
+
+
 }

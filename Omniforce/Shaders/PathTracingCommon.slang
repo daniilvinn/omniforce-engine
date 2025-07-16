@@ -67,12 +67,12 @@ public struct HitSurfaceInfo<SurfaceDomain Domain = SurfaceDomain.Opaque> {
         float2 Ddx = 0;
         float2 Ddy = 0;
 
-        float3 BaseColor = Material.UniformColor.xyz;
+        float4 BaseColor = Material.UniformColor;
         if (Material.Metadata.HasBaseColor == 1) {
             UV = Geometry.RTFetchUV(HitTriangleIndices, Material.BaseColor.UVChannelIndex, Barys);
             Geometry.RTFetchUVGradients(HitTriangleIndices, Material.BaseColor.UVChannelIndex, Gradient, Ddx, Ddy);
 
-            BaseColor = TextureHeap[Material.BaseColor.TextureIndex].SampleGrad(UV, Ddx, Ddy).rgb;
+            BaseColor = TextureHeap[Material.BaseColor.TextureIndex].SampleGrad(UV, Ddx, Ddy);
             LastFetchedUVIndex = Material.BaseColor.UVChannelIndex;
         }
 
@@ -80,11 +80,11 @@ public struct HitSurfaceInfo<SurfaceDomain Domain = SurfaceDomain.Opaque> {
         if (Layout.AttributeMask.HasColor == 1) {
             VertexDecoder Decoder;
 
-            float3 VertexColor = 0;
+            float4 VertexColor = 0;
             for (uint i = 0; i < 3; i++) {
                 uint AttrOffset = Layout.Stride * HitTriangleIndices[i];
                 uint8_t4 FetchedColor = *(uint8_t4 *)(Geometry.ray_tracing.attributes + AttrOffset + Layout.Offsets.Color);
-                VertexColor += Decoder.DecodeColor(FetchedColor).rgb * Barys[i];
+                VertexColor += Decoder.DecodeColor(FetchedColor) * Barys[i];
             }
             BaseColor *= VertexColor;
         }
@@ -193,9 +193,15 @@ public struct HitSurfaceInfo<SurfaceDomain Domain = SurfaceDomain.Opaque> {
 
         Surface.TangentSpace = TangentSpace;
         Surface.Position = WorldPosition;
-        Surface.Color = BaseColor;
+        Surface.Color = BaseColor.rgb;
         Surface.Metallic = MetallicRoughnessOcclusion.b;
         Surface.Roughness = MetallicRoughnessOcclusion.g;
+
+        if (Domain == SurfaceDomain.Transmissive) {
+            Surface.Transmission.Factor = BaseColor.a;
+            Surface.Transmission.IOR = 1.5;
+            Surface.Transmission.Thickness = 0.01;
+        }
 
         return true;
     }

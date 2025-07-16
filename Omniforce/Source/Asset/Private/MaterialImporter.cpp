@@ -178,7 +178,7 @@ namespace Omni {
 				domain = MaterialDomain::MASKED;
 				break;
 			case ftf::AlphaMode::Blend:
-				domain = MaterialDomain::TRANSLUCENT;
+				domain = MaterialDomain::TRANSMISSIVE;
 				break;
 			default:
 				domain = MaterialDomain::NONE;

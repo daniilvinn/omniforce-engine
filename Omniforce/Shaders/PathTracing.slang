@@ -216,7 +216,8 @@ void PointLightHit(inout RayPayload Payload, in BuiltInTriangleIntersectionAttri
 
 [shader("closesthit")]
 void TranslucentHit(inout RayPayload Payload, in BuiltInTriangleIntersectionAttributes Attr) {
-    
+    HitSurfaceInfo<SurfaceDomain.Transmissive> SurfaceInfo;
+    SurfaceInfo.Gather(Payload, Attr);
 }
 
 [shader("miss")]

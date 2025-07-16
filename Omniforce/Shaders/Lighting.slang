@@ -67,15 +67,14 @@ public struct LightSample {
     public bool Valid;
 }
 
-public enum SurfaceDomain {
-    Opaque,
-    Transmissive
-}
-
 public struct SurfaceTransmissionProperties {
     public float IOR;
     public float Factor;
-    public float NonVolumetricDistance = 0.01f;
+    public float Thickness = 0.01f;
+
+    static public SurfaceTransmissionProperties Default() {
+        return SurfaceTransmissionProperties(1.0, 1.0, 1.0);
+    }
 }
 
 public struct PBRSurface<SurfaceDomain Domain = SurfaceDomain.Opaque> {
@@ -84,7 +83,22 @@ public struct PBRSurface<SurfaceDomain Domain = SurfaceDomain.Opaque> {
     public float3 Color;
     public float Metallic;
     public float Roughness;
-    public Conditional<SurfaceTransmissionProperties, Domain == SurfaceDomain.Transmissive> Transmission;
+    private Conditional<SurfaceTransmissionProperties, Domain == SurfaceDomain.Transmissive> TransmittanceProperties;
+
+    public property SurfaceTransmissionProperties Transmission {
+        get {
+            if (Domain == SurfaceDomain.Transmissive) {
+                return TransmittanceProperties.get().value;
+            } else {
+                return SurfaceTransmissionProperties.Default();
+            }
+        }
+        set {
+            if (Domain == SurfaceDomain.Transmissive) {
+                TransmittanceProperties.set(newValue);
+            }
+        }
+    }
 }
 
 public struct AreaToSolidAngleJacobian {

@@ -2,6 +2,7 @@
 
 #include <Foundation/Common.h>
 #include <CodeGeneration/Device/Texture.h>
+#include <CodeGeneration/Device/SpecialTypes.h>
 
 namespace Omni {
 
@@ -13,13 +14,21 @@ namespace Omni {
 		uint32 DoubleSided : 1;
 	};
 
-	struct META(ShaderExpose, Module = "RenderingGenerated") RTMaterial {
+	struct META(ShaderExpose, Module = "RenderingGenerated") RTMaterialTransmission {
+		float IOR;
+		float Factor;
+		float Thickness;
+	};
+
+	// Example of the new system with template arguments and field-level conditions
+	struct META(ShaderExpose, Module = "RenderingGenerated", TemplateArguments = "SurfaceDomain Domain = SurfaceDomain.Opaque") RTMaterial {
 		RTMaterialMetadata Metadata;
 		DeviceTexture BaseColor;
 		DeviceTexture Normal;
 		DeviceTexture MetallicRoughness;
 		DeviceTexture Occlusion;
 		glm::vec4 UniformColor;
+		META(Condition = "Domain == SurfaceDomain.Transmissive") ShaderConditional<RTMaterialTransmission> Transmission;
 	};
 
 }
