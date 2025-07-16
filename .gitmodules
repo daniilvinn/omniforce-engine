@@ -55,3 +55,6 @@
 [submodule "Omniforce/ThirdParty/miniaudio"]
 	path = Omniforce/ThirdParty/miniaudio
 	url = https://github.com/mackron/miniaudio.git
+[submodule "Docs"]
+	path = Docs
+	url = https://github.com/daniilvinn/omniforce-engine.wiki.git
