@@ -9,6 +9,9 @@ import BSDF;
 import NextEventEstimation;
 import InlineRayTracing;
 import MIS;
+import Rendering;
+
+using namespace Omni;
 
 namespace Omni {
 
