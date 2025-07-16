@@ -49,6 +49,8 @@ namespace Omni {
 			CLANG_PARSER_ARGS
 		};
 
+
+
 		// Erase empty compiler definitions
 		std::erase_if(m_ParserArgs, [](const char* arg) {
 			return std::string(arg) == std::string("-D");
@@ -547,7 +549,7 @@ namespace Omni {
 		int num_diagnostic_messages = clang_getNumDiagnostics(translation_unit);
 
 		if (num_diagnostic_messages)
-			std::cout << "There are " << num_diagnostic_messages << "MetaTool diagnostic messages" << std::endl;
+			std::cout << "There are " << num_diagnostic_messages << " MetaTool diagnostic messages" << std::endl;
 
 		bool found_error = false;
 
@@ -559,7 +561,7 @@ namespace Omni {
 
 			clang_disposeString(error_string);
 
-			if (tmp.find("error:") != std::string::npos) {
+			if (tmp.find("error") != std::string::npos) {
 				found_error = true;
 			}
 

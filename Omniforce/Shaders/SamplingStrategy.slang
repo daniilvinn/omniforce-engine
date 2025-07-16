@@ -242,10 +242,12 @@ public struct NEESamplingStrategy {
         ShadowRayDesc.TMin = 0.001f;
         ShadowRayDesc.TMax = distance(NEESample.Position, Surface.Position) - 0.01f;
 
-        InlineRayTracer ShadowRayTracer;
-        HitInfo NEEHitInfo = ShadowRayTracer.TraceRay(ShadowRayDesc);
+        const uint RayFlags = RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER;
 
-        if (NEEHitInfo.Hit) {
+        InlineRayTracer ShadowRayTracer;
+        HitInfo NEEHitInfo = ShadowRayTracer.TraceRay<RayFlags>(ShadowRayDesc);
+
+        if (!NEEHitInfo.Hit) {
             return SamplingResult.Invalid();
         }
 
@@ -292,7 +294,7 @@ public struct NEESamplingStrategy {
         float pdfDiff_bsdf = 0.0;
         
         if (pSpec_bsdf > FloatMin) {
-            float D_bsdf = DistributionGGX(Surface.TangentSpace.N, H, Surface.Roughness);
+            float D_bsdf = D;
             pdfSpec_bsdf = D_bsdf * max(dot(Surface.TangentSpace.N, H), 0.0) / (4.0 * VdotH);
         }
         

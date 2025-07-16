@@ -113,6 +113,38 @@ namespace Omni {
             return LightSelectionPDF * SolidAnglePDF;
         }
 
+        // Calculate NEE PDF for a given direction from surface P towards a specific light
+        public float CalculateNEEPDF(float3 P, float3 Direction, uint LightIndex, float3 HitPoint) {
+            PointLight Light = PointLightList.Lights[LightIndex];
+
+            float3 LightToHitPoint = normalize(HitPoint - Light.Position);
+            float3 LightToSurface = normalize(P - Light.Position);
+
+            // Check if hit point is on the hemisphere visible from P
+            if (dot(LightToHitPoint, LightToSurface) < 0.0f) {
+                return 0.0f; // On back hemisphere
+            }
+
+            // Light selection probability (uniform)
+            float LightSelectionPDF = 1.0f / float(PointLightList.Count);
+
+            // Area PDF on hemisphere (uniform hemisphere sampling)
+            float HemisphereAreaPDF = 1.0f / (2.0f * PI * Light.Radius * Light.Radius);
+
+            // Convert to solid angle PDF
+            float Distance = length(HitPoint - P);
+            float DistanceSquared = Distance * Distance;
+            float CosTheta = max(dot(LightToHitPoint, -Direction), 0.0f);
+
+            if (CosTheta <= 0.0f) {
+                return 0.0f;
+            }
+
+            float SolidAnglePDF = HemisphereAreaPDF * DistanceSquared / CosTheta;
+
+            return LightSelectionPDF * SolidAnglePDF;
+        }
+
         private ScenePointLights* PointLightList;
     }
 }

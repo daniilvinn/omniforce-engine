@@ -116,33 +116,30 @@ void OpaqueHit(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribute
         BSDFRay.TMin = 0.001f;
         BSDFRay.TMax = 1000.0f; // Large distance to catch lights
         
+        const uint BSDFRayFlags = RAY_FLAG_SKIP_CLOSEST_HIT_SHADER;
+
         InlineRayTracer BSDFRayTracer;
-        HitInfo BSDFHitInfo = BSDFRayTracer.TraceRay(BSDFRay);
+        HitInfo BSDFHitInfo = BSDFRayTracer.TraceRay<BSDFRayFlags>(BSDFRay);
         
-        if (BSDFHitInfo.Hit) {
-            // Check if we hit a light 
-            // NOTE: This assumes light instance indices match their array indices
-            // You may need to adjust this mapping based on your scene setup
-            for (uint lightIdx = 0; lightIdx < Input.PointLights.Count; lightIdx++) {
-                if (BSDFHitInfo.InstanceIndex == lightIdx) {
-                    // Calculate NEE PDF for this direction and light
-                    NextEventEstimator NEEForPDF = NextEventEstimator(Input.PointLights);
-                    float NEEPdf = NEEForPDF.CalculateNEEPDF(SurfaceInfo.Surface.Position, Result.Direction, lightIdx);
-                    
-                    if (NEEPdf > 1e-8) {
-                        // Apply MIS weight for BSDF sample hitting light
-                        PowerHeuristic MISHeuristic;
-                        float BSDFMISWeight = MISHeuristic.Compute(Result.PDF, NEEPdf);
-                        
-                        // Get light and add contribution
-                        PointLight Light = Input.PointLights.Lights[lightIdx];
-                        float3 LightEmission = Light.Color * Light.Intensity;
-                        
-                        // Add BSDF light contribution with MIS weight
-                        Payload.Radiance += LightEmission * Payload.PathThroughput * BSDFMISWeight;
-                    }
-                    break;
-                }
+        if (BSDFHitInfo.Hit && BSDFHitInfo.SBTOffset == 1) {
+            // We hit a light - calculate MIS contribution
+            uint LightIndex = BSDFHitInfo.InstanceIndex; // InstanceIndex equals InstanceID for lights
+            
+            // Calculate NEE PDF for this direction and light
+            NextEventEstimator NEEForPDF = NextEventEstimator(Input.PointLights);
+            float NEEPdf = NEEForPDF.CalculateNEEPDF(SurfaceInfo.Surface.Position, Result.Direction, LightIndex);
+            
+            if (NEEPdf > 1e-8) {
+                // Apply MIS weight for BSDF sample hitting light
+                PowerHeuristic MISHeuristic;
+                float BSDFMISWeight = MISHeuristic.Compute(Result.PDF, NEEPdf);
+                
+                // Get light and add contribution
+                PointLight Light = Input.PointLights.Lights[LightIndex];
+                float3 LightEmission = Light.Color * Light.Intensity;
+                
+                // Add BSDF light contribution with MIS weight
+                Payload.Radiance += LightEmission * Payload.PathThroughput * BSDFMISWeight;
             }
         }
     }
@@ -159,8 +156,6 @@ void OpaqueHit(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribute
         Payload.BSDFPdf = 0.0f;
     }
 
-    #define ENABLE_NEE 1
-    #if ENABLE_NEE
     NextEventEstimator NEE = NextEventEstimator(Input.PointLights);
 
     NEESamplingStrategy NEEStrategy;
@@ -174,7 +169,6 @@ void OpaqueHit(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribute
     if (!IsInvalidHitPoint(Result.Direction)) {
         Payload.Radiance += Result.Weight;
     }
-    #endif
 
     // Terminate path on invalid sample
     if(TerminatePath) {

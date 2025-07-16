@@ -7,6 +7,11 @@
 #include <variant>
 #include <map>
 
+// Undefine OPAQUE macro to prevent conflicts with enum values
+#ifdef OPAQUE
+#undef OPAQUE
+#endif
+
 namespace Omni {
 
 	using MaterialTextureProperty = std::pair<AssetHandle, uint32>; // texture id - uv channel

@@ -7,8 +7,11 @@ import Common;
 namespace Omni {
 
 public struct HitInfo {
+    public float3 Position;
     public uint InstanceIndex;
+    public uint InstanceID;
     public uint GeometryIndex;
+    public uint SBTOffset;
     public float Distance;
     public bool Hit;
 }
@@ -18,10 +21,8 @@ public struct InlineRayTracer {
     /*
     *  Shadow ray tracing
     */
-    public HitInfo TraceRay(RayDesc Desc) {
-        const uint RayFlags = RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | 
-                              RAY_FLAG_SKIP_CLOSEST_HIT_SHADER;
 
+    public HitInfo TraceRay<uint RayFlags>(RayDesc Desc) {
         RayQuery<RayFlags> Query;
         Query.TraceRayInline(
             SceneTLAS,
@@ -38,11 +39,16 @@ public struct InlineRayTracer {
         if (Info.Hit) {
             Info.InstanceIndex = Query.CommittedInstanceIndex();
             Info.GeometryIndex = Query.CommittedGeometryIndex();
+            Info.InstanceID = Query.CommittedInstanceID();
             Info.Distance = Query.CommittedRayT();
+            Info.SBTOffset = Query.CommittedRayInstanceShaderBindingTableRecordOffset();
+            Info.Position = Desc.Origin + Desc.Direction * Info.Distance;
         }
 
         return Info;
     }
+
+
 }
 
 }
