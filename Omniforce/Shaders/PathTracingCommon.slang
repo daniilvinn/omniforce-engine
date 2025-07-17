@@ -34,7 +34,7 @@ public struct HitSurfaceInfo<SurfaceDomain Domain = SurfaceDomain.Opaque> {
 
         float3 Barys = float3(1.0 - Attr.barycentrics.x - Attr.barycentrics.y, Attr.barycentrics);
 
-        RTMaterial *Material = (RTMaterial *)Instance.material_address;
+        RTMaterial<Domain> *Material = (RTMaterial<Domain>*)Instance.material_address;
 
         // Fetch triangle positions
         float3 WorldPosition = 0;
@@ -199,8 +199,8 @@ public struct HitSurfaceInfo<SurfaceDomain Domain = SurfaceDomain.Opaque> {
 
         if (Domain == SurfaceDomain.Transmissive) {
             Surface.Transmission.Factor = BaseColor.a;
-            Surface.Transmission.IOR = 1.5;
-            Surface.Transmission.Thickness = 0.01;
+            Surface.Transmission.IOR = Material.Transmission.IOR;
+            Surface.Transmission.Thickness = Material.Transmission.Thickness;
         }
 
         return true;

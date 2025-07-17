@@ -103,6 +103,11 @@ namespace Omni {
 			}
 			return CXChildVisit_Continue;
 		}, &field_data);
+		
+		// Set default visibility to public if not specified
+		if (!field_data["Meta"].contains("Visibility")) {
+			field_data["Meta"]["Visibility"] = "public";
+		}
 	}
 
 	std::string ASTVisitor::ParseFieldType(CXCursor field_cursor) {
@@ -211,6 +216,16 @@ namespace Omni {
 			if ((*it)[2].matched) {
 				parsed_type["Meta"][meta_entry_name].emplace_back((*it)[2].str());
 			}
+		}
+
+		// Handle Private attribute - convert to Visibility
+		if (parsed_type["Meta"].contains("Private")) {
+			parsed_type["Meta"]["Visibility"] = "private";
+		}
+		
+		// Handle Internal attribute - convert to Visibility
+		if (parsed_type["Meta"].contains("Internal")) {
+			parsed_type["Meta"]["Visibility"] = "internal";
 		}
 
 		// Mark as MetaTool-annotated type if it has ShaderExpose

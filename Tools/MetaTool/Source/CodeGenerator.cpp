@@ -184,6 +184,12 @@ namespace Omni {
 			std::string field_type = field_data["Type"].get<std::string>();
 			std::string field_name = field_data["Name"].get<std::string>();
 
+			// Get field visibility (default to public if not specified)
+			std::string visibility = "public";
+			if (field_data["Meta"].contains("Visibility")) {
+				visibility = field_data["Meta"]["Visibility"].get<std::string>();
+			}
+
 			// Check if this is a conditional field
 			bool is_conditional = field_data["Meta"].contains("Condition");
 			std::string condition = "";
@@ -212,13 +218,13 @@ namespace Omni {
 						base_type = field_type.substr(start, end - start);
 					}
 				}
-				stream << fmt::format("\t\tpublic Conditional<{}, {}> {}{};", base_type, condition, field_name, array_subscript) << std::endl;
+				stream << fmt::format("\t\t{} Conditional<{}, {}> {}{};", visibility, base_type, condition, field_name, array_subscript) << std::endl;
 			} else if (is_bit_field) {
 				// Handle bit fields
 				uint32_t bit_width = field_data["BitWidth"].get<uint32_t>();
-				stream << fmt::format("\t\tpublic {} {} : {};", GetShaderType(field_type), field_name, bit_width) << std::endl;
+				stream << fmt::format("\t\t{} {} {} : {};", visibility, GetShaderType(field_type), field_name, bit_width) << std::endl;
 			} else {
-				stream << fmt::format("\t\tpublic {} {}{};", GetShaderType(field_type), field_name, array_subscript) << std::endl;
+				stream << fmt::format("\t\t{} {} {}{};", visibility, GetShaderType(field_type), field_name, array_subscript) << std::endl;
 			}
 		}
 		

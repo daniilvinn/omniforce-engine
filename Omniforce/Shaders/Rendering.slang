@@ -95,4 +95,13 @@ namespace Omni {
 
 	}
 
+    public extension Omni.RTMaterial<Omni.SurfaceDomain.Transmissive> {
+        public property RTMaterialTransmission Transmission {
+            get {
+                return TransmissionData.get().value;
+            }
+            private set {}
+        }
+    }
+
 }
