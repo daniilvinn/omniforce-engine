@@ -112,8 +112,8 @@ public struct HitSurfaceInfo<SurfaceDomain Domain = SurfaceDomain.Opaque> {
                 half2 FetchedNormal = *(half2 *)(Geometry.ray_tracing.attributes + AttrOffset + Layout.Offsets.Normal);
                 GeometryNormal += Decoder.OctahedronDecode(FetchedNormal) * Barys[i];
             }
-
-            if (dot(GeometryNormal, -Payload.IncomingDirection) < 0) {
+  
+            if (dot(QuaternionRotate(Instance.transform.rotation, GeometryNormal), -Payload.IncomingDirection) < 0) {
                 if (Material.Metadata.DoubleSided == 1) {
                     GeometryNormal = -GeometryNormal;
                 } else {
@@ -174,11 +174,7 @@ public struct HitSurfaceInfo<SurfaceDomain Domain = SurfaceDomain.Opaque> {
         }
 
         // Setup tangent space
-        TangentSpace TangentSpace = TangentSpace(
-            QuaternionRotate(float4(Instance.transform.rotation), T.xyz),
-            QuaternionRotate(float4(Instance.transform.rotation), B),
-            QuaternionRotate(float4(Instance.transform.rotation), N)
-        );
+        TangentSpace TangentSpace = TangentSpace(T.xyz, B, N, Instance.transform.rotation);
 
         // Fetch metallic roughness
         float3 MetallicRoughnessOcclusion = float3(1.0f, 1.0f, 0.0f);

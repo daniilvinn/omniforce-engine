@@ -14,6 +14,7 @@ public static const float PiOver4 = 0.78539816339744830961;
 public static const float Sqrt2 = 1.41421356237309504880;
 public static const float FloatMax = 3.402823466e+38F;
 public static const float FloatMin = 1.175494351e-38F;
+public static const float InvalidHitPoint = FloatMax;
 
 [[vk::binding(0, 0)]]
 public Sampler2D TextureHeap[];
@@ -257,6 +258,12 @@ public struct TangentSpace {
         T = InTangent;
         B = InBitangent;
         N = InNormal;
+    }
+
+    public __init(float3 InTangent, float3 InBitangent, float3 InNormal, float4 InQuaternion) {
+        T = QuaternionRotate(InQuaternion, InTangent);
+        B = QuaternionRotate(InQuaternion, InBitangent);
+        N = QuaternionRotate(InQuaternion, InNormal);
     }
 
     public property float3x3 TBN {
