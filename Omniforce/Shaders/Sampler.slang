@@ -117,6 +117,7 @@ namespace Omni {
         }
     };
 
+    #if 0
     // GGX VNDF Sampler for Transmission (Walter et al. 2007)
     public struct GGXTransmissionSampler {
         public float3 Sample(float3 Wi, float3 N, float Roughness, float IOR, float2 Xi, out bool TotalInternalReflection) {
@@ -140,5 +141,5 @@ namespace Omni {
             return Wo;
         }
     }
-
+    #endif
 } // namespace Omni

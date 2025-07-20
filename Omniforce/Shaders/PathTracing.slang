@@ -218,6 +218,40 @@ void PointLightHit(inout RayPayload Payload, in BuiltInTriangleIntersectionAttri
 void TranslucentHit(inout RayPayload Payload, in BuiltInTriangleIntersectionAttributes Attr) {
     HitSurfaceInfo<SurfaceDomain.Transmissive> SurfaceInfo;
     SurfaceInfo.Gather(Payload, Attr);
+
+    RandomNumber<PCGGenerator> Random = RandomNumber<PCGGenerator>(Payload.RandomSeed);
+    float2 Xi = Random.GetXi<float2>();
+
+    // Perform BSDF sampling
+    BSDFSamplingStrategy BSDFStrategy;
+    SamplingResult Result = BSDFStrategy.Sample(
+        SurfaceInfo.Surface,
+        normalize(-Payload.IncomingDirection),
+        Xi
+    );
+
+    // Check if BSDF sampling produced a valid result
+    bool TerminatePath = !(Result.PDF > 1e-8 && all(isfinite(Result.Weight)) && !IsInvalidHitPoint(Result.Direction));
+
+    // Validate and apply BRDF weight for path continuation
+    if (!TerminatePath) {
+        Payload.PathThroughput *= Result.Weight;
+        Payload.IncomingDirection = Result.Direction;
+        Payload.RandomSeed = Random.Get();
+        Payload.HitPoint = SurfaceInfo.Surface.Position; // + SurfaceInfo.Surface.TangentSpace.N * 0.001f;
+        Payload.BSDFPdf = Result.PDF;
+    } else {
+        // Reset BSDF PDF if no valid sample was produced
+        Payload.BSDFPdf = 0.0f;
+    }
+
+    // Terminate path on invalid sample
+    if (TerminatePath) {
+        Payload.HitPoint = FloatMax;
+        Payload.PathThroughput = float3(0.0, 0.0, 0.0);
+        Payload.BSDFPdf = 0.0f; // Reset BSDF PDF to disable MIS
+    }
+
 }
 
 [shader("miss")]

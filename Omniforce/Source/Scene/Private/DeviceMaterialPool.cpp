@@ -51,7 +51,6 @@ namespace Omni {
 			material_size += Material::GetRuntimeEntrySize(entry.second.index());
 
 		byte* material_data = new byte[material_size];
-		uint32 current_offset = 4 + sizeof(RTMaterial); // also add padding due to RTMaterial
 
 		for (auto& material_entry : material_table) {
 			if (material_entry.second.index() == 0) {
@@ -98,12 +97,29 @@ namespace Omni {
 			memcpy(&rt_material.UniformColor, &default_value, sizeof(glm::vec4));
 		}
 
-		memcpy(material_data, &rt_material, sizeof(RTMaterial));
+		// Handle transmission
+		uint32 rt_material_size = sizeof(RTMaterial);
 
+		if((rt_material.TransmissionData.enabled = material_table.contains("TRANSMISSION_ENABLED")) == true) {
+			rt_material_size += sizeof(RTMaterialTransmission);
+			
+			if (material_table.contains("TRANSMISSION_IOR")) {
+				memcpy(&rt_material.TransmissionData.value.IOR, &material_table["TRANSMISSION_IOR"], sizeof(float32));
+			}
+			else if (material_table.contains("TRANSMISSION_THICKNESS")) {
+				memcpy(&rt_material.TransmissionData.value.Thickness, &material_table["TRANSMISSION_THICKNESS"], sizeof(float32));
+			}
+		} else {
+			rt_material_size -= sizeof(RTMaterialTransmission);
+		}
+			
+		memcpy(material_data, &rt_material, rt_material_size);
+			
 		// Copy pipeline device id to first 4 bytes
 		uint32 device_pipeline_id = s_BuildVirtualGeometry.Get() ? m->GetPipeline()->GetDeviceID() : 0;
-		memcpy(material_data + sizeof(RTMaterial), &device_pipeline_id, sizeof(device_pipeline_id));
-
+		memcpy(material_data + rt_material_size, &device_pipeline_id, sizeof(device_pipeline_id));
+		
+		uint32 current_offset = rt_material_size + sizeof(device_pipeline_id);
 		for (auto& entry : material_table) {			
 			uint8 entry_size = Material::GetRuntimeEntrySize(entry.second.index());
 			std::visit([&](const auto& value) {

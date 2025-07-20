@@ -129,7 +129,7 @@ namespace Omni {
 			image_data = compressor.CompressBC7({ mip_mapped_image.begin(), mip_mapped_image.end() }, image_width, image_height, mip_levels_count);
 		}
 		else {
-			image_data.resize(mip_mapped_image.size() * sizeof RGBA32);
+			image_data.resize(mip_mapped_image.size() * sizeof(RGBA32));
 			memcpy(image_data.data(), mip_mapped_image.data(), image_data.size());
 		}
 
@@ -159,6 +159,7 @@ namespace Omni {
 			material->AddShaderMacro("__OMNI_SHADING_MODEL_NON_PBR");
 
 		material->AddProperty("DOUBLE_SIDED", (uint32)in_material->doubleSided);
+
 		subflow.emplace([=]() { HandleProperty("ALPHA_CUTOFF", in_material->alphaCutoff, material, root, m_Mutex); });
 		subflow.emplace([=]() { HandleProperty("BASE_COLOR_FACTOR", c(in_material->pbrData.baseColorFactor), material, root, m_Mutex); });
 		subflow.emplace([=]() { HandleProperty("METALLIC_FACTOR", in_material->pbrData.metallicFactor, material, root, m_Mutex); });
@@ -186,6 +187,19 @@ namespace Omni {
 		}
 
 		material->SetDomain(domain);
+
+		if (domain == MaterialDomain::TRANSMISSIVE) {
+			material->AddShaderMacro("TRANSMISSION_ENABLED");
+
+			material->AddProperty("TRANSMISSION_IOR", in_material->ior);
+
+			if(in_material->volume) {
+				material->AddProperty("TRANSMISSION_THICKNESS", in_material->volume->thicknessFactor);
+			} else {
+				material->AddProperty("TRANSMISSION_THICKNESS", 0.01f); // 0.01 is default thickness, 0.01 = 1cm
+			}	
+
+		}
 
 		return id;
 	}

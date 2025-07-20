@@ -269,8 +269,7 @@ namespace Omni {
 				tlas_instance.blas = mesh->GetAccelerationStructure();
 				tlas_instance.custom_index = i;
 				tlas_instance.mask = 0xFF;
-				//tlas_instance.SBT_record_offset = material->GetDomain() == MaterialDomain::OPAQUE ? 0 : 2;
-				tlas_instance.SBT_record_offset = 0;
+				tlas_instance.SBT_record_offset = material->GetDomain() != MaterialDomain::TRANSMISSIVE ? 0 : 2;
 				tlas_instance.transform = instance.transform;
 
 				tlas_instances.Add(tlas_instance);

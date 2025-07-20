@@ -19,6 +19,7 @@ public struct RayPayload
     public float3 HitPoint;
     public uint RandomSeed;
     public float BSDFPdf;
+    public float CurrentMediumIOR;
 };
 
 public struct HitSurfaceInfo<SurfaceDomain Domain = SurfaceDomain.Opaque> {
@@ -197,12 +198,12 @@ public struct HitSurfaceInfo<SurfaceDomain Domain = SurfaceDomain.Opaque> {
         Surface.Metallic = MetallicRoughnessOcclusion.b;
         Surface.Roughness = MetallicRoughnessOcclusion.g;
 
-        if (Domain == SurfaceDomain.Transmissive) {
-            Surface.Transmission.Factor = BaseColor.a;
-            Surface.Transmission.IOR = Material.Transmission.IOR;
-            Surface.Transmission.Thickness = Material.Transmission.Thickness;
+        if (let Transmission = Material.TransmissionData.get()) {
+            Surface.Transmission.Factor = 1.0 - BaseColor.a; // TODO: check if this is correct
+            Surface.Transmission.IOR = Transmission.IOR;
+            Surface.Transmission.Thickness = Transmission.Thickness;
         }
-
+        
         return true;
     }
 }

@@ -4,6 +4,8 @@ import Common;
 import Gen.BasicTypes;
 import Gen.RenderingGenerated;
 
+using namespace Omni;
+
 namespace Omni {
 
 	public extension Omni.ClusterGeometryMetadata {
@@ -96,7 +98,7 @@ namespace Omni {
 	}
 
     public extension Omni.RTMaterial<Omni.SurfaceDomain.Transmissive> {
-        public property RTMaterialTransmission Transmission {
+        public property Omni.RTMaterialTransmission Transmission {
             get {
                 return TransmissionData.get().value;
             }

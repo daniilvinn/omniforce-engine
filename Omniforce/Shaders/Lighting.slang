@@ -51,6 +51,18 @@ public float GeometrySmith(float3 N, float3 V, float3 L, float Roughness)
 
     return GGX1 * GGX2;
 }
+
+// Utility function to compute the base reflectance for a given IOR and metallic value
+// For transmissive surfaces, we need proper IOR-based Fresnel calculation
+// For non-transmissive surfaces, we use the standard metallic reflectance
+public float3 FresnelBaseReflectance<SurfaceDomain Domain>(float3 Color, float Metallic, float IORi = 1, float IORt = 1) {
+    if (Domain == SurfaceDomain.Transmissive) {
+        return pow((IORi - IORt) / (IORi + IORt), 2.0);
+    } else {
+        return lerp(0.04f, Color, Metallic);
+    }
+}
+
 // ----------------------------------------------------------------------------
 public float3 FresnelSchlick(float CosTheta, float3 F0)
 {

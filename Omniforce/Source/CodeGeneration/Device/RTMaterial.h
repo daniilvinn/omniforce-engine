@@ -15,8 +15,9 @@ namespace Omni {
 	};
 
 	struct META(ShaderExpose, Module = "RenderingGenerated") RTMaterialTransmission {
-		float IOR;
-		float Thickness;
+		float IOR = 1.5;
+		float Thickness = 0.01;
+		float Factor = 1.0;
 	};
 
 	// Example of the new system with template arguments and field-level conditions
@@ -27,7 +28,7 @@ namespace Omni {
 		DeviceTexture MetallicRoughness;
 		DeviceTexture Occlusion;
 		glm::vec4 UniformColor;
-		META(Private, Condition = "Domain == SurfaceDomain.Transmissive") ShaderConditional<RTMaterialTransmission> TransmissionData;
+		META(Condition = "Domain == SurfaceDomain.Transmissive") ShaderConditional<RTMaterialTransmission> TransmissionData;
 	};
 
 }

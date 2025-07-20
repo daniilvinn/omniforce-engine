@@ -82,11 +82,6 @@ public bool IsInvalidHitPoint<T>(T x) where T : IFloat {
     return any(x == T(FloatMax));
 }
 
-public bool SameHemisphere(float3 a, float3 b, float3 N)
-{
-    return (dot(N, a) > 0.0) && (dot(N, b) > 0.0);
-}
-
 // Normal pull up method to fix normals for path tracing
 // https://github.com/Devsh-Graphics-Programming/Nabla/blob/master/include/nbl/builtin/glsl/bxdf/common.glsl
 public struct NormalFixer {
@@ -271,6 +266,10 @@ public struct TangentSpace {
         private set {}
     }
     
+}
+
+public bool SameHemisphere(float3 X, float3 Y) {
+    return dot(X, Y) > 0.0;
 }
 
 }

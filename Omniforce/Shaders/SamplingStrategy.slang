@@ -51,7 +51,7 @@ public struct BRDFSamplingStrategy
         float3 V = normalize(V_world);
         float NdotV = max(dot(Surface.TangentSpace.N, V), 0.0);
 
-        float3 F0 = lerp(0.04f, Surface.Color, Surface.Metallic);
+        float3 F0 = FresnelBaseReflectance<SurfaceDomain.Opaque>(Surface.Color, Surface.Metallic);
 
         // Early exit for grazing angles
         if (NdotV < FloatMin) {
@@ -70,7 +70,7 @@ public struct BRDFSamplingStrategy
             }
 
             // Fresnel at view angle
-            float3 Fm = F0 + (1.0 - F0) * pow(clamp(1.0 - NdotV, 0.0, 1.0), 5.0);
+            float3 Fm = FresnelSchlick(NdotV, F0);
 
             Result.PDF = 1.0;
             Result.Weight = Fm;
@@ -82,7 +82,7 @@ public struct BRDFSamplingStrategy
         Surface.Roughness = max(Surface.Roughness, 0.001); // avoid singularities
 
         // Fresnel at view direction for energy distribution
-        float3 Fv = F0 + (1.0 - F0) * pow(clamp(1.0 - NdotV, 0.0, 1.0), 5.0);
+        float3 Fv = FresnelSchlick(NdotV, F0);
         float3 kS = Fv;
         float3 kD = (1.0 - kS) * (1.0 - Surface.Metallic); // energy conserving diffuse
 
@@ -215,7 +215,7 @@ public struct NEESamplingStrategy {
         float3 V = normalize(V_world);
         float NdotV = max(dot(Surface.TangentSpace.N, V), 0.0);
 
-        float3 F0 = lerp(0.04f, Surface.Color, Surface.Metallic);
+        float3 F0 = FresnelBaseReflectance<SurfaceDomain.Opaque>(Surface.Color, Surface.Metallic);
 
         // Early exit for grazing angles
         if (NdotV < FloatMin) {
@@ -282,7 +282,7 @@ public struct NEESamplingStrategy {
         float3 f = Diffuse + Specular;
 
         // --- 5) Calculate BSDF PDF for MIS --------------------------
-        float3 F0_bsdf = lerp(0.04f, Surface.Color, Surface.Metallic);
+        float3 F0_bsdf = FresnelBaseReflectance<SurfaceDomain.Opaque>(Surface.Color, Surface.Metallic);
         float3 Fv_bsdf = F0_bsdf + (1.0 - F0_bsdf) * pow(clamp(1.0 - max(dot(Surface.TangentSpace.N, V), 0.0), 0.0, 1.0), 5.0);
         float3 kS_bsdf = Fv_bsdf;
         float3 kD_bsdf = (1.0 - kS_bsdf) * (1.0 - Surface.Metallic);
@@ -343,6 +343,107 @@ public struct BSDFSamplingStrategy {
         Result.Weight = 0;
         Result.PDF = 0;
         Result.Direction = FloatMax;
+
+        // Ensure view direction points toward surface
+        float3 V = normalize(V_world);
+        float NdotV = max(dot(Surface.TangentSpace.N, V), 0.0);
+
+        // TODO: This is not correct, we need track correct current medium IOR
+        float EtaI;
+        float EtaT;
+
+        if(SameHemisphere(V, Surface.TangentSpace.N)) {
+            EtaI = 1.0;
+            EtaT = Surface.Transmission.IOR;
+        } else {
+            EtaI = Surface.Transmission.IOR;
+            EtaT = 1.0;
+        }
+
+        float3 F0 = FresnelBaseReflectance<SurfaceDomain.Transmissive>(Surface.Color, Surface.Metallic, EtaI, Surface.Transmission.IOR);
+
+        // Early exit for grazing angles
+        if (NdotV < FloatMin) {
+            Result.Direction = FloatMax;
+            return SamplingResult.Invalid();
+        }
+
+        // --- 1) Perfect mirror shortcut -------------------------------
+        if (Surface.Metallic >= 1.0 && Surface.Roughness < 0.01)
+        {
+            Result.Direction = normalize(reflect(-V, Surface.TangentSpace.N));
+            float NdotL = max(dot(Surface.TangentSpace.N, Result.Direction), 0.0);
+
+            if (NdotL < FloatMin) {
+                return SamplingResult.Invalid();
+            }
+
+            // Fresnel at view angle
+            float3 Fm = FresnelSchlick(NdotV, F0);
+
+            Result.PDF = 1.0;
+            Result.Weight = Fm;
+
+            return Result;
+        }
+
+        // --- 2) Common precomputations ---------------------------------
+        Surface.Roughness = max(Surface.Roughness, 0.001); // avoid singularities
+
+        // Fresnel at view direction for energy distribution
+        float3 Fv = FresnelSchlick(NdotV, F0);
+        float3 kReflect = Fv;
+        
+        // Refraction only possible for non-metallic transmissive surfaces
+        float3 kRefract = (1.0 - kReflect) * (1.0 - Surface.Metallic);
+        
+        // For non-transmissive domains, no refraction is possible
+        if (Domain != SurfaceDomain.Transmissive) {
+            kRefract = 0.0;
+        }
+
+        // Use luminance weights for MIS probabilities
+        float wReflect = dot(kReflect, float3(0.299, 0.587, 0.114));
+        float wRefract = dot(kRefract, float3(0.299, 0.587, 0.114));
+        float totalWeight = wReflect + wRefract + 1e-8;
+        float pReflect = wReflect / totalWeight;
+        float pRefract = wRefract / totalWeight;
+
+        // --- 3) Branch: Reflect vs Refract sampling ------------------
+        // For now we only support specular reflection with no roughness
+        if (Xi.x < pReflect && pReflect > FloatMin)
+        {
+            Result.Direction = normalize(reflect(-V, Surface.TangentSpace.N));
+            Result.PDF = pReflect;
+            Result.Weight = Fv;
+
+            return Result;
+        }
+        else if (pRefract > FloatMin)
+        {
+            float Eta;
+            bool SameHemisphere = SameHemisphere(V, Surface.TangentSpace.N);
+            
+            if (SameHemisphere) {
+                Eta = rcp(Surface.Transmission.IOR);
+            } else {
+                Eta = Surface.Transmission.IOR;
+            }
+
+            float3 N = SameHemisphere ? Surface.TangentSpace.N : -Surface.TangentSpace.N;
+
+            Result.Direction = normalize(refract(-V, N, Eta));
+            Result.PDF = pRefract;
+            Result.Weight = 1.0 - Fv;
+
+            return Result;
+        }
+        else
+        {
+            return SamplingResult.Invalid();
+        }
+        
+        
 
         return Result;
     }
