@@ -113,7 +113,10 @@ public struct HitSurfaceInfo<SurfaceDomain Domain = SurfaceDomain.Opaque> {
                 GeometryNormal += Decoder.OctahedronDecode(FetchedNormal) * Barys[i];
             }
   
-            if (dot(QuaternionRotate(Instance.transform.rotation, GeometryNormal), -Payload.IncomingDirection) < 0) {
+            if (
+                dot(QuaternionRotate(Instance.transform.rotation, GeometryNormal), -Payload.IncomingDirection) < 0
+                && Domain == SurfaceDomain.Opaque
+            ) {
                 if (Material.Metadata.DoubleSided == 1) {
                     GeometryNormal = -GeometryNormal;
                 } else {

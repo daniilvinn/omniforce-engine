@@ -346,7 +346,8 @@ public struct BSDFSamplingStrategy {
 
         // Ensure view direction points toward surface
         float3 V = normalize(V_world);
-        float NdotV = max(dot(Surface.TangentSpace.N, V), 0.0);
+        float3 N = SameHemisphere(V, Surface.TangentSpace.N) ? Surface.TangentSpace.N : -Surface.TangentSpace.N;
+        float NdotV = max(dot(N, V), 0.0);
 
         // TODO: This is not correct, we need track correct current medium IOR
         float EtaI;
@@ -369,7 +370,7 @@ public struct BSDFSamplingStrategy {
         }
 
         // --- 1) Perfect mirror shortcut -------------------------------
-        if (Surface.Metallic >= 1.0 && Surface.Roughness < 0.01)
+        if (false && Surface.Metallic >= 1.0 && Surface.Roughness < 0.01) // TODO: Remove this
         {
             Result.Direction = normalize(reflect(-V, Surface.TangentSpace.N));
             float NdotL = max(dot(Surface.TangentSpace.N, Result.Direction), 0.0);
@@ -413,7 +414,7 @@ public struct BSDFSamplingStrategy {
         // For now we only support specular reflection with no roughness
         if (Xi.x < pReflect && pReflect > FloatMin)
         {
-            Result.Direction = normalize(reflect(-V, Surface.TangentSpace.N));
+            Result.Direction = normalize(reflect(-V, N));
             Result.PDF = pReflect;
             Result.Weight = Fv;
 
@@ -422,15 +423,8 @@ public struct BSDFSamplingStrategy {
         else if (pRefract > FloatMin)
         {
             float Eta;
-            bool SameHemisphere = SameHemisphere(V, Surface.TangentSpace.N);
             
-            if (SameHemisphere) {
-                Eta = rcp(Surface.Transmission.IOR);
-            } else {
-                Eta = Surface.Transmission.IOR;
-            }
-
-            float3 N = SameHemisphere ? Surface.TangentSpace.N : -Surface.TangentSpace.N;
+            Eta = EtaI / EtaT;
 
             Result.Direction = normalize(refract(-V, N, Eta));
             Result.PDF = pRefract;
