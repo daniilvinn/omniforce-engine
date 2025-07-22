@@ -1,8 +1,8 @@
 #include <Foundation/Common.h>
 #include <Asset/Material.h>
 
-#include <Renderer/ShaderLibrary.h>
-#include <Scene/PipelineLibrary.h>
+#include <RHI/ShaderLibrary.h>
+#include <Rendering/PipelineLibrary.h>
 
 namespace Omni {
 

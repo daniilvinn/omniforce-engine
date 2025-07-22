@@ -2,7 +2,7 @@
 
 #include <Foundation/Common.h>
 
-#include <Renderer/DeviceBuffer.h>
+#include <RHI/DeviceBuffer.h>
 
 namespace Omni {
 

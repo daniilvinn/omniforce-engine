@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Foundation/Common.h>
-#include <Renderer/Meshlet.h>
+#include <Rendering/Meshlet.h>
 
 #include <Core/KDTree.h>
 #include <Asset/Importers/ModelImporter.h>

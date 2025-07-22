@@ -3,7 +3,7 @@
 #include <Foundation/Common.h>
 #include <Platform/Vulkan/VulkanCommon.h>
 
-#include <Renderer/Pipeline.h>
+#include <RHI/Pipeline.h>
 
 namespace Omni {
 

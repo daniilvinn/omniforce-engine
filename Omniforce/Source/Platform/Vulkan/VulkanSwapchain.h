@@ -3,7 +3,7 @@
 #include <Foundation/Common.h>
 #include <Platform/Vulkan/VulkanCommon.h>
 
-#include <Renderer/Swapchain.h>
+#include <RHI/Swapchain.h>
 #include <Platform/Vulkan/VulkanDevice.h>
 #include <Platform/Vulkan/VulkanImage.h>
 

@@ -3,8 +3,8 @@
 #include <Foundation/Common.h>
 #include <Platform/Vulkan/VulkanCommon.h>
 
-#include <Renderer/DeviceBuffer.h>
-#include <Renderer/Renderer.h>
+#include <RHI/DeviceBuffer.h>
+#include <RHI/Renderer.h>
 
 #include <vk_mem_alloc.h>
 

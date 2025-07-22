@@ -3,9 +3,9 @@
 #include <Foundation/Common.h>
 #include <Scene/SceneCommon.h>
 
-#include <Scene/ISceneRenderer.h>
-#include <Scene/RasterSceneRenderer.h>
-#include <Scene/PathTracingSceneRenderer.h>
+#include <Rendering/ISceneRenderer.h>
+#include <Rendering/Raster/RasterSceneRenderer.h>
+#include <Rendering/PathTracing/PathTracingSceneRenderer.h>
 #include <Scene/Sprite.h>
 #include <Scene/Component.h>
 #include <Core/Serializable.h>

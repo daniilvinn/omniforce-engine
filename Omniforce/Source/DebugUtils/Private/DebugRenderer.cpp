@@ -2,9 +2,9 @@
 #include <DebugUtils/DebugRenderer.h>
 
 #include <Core/Utils.h>
-#include <Renderer/ShaderLibrary.h>
-#include <Renderer/Renderer.h>
-#include <Renderer/DescriptorSet.h>
+#include <RHI/ShaderLibrary.h>
+#include <RHI/Renderer.h>
+#include <RHI/DescriptorSet.h>
 #include <Asset/PrimitiveMeshGenerator.h>
 #include <Asset/MeshPreprocessor.h>
 

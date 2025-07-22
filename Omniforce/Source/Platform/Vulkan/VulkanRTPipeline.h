@@ -3,8 +3,8 @@
 #include <Foundation/Common.h>
 #include <Platform/Vulkan/VulkanCommon.h>
 
-#include <Renderer/RTPipeline.h>
-#include <Renderer/ShaderBindingTable.h>
+#include <RHI/RTPipeline.h>
+#include <RHI/ShaderBindingTable.h>
 
 namespace Omni {
 

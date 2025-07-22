@@ -9,8 +9,8 @@
 #include <Platform/Vulkan/VulkanImage.h>
 #include <Platform/Vulkan/VulkanDescriptorSet.h>
 #include <Platform/Vulkan/VulkanRTPipeline.h>
-#include <Renderer/PipelineBarrier.h>
-#include <Renderer/ShaderLibrary.h>
+#include <RHI/PipelineBarrier.h>
+#include <RHI/ShaderLibrary.h>
 #include <Threading/JobSystem.h>
 
 #include <imgui.h>

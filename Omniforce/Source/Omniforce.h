@@ -17,25 +17,27 @@
 
 #include <Threading/JobSystem.h>
 
-// Renderer
-#include <Renderer/Renderer.h>
-#include <Renderer/Swapchain.h>
-#include <Renderer/DeviceBuffer.h>
-#include <Renderer/ShaderLibrary.h>
-#include <Renderer/Shader.h>
-#include <Renderer/Pipeline.h>
-#include <Renderer/Image.h>
-#include <Renderer/DescriptorSet.h>
-#include <Renderer/Mesh.h>
+// RHI
+#include <RHI/Renderer.h>
+#include <RHI/Swapchain.h>
+#include <RHI/DeviceBuffer.h>
+#include <RHI/ShaderLibrary.h>
+#include <RHI/Shader.h>
+#include <RHI/Pipeline.h>
+#include <RHI/Image.h>
+#include <RHI/DescriptorSet.h>
 #include <DebugUtils/DebugRenderer.h>
 
 // Scene
 #include <Scene/Scene.h>
 #include <Scene/Entity.h>
 #include <Scene/Component.h>
-#include <Scene/ISceneRenderer.h>
-#include <Scene/RasterSceneRenderer.h>
-#include <Scene/PathTracingSceneRenderer.h>
+
+// Rendering
+#include <Rendering/ISceneRenderer.h>
+#include <Rendering/Raster/RasterSceneRenderer.h>
+#include <Rendering/PathTracing/PathTracingSceneRenderer.h>
+#include <Rendering/Mesh.h>
 
 // Asset
 #include <Asset/AssetManager.h>

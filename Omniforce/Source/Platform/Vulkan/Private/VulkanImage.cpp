@@ -6,7 +6,7 @@
 #include <Platform/Vulkan/VulkanGraphicsContext.h>
 #include <Platform/Vulkan/VulkanDeviceCmdBuffer.h>
 #include <Platform/Vulkan/Private/VulkanMemoryAllocator.h>
-#include <Renderer/Renderer.h>
+#include <RHI/Renderer.h>
 
 #include <stb_image.h>
 #include <bc7enc.h>

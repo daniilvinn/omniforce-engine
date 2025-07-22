@@ -3,7 +3,7 @@
 #include <Foundation/Common.h>
 #include <Scene/SceneCommon.h>
 
-#include <Renderer/DeviceBuffer.h>
+#include <RHI/DeviceBuffer.h>
 #include <Asset/Material.h>
 
 namespace Omni {

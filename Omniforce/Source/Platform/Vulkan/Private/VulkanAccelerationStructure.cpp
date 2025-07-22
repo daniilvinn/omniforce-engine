@@ -4,7 +4,7 @@
 #include <Platform/Vulkan/VulkanGraphicsContext.h>
 #include <Platform/Vulkan/VulkanDeviceBuffer.h>
 #include <Platform/Vulkan/VulkanDeviceCmdBuffer.h>
-#include <Renderer/DeviceBuffer.h>
+#include <RHI/DeviceBuffer.h>
 #include <Core/RuntimeExecutionContext.h>
 
 #include <glm/gtc/packing.hpp>

@@ -11,9 +11,9 @@
 #include <Asset/Importers/MaterialImporter.h>
 #include <Asset/Importers/ImageImporter.h>
 #include <Asset/VirtualMeshBuilder.h>
-#include <Renderer/Mesh.h>
-#include <Renderer/Image.h>
-#include <Renderer/AccelerationStructure.h>
+#include <Rendering/Mesh.h>
+#include <RHI/Image.h>
+#include <RHI/AccelerationStructure.h>
 #include <Threading/JobSystem.h>
 #include <Platform/Vulkan/Private/VulkanMemoryAllocator.h>
 #include <Core/BitStream.h>

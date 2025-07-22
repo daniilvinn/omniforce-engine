@@ -4,7 +4,7 @@
 #include <Platform/Vulkan/VulkanDescriptorSet.h>
 #include <Platform/Vulkan/VulkanGraphicsContext.h>
 #include <Platform/Vulkan/VulkanShader.h>
-#include <Renderer/ShaderBindingTable.h>
+#include <RHI/ShaderBindingTable.h>
 
 namespace Omni {
 

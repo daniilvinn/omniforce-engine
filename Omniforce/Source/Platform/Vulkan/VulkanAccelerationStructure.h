@@ -3,8 +3,8 @@
 #include <Foundation/Common.h>
 #include <Platform/Vulkan/VulkanCommon.h>
 
-#include <Renderer/AccelerationStructure.h>
-#include <Renderer/DeviceBuffer.h>
+#include <RHI/AccelerationStructure.h>
+#include <RHI/DeviceBuffer.h>
 
 namespace Omni {
 

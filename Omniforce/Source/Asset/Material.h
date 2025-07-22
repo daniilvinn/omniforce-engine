@@ -2,7 +2,7 @@
 
 #include <Foundation/Common.h>
 #include <Asset/AssetBase.h>
-#include <Renderer/Pipeline.h>
+#include <RHI/Pipeline.h>
 
 #include <variant>
 #include <map>

@@ -4,11 +4,11 @@
 #include <Platform/Vulkan/VulkanCommon.h>
 
 #include <Platform/Vulkan/VulkanDeviceCmdBuffer.h>
-#include <Renderer/RendererAPI.h>
-#include <Renderer/Swapchain.h>
+#include <RHI/RendererAPI.h>
+#include <RHI/Swapchain.h>
 #include <Platform/Vulkan/VulkanSwapchain.h>
 
-#include <Renderer/Renderer.h>
+#include <RHI/Renderer.h>
 
 namespace Omni {
 

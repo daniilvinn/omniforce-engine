@@ -2,8 +2,8 @@
 #include <Scene/DeviceMaterialPool.h>
 
 #include <Asset/AssetManager.h>
-#include <Renderer/DeviceCmdBuffer.h>
-#include <Scene/ISceneRenderer.h>
+#include <RHI/DeviceCmdBuffer.h>
+#include <Rendering/ISceneRenderer.h>
 #include <CodeGeneration/Device/RTMaterial.h>
 #include <Core/EngineConfig.h>
 

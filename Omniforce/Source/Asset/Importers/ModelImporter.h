@@ -2,7 +2,7 @@
 
 #include <Foundation/Common.h>
 #include <Asset/Material.h>
-#include <Renderer/Mesh.h>
+#include <Rendering/Mesh.h>
 
 #include <filesystem>
 #include <memory>

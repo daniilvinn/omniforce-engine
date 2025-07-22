@@ -5,7 +5,7 @@
 #include <Core/Windowing/WindowSystem.h>
 #include <Core/Events/ApplicationEvents.h>
 #include <Core/Events/MouseEvents.h>
-#include <Renderer/UI/ImGuiRenderer.h>
+#include <Rendering/UI/ImGuiRenderer.h>
 
 namespace Omni {
 

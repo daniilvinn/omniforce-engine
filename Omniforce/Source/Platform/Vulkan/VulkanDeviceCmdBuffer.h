@@ -3,7 +3,7 @@
 #include <Foundation/Common.h>
 #include <Platform/Vulkan/VulkanCommon.h>
 
-#include <Renderer/DeviceCmdBuffer.h>
+#include <RHI/DeviceCmdBuffer.h>
 
 #include <shared_mutex>
 

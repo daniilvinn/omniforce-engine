@@ -2,7 +2,7 @@
 
 #include <Foundation/Common.h>
 
-#include <Renderer/Meshlet.h>
+#include <Rendering/Meshlet.h>
 #include <CodeGeneration/Device/SpecialTypes.h>
 
 namespace Omni {

@@ -2,10 +2,10 @@
 
 #include <Foundation/Common.h>
 
-#include <Renderer/DeviceBuffer.h>
-#include <Renderer/Image.h>
-#include <Renderer/Pipeline.h>
-#include <Scene/SceneRendererPrimitives.h>
+#include <RHI/DeviceBuffer.h>
+#include <RHI/Image.h>
+#include <RHI/Pipeline.h>
+#include <Rendering/SceneRendererPrimitives.h>
 
 #include <glm/glm.hpp>
 

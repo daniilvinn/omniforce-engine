@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Foundation/Common.h>
-#include <Renderer/RendererCommon.h>
+#include <RHI/RHICommon.h>
 #include <Platform/Vulkan/ForwardDecl.h>
 
 #include <volk.h>

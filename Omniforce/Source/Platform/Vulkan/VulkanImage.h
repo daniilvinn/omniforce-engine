@@ -3,7 +3,7 @@
 #include <Foundation/Common.h>
 #include <Platform/Vulkan/VulkanCommon.h>
 
-#include <Renderer/Image.h>
+#include <RHI/Image.h>
 
 #include <vk_mem_alloc.h>
 

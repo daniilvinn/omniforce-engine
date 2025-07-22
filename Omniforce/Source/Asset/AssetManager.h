@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Foundation/Common.h>
-#include <Renderer/Image.h>
+#include <RHI/Image.h>
 
 #include <filesystem>
 #include <shared_mutex>

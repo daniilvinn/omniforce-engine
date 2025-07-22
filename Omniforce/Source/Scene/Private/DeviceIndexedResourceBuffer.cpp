@@ -1,5 +1,5 @@
 #include <Foundation/Common.h>
-#include <Scene/DeviceIndexedResourceBuffer.h>
+#include <Rendering/DeviceIndexedResourceBuffer.h>
 
 namespace Omni {
 
