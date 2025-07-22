@@ -5,7 +5,7 @@
 #include <Asset/AssetType.h>
 #include <Filesystem/Filesystem.h>
 
-#include <Renderer/UI/ImGuiRenderer.h>
+#include <Rendering/UI/ImGuiRenderer.h>
 
 #include <fstream>
 #include <filesystem>

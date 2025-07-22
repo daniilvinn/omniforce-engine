@@ -1,11 +1,11 @@
 #include "../Properties.h"
 
 #include <Scene/Component.h>
-#include <Scene/ISceneRenderer.h>
+#include <Rendering/ISceneRenderer.h>
+#include <Rendering/UI/ImGuiRenderer.h>
 #include <Asset/AssetManager.h>
 #include <Core/Utils.h>
 #include <Filesystem/Filesystem.h>
-#include <Renderer/UI/ImGuiRenderer.h>
 #include <DebugUtils/DebugRenderer.h>
 
 #include "../../EditorUtils.h"

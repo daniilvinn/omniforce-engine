@@ -37,6 +37,7 @@
 #include <Rendering/ISceneRenderer.h>
 #include <Rendering/Raster/RasterSceneRenderer.h>
 #include <Rendering/PathTracing/PathTracingSceneRenderer.h>
+#include <Rendering/PathTracing/PathTracingSettings.h>
 #include <Rendering/Mesh.h>
 
 // Asset
