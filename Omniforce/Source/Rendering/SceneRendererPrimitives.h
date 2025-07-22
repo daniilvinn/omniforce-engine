@@ -79,15 +79,6 @@ namespace Omni {
 		BDA<SWRasterQueue> SoftwareRasterQueue;
 	};
 
-	struct META(ShaderExpose, ShaderInput, Module = "PathTracingInput") PathTracingInput {
-		BDA<ViewData> View;
-		BDA<InstanceRenderData> Instances;
-		BDA<GeometryMeshData> Meshes;
-		uint32 RandomSeed;
-		uint32 AccumulatedFrames;
-		BDA<ScenePointLights> PointLights;
-	};
-
 	struct META(ShaderExpose, ShaderInput, Module = "ToneMappingInput") ToneMappingInput {
 		BDA<ViewData> View;
 	};

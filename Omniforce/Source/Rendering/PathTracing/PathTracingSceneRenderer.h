@@ -7,6 +7,7 @@
 #include <Scene/Camera.h>
 #include <RHI/AccelerationStructure.h>
 #include <RHI/RTPipeline.h>
+#include <Rendering/PathTracing/PathTracingSettings.h>
 
 #include <glm/glm.hpp>
 
@@ -22,6 +23,21 @@ namespace Omni {
 		void BeginScene(Ref<Camera> camera) override;
 		void EndScene() override;
 
+		// Setting new settings will reset the accumulated frame count
+		void SetSettings(const PathTracingSettings& settings) { 
+			m_Settings = settings; 
+			m_AccumulatedFrameCount = 0;
+		}
+
+		// Get current settings
+		const PathTracingSettings& GetSettings() const { return m_Settings; }
+		PathTracingSettings& GetSettings() { return m_Settings; }
+
+		uint32 GetAccumulatedFrameCount() const { return m_AccumulatedFrameCount; }
+
+		// Reset accumulation manually
+		void ResetAccumulation() { m_AccumulatedFrameCount = 0; }
+
 	private:
 		Ref<RTPipeline> m_RTPipeline;
 		Ref<Pipeline> m_ToneMappingPass;
@@ -33,6 +49,8 @@ namespace Omni {
 		Ref<Image> m_OutputImage;
 		ViewData m_PreviousFrameView = {};
 		uint64 m_AccumulatedFrameCount = 0;
+
+		PathTracingSettings m_Settings;
 		float32 m_Exposure = 1.0f;
 
 	};

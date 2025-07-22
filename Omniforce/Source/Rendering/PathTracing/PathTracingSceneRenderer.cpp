@@ -1,15 +1,16 @@
-#include <Scene/PathTracingSceneRenderer.h>
+#include <Rendering/PathTracing/PathTracingSceneRenderer.h>
 
-#include <Renderer/Renderer.h>
-#include <Renderer/AccelerationStructure.h>
-#include <Renderer/DeviceBuffer.h>
-#include <Renderer/ShaderLibrary.h>
-#include <Renderer/RTPipeline.h>
-#include <Renderer/PipelineBarrier.h>
-#include <Renderer/PipelineStage.h>
-#include <Renderer/DescriptorSet.h>
+#include <RHI/Renderer.h>
+#include <RHI/AccelerationStructure.h>
+#include <RHI/DeviceBuffer.h>
+#include <RHI/ShaderLibrary.h>
+#include <RHI/RTPipeline.h>
+#include <RHI/PipelineBarrier.h>
+#include <RHI/PipelineStage.h>
+#include <RHI/DescriptorSet.h>
 #include <Asset/AssetManager.h>
 #include <Asset/PrimitiveMeshGenerator.h>
+#include <Rendering/PathTracing/PathTracingInput.h>
 
 #include <imgui.h>
 
@@ -23,6 +24,8 @@ namespace Omni {
 	PathTracingSceneRenderer::PathTracingSceneRenderer(const SceneRendererSpecification& spec)
 		: ISceneRenderer(spec)
 	{
+		m_RenderMode = SceneRendererMode::PATH_TRACING;
+
 		PrimitiveMeshGenerator sphere_generator;
 		auto [sphere_vertices, sphere_indices] = sphere_generator.GenerateIcosphere(4);
 

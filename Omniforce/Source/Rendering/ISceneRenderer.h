@@ -31,6 +31,12 @@ namespace robin_hood {
 
 namespace Omni {
 
+	enum class OMNIFORCE_API SceneRendererMode {
+		RASTER,
+		PATH_TRACING,
+		NONE
+	};
+
 	struct OMNIFORCE_API SceneRendererSpecification {
 		uint8 anisotropic_filtering = 16;
 		// How much sprites will be stored in a device buffer. Actual size will be sprite_buffer_size * sizeof(Sprite) * fif
@@ -46,6 +52,7 @@ namespace Omni {
 		void ExitDebugMode() { m_CurrentViewMode = DebugSceneView::NONE; };
 		bool IsInDebugMode() const { return m_CurrentViewMode != DebugSceneView::NONE; }
 		DebugSceneView GetCurrentDebugMode() const { return m_CurrentViewMode; }
+		SceneRendererMode GetRenderMode() const { return m_RenderMode; }
 
 		Ref<Image> GetFinalImage() { return m_RendererOutputs[Renderer::GetCurrentFrameIndex()]; };
 		Ref<ImageSampler> GetSamplerNearest() { return m_SamplerNearest; }
@@ -87,6 +94,8 @@ namespace Omni {
 		void AddPointLight(const PointLight& point_light) { m_HostPointLights.push_back(point_light); }
 
 	protected:
+		SceneRendererMode m_RenderMode = SceneRendererMode::NONE;
+
 		Ref<Camera> m_Camera;
 		SceneRendererSpecification m_Specification;
 

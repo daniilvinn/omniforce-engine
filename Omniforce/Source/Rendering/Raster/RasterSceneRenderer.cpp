@@ -1,19 +1,19 @@
 #include <Foundation/Common.h>
-#include <Scene/RasterSceneRenderer.h>
+#include <Rendering/Raster/RasterSceneRenderer.h>
 
-#include <Scene/ISceneRenderer.h>
+#include <Rendering/ISceneRenderer.h>
 #include <Core/Utils.h>
-#include <Renderer/DescriptorSet.h>
-#include <Renderer/Pipeline.h>
-#include <Renderer/ShaderLibrary.h>
-#include <Renderer/DeviceBuffer.h>
-#include <Renderer/PipelineBarrier.h>
+#include <RHI/DescriptorSet.h>
+#include <RHI/Pipeline.h>
+#include <RHI/ShaderLibrary.h>
+#include <RHI/DeviceBuffer.h>
+#include <RHI/PipelineBarrier.h>
 #include <Threading/JobSystem.h>
 #include <Asset/AssetManager.h>
 #include <Asset/AssetCompressor.h>
 #include <Platform/Vulkan/VulkanCommon.h>
 #include <DebugUtils/DebugRenderer.h>
-#include <Scene/SceneRendererPrimitives.h>
+#include <Rendering/SceneRendererPrimitives.h>
 
 #include <taskflow/taskflow.hpp>
 
@@ -27,6 +27,8 @@ namespace Omni {
 	RasterSceneRenderer::RasterSceneRenderer(const SceneRendererSpecification& spec)
 		: ISceneRenderer(spec)
 	{
+		m_RenderMode = SceneRendererMode::RASTER;
+		
 		AssetManager* asset_manager = AssetManager::Get();
 			
 		// Create sprite data buffer. Creating SSBO because I need more than 65kb.
@@ -368,7 +370,7 @@ namespace Omni {
 		}
 
 		// Copy light sources data
-		m_DevicePointLights->UploadData(m_DevicePointLights->GetFrameOffset(), m_HostPointLights.data(), m_HostPointLights.size() * sizeof PointLight);
+		m_DevicePointLights->UploadData(m_DevicePointLights->GetFrameOffset(), m_HostPointLights.data(), m_HostPointLights.size() * sizeof(PointLight));
 
 		// Cull 3D
 		{
@@ -387,7 +389,7 @@ namespace Omni {
 
 			MiscData compute_pc = {};
 			compute_pc.data = (byte*)compute_push_constants_data;
-			compute_pc.size = sizeof InstanceCullingInput;
+			compute_pc.size = sizeof(InstanceCullingInput);
 
 			// Submit a dispatch
 			uint32 num_work_groups = (m_HostRenderQueue.size() + 255) / 256;
@@ -454,7 +456,7 @@ namespace Omni {
 			data[4] = m_SWRasterQueue->GetDeviceAddress();
 
 			graphics_pc.data = (byte*)data;
-			graphics_pc.size = sizeof uint64 * 5;
+			graphics_pc.size = sizeof(uint64) * 5;
 
 			Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], m_VisBufferPass, 0);
 			Renderer::RenderMeshTasksIndirect(m_VisBufferPass, m_DeviceIndirectDrawParams, graphics_pc);
@@ -539,7 +541,7 @@ namespace Omni {
 					pc_data[3] = m_VisibleClusters->GetDeviceAddress();
 
 					pc.data = (byte*)pc_data;
-					pc.size = sizeof uint64 * 4;
+					pc.size = sizeof(uint64) * 4;
 
 					Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], pipeline, 0);
 					Renderer::RenderQuads(pipeline, pc);
@@ -577,7 +579,7 @@ namespace Omni {
 
 				MiscData pbr_pc = {};
 				pbr_pc.data = (byte*)pbr_push_constants;
-				pbr_pc.size = sizeof PBRLightingInput;
+				pbr_pc.size = sizeof(PBRLightingInput);
 
 				// Submit full screen quad
 				Renderer::BeginRender({ m_CurrentMainRenderTarget }, m_CurrentMainRenderTarget->GetSpecification().extent, { 0, 0 }, { INFINITY, INFINITY, INFINITY, 1.0f });
