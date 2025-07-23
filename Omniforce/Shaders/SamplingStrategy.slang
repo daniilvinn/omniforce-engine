@@ -416,7 +416,7 @@ public struct BSDFSamplingStrategy {
         {
             Result.Direction = normalize(reflect(-V, N));
             Result.PDF = pReflect;
-            Result.Weight = Fv;
+            Result.Weight = Fv * Surface.Color * (1.0f - Surface.Transmission.Factor);
 
             return Result;
         }
@@ -428,7 +428,7 @@ public struct BSDFSamplingStrategy {
 
             Result.Direction = normalize(refract(-V, N, Eta));
             Result.PDF = pRefract;
-            Result.Weight = 1.0 - Fv;
+            Result.Weight = (1.0 - Fv) * Surface.Color * (1.0f - Surface.Transmission.Factor);
 
             return Result;
         }
@@ -437,8 +437,6 @@ public struct BSDFSamplingStrategy {
             return SamplingResult.Invalid();
         }
         
-        
-
         return Result;
     }
 };
