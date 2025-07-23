@@ -27,14 +27,8 @@ namespace Omni {
 	{
 		// Descriptor data
 		{
-			std::vector<DescriptorBinding> bindings;
-			bindings.push_back({ 0, DescriptorBindingType::SAMPLED_IMAGE, UINT16_MAX, (uint64)DescriptorFlags::PARTIALLY_BOUND });
-			bindings.push_back({ 1, DescriptorBindingType::STORAGE_IMAGE, 1, 0 });
-			bindings.push_back({ 2, DescriptorBindingType::ACCELERATION_STRUCTURE, 1, 0 });
-			bindings.push_back({ 3, DescriptorBindingType::STORAGE_IMAGE, 1, 0 });
-
 			DescriptorSetSpecification global_set_spec = {};
-			global_set_spec.bindings = std::move(bindings);
+			global_set_spec.bindings = ShaderLibrary::Get()->GetGlobalDescriptorSetBindings();
 
 			for (int i = 0; i < Renderer::GetConfig().frames_in_flight; i++) {
 				auto set = DescriptorSet::Create(&g_PersistentAllocator, global_set_spec);
@@ -155,7 +149,7 @@ namespace Omni {
 	uint32 ISceneRenderer::AcquireResourceIndex(Ref<Image> image, SamplerFilteringMode filtering_mode)
 	{
 		std::lock_guard lock(m_Mutex);
-		uint32 index = m_TextureIndexAllocator->Allocate(4, 1) / sizeof uint32;
+		uint32 index = m_TextureIndexAllocator->Allocate(4, 1) / sizeof(uint32);
 
 		Ref<ImageSampler> sampler;
 

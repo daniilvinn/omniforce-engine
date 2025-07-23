@@ -136,7 +136,7 @@ namespace Omni {
 		}
 
 		// Note: Accumulation limit is handled by the renderer, not in settings
-		ImGui::Text("Accumulation Limit: %u", 4096);
+		ImGui::Text("Accumulation Limit: %u", m_CurrentSettings.MaxAccumulatedFrameCount);
 		ImGui::SameLine();
 		ImGui::TextDisabled("(?)");
 		if (ImGui::IsItemHovered()) {

@@ -27,6 +27,7 @@ namespace Omni {
 		// @return true if loaded successfully, false if not. It can happen due to incorrect shader path or invalid shader code
 		bool LoadShader(const std::filesystem::path& path, const ShaderMacroTable& macros = {});
 		bool LoadShader2(const std::string& name, std::vector<std::string> entry_point_names, const ShaderMacroTable& macros = {});
+		std::vector<DescriptorBinding> GetGlobalDescriptorSetBindings() const { return m_GlobalBindings; };
 
 		// @return true if shader was successfully unloaded from library and destroyed, false if no shader with such name was found
 		bool UnloadShader(std::string name, const ShaderMacroTable& macros = {});
@@ -75,6 +76,7 @@ namespace Omni {
 		InternalStorage m_Library;
 		std::shared_mutex m_Mutex;
 		std::vector<std::pair<std::string, std::string>> m_GlobalMacros;
+		std::vector<DescriptorBinding> m_GlobalBindings;
 	};
 
 }

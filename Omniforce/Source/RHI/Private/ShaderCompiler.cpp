@@ -1,8 +1,8 @@
 #include <Foundation/Common.h>
-#include <Renderer/ShaderCompiler.h>
+#include <RHI/ShaderCompiler.h>
 
 #include <Filesystem/Filesystem.h>
-#include <Renderer/Private/ShaderSourceIncluder.h>
+#include <RHI/Private/ShaderSourceIncluder.h>
 #include <Core/Utils.h>
 
 #include <shaderc/shaderc.hpp>
@@ -298,6 +298,41 @@ namespace Omni {
 		compilation_result.valid = true;
 
 		return compilation_result;
+	}
+
+	std::vector<DescriptorBinding> ShaderCompiler::GetDescriptorSetLayout(const std::string& module_name)
+	{
+		std::vector<DescriptorBinding> layout;
+		slang::IModule* slang_module = m_LoadedModules.at(module_name);
+
+		slang::ProgramLayout* slang_layout = slang_module->getLayout();
+
+		auto ConvertSlangDescriptorType = [](slang::BindingType type) -> DescriptorBindingType {
+			switch (type)
+			{
+			case slang::BindingType::CombinedTextureSampler:				return DescriptorBindingType::SAMPLED_IMAGE;
+			case slang::BindingType::RayTracingAccelerationStructure:		return DescriptorBindingType::ACCELERATION_STRUCTURE;
+			case slang::BindingType::MutableTexture:						return DescriptorBindingType::STORAGE_IMAGE;
+			}
+
+			OMNIFORCE_ASSERT_TAGGED(false, "Not implemented fully");
+
+		};
+
+		for (uint32 i = 0; i < slang_layout->getParameterCount(); i++) {
+			DescriptorBinding binding = {};
+			slang::VariableLayoutReflection* parameter = slang_layout->getParameterByIndex(i);
+			slang::TypeLayoutReflection* type_layout = parameter->getTypeLayout();
+
+			binding.binding = parameter->getBindingIndex();
+			binding.type = ConvertSlangDescriptorType(type_layout->getBindingRangeType(0));
+			binding.array_count = std::max(type_layout->getTotalArrayElementCount(), 1ull);
+			binding.flags = binding.type == DescriptorBindingType::SAMPLED_IMAGE && binding.array_count != 1 ? (BitMask)DescriptorFlags::PARTIALLY_BOUND : 0;
+
+			layout.push_back(binding);
+		}
+
+		return layout;
 	}
 
 	bool ShaderCompiler::ValidateSlangResult(SlangResult result, Slang::ComPtr<slang::IBlob>& diagnosticsBlob)

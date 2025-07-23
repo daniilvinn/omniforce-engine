@@ -24,10 +24,7 @@ namespace Omni {
 		void EndScene() override;
 
 		// Setting new settings will reset the accumulated frame count
-		void SetSettings(const PathTracingSettings& settings) { 
-			m_Settings = settings; 
-			m_AccumulatedFrameCount = 0;
-		}
+		void SetSettings(const PathTracingSettings& settings);
 
 		// Get current settings
 		const PathTracingSettings& GetSettings() const { return m_Settings; }
@@ -48,8 +45,9 @@ namespace Omni {
 		Ref<Image> m_VisibilityBuffer;
 		Ref<Image> m_OutputImage;
 		ViewData m_PreviousFrameView = {};
-		uint64 m_AccumulatedFrameCount = 0;
+		uint32 m_AccumulatedFrameCount = 0;
 
+		Ref<DeviceBuffer> m_SettingsBuffer;
 		PathTracingSettings m_Settings;
 		float32 m_Exposure = 1.0f;
 

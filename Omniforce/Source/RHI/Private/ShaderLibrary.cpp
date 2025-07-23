@@ -1,8 +1,8 @@
 ﻿#include <Foundation/Common.h>
-#include <Renderer/ShaderLibrary.h>
+#include <RHI/ShaderLibrary.h>
 
-#include <Renderer/ShaderCompiler.h>
-#include <Renderer/Renderer.h>
+#include <RHI/ShaderCompiler.h>
+#include <RHI/Renderer.h>
 #include <Filesystem/Filesystem.h>
 #include <Threading/JobSystem.h>
 
@@ -17,6 +17,14 @@ namespace Omni {
 		m_GlobalMacros.push_back({ "__OMNI_MESH_SHADER_PREFERRED_WORK_GROUP_SIZE", std::to_string(Renderer::GetDeviceOptimalMeshWorkGroupSize()) });
 		m_GlobalMacros.push_back({ "__OMNI_COMPILE_SHADER_FOR_GLSL", "" });
 		m_GlobalMacros.shrink_to_fit();
+
+		g_ShaderCompiler = CreatePtr<ShaderCompiler>(&g_PersistentAllocator);
+
+		for (auto& global_macro : m_GlobalMacros)
+			g_ShaderCompiler->AddGlobalMacro(global_macro.first, global_macro.second);
+
+		g_ShaderCompiler->LoadModule("Resources/Shaders/GlobalParameters.slang");
+		m_GlobalBindings = g_ShaderCompiler->GetDescriptorSetLayout("GlobalParameters");;
 	}
 
 	ShaderLibrary::~ShaderLibrary()
@@ -39,13 +47,9 @@ namespace Omni {
 	}
 
 	bool ShaderLibrary::LoadShader(const std::filesystem::path& path, const ShaderMacroTable& macros) {
-		ShaderCompiler shader_compiler;
 		ShaderCompilationResult compilation_result;
 
 		OMNIFORCE_ASSERT_TAGGED(macros.contains("__OMNI_PIPELINE_LOCAL_HASH"), "No pipeline ID macro provided");
-
-		for (auto& global_macro : m_GlobalMacros)
-			shader_compiler.AddGlobalMacro(global_macro.first, global_macro.second);
 
 		bool result = HasShader(path.filename().string(), macros);
 
@@ -68,7 +72,7 @@ namespace Omni {
 			std::ifstream input_stream(path);
 			while (std::getline(input_stream, line)) shader_source.append(line + '\n');
 
-			compilation_result = shader_compiler.Compile(shader_source, path.filename().string(), macros);
+			compilation_result = g_ShaderCompiler->Compile(shader_source, path.filename().string(), macros);
 		}
 
 		if (!compilation_result.valid) return false;
@@ -93,7 +97,6 @@ namespace Omni {
 
 	bool ShaderLibrary::LoadShader2(const std::string& name, std::vector<std::string> entry_point_names, const ShaderMacroTable& macros /*= {}*/)
 	{
-		ShaderCompiler shader_compiler;
 		ShaderCompilationResult compilation_result = {};
 		compilation_result.valid = true;
 
@@ -106,7 +109,7 @@ namespace Omni {
 			std::filesystem::path path = "Resources/Shaders/" + module_name + ".slang";
 
 			for (auto& global_macro : m_GlobalMacros)
-				shader_compiler.AddGlobalMacro(global_macro.first, global_macro.second);
+				g_ShaderCompiler->AddGlobalMacro(global_macro.first, global_macro.second);
 
 			PerformShaderLoadingChecks(name, path, macros);
 
@@ -115,7 +118,7 @@ namespace Omni {
 			compilation_options.module_name = module_name;
 			compilation_options.path = path;
 
-			ShaderEntryPointCode compiled_entry_point = LoadShaderEntryPoint(compilation_options, shader_compiler);
+			ShaderEntryPointCode compiled_entry_point = LoadShaderEntryPoint(compilation_options, *g_ShaderCompiler);
 
 			std::vector<uint32> bytecode(compiled_entry_point.bytecode.Size() / 4);
 			memcpy(bytecode.data(), compiled_entry_point.bytecode.Raw(), compiled_entry_point.bytecode.Size());

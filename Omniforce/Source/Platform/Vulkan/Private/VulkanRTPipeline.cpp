@@ -13,27 +13,17 @@ namespace Omni {
 	{
 		auto device = VulkanGraphicsContext::Get()->GetDevice();
 
-		// Create global descriptor set
-		std::vector<DescriptorBinding> global_bindings;
-		global_bindings.push_back({ 0, DescriptorBindingType::SAMPLED_IMAGE, UINT16_MAX, (uint64)DescriptorFlags::PARTIALLY_BOUND });
-		global_bindings.push_back({ 1, DescriptorBindingType::STORAGE_IMAGE, 1, 0 });
-		global_bindings.push_back({ 2, DescriptorBindingType::ACCELERATION_STRUCTURE, 1, 0 });
-		global_bindings.push_back({ 3, DescriptorBindingType::STORAGE_IMAGE, 1, 0 });
-
-		DescriptorSetSpecification dummy_descriptor_set_spec = {};
-		dummy_descriptor_set_spec.bindings = std::move(global_bindings);
-
-		Ref<DescriptorSet> dummy_set = DescriptorSet::Create(&g_TransientAllocator, dummy_descriptor_set_spec);
-		WeakPtr<VulkanDescriptorSet> vk_dummy_set = dummy_set;
-
 		// Create full push constant range
 		VkPushConstantRange dummy_pc_range = {};
 		dummy_pc_range.offset = 0;
 		dummy_pc_range.size = 128;
 		dummy_pc_range.stageFlags = VK_SHADER_STAGE_ALL;
 
+		WeakPtr<VulkanDescriptorSet> vk_descriptor_set = spec.descriptor_set;
+
 		Array<VkDescriptorSetLayout> descriptor_set_layouts(&g_TransientAllocator);
-		descriptor_set_layouts.Add(vk_dummy_set->RawLayout());
+		descriptor_set_layouts.Add(vk_descriptor_set->RawLayout());
+
 		Array<VkPushConstantRange> push_constant_ranges(&g_TransientAllocator);
 		push_constant_ranges.Add(dummy_pc_range);
 

@@ -1,8 +1,8 @@
 #include <Foundation/Common.h>
-#include <Renderer/Pipeline.h>
+#include <RHI/Pipeline.h>
 
 #include <Platform/Vulkan/VulkanPipeline.h>
-#include <Scene/PipelineLibrary.h>
+#include <Rendering/PipelineLibrary.h>
 
 namespace Omni {
 

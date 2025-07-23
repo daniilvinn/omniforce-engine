@@ -1,5 +1,5 @@
 #include <Foundation/Common.h>
-#include <Renderer/UI/ImGuiRenderer.h>
+#include <Rendering/UI/ImGuiRenderer.h>
 
 #include <Platform/Vulkan/UI/VulkanImGuiRenderer.h>
 

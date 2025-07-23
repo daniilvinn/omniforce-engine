@@ -4,6 +4,7 @@
 #include <RHI/RHICommon.h>
 
 #include <RHI/Shader.h>
+#include <RHI/DescriptorSet.h>
 
 #include <map>
 
@@ -47,6 +48,7 @@ namespace Omni {
 
 		bool LoadModule(const stdfs::path& path, const ShaderMacroTable& macros = {});
 		ShaderEntryPointCode GetEntryPointCode(IAllocator* allocator, const std::string& entry_point_name);
+		std::vector<DescriptorBinding> GetDescriptorSetLayout(const std::string& module_name);
 
 	private:
 		bool ValidateSlangResult(SlangResult result, Slang::ComPtr<slang::IBlob>& diagnosticsBlob);
@@ -55,8 +57,8 @@ namespace Omni {
 		shaderc::Compiler m_Compiler;
 		shaderc::CompileOptions m_GlobalOptions;
 		
-		inline static Slang::ComPtr<slang::IGlobalSession> m_GlobalSession = nullptr;
-		inline static Slang::ComPtr<slang::ISession> m_LocalSession = nullptr;
+		Slang::ComPtr<slang::IGlobalSession> m_GlobalSession = nullptr;
+		Slang::ComPtr<slang::ISession> m_LocalSession = nullptr;
 		rhumap<std::string, slang::IModule*> m_LoadedModules;
 
 		std::map<std::string, std::string> m_GlobalMacros;

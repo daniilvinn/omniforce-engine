@@ -1,15 +1,15 @@
 #include <Foundation/Common.h>
-#include <Renderer/Renderer.h>
+#include <RHI/Renderer.h>
 
 #include <Threading/JobSystem.h>
 #include <Platform/Vulkan/VulkanRenderer.h>
-#include <Renderer/ShaderLibrary.h>
-#include <Renderer/DeviceBuffer.h>
-#include <Renderer/Pipeline.h>
-#include <Renderer/RTPipeline.h>
-#include <Renderer/DescriptorSet.h>
+#include <RHI/ShaderLibrary.h>
+#include <RHI/DeviceBuffer.h>
+#include <RHI/Pipeline.h>
+#include <RHI/RTPipeline.h>
+#include <RHI/DescriptorSet.h>
 #include <Core/Windowing/WindowSystem.h>
-#include <Scene/PipelineLibrary.h>
+#include <Rendering/PipelineLibrary.h>
 
 namespace Omni {
 

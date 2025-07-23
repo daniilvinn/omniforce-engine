@@ -20,6 +20,7 @@ namespace Omni {
 	struct OMNIFORCE_API RTPipelineSpecification {
 		Array<RTShaderGroup> groups;
 		uint32 recursion_depth = 1;
+		Ref<DescriptorSet> descriptor_set;
 	};
 
 	class OMNIFORCE_API RTPipeline {

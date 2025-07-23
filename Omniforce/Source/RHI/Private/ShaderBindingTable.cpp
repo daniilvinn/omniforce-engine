@@ -1,9 +1,10 @@
 #pragma once
 
 #include <Foundation/Common.h>
-#include <Renderer/ShaderBindingTable.h>
+#include <RHI/ShaderBindingTable.h>
 
-#include <Renderer/Renderer.h>
+#include <RHI/Renderer.h>
+#include <RHI/DescriptorSet.h>
 #include <Core/Utils.h>
 
 namespace Omni {

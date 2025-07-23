@@ -33,6 +33,11 @@ namespace Omni {
 		DeviceBufferLayoutElement element("position", DeviceDataType::FLOAT3);
 		DeviceBufferLayout buffer_layout(std::vector{ element });
 
+		// Create dummy descriptor set
+		DescriptorSetSpecification set_spec = {};
+		set_spec.bindings = shader_library->GetGlobalDescriptorSetBindings();
+		Ref<DescriptorSet> descriptor_set = DescriptorSet::Create(&g_TransientAllocator, set_spec);
+
 		PipelineSpecification pipeline_spec = PipelineSpecification::Default();
 		pipeline_spec.culling_mode = PipelineCullingMode::NONE;
 		pipeline_spec.debug_name = "debug renderer wireframe";
@@ -40,6 +45,7 @@ namespace Omni {
 		pipeline_spec.output_attachments_formats = { ImageFormat::RGB32_HDR };
 		pipeline_spec.topology = PipelineTopology::LINES;
 		pipeline_spec.shader = shader_library->GetShader("Wireframe.ofs");
+		pipeline_spec.descriptor_set = descriptor_set;
 		pipeline_spec.input_layout = buffer_layout;
 		pipeline_spec.depth_test_enable = true;
 		pipeline_spec.color_blending_enable = false;

@@ -105,6 +105,7 @@ namespace Omni {
 		RTPipelineSpecification rt_pipeline_spec = {};
 		rt_pipeline_spec.groups = Array<RTShaderGroup>(&g_TransientAllocator);
 		rt_pipeline_spec.recursion_depth = 2;
+		rt_pipeline_spec.descriptor_set = m_SceneDescriptorSet[0];
 
 		RTShaderGroup raygen_group = {};
 		raygen_group.ray_generation = shader_library->GetShader("PathConstruction");
@@ -138,6 +139,7 @@ namespace Omni {
 		tone_mapping_pass_spec.color_blending_enable = false;
 		tone_mapping_pass_spec.depth_test_enable = false;
 		tone_mapping_pass_spec.depth_write_enable = false;
+		tone_mapping_pass_spec.descriptor_set = m_SceneDescriptorSet[0];
 
 		m_ToneMappingPass = Pipeline::Create(&g_PersistentAllocator, tone_mapping_pass_spec);
 
@@ -161,7 +163,7 @@ namespace Omni {
 			ImageSpecification output_image_spec = ImageSpecification::Default();
 			output_image_spec.usage = ImageUsage::RENDER_TARGET;
 			output_image_spec.extent = Renderer::GetSwapchainImage()->GetSpecification().extent;
-			output_image_spec.format = ImageFormat::RGBA64_HDR;
+			output_image_spec.format = ImageFormat::RGBA128_HDR;
 			OMNI_DEBUG_ONLY_CODE(output_image_spec.debug_name = "PathTracing.Output");
 
 			m_OutputImage = Image::Create(&g_PersistentAllocator, output_image_spec);
@@ -170,11 +172,33 @@ namespace Omni {
 				m_SceneDescriptorSet[i]->Write(3, 0, m_OutputImage, nullptr);
 			}
 		}
+		// Init settings buffer
+		{
+			DeviceBufferSpecification buffer_spec = {};
+			buffer_spec.size = sizeof(PathTracingSettings) * Renderer::GetConfig().frames_in_flight;
+			buffer_spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
+			buffer_spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
+			buffer_spec.heap = DeviceBufferMemoryHeap::DEVICE;
+
+			m_SettingsBuffer = DeviceBuffer::Create(&g_PersistentAllocator, buffer_spec);
+		}
 	}
 
 	PathTracingSceneRenderer::~PathTracingSceneRenderer()
 	{
 
+	}
+
+	void PathTracingSceneRenderer::SetSettings(const PathTracingSettings& settings)
+	{
+		m_Settings = settings;
+		m_AccumulatedFrameCount = 0;
+
+		m_SettingsBuffer->UploadData(
+			m_SettingsBuffer->GetFrameOffset(),
+			&m_Settings,
+			sizeof(m_Settings)
+		);
 	}
 
 	void PathTracingSceneRenderer::BeginScene(Ref<Camera> camera)
@@ -225,6 +249,7 @@ namespace Omni {
 				m_PreviousFrameView = camera_data;
 			}
 
+			m_AccumulatedFrameCount = glm::min(m_AccumulatedFrameCount, m_Settings.MaxAccumulatedFrameCount);
 
 			DebugRenderer::SetCameraBuffer(m_CameraDataBuffer);
 		}
@@ -247,7 +272,10 @@ namespace Omni {
 
 	void PathTracingSceneRenderer::EndScene()
 	{
-		if(!(m_HighLevelInstanceQueue.empty() && m_HostPointLights.empty()) && m_AccumulatedFrameCount < 4096) {
+		if(
+			!(m_HighLevelInstanceQueue.empty() && m_HostPointLights.empty()) 
+			&& m_AccumulatedFrameCount < m_Settings.MaxAccumulatedFrameCount
+		) {
 			// Upload data to the render queue
 			m_DeviceRenderQueue->UploadData(
 				m_DeviceRenderQueue->GetFrameOffset(),
@@ -314,6 +342,7 @@ namespace Omni {
 			path_tracing_input->RandomSeed = RandomEngine::Generate<uint32>(1);
 			path_tracing_input->AccumulatedFrames = m_AccumulatedFrameCount;
 			path_tracing_input->PointLights = BDA<ScenePointLights>(m_DevicePointLights, m_DevicePointLights->GetFrameOffset());
+			path_tracing_input->Settings = BDA<PathTracingSettings>(m_SettingsBuffer, m_SettingsBuffer->GetFrameOffset());
 
 			MiscData pc = {};
 			pc.data = (byte*)path_tracing_input;

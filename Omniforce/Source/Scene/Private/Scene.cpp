@@ -285,7 +285,7 @@ namespace Omni {
 
 	void Scene::LaunchRuntime()
 	{
-		m_InRuntime = true;;
+		m_InRuntime = true;
 		m_Camera = nullptr;
 		auto view = m_Registry.view<CameraComponent>();
 		for (auto& entity : view) {

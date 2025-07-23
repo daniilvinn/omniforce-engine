@@ -2,6 +2,10 @@ module Common;
 
 import Gen.BasicTypes;
 
+#define STRIP_GLOBAL_PARAMETERS_MODULE_DECL
+#include "GlobalParameters.slang"
+#undef STRIP_GLOBAL_PARAMETERS_MODULE_DECL
+
 namespace Omni {
 
 public static const float PI = 3.141592653589;
@@ -15,18 +19,6 @@ public static const float Sqrt2 = 1.41421356237309504880;
 public static const float FloatMax = 3.402823466e+38F;
 public static const float FloatMin = 1.175494351e-38F;
 public static const float InvalidHitPoint = FloatMax;
-
-[[vk::binding(0, 0)]]
-public Sampler2D TextureHeap[];
-
-[[vk::binding(1, 0)]]
-public RWTexture2D<uint64_t> SceneVisibilityBuffer;
-
-[[vk::binding(2, 0)]]
-public RaytracingAccelerationStructure SceneTLAS;
-
-[[vk::binding(3, 0)]]
-public RWTexture2D<float4> OutputImage;
 
 public float3 QuaternionRotate(float4 Quat, float3 Point) {
     float3 uv = cross(Quat.xyz, Point);

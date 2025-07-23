@@ -1,6 +1,7 @@
 #include <Foundation/Common.h>
-#include <Renderer/RTPipeline.h>
+#include <RHI/RTPipeline.h>
 
+#include <RHI/DescriptorSet.h>
 #include <Platform/Vulkan/VulkanRTPipeline.h>
 
 namespace Omni {

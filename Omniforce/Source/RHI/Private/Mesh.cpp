@@ -1,7 +1,7 @@
 #include <Foundation/Common.h>
-#include <Renderer/Mesh.h>
+#include <Rendering/Mesh.h>
 
-#include <Renderer/AccelerationStructure.h>
+#include <RHI/AccelerationStructure.h>
 
 #include <memory>
 

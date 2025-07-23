@@ -1,5 +1,5 @@
 #include <Foundation/Common.h>
-#include <Renderer/DescriptorSet.h>
+#include <RHI/DescriptorSet.h>
 
 #include <Platform/Vulkan/VulkanDescriptorSet.h>
 

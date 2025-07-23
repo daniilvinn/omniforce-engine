@@ -5,6 +5,7 @@
 
 #include <RHI/DeviceBufferLayout.h>
 #include <RHI/Image.h>
+#include <RHI/DescriptorSet.h>
 
 #include <robin_hood.h>
 
@@ -52,6 +53,7 @@ namespace Omni {
 		std::string debug_name;
 		DeviceBufferLayout input_layout;
 		Ref<Shader> shader;
+		Ref<DescriptorSet> descriptor_set = nullptr;
 		float32 line_width;
 		PipelineType type;
 		PipelineCullingMode culling_mode;

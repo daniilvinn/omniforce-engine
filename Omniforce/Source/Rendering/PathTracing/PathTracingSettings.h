@@ -23,5 +23,26 @@ namespace Omni {
         float TemporalFilterStrength;
         bool EnableEnvironmentLighting;
         bool GatherPerformanceMetrics;
+
+        constexpr PathTracingSettings() 
+            : MaxBounces(3)
+            , SamplesPerPixel(1)
+            , DeterministicSeed(false)
+            , FixedSeed(0)
+            , MaxAccumulatedFrameCount(4096)
+            , RayDebugMode(false)
+            , RussianRouletteThreshold(0.8f)
+            , EnableMIS(true)
+            , EnableNEE(true)
+            , RayEpsilon(1e-4f)
+            , VisualizePaths(false)
+            , VisualizeHitPoints(false)
+            , VisualizeMaterials(false)
+            , AdaptiveSampling(true)
+            , EnableDenoising(true)
+            , TemporalFilterStrength(0.1f)
+            , EnableEnvironmentLighting(true)
+            , GatherPerformanceMetrics(false)
+        {}
     };
 }
