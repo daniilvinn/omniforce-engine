@@ -19,7 +19,6 @@ public struct RayPayload
     public float3 HitPoint;
     public uint RandomSeed;
     public float BSDFPdf;
-    public float CurrentMediumIOR;
 };
 
 public struct HitSurfaceInfo<SurfaceDomain Domain = SurfaceDomain.Opaque> {

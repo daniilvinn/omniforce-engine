@@ -18,7 +18,4 @@ namespace Omni {
     [[vk::binding(3, 0)]]
     public RWTexture2D<float4> OutputImage;
 
-    [[vk::binding(4, 0)]]
-    public RWTexture2D<float4> PreviousFrameImage;
-
 }

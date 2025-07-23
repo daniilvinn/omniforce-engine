@@ -144,10 +144,11 @@ void OpaqueHit(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribute
         }
     }
 
+    float3 BounceDirection = Result.Direction;
+
     // Validate and apply BRDF weight for path continuation
     if (!TerminatePath) {
         Payload.PathThroughput *= Result.Weight;
-        Payload.IncomingDirection = Result.Direction;
         Payload.RandomSeed = Random.Get();
         Payload.HitPoint = SurfaceInfo.Surface.Position + SurfaceInfo.Surface.TangentSpace.N * 0.001f;
         Payload.BSDFPdf = Result.PDF;
@@ -177,6 +178,7 @@ void OpaqueHit(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribute
         Payload.BSDFPdf = 0.0f; // Reset BSDF PDF to disable MIS
     }
 
+    Payload.IncomingDirection = BounceDirection;
 }
 
 [shader("closesthit")]
@@ -257,7 +259,7 @@ void TranslucentHit(inout RayPayload Payload, in BuiltInTriangleIntersectionAttr
 [shader("miss")]
 void Miss(inout RayPayload Payload)
 {
-    //return;
+    return;
 
     float3 LightColor;
     if (WorldRayDirection().y >= 0.0f) {
