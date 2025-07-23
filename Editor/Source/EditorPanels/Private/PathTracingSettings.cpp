@@ -135,13 +135,24 @@ namespace Omni {
 			ImGui::Unindent();
 		}
 
+		if(ImGui::Checkbox("Enable sky light", &m_CurrentSettings.EnableSkyLight)) {
+			m_SettingsChanged = true;
+		}
+
+		// Sky light settings
+		if(m_CurrentSettings.EnableSkyLight) {
+			if (ImGui::ColorPicker3("Sky color", (float*)&m_CurrentSettings.SkyColor,
+									ImGuiColorEditFlags_PickerHueWheel |
+									ImGuiColorEditFlags_DisplayRGB
+								)) {
+				m_SettingsChanged = true;
+			}
+			if(ImGui::DragFloat("Sky intensity", &m_CurrentSettings.SkyLightIntensity, 0.01f, 0.0f, 100.0f)) {
+				m_SettingsChanged = true;
+			}
+		}
 		// Note: Accumulation limit is handled by the renderer, not in settings
 		ImGui::Text("Accumulation Limit: %u", m_CurrentSettings.MaxAccumulatedFrameCount);
-		ImGui::SameLine();
-		ImGui::TextDisabled("(?)");
-		if (ImGui::IsItemHovered()) {
-			ImGui::SetTooltip("Maximum frames to accumulate (fixed at 4096)");
-		}
 		ImGui::SameLine();
 		ImGui::TextDisabled("(?)");
 		if (ImGui::IsItemHovered()) {
@@ -168,6 +179,10 @@ namespace Omni {
 	void PathTracingSettingsPanel::RenderQualitySettings()
 	{
 		ImGui::PushID("QualitySettings");
+
+		if(ImGui::DragInt("Max accumulated frames", (int*)&m_CurrentSettings.MaxAccumulatedFrameCount, 1, 1, glm::pow(2, 14))) {
+			m_SettingsChanged = true;
+		}
 
 		// Russian Roulette Threshold
 		if (ImGui::SliderFloat("Russian Roulette Threshold", &m_CurrentSettings.RussianRouletteThreshold, 0.01f, 0.5f, "%.3f")) {
@@ -217,16 +232,6 @@ namespace Omni {
 		ImGui::TextDisabled("(?)");
 		if (ImGui::IsItemHovered()) {
 			ImGui::SetTooltip("Ray origin offset to prevent self-intersection");
-		}
-
-		// Enable Environment Lighting
-		if (ImGui::Checkbox("Environment Lighting", &m_CurrentSettings.EnableEnvironmentLighting)) {
-			m_SettingsChanged = true;
-		}
-		ImGui::SameLine();
-		ImGui::TextDisabled("(?)");
-		if (ImGui::IsItemHovered()) {
-			ImGui::SetTooltip("Enable sky/environment lighting");
 		}
 
 		ImGui::PopID();

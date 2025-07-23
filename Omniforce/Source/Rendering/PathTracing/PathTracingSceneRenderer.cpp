@@ -181,6 +181,15 @@ namespace Omni {
 			buffer_spec.heap = DeviceBufferMemoryHeap::DEVICE;
 
 			m_SettingsBuffer = DeviceBuffer::Create(&g_PersistentAllocator, buffer_spec);
+
+			// Copy default settings to all frames
+			for (uint32 i = 0; i < Renderer::GetConfig().frames_in_flight; i++) {
+				m_SettingsBuffer->UploadData(
+					m_SettingsBuffer->GetPerFrameSize() * i,
+					&m_Settings,
+					sizeof(m_Settings)
+				);
+			}
 		}
 	}
 
@@ -341,7 +350,7 @@ namespace Omni {
 			path_tracing_input->View = BDA<ViewData>(m_CameraDataBuffer, m_CameraDataBuffer->GetFrameOffset());
 			path_tracing_input->Instances = BDA<InstanceRenderData>(m_DeviceRenderQueue, m_DeviceRenderQueue->GetFrameOffset());
 			path_tracing_input->Meshes = m_MeshResourcesBuffer.GetStorageBDA();
-			path_tracing_input->RandomSeed = RandomEngine::Generate<uint32>(1);
+			path_tracing_input->RandomSeed = m_Settings.DeterministicSeed == true ? m_Settings.FixedSeed : RandomEngine::Generate<uint32>(1);
 			path_tracing_input->AccumulatedFrames = m_AccumulatedFrameCount;
 			path_tracing_input->PointLights = BDA<ScenePointLights>(m_DevicePointLights, m_DevicePointLights->GetFrameOffset());
 			path_tracing_input->Settings = BDA<PathTracingSettings>(m_SettingsBuffer, m_SettingsBuffer->GetFrameOffset());

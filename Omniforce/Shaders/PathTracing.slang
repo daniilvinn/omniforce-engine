@@ -259,14 +259,19 @@ void TranslucentHit(inout RayPayload Payload, in BuiltInTriangleIntersectionAttr
 [shader("miss")]
 void Miss(inout RayPayload Payload)
 {
-    return;
-
-    float3 LightColor;
-    if (WorldRayDirection().y >= 0.0f) {
-        LightColor = float3(0.7, 0.9, 1.0) * 2;
-    } else {
-        LightColor = float3(0.0, 0.0, 0.0);
+    if (!Input.Settings.EnableSkyLight) {
+        return;
     }
+
+    float UpDot = WorldRayDirection().y; // dot(rayDir, float3(0,1,0)), but rayDir is already normalized
+
+    // Softly attenuate the sky color based on how much the ray points toward up
+    // For rays below the horizon, upDot < 0, for directly up, upDot = 1
+    // Allow a slight leak below the horizon with very gentle attenuation
+    float Attenuation = saturate(UpDot);
+
+    float3 LightColor = Input.Settings.SkyColor * Input.Settings.SkyLightIntensity * Attenuation;
+
     Payload.Radiance = LightColor * Payload.PathThroughput;
 }
 

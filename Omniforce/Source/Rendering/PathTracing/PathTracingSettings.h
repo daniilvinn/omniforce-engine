@@ -9,26 +9,31 @@ namespace Omni {
         uint32 SamplesPerPixel;
         bool DeterministicSeed;
         uint32 FixedSeed;
+        glm::vec3 SkyColor;
+        bool EnableSkyLight;
+        float32 SkyLightIntensity;
         uint32 MaxAccumulatedFrameCount;
         bool RayDebugMode;
-        float RussianRouletteThreshold;
+        float32 RussianRouletteThreshold;
         bool EnableMIS;
         bool EnableNEE;
-        float RayEpsilon;
+        float32 RayEpsilon;
         bool VisualizePaths;
         bool VisualizeHitPoints;
         bool VisualizeMaterials;
         bool AdaptiveSampling;
         bool EnableDenoising;
-        float TemporalFilterStrength;
-        bool EnableEnvironmentLighting;
+        float32 TemporalFilterStrength;
         bool GatherPerformanceMetrics;
 
-        constexpr PathTracingSettings() 
+        PathTracingSettings() 
             : MaxBounces(3)
             , SamplesPerPixel(1)
             , DeterministicSeed(false)
             , FixedSeed(0)
+            , EnableSkyLight(true)
+            , SkyColor(0.7, 0.9, 1.0)
+            , SkyLightIntensity(5.0)
             , MaxAccumulatedFrameCount(4096)
             , RayDebugMode(false)
             , RussianRouletteThreshold(0.8f)
@@ -41,7 +46,6 @@ namespace Omni {
             , AdaptiveSampling(true)
             , EnableDenoising(true)
             , TemporalFilterStrength(0.1f)
-            , EnableEnvironmentLighting(true)
             , GatherPerformanceMetrics(false)
         {}
     };
