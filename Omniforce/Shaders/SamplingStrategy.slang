@@ -250,7 +250,7 @@ public struct NEESamplingStrategy {
         InlineRayTracer ShadowRayTracer;
         HitInfo NEEHitInfo = ShadowRayTracer.TraceRay<RayFlags>(ShadowRayDesc);
 
-        if (!NEEHitInfo.Hit) {
+        if (NEEHitInfo.Hit) {
             return SamplingResult.Invalid();
         }
 
@@ -361,7 +361,13 @@ public struct BSDFSamplingStrategy {
             EtaT = 1.0;
         }
 
-        float3 F0 = FresnelBaseReflectance<SurfaceDomain.Transmissive>(Surface.Color, Surface.Metallic, EtaI, Surface.Transmission.IOR);
+        float3 F0 = FresnelBaseReflectance<SurfaceDomain.Transmissive>(
+            Surface.Color, 
+            Surface.Metallic, 
+            EtaI, 
+            EtaT
+        );
+
 
         // Early exit for grazing angles
         if (NdotV < FloatMin) {
@@ -416,7 +422,7 @@ public struct BSDFSamplingStrategy {
         {
             Result.Direction = normalize(reflect(-V, N));
             Result.PDF = pReflect;
-            Result.Weight = Fv * Surface.Color * (1.0f - Surface.Transmission.Factor);
+            Result.Weight = Fv * Surface.Color;
 
             return Result;
         }
