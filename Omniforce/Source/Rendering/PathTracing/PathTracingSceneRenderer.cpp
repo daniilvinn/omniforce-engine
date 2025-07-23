@@ -194,11 +194,13 @@ namespace Omni {
 		m_Settings = settings;
 		m_AccumulatedFrameCount = 0;
 
-		m_SettingsBuffer->UploadData(
-			m_SettingsBuffer->GetFrameOffset(),
-			&m_Settings,
-			sizeof(m_Settings)
-		);
+		for (uint32 i = 0; i < Renderer::GetConfig().frames_in_flight; i++) {
+			m_SettingsBuffer->UploadData(
+				m_SettingsBuffer->GetPerFrameSize() * i,
+				&m_Settings,
+				sizeof(m_Settings)
+			);
+		}
 	}
 
 	void PathTracingSceneRenderer::BeginScene(Ref<Camera> camera)
@@ -258,7 +260,7 @@ namespace Omni {
 		m_HostRenderQueue.clear();
 		m_HostPointLights.clear();
 
-		Renderer::Submit([=]() {
+		Renderer::Submit([this]() {
 			m_CurrentMainRenderTarget->SetLayout(
 				Renderer::GetCmdBuffer(),
 				ImageLayout::COLOR_ATTACHMENT,
@@ -375,7 +377,7 @@ namespace Omni {
 				tone_mapping_input->View = BDA<ViewData>(m_CameraDataBuffer, m_CameraDataBuffer->GetFrameOffset());
 
 				MiscData tone_mapping_pc = {};
-				tone_mapping_pc.size = sizeof(tone_mapping_input);
+				tone_mapping_pc.size = sizeof(*tone_mapping_input);
 				tone_mapping_pc.data = (byte*)tone_mapping_input;
 
 				Renderer::BindSet(m_SceneDescriptorSet[Renderer::GetCurrentFrameIndex()], m_ToneMappingPass, 0);
