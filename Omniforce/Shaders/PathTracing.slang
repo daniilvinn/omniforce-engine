@@ -269,16 +269,194 @@ void Miss(inout RayPayload Payload)
         return;
     }
 
-    float UpDot = WorldRayDirection().y; // dot(rayDir, float3(0,1,0)), but rayDir is already normalized
+    float3 RayDir = WorldRayDirection();
 
-    // Softly attenuate the sky color based on how much the ray points toward up
-    // For rays below the horizon, upDot < 0, for directly up, upDot = 1
-    // Allow a slight leak below the horizon with very gentle attenuation
-    float Attenuation = saturate(UpDot);
-
-    float3 LightColor = Input.Settings.SkyColor * Input.Settings.SkyLightIntensity * Attenuation;
-
-    Payload.Radiance = LightColor * Payload.PathThroughput;
+    // Sun parameters - Dynamic based on sun elevation
+    // ONLY TWEAK THIS: SunDirection.y controls time of day automatically
+    // y = 1.0 = midday (bright blue sky)
+    // y = 0.5 = afternoon (warm colors)  
+    // y = 0.1 = sunset (orange/purple)
+    // y = 0.0 = horizon (deep sunset)
+    // y = -0.1 = twilight (super orange, getting dark)
+    // y = -0.2+ = night (very dark, almost black)
+    const float3 SunDirection = normalize(Input.Settings.SunDirection);  // Adjust Y for time of day
+    const float SunAngularRadius = 0.0087;  // ~0.5 degrees (realistic sun size)
+    
+    // Calculate sun elevation for automatic adjustments (allow negative values for below horizon)
+    float SunElevation = SunDirection.y;  // Can be negative when below horizon
+    float SunElevationClamped = saturate(SunElevation);  // 0 = horizon, 1 = zenith
+    
+    // Dynamic turbidity based on sun elevation (lower sun = more atmospheric scattering)
+    float Turbidity = lerp(8.0, 2.0, SunElevationClamped);  // 8.0 at horizon, 2.0 at zenith
+    
+    // Preetham sky model implementation
+    float ThetaS = acos(saturate(SunDirection.y));  // Sun zenith angle
+    float ThetaV = acos(saturate(RayDir.y));        // View zenith angle  
+    float Gamma = acos(saturate(dot(RayDir, SunDirection))); // Angle between view and sun
+    
+    // Preetham coefficients for luminance distribution
+    float A = -0.01925 * Turbidity - 0.25922;
+    float B = -0.06651 * Turbidity + 0.00081;
+    float C = -0.00041 * Turbidity + 0.21247;
+    float D = -0.06409 * Turbidity - 0.89887;
+    float E = -0.00325 * Turbidity + 0.04517;
+    
+    // Calculate zenith luminance
+    float Chi = (4.0 / 9.0 - Turbidity / 120.0) * (3.14159 - 2.0 * ThetaS);
+    float YZ = (4.0453 * Turbidity - 4.9710) * tan(Chi) - 0.2155 * Turbidity + 2.4192;
+    YZ = max(YZ, 0.0);
+    
+    // Calculate luminance for current direction using Perez function
+    float F_ThetaGamma = (1.0 + A * exp(B / (cos(ThetaV) + 0.01))) * 
+                         (1.0 + C * exp(D * Gamma) + E * cos(Gamma) * cos(Gamma));
+    float F_ThetaS_0 = (1.0 + A * exp(B / (cos(ThetaS) + 0.01))) * 
+                       (1.0 + C + E);
+    float Y = YZ * F_ThetaGamma / F_ThetaS_0;
+    
+    // Preetham coefficients for x chromaticity
+    float Ax = -0.01193 * Turbidity - 0.2592;
+    float Bx = -0.06297 * Turbidity + 0.0008;
+    float Cx = -0.00316 * Turbidity + 0.2125;
+    float Dx = -0.06496 * Turbidity - 0.8989;
+    float Ex = -0.00227 * Turbidity + 0.0452;
+    
+    // Calculate zenith x chromaticity
+    float xZ = (-0.00166 * Turbidity * Turbidity + 0.00375 * Turbidity + 0.00209) * ThetaS * ThetaS * ThetaS +
+               (-0.02903 * Turbidity * Turbidity + 0.06377 * Turbidity + 0.00516) * ThetaS * ThetaS +
+               (0.11693 * Turbidity * Turbidity - 0.21196 * Turbidity + 0.06052) * ThetaS + 0.25886;
+    
+    // Calculate x chromaticity for current direction
+    float Fx_ThetaGamma = (1.0 + Ax * exp(Bx / (cos(ThetaV) + 0.01))) * 
+                          (1.0 + Cx * exp(Dx * Gamma) + Ex * cos(Gamma) * cos(Gamma));
+    float Fx_ThetaS_0 = (1.0 + Ax * exp(Bx / (cos(ThetaS) + 0.01))) * 
+                        (1.0 + Cx + Ex);
+    float x = xZ * Fx_ThetaGamma / Fx_ThetaS_0;
+    
+    // Preetham coefficients for y chromaticity  
+    float Ay = -0.01274 * Turbidity - 0.2608;
+    float By = -0.06405 * Turbidity + 0.0005;
+    float Cy = -0.00322 * Turbidity + 0.2102;
+    float Dy = -0.06696 * Turbidity - 0.8938;
+    float Ey = -0.00153 * Turbidity + 0.0453;
+    
+    // Calculate zenith y chromaticity
+    float yZ = (-0.00022 * Turbidity * Turbidity + 0.00823 * Turbidity + 0.00494) * ThetaS * ThetaS * ThetaS +
+               (-0.04214 * Turbidity * Turbidity + 0.08970 * Turbidity - 0.04153) * ThetaS * ThetaS +
+               (0.15346 * Turbidity * Turbidity - 0.26756 * Turbidity + 0.06670) * ThetaS + 0.26688;
+    
+    // Calculate y chromaticity for current direction
+    float Fy_ThetaGamma = (1.0 + Ay * exp(By / (cos(ThetaV) + 0.01))) * 
+                          (1.0 + Cy * exp(Dy * Gamma) + Ey * cos(Gamma) * cos(Gamma));
+    float Fy_ThetaS_0 = (1.0 + Ay * exp(By / (cos(ThetaS) + 0.01))) * 
+                        (1.0 + Cy + Ey);
+    float y = yZ * Fy_ThetaGamma / Fy_ThetaS_0;
+    
+    // Clamp chromaticity values to valid range to prevent issues
+    x = saturate(x);
+    y = max(y, 0.001); // Prevent division by very small numbers
+    Y = max(Y, 0.0);
+    
+    // Convert xyY to XYZ with safety checks
+    float X = (x / y) * Y;
+    float Z = ((1.0 - x - y) / y) * Y;
+    
+    // Clamp XYZ values to reasonable range
+    X = max(X, 0.0);
+    Z = max(Z, 0.0);
+    
+    // Convert XYZ to RGB using sRGB/Rec.709 matrix
+    float3 SkyColor;
+    SkyColor.r =  3.2404542 * X - 1.5371385 * Y - 0.4985314 * Z;
+    SkyColor.g = -0.9692660 * X + 1.8760108 * Y + 0.0415560 * Z;
+    SkyColor.b =  0.0556434 * X - 0.2040259 * Y + 1.0572252 * Z;
+    
+    // Debug: Let's see what the raw Preetham is giving us before conversion
+    // For now, let's use a simpler approach to verify the model works
+    
+    // Simplified sky coloring based on angle from sun and elevation
+    float SunProximity = saturate(1.0 - Gamma / 1.57); // 0-1 based on angle to sun
+    float Elevation = saturate(RayDir.y); // 0-1 based on height above horizon
+    
+    // Dynamic sky colors based on sun elevation
+    // Midday colors (high sun)
+    float3 MiddayZenith = float3(0.2, 0.5, 1.0);     // Bright blue
+    float3 MiddayHorizon = float3(0.7, 0.8, 1.0);    // Light blue-white
+    float3 MiddaySun = float3(1.0, 1.0, 0.9);        // Bright white-yellow
+    
+    // Sunset colors (sun at horizon)
+    float3 SunsetZenith = float3(0.3, 0.15, 0.6);    // Purple-blue
+    float3 SunsetHorizon = float3(1.0, 0.4, 0.2);    // Deep orange
+    float3 SunsetSun = float3(1.0, 0.8, 0.3);        // Yellow-orange
+    
+    // Twilight colors (sun below horizon)
+    float3 TwiZenith = float3(0.05, 0.05, 0.2);      // Very dark blue
+    float3 TwiHorizon = float3(0.8, 0.3, 0.1);       // Deep red-orange
+    float3 TwiSun = float3(1.0, 0.6, 0.2);           // Deep orange
+    
+    // Night colors (sun very far below horizon)
+    float3 NightZenith = float3(0.01, 0.01, 0.03);   // Almost black
+    float3 NightHorizon = float3(0.02, 0.02, 0.05);  // Very dark
+    float3 NightSun = float3(0.02, 0.02, 0.05);      // Very dark
+    
+    // Interpolate colors based on sun elevation
+    float3 ZenithColor, HorizonColor, SunColor;
+    
+    if (SunElevation >= 0.0) {
+        // Sun above horizon: interpolate between sunset and midday
+        ZenithColor = lerp(SunsetZenith, MiddayZenith, SunElevationClamped);
+        HorizonColor = lerp(SunsetHorizon, MiddayHorizon, SunElevationClamped);
+        SunColor = lerp(SunsetSun, MiddaySun, SunElevationClamped);
+    } else {
+        // Sun below horizon: create twilight effect
+        float TwilightBlend = saturate(-SunElevation * 6.0);  // 0 = at horizon, 1 = far below
+        ZenithColor = lerp(SunsetZenith, lerp(TwiZenith, NightZenith, TwilightBlend), saturate(-SunElevation * 3.0));
+        HorizonColor = lerp(SunsetHorizon, lerp(TwiHorizon, NightHorizon, TwilightBlend), saturate(-SunElevation * 2.0));
+        SunColor = lerp(SunsetSun, lerp(TwiSun, NightSun, TwilightBlend), saturate(-SunElevation * 2.0));
+    }
+    
+    // Mix colors based on elevation and sun proximity - dynamic blending
+    float3 BasicSky = lerp(HorizonColor, ZenithColor, Elevation * Elevation);  // More warm colors near horizon
+    SkyColor = lerp(BasicSky, SunColor, SunProximity * SunProximity * 1.2);  // Stronger sun influence
+    
+    // Dynamic exposure based on sun elevation
+    float ExposureMultiplier;
+    if (SunElevation >= 0.0) {
+        ExposureMultiplier = lerp(0.4, 1.0, SunElevationClamped);  // Darker at sunset, brighter at midday
+    } else {
+        // Below horizon: much darker, approaching night
+        float NightDarkness = saturate(-SunElevation * 8.0);  // Rapid darkening below horizon
+        ExposureMultiplier = lerp(0.4, 0.05, NightDarkness);  // From sunset level to very dark
+    }
+    SkyColor = SkyColor * Input.Settings.SkyLightIntensity * ExposureMultiplier;
+    
+    // Add sun disk
+    float SunAngle = acos(saturate(dot(RayDir, SunDirection)));
+    float SunEdgeSoftness = 0.001;
+    float SunFactor = 1.0 - smoothstep(SunAngularRadius - SunEdgeSoftness, SunAngularRadius + SunEdgeSoftness, SunAngle);
+    
+    // Dynamic sun disk properties based on elevation
+    float3 SunDiskColor = float3(0.0, 0.0, 0.0);
+    float3 SunGlowColor = float3(0.0, 0.0, 0.0);
+    
+    if (SunElevation >= -0.05) {  // Only show sun disk if not too far below horizon
+        float SunVisibility = saturate((SunElevation + 0.05) / 0.05);  // Fade out as it goes below horizon
+        
+        float3 SunDiskColorBase = lerp(float3(1.0, 0.7, 0.4), float3(1.0, 1.0, 0.95), SunElevationClamped);  // Warmer at sunset
+        float SunDiskIntensity = lerp(120.0, 200.0, SunElevationClamped) * SunVisibility;  // Dimmer at sunset, invisible below horizon
+        SunDiskColor = SunDiskColorBase * SunDiskIntensity * SunFactor;
+        
+        // Dynamic sun glow based on atmospheric conditions
+        float SunGlowRadius = lerp(0.12, 0.05, SunElevationClamped);  // Larger glow at sunset
+        float SunGlow = exp(-SunAngle * SunAngle / (SunGlowRadius * SunGlowRadius));
+        float3 SunGlowColorBase = lerp(float3(1.0, 0.6, 0.3), float3(1.0, 0.95, 0.8), SunElevationClamped);
+        float SunGlowIntensity = lerp(1.5, 0.8, SunElevationClamped) * SunVisibility;  // Stronger glow at sunset, fade below horizon
+        SunGlowColor = SunGlowColorBase * SunGlow * SunGlowIntensity;
+    }
+    
+    // Combine sky color with sun
+    float3 FinalColor = SkyColor + SunDiskColor + SunGlowColor;
+    
+    Payload.Radiance = FinalColor * Payload.PathThroughput;
 }
 
 [shader("anyhit")]

@@ -150,6 +150,11 @@ namespace Omni {
 			if(ImGui::DragFloat("Sky intensity", &m_CurrentSettings.SkyLightIntensity, 0.01f, 0.0f, 100.0f)) {
 				m_SettingsChanged = true;
 			}
+
+			if(ImGui::DragFloat3("Sun direction", (float*)&m_CurrentSettings.SunDirection, 0.01f, -1.0f, 1.0f)) {
+				m_CurrentSettings.SunDirection = glm::normalize(m_CurrentSettings.SunDirection);
+				m_SettingsChanged = true;
+			}
 		}
 		// Note: Accumulation limit is handled by the renderer, not in settings
 		ImGui::Text("Accumulation Limit: %u", m_CurrentSettings.MaxAccumulatedFrameCount);
@@ -342,7 +347,6 @@ namespace Omni {
 			preset.EnableMIS = true;
 			preset.EnableNEE = true;
 			preset.RayEpsilon = 0.001f;
-			preset.EnableEnvironmentLighting = true;
 			preset.DeterministicSeed = false;
 			preset.FixedSeed = 42;
 			preset.RayDebugMode = false;
@@ -367,7 +371,6 @@ namespace Omni {
 			preset.EnableMIS = true;
 			preset.EnableNEE = true;
 			preset.RayEpsilon = 0.0001f;
-			preset.EnableEnvironmentLighting = true;
 			preset.DeterministicSeed = false;
 			preset.FixedSeed = 42;
 			preset.RayDebugMode = false;
@@ -392,7 +395,6 @@ namespace Omni {
 			preset.EnableMIS = true;
 			preset.EnableNEE = true;
 			preset.RayEpsilon = 0.001f;
-			preset.EnableEnvironmentLighting = true;
 			preset.DeterministicSeed = true;
 			preset.RayDebugMode = true;
 			preset.VisualizePaths = true;
@@ -416,7 +418,6 @@ namespace Omni {
 			preset.EnableMIS = true;
 			preset.EnableNEE = true;
 			preset.RayEpsilon = 0.001f;
-			preset.EnableEnvironmentLighting = true;
 			preset.DeterministicSeed = false;
 			preset.FixedSeed = 42;
 			preset.RayDebugMode = false;
