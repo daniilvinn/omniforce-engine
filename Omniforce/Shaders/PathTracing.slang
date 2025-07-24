@@ -379,12 +379,13 @@ void Miss(inout RayPayload Payload)
             // Generate deterministic star positions using the star generation seed
             RandomNumber<PCGGenerator> StarRandom = RandomNumber<PCGGenerator>(Input.Settings.StarGenerationSeed + i);
             
-            // Generate star position in spherical coordinates
-            float StarTheta = StarRandom.GetNorm() * 1.5708; // 0 to pi/2 (hemisphere)
-            float StarPhi = StarRandom.GetNorm() * 6.28318; // 0 to 2pi
+                         // Generate star position in spherical coordinates
+             // Use cosine-weighted distribution to ensure even coverage across the hemisphere
+             float StarTheta = acos(sqrt(StarRandom.GetNorm())); // Cosine-weighted distribution
+             float StarPhi = StarRandom.GetNorm() * 6.28318; // 0 to 2pi
             
             // Generate star properties
-            float StarSize = StarRandom.GetNorm() * 0.8 + 0.2; // 0.2 to 1.0
+            float StarSize = StarRandom.GetNorm() * 0.5 + 0.2; // 0.2 to 1.0
             float StarBrightness = StarRandom.GetNorm() * 0.6 + 0.4; // 0.4 to 1.0
             
             // Generate star color
@@ -408,8 +409,8 @@ void Miss(inout RayPayload Payload)
             float CosAngle = cos(Theta) * cos(StarTheta) + sin(Theta) * sin(StarTheta) * cos(Phi - StarPhi);
             float AngularDistance = acos(saturate(CosAngle));
             
-            // Star size in radians (smaller = more point-like)
-            float StarAngularSize = 0.001 * StarSize; // Very small angular size
+                         // Star size in radians (smaller = more point-like)
+             float StarAngularSize = 0.002 * StarSize; // Slightly larger angular size
             
             // Check if ray hits this star
             if (AngularDistance < StarAngularSize) {
