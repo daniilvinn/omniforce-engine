@@ -268,8 +268,34 @@ void Miss(inout RayPayload Payload)
     if (!Input.Settings.EnableSkyLight) {
         return;
     }
-
-    RandomNumber<PCGGenerator> Random = RandomNumber<PCGGenerator>(Input.Settings.StarGenerationSeed);
+    // Compute base ray direction without subpixel jitter for stable star positions
+    uint3 PixelIndex = DispatchRaysIndex();
+    ViewData* Camera = Input.View;
+    
+    // Calculate ray direction without jitter (using pixel center)
+    float2 Ndc = (float2(PixelIndex.xy) + 0.5) / float2(Camera.viewport_width, Camera.viewport_height) * 2.0 - 1.0;
+    Ndc.y = -Ndc.y;
+    
+    float AspectRatio = Camera.viewport_width / Camera.viewport_height;
+    float ScaleY = tan(Camera.fov * 0.5);
+    float ScaleX = ScaleY * AspectRatio;
+    
+    float3 BaseRayDirViewSpace = normalize(float3(Ndc.x * ScaleX, Ndc.y * ScaleY, -1.0));
+    float3 BaseRayDir = normalize(mul(transpose(Camera.view), float4(BaseRayDirViewSpace, 0.0)).xyz);
+    
+    // Create spatial hash from stable world ray direction
+    int3 RayHash = int3(
+        floor(BaseRayDir.x * 1000.0),
+        floor(BaseRayDir.y * 1000.0),
+        floor(BaseRayDir.z * 1000.0)
+    );
+    
+    uint StarSeed = Input.Settings.StarGenerationSeed + 
+                    uint(RayHash.x + 1000) * 73856093 +
+                    uint(RayHash.y + 1000) * 19349663 +
+                    uint(RayHash.z + 1000) * 83492791;
+    
+    RandomNumber<PCGGenerator> Random = RandomNumber<PCGGenerator>(StarSeed);
 
     float3 RayDir = WorldRayDirection();
 
@@ -361,36 +387,19 @@ void Miss(inout RayPayload Payload)
     // Combine sky color with sun
     float3 FinalColor = SkyColor + SunDiskColor;
     
-    // Generate stars when sun is below horizon
-    if (CosSunZenithAngle < 0.0) {
-        // Convert ray direction to spherical coordinates for star field generation
-        float3 RayDirNorm = normalize(RayDir);
-        
-        // Convert to spherical coordinates (theta, phi)
-        float Theta = acos(RayDirNorm.y); // 0 = zenith, pi = nadir
-        float Phi = atan2(RayDirNorm.z, RayDirNorm.x); // 0 to 2pi
-        
-        // Create a deterministic star field using spherical coordinates
-        // Use a fixed number of stars based on density setting
-        uint NumStars = Input.Settings.StarDensity * 50; // Scale density to actual star count
-        
-        // Check if this ray direction hits any star
-        for (uint i = 0; i < NumStars; i++) {
-            // Generate deterministic star positions using the star generation seed
-            RandomNumber<PCGGenerator> StarRandom = RandomNumber<PCGGenerator>(Input.Settings.StarGenerationSeed + i);
-            
-                         // Generate star position in spherical coordinates
-             // Use cosine-weighted distribution to ensure even coverage across the hemisphere
-             float StarTheta = acos(sqrt(StarRandom.GetNorm())); // Cosine-weighted distribution
-             float StarPhi = StarRandom.GetNorm() * 6.28318; // 0 to 2pi
-            
-            // Generate star properties
-            float StarSize = StarRandom.GetNorm() * 0.5 + 0.2; // 0.2 to 1.0
-            float StarBrightness = StarRandom.GetNorm() * 0.6 + 0.4; // 0.4 to 1.0
-            
+    // Generate stars when sun is below horizon using O(1) probabilistic approach
+    // Only show stars for primary rays (PathThroughput close to 1.0) to avoid stars appearing on surfaces
+    if (CosSunZenithAngle < 0.0 && all(Payload.PathThroughput > 0.99)) {
+        // Check if there's a star at this direction based on density
+        float StarProbability = Input.Settings.StarDensity * 0.001; // Adjust multiplier for desired density
+        if (Random.GetNorm() < StarProbability) {
+            // Generate star properties deterministically
+            float StarSize = Random.GetNorm() * 0.5 + 0.2; // 0.2 to 1.0
+            float StarBrightness = Random.GetNorm() * 0.6 + 0.4; // 0.4 to 1.0
+             
             // Generate star color
             float3 StarColor;
-            float ColorChoice = StarRandom.GetNorm();
+            float ColorChoice = Random.GetNorm();
             if (ColorChoice < 0.4) {
                 // Blue-white stars (like Sirius)
                 StarColor = float3(0.8, 0.9, 1.0);
@@ -405,26 +414,25 @@ void Miss(inout RayPayload Payload)
                 StarColor = float3(0.6, 0.8, 1.0);
             }
             
-            // Calculate angular distance between ray and star
-            float CosAngle = cos(Theta) * cos(StarTheta) + sin(Theta) * sin(StarTheta) * cos(Phi - StarPhi);
-            float AngularDistance = acos(saturate(CosAngle));
+            // Calculate star intensity with size-based falloff for more realistic appearance
+            float StarIntensity = StarBrightness * 8.0 * StarSize; // Base intensity scales with size
             
-                         // Star size in radians (smaller = more point-like)
-             float StarAngularSize = 0.002 * StarSize; // Slightly larger angular size
+            // Add subtle twinkling using spatial hash for consistency
+            float TwinklePhase = frac(sin(Random.Get() * 0.0001) * 43758.5453) * 6.28318;
+            float Twinkle = 0.85 + 0.3 * sin(TwinklePhase + Input.AccumulatedFrames * 0.02);
+            StarIntensity *= Twinkle;
             
-            // Check if ray hits this star
-            if (AngularDistance < StarAngularSize) {
-                // Calculate star intensity
-                float StarIntensity = StarBrightness * 5.0; // Base intensity
-                
-                // Add subtle twinkling
-                float Twinkle = 0.9 + 0.2 * sin(i * 0.1 + Input.AccumulatedFrames * 0.01);
-                StarIntensity *= Twinkle;
-                
-                // Apply star color and intensity
-                FinalColor += StarColor * StarIntensity;
-                break; // Only one star per ray
+            // Apply anti-aliased star rendering based on size
+            float StarAngularSize = 0.001 * StarSize; // Base star size
+            float PixelSize = 2.0 / min(Input.View.viewport_width, Input.View.viewport_height); // Approximate pixel size in radians
+            
+            // If star is smaller than a pixel, apply brightness boost to maintain visibility
+            if (StarAngularSize < PixelSize) {
+                StarIntensity *= (PixelSize / StarAngularSize) * 0.5; // Boost but not linearly
             }
+            
+            // Apply star color and intensity
+            FinalColor += StarColor * StarIntensity;
         }
     }
     
