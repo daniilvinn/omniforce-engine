@@ -13,6 +13,8 @@ namespace Omni {
         bool EnableSkyLight;
         float32 SkyLightIntensity;
         glm::vec3 SunDirection;
+        uint32 StarGenerationSeed;
+        uint32 StarDensity;
         uint32 MaxAccumulatedFrameCount;
         bool RayDebugMode;
         float32 RussianRouletteThreshold;
@@ -36,6 +38,8 @@ namespace Omni {
             , SkyColor(0.7, 0.9, 1.0)
             , SkyLightIntensity(5.0)
             , SunDirection(0.0f, 1.0f, 0.0f)
+            , StarGenerationSeed(10)
+            , StarDensity(4)
             , MaxAccumulatedFrameCount(4096)
             , RayDebugMode(false)
             , RussianRouletteThreshold(0.8f)

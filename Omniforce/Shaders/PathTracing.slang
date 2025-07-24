@@ -284,8 +284,6 @@ void Miss(inout RayPayload Payload)
     const float3 SunDirection = normalize(Input.Settings.SunDirection);  // Adjust Y for time of day
     const float SunAngularRadius = 0.0087;  // ~0.5 degrees (realistic sun size)
     
-    // UE5-style: Only sun direction matters, all other effects are physically computed
-    
     // Simplified UE5-style sky system that actually works
     float CosViewSunAngle = dot(RayDir, SunDirection);
     float CosSunZenithAngle = SunDirection.y;
@@ -362,6 +360,72 @@ void Miss(inout RayPayload Payload)
     
     // Combine sky color with sun
     float3 FinalColor = SkyColor + SunDiskColor;
+    
+    // Generate stars when sun is below horizon
+    if (CosSunZenithAngle < 0.0) {
+        // Convert ray direction to spherical coordinates for star field generation
+        float3 RayDirNorm = normalize(RayDir);
+        
+        // Convert to spherical coordinates (theta, phi)
+        float Theta = acos(RayDirNorm.y); // 0 = zenith, pi = nadir
+        float Phi = atan2(RayDirNorm.z, RayDirNorm.x); // 0 to 2pi
+        
+        // Create a deterministic star field using spherical coordinates
+        // Use a fixed number of stars based on density setting
+        uint NumStars = Input.Settings.StarDensity * 50; // Scale density to actual star count
+        
+        // Check if this ray direction hits any star
+        for (uint i = 0; i < NumStars; i++) {
+            // Generate deterministic star positions using the star generation seed
+            RandomNumber<PCGGenerator> StarRandom = RandomNumber<PCGGenerator>(Input.Settings.StarGenerationSeed + i);
+            
+            // Generate star position in spherical coordinates
+            float StarTheta = StarRandom.GetNorm() * 1.5708; // 0 to pi/2 (hemisphere)
+            float StarPhi = StarRandom.GetNorm() * 6.28318; // 0 to 2pi
+            
+            // Generate star properties
+            float StarSize = StarRandom.GetNorm() * 0.8 + 0.2; // 0.2 to 1.0
+            float StarBrightness = StarRandom.GetNorm() * 0.6 + 0.4; // 0.4 to 1.0
+            
+            // Generate star color
+            float3 StarColor;
+            float ColorChoice = StarRandom.GetNorm();
+            if (ColorChoice < 0.4) {
+                // Blue-white stars (like Sirius)
+                StarColor = float3(0.8, 0.9, 1.0);
+            } else if (ColorChoice < 0.7) {
+                // Yellow-white stars (like our Sun)
+                StarColor = float3(1.0, 1.0, 0.8);
+            } else if (ColorChoice < 0.85) {
+                // Orange-red stars (like Betelgeuse)
+                StarColor = float3(1.0, 0.7, 0.5);
+            } else {
+                // Blue stars (like Rigel)
+                StarColor = float3(0.6, 0.8, 1.0);
+            }
+            
+            // Calculate angular distance between ray and star
+            float CosAngle = cos(Theta) * cos(StarTheta) + sin(Theta) * sin(StarTheta) * cos(Phi - StarPhi);
+            float AngularDistance = acos(saturate(CosAngle));
+            
+            // Star size in radians (smaller = more point-like)
+            float StarAngularSize = 0.001 * StarSize; // Very small angular size
+            
+            // Check if ray hits this star
+            if (AngularDistance < StarAngularSize) {
+                // Calculate star intensity
+                float StarIntensity = StarBrightness * 5.0; // Base intensity
+                
+                // Add subtle twinkling
+                float Twinkle = 0.9 + 0.2 * sin(i * 0.1 + Input.AccumulatedFrames * 0.01);
+                StarIntensity *= Twinkle;
+                
+                // Apply star color and intensity
+                FinalColor += StarColor * StarIntensity;
+                break; // Only one star per ray
+            }
+        }
+    }
     
     Payload.Radiance = FinalColor * Payload.PathThroughput;
 }

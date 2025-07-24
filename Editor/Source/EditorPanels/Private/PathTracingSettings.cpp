@@ -156,6 +156,15 @@ namespace Omni {
 				m_SettingsChanged = true;
 			}
 		}
+
+		if(ImGui::DragInt("Star generation seed", (int*)&m_CurrentSettings.StarGenerationSeed, 1, 0, 256)) {
+			m_SettingsChanged = true;
+		}
+
+		if(ImGui::SliderInt("Star density", (int*)&m_CurrentSettings.StarDensity, 1, 32)) {
+			m_SettingsChanged = true;
+		}
+
 		// Note: Accumulation limit is handled by the renderer, not in settings
 		ImGui::Text("Accumulation Limit: %u", m_CurrentSettings.MaxAccumulatedFrameCount);
 		ImGui::SameLine();
