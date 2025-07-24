@@ -14,6 +14,8 @@ using namespace Omni;
 [shader("raygeneration")]
 void PathConstruction()
 {
+    uint PixelWhiteNoise = WhiteNoiseImage[DispatchRaysIndex().xy];
+    
     uint3 PixelIndex = DispatchRaysIndex();
     uint3 ImageSize = DispatchRaysDimensions();
     uint RayID = PixelIndex.z * ImageSize.x * ImageSize.y +
@@ -22,7 +24,11 @@ void PathConstruction()
 
     ViewData* Camera = Input.View;
 
-    RandomNumber<PCGGenerator> Random = RandomNumber<PCGGenerator>(Input.RandomSeed + RayID);
+    RandomNumber<PCGGenerator> Random = RandomNumber<PCGGenerator>(Input.RandomSeed + RayID + PixelWhiteNoise);
+
+    // Update white noise image
+    WhiteNoiseImage[PixelIndex.xy] = Random.Get();
+
     float2 SubpixelJitter = Random.GetXi<float2>(0xFF) - 0.5;
     
     // Setup primary rays

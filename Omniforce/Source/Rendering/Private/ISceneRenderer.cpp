@@ -139,6 +139,30 @@ namespace Omni {
 
 			m_DevicePointLights = DeviceBuffer::Create(&g_PersistentAllocator, spec);
 		}
+		// Initialize white noise image
+		{
+			auto image_extent = Renderer::GetSwapchainImage()->GetSpecification().extent;
+			std::vector<byte> white_noise_data(image_extent.x * image_extent.y * sizeof(uint32));
+			for (int i = 0; i < white_noise_data.size(); i += sizeof(uint32)) {
+				uint32 value = RandomEngine::Generate<uint32>();
+				std::memcpy(&white_noise_data[i], &value, sizeof(uint32));
+			}
+
+			ImageSpecification image_spec = ImageSpecification::Default();
+			image_spec.usage = ImageUsage::STORAGE_IMAGE;
+			image_spec.extent = Renderer::GetSwapchainImage()->GetSpecification().extent;
+			image_spec.format = ImageFormat::R32_UINT;
+			image_spec.type = ImageType::TYPE_2D;
+			image_spec.mip_levels = 1;
+			image_spec.array_layers = 1;
+			image_spec.pixels = white_noise_data;
+
+			m_WhiteNoiseImage = Image::Create(&g_PersistentAllocator, image_spec);
+
+			for (auto& set : m_SceneDescriptorSet) {
+				set->Write(4, 0, m_WhiteNoiseImage, nullptr);
+			}
+		}
 	}
 
 	ISceneRenderer::~ISceneRenderer()

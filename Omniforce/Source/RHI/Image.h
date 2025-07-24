@@ -49,7 +49,8 @@ namespace Omni {
 		BC7,
 		RGBA64_SFLOAT,
 		RGB24_UNORM,
-		R64_UINT
+		R64_UINT,
+		R32_UINT
 	};
 
 	enum class OMNIFORCE_API ImageType : uint8 {

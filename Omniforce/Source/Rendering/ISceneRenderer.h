@@ -108,7 +108,8 @@ namespace Omni {
 		Ref<ImageSampler> m_SamplerNearest;
 		Ref<ImageSampler> m_SamplerLinear;
 		Ref<Image> m_DummyWhiteTexture;
-
+		Ref<Image> m_WhiteNoiseImage;
+		
 		Ref<DeviceBuffer> m_CameraDataBuffer;
 
 		Ptr<VirtualMemoryBlock> m_TextureIndexAllocator;
