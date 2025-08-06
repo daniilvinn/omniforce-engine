@@ -72,13 +72,23 @@ namespace Omni {
 
 			const char* IncludeDir[] = { "Resources/Shaders" };
 
+			slang::CompilerOptionValue option_value;
+			option_value.intValue0 = SlangOptimizationLevel::SLANG_OPTIMIZATION_LEVEL_MAXIMAL;
+
+			slang::CompilerOptionEntry compiler_option;
+			compiler_option.name = slang::CompilerOptionName::Optimization;
+			compiler_option.value = option_value;
+
 			slang::SessionDesc session_description = {};
 			session_description.targets = &target_description;
 			session_description.targetCount = 1;
 			session_description.defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_COLUMN_MAJOR;
 			session_description.searchPaths = IncludeDir;
 			session_description.searchPathCount = 1;
+			session_description.compilerOptionEntries = &compiler_option;
+			session_description.compilerOptionEntryCount = 1;
 
+			
 			m_GlobalSession->createSession(session_description, m_LocalSession.writeRef());
 		}
 	}
