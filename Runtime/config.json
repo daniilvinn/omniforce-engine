@@ -1,0 +1,16 @@
+{
+    "Core": {
+        "ForceRecompileShaders": true,
+        "Headless": false,
+        "Log": {
+            "TraceDeviceAllocations": false
+        }
+    },
+    "Renderer": {
+        "AllowResourceStreaming": true,
+        "EnableSkyLight": false,
+        "ForceFramesInFlight": 2,
+        "ForceVTGPipeline": false,
+        "UseVirtualGeometry": false
+    }
+}

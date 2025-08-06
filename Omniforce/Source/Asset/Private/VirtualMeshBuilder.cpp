@@ -4,17 +4,24 @@
 #include <Foundation/RandomNumberGenerator.h>
 #include <Asset/MeshPreprocessor.h>
 #include <Core/KDTree.h>
+#include <Threading/JobSystem.h>
 
 #include <unordered_map>
 #include <fstream>
 #include <span>
 #include <ranges>
 
-#include <metis.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/norm.hpp>
 #include <glm/gtc/packing.hpp>
 #include <meshoptimizer.h>
+
+// Workaround for warning
+#undef INT32_MIN
+#undef INT32_MAX
+#undef INT64_MIN
+#undef INT64_MAX
+#include <metis.h>
 
 namespace Omni {
 
@@ -126,177 +133,185 @@ namespace Omni {
 			previous_lod_meshlets.clear();
 
 			// Process groups, also detect edges for next LOD generation pass
-			uint32 num_newly_created_meshlets = 0;
+			std::atomic<uint32> num_newly_created_meshlets = 0;
 
-			// Launch parallel processing of generated groups
-			#pragma omp parallel for
-			for (int32 group_idx = 0; group_idx < groups.size(); group_idx++) {
-				const std::vector<uint32>& group = groups[group_idx];
+			// Launch parallel processing of generated groups using JobSystem
+			tf::Taskflow taskflow;
+			std::vector<tf::Task> tasks;
+			tasks.reserve(groups.size());
 
-				// Merge meshlets
-				// Prepare storage
+			for (uint32 group_idx = 0; group_idx < groups.size(); group_idx++) {
+				tasks.emplace_back(taskflow.emplace([&, group_idx]() {
+					const std::vector<uint32>& group = groups[group_idx];
 
-				// Group-local geometry data
-				std::vector<uint32> group_to_mesh_space_vertex_remap;
-				std::unordered_map<uint32, uint32> mesh_to_group_space_vertex_remap;
-				std::vector<byte> group_local_vbo;
+					// Merge meshlets
+					// Prepare storage
 
-				// Other data
-				std::vector<uint32> merged_indices;
-				uint32 num_merged_indices = 0;
+					// Group-local geometry data
+					std::vector<uint32> group_to_mesh_space_vertex_remap;
+					std::unordered_map<uint32, uint32> mesh_to_group_space_vertex_remap;
+					std::vector<byte> group_local_vbo;
 
-				mtx.lock_shared();
-				for (auto& meshlet_idx : group)
-					num_merged_indices += meshlets_data->meshlets[meshlet_idx].metadata.triangle_count * 3;
-				mtx.unlock_shared();
+					// Other data
+					std::vector<uint32> merged_indices;
+					uint32 num_merged_indices = 0;
 
-				merged_indices.reserve(num_merged_indices);
+					mtx.lock_shared();
+					for (auto& meshlet_idx : group)
+						num_merged_indices += meshlets_data->meshlets[meshlet_idx].metadata.triangle_count * 3;
+					mtx.unlock_shared();
 
-				uint32 vbo_vertex_count = 0;
+					merged_indices.reserve(num_merged_indices);
 
-				// Allocate worst case memory
-				group_local_vbo.resize(num_merged_indices * vertex_stride);
+					uint32 vbo_vertex_count = 0;
 
-				// Merge
-				uint32 test = 0;
-				for (auto& meshlet_idx : group) {
-					RenderableMeshlet& meshlet = meshlets_data->meshlets[meshlet_idx];
-					uint32 triangle_indices[3] = {};
-					for (uint32 index_idx = 0; index_idx < meshlet.metadata.triangle_count * 3; index_idx++) {
-						mtx.lock_shared();
-						triangle_indices[index_idx % 3] = welder_remap_table[meshlets_data->indices[meshlet.vertex_offset + meshlets_data->local_indices[meshlet.triangle_offset + index_idx]]];
-						mtx.unlock_shared();
+					// Allocate worst case memory
+					group_local_vbo.resize(num_merged_indices * vertex_stride);
 
-						if (index_idx % 3 == 2) {// last index of triangle was registered
-							const bool is_triangle_degenerate = (triangle_indices[0] == triangle_indices[1] || triangle_indices[0] == triangle_indices[2] || triangle_indices[1] == triangle_indices[2]);
+					// Merge
+					uint32 test = 0;
+					for (auto& meshlet_idx : group) {
+						RenderableMeshlet& meshlet = meshlets_data->meshlets[meshlet_idx];
+						uint32 triangle_indices[3] = {};
+						for (uint32 index_idx = 0; index_idx < meshlet.metadata.triangle_count * 3; index_idx++) {
+							mtx.lock_shared();
+							triangle_indices[index_idx % 3] = welder_remap_table[meshlets_data->indices[meshlet.vertex_offset + meshlets_data->local_indices[meshlet.triangle_offset + index_idx]]];
+							mtx.unlock_shared();
 
-							// Check if triangle is degenerate
-							// https://github.com/jglrxavpok/Carrot/blob/8f8bfe22c0a68cc55e74f04543c611f1120e06e5/asset_tools/fertilizer/gltf/GLTFProcessing.cpp
-							if (!is_triangle_degenerate) {
-								for (uint32 i = 0; i < 3; i++) {
-									auto [iterator, was_new] = mesh_to_group_space_vertex_remap.try_emplace(triangle_indices[i]);
-									test++;
+							if (index_idx % 3 == 2) {// last index of triangle was registered
+								const bool is_triangle_degenerate = (triangle_indices[0] == triangle_indices[1] || triangle_indices[0] == triangle_indices[2] || triangle_indices[1] == triangle_indices[2]);
 
-									if (was_new) {
-										iterator->second = vbo_vertex_count;
-										memcpy(group_local_vbo.data() + (vertex_stride * vbo_vertex_count), vertices.data() + (vertex_stride * iterator->second), vertex_stride);
-										vbo_vertex_count++;
+								// Check if triangle is degenerate
+								// https://github.com/jglrxavpok/Carrot/blob/8f8bfe22c0a68cc55e74f04543c611f1120e06e5/asset_tools/fertilizer/gltf/GLTFProcessing.cpp
+								if (!is_triangle_degenerate) {
+									for (uint32 i = 0; i < 3; i++) {
+										auto [iterator, was_new] = mesh_to_group_space_vertex_remap.try_emplace(triangle_indices[i]);
+										test++;
+
+										if (was_new) {
+											iterator->second = vbo_vertex_count;
+											memcpy(group_local_vbo.data() + (vertex_stride * vbo_vertex_count), vertices.data() + (vertex_stride * iterator->second), vertex_stride);
+											vbo_vertex_count++;
+										}
+										merged_indices.push_back(iterator->second);
 									}
-									merged_indices.push_back(iterator->second);
 								}
 							}
 						}
 					}
-				}
 
-				// Shrink to fit
-				group_local_vbo.resize(vbo_vertex_count * vertex_stride);
+					// Shrink to fit
+					group_local_vbo.resize(vbo_vertex_count * vertex_stride);
 
-				// Skip if no indices after merging (maybe all triangles are degenerate?)
-				if (merged_indices.size() == 0)
-					continue;
-				
-				// Create remap table to remap indices back to mesh space from group space
-				group_to_mesh_space_vertex_remap = std::vector<uint32>(group_local_vbo.size() / vertex_stride, ~0ull);
+					// Skip if no indices after merging (maybe all triangles are degenerate?)
+					if (merged_indices.size() == 0)
+						return;
+					
+					// Create remap table to remap indices back to mesh space from group space
+					group_to_mesh_space_vertex_remap = std::vector<uint32>(group_local_vbo.size() / vertex_stride, ~0ull);
 
-				for (const auto& [mesh_space_idx, group_space_idx] : mesh_to_group_space_vertex_remap) {
-					OMNIFORCE_ASSERT_TAGGED(group_space_idx < group_to_mesh_space_vertex_remap.size(), "Mismatched sizes");
-					group_to_mesh_space_vertex_remap[group_space_idx] = mesh_space_idx;
-				}
+					for (const auto& [mesh_space_idx, group_space_idx] : mesh_to_group_space_vertex_remap) {
+						OMNIFORCE_ASSERT_TAGGED(group_space_idx < group_to_mesh_space_vertex_remap.size(), "Mismatched sizes");
+						group_to_mesh_space_vertex_remap[group_space_idx] = mesh_space_idx;
+					}
 
-				// Setup simplification parameters
-				const float32 target_error = 0.9f * t_lod + 0.01f * (1 - t_lod);
-				const float32 simplification_rate = 0.5f;
-				std::vector<uint32> simplified_group_indices;
+					// Setup simplification parameters
+					const float32 target_error = 0.9f * t_lod + 0.01f * (1 - t_lod);
+					const float32 simplification_rate = 0.5f;
+					std::vector<uint32> simplified_group_indices;
 
-				// Generate LOD
-				bool lod_generation_failed = false;
-				float32 result_error = 0.0f;
-				result_error = mesh_preprocessor.GenerateMeshLOD(&simplified_group_indices, &group_local_vbo, &merged_indices, vertex_stride, merged_indices.size() * simplification_rate, target_error, true);
+					// Generate LOD
+					bool lod_generation_failed = false;
+					float32 result_error = 0.0f;
+					result_error = mesh_preprocessor.GenerateMeshLOD(&simplified_group_indices, &group_local_vbo, &merged_indices, vertex_stride, merged_indices.size() * simplification_rate, target_error, true);
 
-				OMNIFORCE_ASSERT(simplified_group_indices.size());
+					OMNIFORCE_ASSERT(simplified_group_indices.size());
 
-				// Failed to generate LOD for a given group. Re register meshlets and skip the group
-				if (simplified_group_indices.size() == merged_indices.size()) {
+					// Failed to generate LOD for a given group. Re register meshlets and skip the group
+					if (simplified_group_indices.size() == merged_indices.size()) {
 
-					lod_generation_failed = true;
-					for (const auto& meshlet_idx : group)
-						previous_lod_meshlets.push_back(meshlet_idx);
+						lod_generation_failed = true;
+						for (const auto& meshlet_idx : group)
+							previous_lod_meshlets.push_back(meshlet_idx);
 
-					stats.group_simplification_failure_count++;
+						stats.group_simplification_failure_count++;
 
-					continue;
-				}
+						return;
+					}
 
-				// Remap indices back to mesh space
-				for (auto& index : simplified_group_indices) {
-					index = group_to_mesh_space_vertex_remap[index];
-				}
+					// Remap indices back to mesh space
+					for (auto& index : simplified_group_indices) {
+						index = group_to_mesh_space_vertex_remap[index];
+					}
 
-				// Compute LOD culling bounding sphere for current simplified (!) group
-				AABB group_aabb = { glm::vec3(+INFINITY), glm::vec3(-INFINITY)};
+					// Compute LOD culling bounding sphere for current simplified (!) group
+					AABB group_aabb = { glm::vec3(+INFINITY), glm::vec3(-INFINITY)};
 
-				for (const auto& index : simplified_group_indices) {
-					const glm::vec3 vertex = Utils::FetchVertexFromBuffer(vertices, index, vertex_stride);
+					for (const auto& index : simplified_group_indices) {
+						const glm::vec3 vertex = Utils::FetchVertexFromBuffer(vertices, index, vertex_stride);
 
-					group_aabb.max = glm::max(group_aabb.max, vertex);
-					group_aabb.min = glm::min(group_aabb.min, vertex);
-				}
+						group_aabb.max = glm::max(group_aabb.max, vertex);
+						group_aabb.min = glm::min(group_aabb.min, vertex);
+					}
 
-				Sphere simplified_group_bounding_sphere = Utils::SphereFromAABB(group_aabb);
+					Sphere simplified_group_bounding_sphere = Utils::SphereFromAABB(group_aabb);
 
-				// Compute error in mesh scale
-				const float32 local_mesh_scale = meshopt_simplifyScale((float32*)vertices.data(), vertices.size() / vertex_stride, vertex_stride);
-				float32 mesh_space_error = result_error * local_mesh_scale;
+					// Compute error in mesh scale
+					const float32 local_mesh_scale = meshopt_simplifyScale((float32*)vertices.data(), vertices.size() / vertex_stride, vertex_stride);
+					float32 mesh_space_error = result_error * local_mesh_scale;
 
-				// Find biggest error of children clusters
-				float32 max_children_error = 0.0f;
-				mtx.lock_shared();
-				for (const auto& child_meshlet_index : group) {
-					max_children_error = std::max(meshlets_data->cull_bounds[child_meshlet_index].lod_culling.error, max_children_error);
-				}
-				mtx.unlock_shared();
+					// Find biggest error of children clusters
+					float32 max_children_error = 0.0f;
+					mtx.lock_shared();
+					for (const auto& child_meshlet_index : group) {
+						max_children_error = std::max(meshlets_data->cull_bounds[child_meshlet_index].lod_culling.error, max_children_error);
+					}
+					mtx.unlock_shared();
 
-				mesh_space_error += max_children_error;
-				mtx.lock_shared();
-				for (const auto& child_meshlet_index : group) {
-					meshlets_data->cull_bounds[child_meshlet_index].lod_culling.parent_sphere = simplified_group_bounding_sphere;
-					meshlets_data->cull_bounds[child_meshlet_index].lod_culling.parent_error = mesh_space_error;
-				}
-				mtx.unlock_shared();
+					mesh_space_error += max_children_error;
+					mtx.lock_shared();
+					for (const auto& child_meshlet_index : group) {
+						meshlets_data->cull_bounds[child_meshlet_index].lod_culling.parent_sphere = simplified_group_bounding_sphere;
+						meshlets_data->cull_bounds[child_meshlet_index].lod_culling.parent_error = mesh_space_error;
+					}
+					mtx.unlock_shared();
 
-				// Split back
-				Ptr<ClusterizedMesh> simplified_meshlets = mesh_preprocessor.GenerateMeshlets(&vertices, &simplified_group_indices, vertex_stride);
+					// Split back
+					Ptr<ClusterizedMesh> simplified_meshlets = mesh_preprocessor.GenerateMeshlets(&vertices, &simplified_group_indices, vertex_stride);
 
-				for (auto& bounds : simplified_meshlets->cull_bounds) {
-					bounds.lod_culling.error = mesh_space_error;
-					bounds.lod_culling.sphere = simplified_group_bounding_sphere;
-				}
+					for (auto& bounds : simplified_meshlets->cull_bounds) {
+						bounds.lod_culling.error = mesh_space_error;
+						bounds.lod_culling.sphere = simplified_group_bounding_sphere;
+					}
 
-				// Acquire a unique(!!!) lock, so data patching is performed exclusively, so new meshlets acquire correct offsets within a buffer
-				mtx.lock();
+					// Acquire a unique(!!!) lock, so data patching is performed exclusively, so new meshlets acquire correct offsets within a buffer
+					mtx.lock();
 
-				// Patch data
-				num_newly_created_meshlets += simplified_meshlets->meshlets.size();
-				for (auto& meshlet : simplified_meshlets->meshlets) {
-					meshlet.vertex_offset += meshlets_data->indices.size();
-					meshlet.triangle_offset += meshlets_data->local_indices.size();
-				}
+					// Patch data
+					num_newly_created_meshlets.fetch_add(simplified_meshlets->meshlets.size());
+					for (auto& meshlet : simplified_meshlets->meshlets) {
+						meshlet.vertex_offset += meshlets_data->indices.size();
+						meshlet.triangle_offset += meshlets_data->local_indices.size();
+					}
 
-				// Register new meshlets for next LOD generation pass
-				for (uint32 i = 0; i < simplified_meshlets->meshlets.size(); i++)
-					previous_lod_meshlets.push_back(meshlets_data->meshlets.size() + i);
+					// Register new meshlets for next LOD generation pass
+					for (uint32 i = 0; i < simplified_meshlets->meshlets.size(); i++)
+						previous_lod_meshlets.push_back(meshlets_data->meshlets.size() + i);
 
-				// Push group's to buffers
-				meshlets_data->meshlets.insert(meshlets_data->meshlets.end(), simplified_meshlets->meshlets.begin(), simplified_meshlets->meshlets.end());
-				meshlets_data->indices.insert(meshlets_data->indices.end(), simplified_meshlets->indices.begin(), simplified_meshlets->indices.end());
-				meshlets_data->local_indices.insert(meshlets_data->local_indices.end(), simplified_meshlets->local_indices.begin(), simplified_meshlets->local_indices.end());
-				meshlets_data->cull_bounds.insert(meshlets_data->cull_bounds.end(), simplified_meshlets->cull_bounds.begin(), simplified_meshlets->cull_bounds.end());
-				mtx.unlock();
+					// Push group's to buffers
+					meshlets_data->meshlets.insert(meshlets_data->meshlets.end(), simplified_meshlets->meshlets.begin(), simplified_meshlets->meshlets.end());
+					meshlets_data->indices.insert(meshlets_data->indices.end(), simplified_meshlets->indices.begin(), simplified_meshlets->indices.end());
+					meshlets_data->local_indices.insert(meshlets_data->local_indices.end(), simplified_meshlets->local_indices.begin(), simplified_meshlets->local_indices.end());
+					meshlets_data->cull_bounds.insert(meshlets_data->cull_bounds.end(), simplified_meshlets->cull_bounds.begin(), simplified_meshlets->cull_bounds.end());
+					mtx.unlock();
 
-				// Update statistics
-				stats.output_meshlet_count += simplified_meshlets->meshlets.size();
+					// Update statistics
+					stats.output_meshlet_count.fetch_add(simplified_meshlets->meshlets.size());
+				}));
 			}
+
+			// Execute all tasks and wait for completion
+			JobSystem::GetExecutor()->run(taskflow).wait();
 
 			// Dump pass statistics
 			OMNIFORCE_CORE_TRACE("Virtual mesh generation pass #{} finished. Statistics:", lod_idx);
@@ -312,7 +327,7 @@ namespace Omni {
 			OMNIFORCE_CORE_TRACE("\tMesh scale: {}", stats.mesh_scale);
 
 			// If only 1 meshlet was created, finish mesh building - nothing to simplify further
-			if (num_newly_created_meshlets == 1)
+			if (num_newly_created_meshlets.load() == 1)
 				break;
 
 			lod_idx++;

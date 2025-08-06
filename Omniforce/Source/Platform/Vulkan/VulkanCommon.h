@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Foundation/Common.h>
-#include <Renderer/RendererCommon.h>
+#include <RHI/RHICommon.h>
 #include <Platform/Vulkan/ForwardDecl.h>
 
 #include <volk.h>
@@ -142,4 +142,16 @@ constexpr std::string VkResultToString(VkResult result)
 		std::unreachable();
 		break;
 	}
+}
+
+inline constexpr VkTransformMatrixKHR ToVkTransform(const glm::mat4 transform) {
+	VkTransformMatrixKHR vk_transform = {};
+
+	for (int row = 0; row < 3; ++row) {
+		for (int col = 0; col < 4; ++col) {
+			vk_transform.matrix[row][col] = transform[col][row];
+		}
+	}
+
+	return vk_transform;
 }

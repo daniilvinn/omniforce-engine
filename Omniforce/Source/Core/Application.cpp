@@ -4,8 +4,8 @@
 #include <Core/RuntimeExecutionContext.h>
 #include <Core/Events/ApplicationEvents.h>
 #include <Core/Input/Input.h>
-#include <Renderer/Renderer.h>
-#include <Renderer/ShaderLibrary.h>
+#include <RHI/Renderer.h>
+#include <RHI/ShaderLibrary.h>
 #include <Asset/AssetManager.h>
 #include <Physics/PhysicsEngine.h>
 #include <Scripting/ScriptEngine.h>

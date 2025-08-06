@@ -3,7 +3,7 @@
 #include <Foundation/Common.h>
 #include <Platform/Vulkan/VulkanCommon.h>
 
-#include <Renderer/DeviceCmdBuffer.h>
+#include <RHI/DeviceCmdBuffer.h>
 
 #include <shared_mutex>
 
@@ -13,8 +13,6 @@ namespace Omni {
 	public:
 		VulkanDeviceCmdBuffer(DeviceCmdBufferLevel level, DeviceCmdBufferType buffer_type, DeviceCmdType cmd_type);
 		~VulkanDeviceCmdBuffer();
-
-		void Destroy() override;
 
 		void Begin() override;
 		void End() override;

@@ -2,7 +2,9 @@
 #include <Scene/Scene.h>
 
 #include <Scene/Camera.h>
-#include <Scene/SceneRenderer.h>
+#include <Rendering/ISceneRenderer.h>
+#include <Rendering/PathTracing/PathTracingSceneRenderer.h>
+#include <Rendering/Raster/RasterSceneRenderer.h>
 #include <Scene/Entity.h>
 #include <Scene/Component.h>
 #include <Scene/Lights.h>
@@ -13,13 +15,10 @@
 #include <Scripting/ScriptEngine.h>
 #include <Threading/JobSystem.h>
 #include <Core/Utils.h>
-#include <Shaders/Shared/RenderObject.glslh>
 
 #include <nlohmann/json.hpp>
 
 namespace Omni {
-
-	using namespace Omni::GLSL;
 
 	template<typename Component>
 	static void ExplicitComponentCopy(entt::registry& src_registry, entt::registry& dst_registry, robin_hood::unordered_map<UUID, entt::entity>& map) {
@@ -38,7 +37,7 @@ namespace Omni {
 		SceneRendererSpecification renderer_spec = {};
 		renderer_spec.anisotropic_filtering = 16;
 
-		m_Renderer = SceneRenderer::Create(&g_PersistentAllocator, renderer_spec);
+		m_Renderer = PathTracingSceneRenderer::Create(&g_PersistentAllocator, renderer_spec);
 	}
 
 	Scene::Scene(Scene* other)
@@ -137,19 +136,20 @@ namespace Omni {
 				Entity entity(e, this);
 				TRSComponent trs_component = entity.GetWorldTransform();
 
-				RenderObjectData renderable_object = {};
+				HostInstanceRenderData renderable_object = {};
 				renderable_object.transform.translation = trs_component.translation;
 				renderable_object.transform.rotation = glm::packHalf(glm::vec4(
 					trs_component.rotation.x, trs_component.rotation.y,
 					trs_component.rotation.z, trs_component.rotation.w
 				));
 				renderable_object.transform.scale = trs_component.scale;
-				renderable_object.geometry_data_id = m_Renderer->GetMeshIndex(mesh_data.mesh_handle);
-				renderable_object.material_bda = m_Renderer->GetMaterialBDA(mesh_data.material_handle);
+				renderable_object.mesh_handle = mesh_data.mesh_handle;
+				renderable_object.material_handle = mesh_data.material_handle;
+
 				m_Renderer->RenderObject(asset_manager->GetAsset<Material>(mesh_data.material_handle)->GetPipeline(), renderable_object);
 			});
 
-			// Lighiting
+			// Lighting
 			m_Registry.view<PointLightComponent>().each([&, scene = this](auto e, auto& point_light) {
 				Entity entity(e, this);
 				TRSComponent trs_component = entity.GetWorldTransform();
@@ -158,7 +158,6 @@ namespace Omni {
 				light_data.Position = trs_component.translation;
 				light_data.Color = point_light.color;
 				light_data.Intensity = point_light.intensity;
-				light_data.MinRadius = point_light.min_radius;
 				light_data.Radius = point_light.radius;
 
 				m_Renderer->AddPointLight(light_data);
@@ -286,7 +285,7 @@ namespace Omni {
 
 	void Scene::LaunchRuntime()
 	{
-		m_InRuntime = true;;
+		m_InRuntime = true;
 		m_Camera = nullptr;
 		auto view = m_Registry.view<CameraComponent>();
 		for (auto& entity : view) {

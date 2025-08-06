@@ -3,7 +3,7 @@
 #include <Foundation/Common.h>
 #include <Platform/Vulkan/VulkanCommon.h>
 
-#include <Renderer/Pipeline.h>
+#include <RHI/Pipeline.h>
 
 namespace Omni {
 
@@ -19,13 +19,13 @@ namespace Omni {
 	private:
 		void CreateGraphics();
 		void CreateCompute();
+		void CreateRayTracing();
 
 	private:
 		PipelineSpecification m_Specification;
 
 		VkPipeline m_Pipeline;
 		VkPipelineLayout m_PipelineLayout;
-
 	};
 
 }

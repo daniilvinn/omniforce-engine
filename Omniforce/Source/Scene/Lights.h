@@ -2,6 +2,8 @@
 
 #include <Foundation/Common.h>
 
+#include <CodeGeneration/Device/SpecialTypes.h>
+
 #include <glm/glm.hpp>
 
 namespace Omni {
@@ -10,8 +12,12 @@ namespace Omni {
 		glm::vec3 Position;
 		glm::vec3 Color;
 		float32 Intensity;
-		float32 MinRadius;
 		float32 Radius;
+	};
+
+	struct META(ShaderExpose, Module = "RenderingGenerated") ScenePointLights {
+		uint32 Count;
+		ShaderRuntimeArray<PointLight> Lights;
 	};
 
 }

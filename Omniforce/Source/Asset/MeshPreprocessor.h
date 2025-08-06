@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Foundation/Common.h>
-#include <Renderer/Meshlet.h>
+#include <Rendering/Meshlet.h>
 
 #include <glm/glm.hpp>
 
@@ -24,6 +24,7 @@ namespace Omni {
 		void ConvertToLineTopology(std::vector<byte>* out_vertices, const std::vector<byte>* in_vertices, uint32 vertex_stride);
 		float32 GenerateMeshLOD(std::vector<uint32>* out_indices, const std::vector<byte>* vertex_data, const std::vector<uint32>* index_data, uint32 vertex_stride, uint32 target_index_count, float32 target_error, bool lock_borders);
 		void SplitVertexData(std::vector<glm::vec3>* geometry, std::vector<byte>* attributes, const std::vector<byte>* in_vertex_data, uint32 stride);
+		void SplitVertexData(std::vector<byte>* geometry, std::vector<byte>* attributes, const std::vector<byte>* in_vertex_data, uint32 vertex_stride);
 		void GenerateShadowIndexBuffer(std::vector<uint32>* out, const std::vector<uint32>* indices, const std::vector<byte>* vertices, uint32 vertex_size, uint32 vertex_stride);
 	};
 

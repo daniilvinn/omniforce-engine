@@ -7,3 +7,9 @@ Install/
 Editor/Resources/Shaders
 Sandbox/Resources
 Omniforce/Shaders/Gen
+Omniforce/Shaders/slangdconfig.json
+Runtime/*.dll
+Runtime/Resources/Shaders
+compile_commands.json
+.cache/
+Omniforce/ThirdParty/slang/

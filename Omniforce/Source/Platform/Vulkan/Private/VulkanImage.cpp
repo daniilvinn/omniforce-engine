@@ -6,7 +6,7 @@
 #include <Platform/Vulkan/VulkanGraphicsContext.h>
 #include <Platform/Vulkan/VulkanDeviceCmdBuffer.h>
 #include <Platform/Vulkan/Private/VulkanMemoryAllocator.h>
-#include <Renderer/Renderer.h>
+#include <RHI/Renderer.h>
 
 #include <stb_image.h>
 #include <bc7enc.h>
@@ -43,11 +43,13 @@ namespace Omni {
 
 			vkSetDebugUtilsObjectNameEXT(VulkanGraphicsContext::Get()->GetDevice()->Raw(), &name_info);
 
+			std::string object_name = fmt::format("{} view", spec.debug_name.c_str());
+
 			VkDebugUtilsObjectNameInfoEXT view_name_info = {};
 			view_name_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
 			view_name_info.objectType = VK_OBJECT_TYPE_IMAGE_VIEW;
 			view_name_info.objectHandle = (uint64)m_ImageView;
-			view_name_info.pObjectName = fmt::format("{} view", spec.debug_name.c_str()).c_str();
+			view_name_info.pObjectName = object_name.c_str();
 
 			vkSetDebugUtilsObjectNameEXT(VulkanGraphicsContext::Get()->GetDevice()->Raw(), &view_name_info);
 			VulkanMemoryAllocator::Get()->SetAllocationName(m_Allocation, m_Specification.debug_name);
@@ -154,7 +156,7 @@ namespace Omni {
 		VulkanDeviceBuffer staging_buffer(staging_buffer_spec, m_Specification.pixels.data(), m_Specification.pixels.size());
 
 		auto device = VulkanGraphicsContext::Get()->GetDevice();
-		VulkanDeviceCmdBuffer cmd_buffer = device->AllocateTransientCmdBuffer();
+		Ref<VulkanDeviceCmdBuffer> cmd_buffer = device->AllocateTransientCmdBuffer();
 
 		// So here we need to load and transition layout of all mip-levels of a texture
 		// Firstly we transition all of them into transfer destination layout
@@ -171,7 +173,7 @@ namespace Omni {
 		barrier.subresourceRange.baseMipLevel = 0;
 		barrier.subresourceRange.levelCount = texture_create_info.mipLevels;
 
-		vkCmdPipelineBarrier(cmd_buffer,
+		vkCmdPipelineBarrier(cmd_buffer->Raw(),
 			VK_PIPELINE_STAGE_TRANSFER_BIT,
 			VK_PIPELINE_STAGE_TRANSFER_BIT,
 			0,
@@ -205,7 +207,7 @@ namespace Omni {
 		}
 
 		// Submit copy command
-		vkCmdCopyBufferToImage(cmd_buffer, staging_buffer.Raw(), m_Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, copy_regions.size(), copy_regions.data());
+		vkCmdCopyBufferToImage(cmd_buffer->Raw(), staging_buffer.Raw(), m_Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, copy_regions.size(), copy_regions.data());
 		
 		// Transition layout to shader read only
 		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
@@ -215,7 +217,7 @@ namespace Omni {
 		barrier.subresourceRange.baseMipLevel = 0;
 		barrier.subresourceRange.levelCount = texture_create_info.mipLevels;
 
-		vkCmdPipelineBarrier(cmd_buffer,
+		vkCmdPipelineBarrier(cmd_buffer->Raw(),
 			VK_PIPELINE_STAGE_TRANSFER_BIT,
 			VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
 			0,
@@ -272,7 +274,7 @@ namespace Omni {
 		render_target_create_info.arrayLayers = 1;
 		render_target_create_info.format = convert(m_Specification.format);
 		render_target_create_info.samples = VK_SAMPLE_COUNT_1_BIT; // HACK
-		render_target_create_info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+		render_target_create_info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
 		render_target_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
 		render_target_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		
@@ -314,7 +316,6 @@ namespace Omni {
 		);
 		cmd_buffer->End();
 		cmd_buffer->Execute(true);
-		cmd_buffer->Destroy();
 	}
 
 	void VulkanImage::CreateDepthBuffer()
@@ -372,7 +373,6 @@ namespace Omni {
 		);
 		cmd_buffer->End();
 		cmd_buffer->Execute(true);
-		cmd_buffer->Destroy();
 	}
 
 	void VulkanImage::CreateStorageImage()
@@ -430,7 +430,6 @@ namespace Omni {
 		);
 		cmd_buffer->End();
 		cmd_buffer->Execute(true);
-		cmd_buffer->Destroy();
 	}
 
 	void VulkanImage::CreateFromRaw(const ImageSpecification& spec, VkImage image, VkImageView view)

@@ -2,11 +2,10 @@
 
 #include <Foundation/Common.h>
 
-#include <Renderer/DeviceBuffer.h>
-#include <Renderer/Image.h>
-#include <Renderer/Pipeline.h>
-#include <Scene/SceneRendererPrimitives.h>
-#include <Shaders/Shared/Transform.glslh>
+#include <RHI/DeviceBuffer.h>
+#include <RHI/Image.h>
+#include <RHI/Pipeline.h>
+#include <Rendering/SceneRendererPrimitives.h>
 
 #include <glm/glm.hpp>
 
@@ -40,7 +39,7 @@ namespace Omni {
 	private:
 		struct WireframePushConstants {
 			uint64 camera_data_bda;
-			GLSL::Transform trs;
+			Transform trs;
 			glm::u8vec3 lines_color;
 		};
 

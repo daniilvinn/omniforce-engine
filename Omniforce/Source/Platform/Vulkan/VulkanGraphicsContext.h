@@ -5,8 +5,8 @@
 
 #include <Platform/Vulkan/VulkanDebugUtils.h>
 #include <Platform/Vulkan/VulkanSwapchain.h>
-#include <Renderer/GraphicsContext.h>
-#include <Renderer/Renderer.h>
+#include <RHI/GraphicsContext.h>
+#include <RHI/Renderer.h>
 
 namespace Omni {
 

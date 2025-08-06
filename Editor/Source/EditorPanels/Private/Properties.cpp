@@ -1,11 +1,11 @@
 #include "../Properties.h"
 
 #include <Scene/Component.h>
-#include <Scene/SceneRenderer.h>
+#include <Rendering/ISceneRenderer.h>
+#include <Rendering/UI/ImGuiRenderer.h>
 #include <Asset/AssetManager.h>
 #include <Core/Utils.h>
 #include <Filesystem/Filesystem.h>
-#include <Renderer/UI/ImGuiRenderer.h>
 #include <DebugUtils/DebugRenderer.h>
 
 #include "../../EditorUtils.h"
@@ -553,10 +553,8 @@ namespace Omni {
 								ImGui::TableNextColumn();
 								ImGui::Text("Min. radius");
 								ImGui::TableNextColumn();
-								ImGui::DragFloat("##plc_props_minrad_drag", &point_light_component.min_radius, 0.05f);
 								if (ImGui::IsItemActive()) {
 									DebugRenderer::RenderWireframeSphere(m_Entity.GetWorldTransform().translation, point_light_component.radius, { 0.28f, 0.27f, 1.0f });
-									DebugRenderer::RenderWireframeSphere(m_Entity.GetWorldTransform().translation, point_light_component.min_radius, { 1.0f, 0.6f, 1.0f });
 								}
 								
 								ImGui::TableNextRow();
@@ -566,7 +564,6 @@ namespace Omni {
 								ImGui::DragFloat("##plc_props_maxrad_drag", &point_light_component.radius, 0.05f);
 								if (ImGui::IsItemActive()) {
 									DebugRenderer::RenderWireframeSphere(m_Entity.GetWorldTransform().translation, point_light_component.radius, { 0.28f, 0.27f, 1.0f });
-									DebugRenderer::RenderWireframeSphere(m_Entity.GetWorldTransform().translation, point_light_component.min_radius, { 1.0f, 0.6f, 1.0f });
 								}
 
 								ImGui::TableNextRow();

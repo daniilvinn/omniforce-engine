@@ -3,6 +3,7 @@
 
 #include <Platform/Vulkan/VulkanDebugUtils.h>
 #include <Platform/Vulkan/VulkanGraphicsContext.h>
+#include <Core/RuntimeExecutionContext.h>
 
 namespace Omni {
 
@@ -41,13 +42,14 @@ namespace Omni {
 
 	VulkanDeviceCmdBuffer::~VulkanDeviceCmdBuffer()
 	{
-		
-	}
+		auto device = VulkanGraphicsContext::Get()->GetDevice()->Raw();
+		auto pool = m_Pool;
 
-	void VulkanDeviceCmdBuffer::Destroy()
-	{
-		auto device = VulkanGraphicsContext::Get()->GetDevice();
-		vkDestroyCommandPool(device->Raw(), m_Pool, nullptr);
+		RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueObjectDeletion(
+			[device, pool]() {
+				vkDestroyCommandPool(device, pool, nullptr);
+			}
+		);
 	}
 
 	void VulkanDeviceCmdBuffer::Begin()

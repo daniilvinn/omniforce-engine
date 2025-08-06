@@ -12,4 +12,10 @@ namespace Omni {
 		BDA<byte> material_address;
 	};
 
+	struct HostInstanceRenderData {
+		Transform transform;
+		AssetHandle mesh_handle;
+		AssetHandle material_handle;
+	};
+
 }

@@ -16,6 +16,8 @@ namespace Omni {
 		float32 viewport_width;
 		float32 near_clip_distance;
 		float32 far_clip_distance;
+		float32 gamma;
+		float32 exposure;
 	};
 
 }

@@ -73,7 +73,6 @@ target_link_libraries(
     ${METATOOL_TARGET}
     PRIVATE
         libclang.lib
-        OpenMP::OpenMP_CXX
 )
 
 target_compile_options(

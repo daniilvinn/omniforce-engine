@@ -5,8 +5,8 @@
 namespace Omni {
 
 	struct META(ShaderExpose, Module = "RenderingGenerated") DeviceTexture {
-		uint32 texture_index;
-		uint32 uv_channel_index;
+		uint32 TextureIndex;
+		uint32 UVChannelIndex;
 	};
 
 }

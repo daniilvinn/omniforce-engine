@@ -3,7 +3,7 @@
 #include <Foundation/Common.h>
 #include <Platform/Vulkan/VulkanCommon.h>
 
-#include <Renderer/DescriptorSet.h>	
+#include <RHI/DescriptorSet.h>	
 
 namespace Omni {
 
@@ -17,6 +17,7 @@ namespace Omni {
 
 		void Write(uint16 binding, uint16 array_element, Ref<Image> image, Ref<ImageSampler> sampler) override;
 		void Write(uint16 binding, uint16 array_element, Ref<DeviceBuffer> buffer, uint64 size, uint64 offset) override;
+		void Write(uint16 binding, uint16 array_element, WeakPtr<RTAccelerationStructure> as) override;
 
 	private:
 		VkDescriptorSet m_DescriptorSet;

@@ -108,7 +108,7 @@ namespace Omni {
 
 		AssetCompressor compressor;
 
-		std::vector<RGBA32> intermediate_storage (image_data.size() / sizeof RGBA32);
+		std::vector<RGBA32> intermediate_storage (image_data.size() / sizeof(RGBA32));
 		memcpy(intermediate_storage.data(), image_data.data(), image_data.size());
 
 		OMNIFORCE_ASSERT_TAGGED(image_width && image_height, "Image dimension can not be zero");
@@ -129,7 +129,7 @@ namespace Omni {
 			image_data = compressor.CompressBC7({ mip_mapped_image.begin(), mip_mapped_image.end() }, image_width, image_height, mip_levels_count);
 		}
 		else {
-			image_data.resize(mip_mapped_image.size() * sizeof RGBA32);
+			image_data.resize(mip_mapped_image.size() * sizeof(RGBA32));
 			memcpy(image_data.data(), mip_mapped_image.data(), image_data.size());
 		}
 
@@ -158,6 +158,8 @@ namespace Omni {
 		else
 			material->AddShaderMacro("__OMNI_SHADING_MODEL_NON_PBR");
 
+		material->AddProperty("DOUBLE_SIDED", (uint32)in_material->doubleSided);
+
 		subflow.emplace([=]() { HandleProperty("ALPHA_CUTOFF", in_material->alphaCutoff, material, root, m_Mutex); });
 		subflow.emplace([=]() { HandleProperty("BASE_COLOR_FACTOR", c(in_material->pbrData.baseColorFactor), material, root, m_Mutex); });
 		subflow.emplace([=]() { HandleProperty("METALLIC_FACTOR", in_material->pbrData.metallicFactor, material, root, m_Mutex); });
@@ -166,6 +168,38 @@ namespace Omni {
 		subflow.emplace([=]() { HandleProperty("METALLIC_ROUGHNESS_MAP", in_material->pbrData.metallicRoughnessTexture, material, root, m_Mutex); });
 		subflow.emplace([=]() { HandleProperty("NORMAL_MAP", in_material->normalTexture, material, root, m_Mutex); });
 		subflow.emplace([=]() { HandleProperty("OCCLUSION_MAP", in_material->occlusionTexture, material, root, m_Mutex); });
+
+		MaterialDomain domain = MaterialDomain::NONE;
+
+		switch (in_material->alphaMode) {
+			case ftf::AlphaMode::Opaque:
+				domain = MaterialDomain::OPAQUE;
+				break;
+			case ftf::AlphaMode::Mask:
+				domain = MaterialDomain::MASKED;
+				break;
+			case ftf::AlphaMode::Blend:
+				domain = MaterialDomain::TRANSMISSIVE;
+				break;
+			default:
+				domain = MaterialDomain::NONE;
+				break;
+		}
+
+		material->SetDomain(domain);
+
+		if (domain == MaterialDomain::TRANSMISSIVE) {
+			material->AddShaderMacro("TRANSMISSION_ENABLED");
+
+			material->AddProperty("TRANSMISSION_IOR", in_material->ior);
+
+			if(in_material->volume) {
+				material->AddProperty("TRANSMISSION_THICKNESS", in_material->volume->thicknessFactor);
+			} else {
+				material->AddProperty("TRANSMISSION_THICKNESS", 0.01f); // 0.01 is default thickness, 0.01 = 1cm
+			}	
+
+		}
 
 		return id;
 	}

@@ -6,6 +6,7 @@
 #include <Platform/Vulkan/VulkanRenderer.h>
 #include <Platform/Vulkan/VulkanImage.h>
 #include <Platform/Vulkan/VulkanDeviceBuffer.h>
+#include <Platform/Vulkan/VulkanAccelerationStructure.h>
 
 namespace Omni {
 
@@ -22,10 +23,11 @@ namespace Omni {
 	constexpr VkDescriptorType convert(const DescriptorBindingType& type) {
 		switch (type)
 		{
-		case DescriptorBindingType::SAMPLED_IMAGE:		return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		case DescriptorBindingType::STORAGE_IMAGE:		return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-		case DescriptorBindingType::UNIFORM_BUFFER:		return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		case DescriptorBindingType::STORAGE_BUFFER:		return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		case DescriptorBindingType::SAMPLED_IMAGE:				return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		case DescriptorBindingType::STORAGE_IMAGE:				return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+		case DescriptorBindingType::UNIFORM_BUFFER:				return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		case DescriptorBindingType::STORAGE_BUFFER:				return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		case DescriptorBindingType::ACCELERATION_STRUCTURE:		return VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
 		default:										std::unreachable();
 		}
 	}
@@ -137,6 +139,30 @@ namespace Omni {
 		write_descriptor_set.dstArrayElement = array_element;
 		write_descriptor_set.descriptorCount = 1;
 		write_descriptor_set.pBufferInfo = &descriptor_buffer_info;
+
+		vkUpdateDescriptorSets(device->Raw(), 1, &write_descriptor_set, 0, nullptr);
+	}
+
+	void VulkanDescriptorSet::Write(uint16 binding, uint16 array_element, WeakPtr<RTAccelerationStructure> as)
+	{
+		auto device = VulkanGraphicsContext::Get()->GetDevice();
+		WeakPtr<VulkanRTAccelerationStructure> vk_as = as;
+
+		VkAccelerationStructureKHR raw_as = vk_as->Raw();
+
+		VkWriteDescriptorSetAccelerationStructureKHR descriptor_as_info = {};
+		descriptor_as_info.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+		descriptor_as_info.accelerationStructureCount = 1;
+		descriptor_as_info.pAccelerationStructures = &raw_as;
+
+		VkWriteDescriptorSet write_descriptor_set = {};
+		write_descriptor_set.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		write_descriptor_set.dstSet = m_DescriptorSet;
+		write_descriptor_set.dstBinding = binding;
+		write_descriptor_set.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+		write_descriptor_set.dstArrayElement = array_element;
+		write_descriptor_set.descriptorCount = 1;
+		write_descriptor_set.pNext = &descriptor_as_info;
 
 		vkUpdateDescriptorSets(device->Raw(), 1, &write_descriptor_set, 0, nullptr);
 	}

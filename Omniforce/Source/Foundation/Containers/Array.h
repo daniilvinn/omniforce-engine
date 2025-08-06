@@ -51,29 +51,30 @@ namespace Omni {
 			}
 		}
 
-		Array(const Array<T>& other) {
+		Array(const Array<T>& other) 
+			: m_Allocator(other.m_Allocator)
+			, m_Size(0)
+			, m_GrowthFactor(other.m_GrowthFactor)
+		{
 			if (this == &other) {
 				OMNIFORCE_CORE_WARNING("Attempted to assign an array to itself");
-				return *this;
+				return;
 			}
 
-			if (m_Allocation.IsValid()) {
-				Clear();
-				m_Allocator->FreeBase(m_Allocation);
+			if (other.m_Size > 0 && other.m_Allocator) {
+				// Allocate memory for the new array
+				Reallocate(other.m_Size);
+				
+				// Copy construct all elements
+				T* typed_array = m_Allocation.As<T>();
+				const T* other_array = other.m_Allocation.As<T>();
+
+				for (SizeType i = 0; i < other.m_Size; ++i) {
+					new (&typed_array[i]) T(other_array[i]);
+				}
+
+				m_Size = other.m_Size;
 			}
-
-			if (HasEnoughMemory(other.Size())) {
-				Reallocate(other.Size());
-			}
-
-			T* typed_array = m_Allocation.As<T>();
-			const T* other_array = other.m_Allocation.As<T>();
-
-			for (SizeType i = 0; i < other.m_Size; ++i) {
-				new (&typed_array[i]) T(other_array[i]);
-			}
-
-			m_Size = other.m_Size;
 		}
 
 		Array(Array<T>&& other) noexcept {
@@ -260,11 +261,18 @@ namespace Omni {
 			MemoryAllocation new_allocation = m_Allocator->AllocateBase(new_size * sizeof(T));
 			if (m_Allocation.IsValid()) [[likely]]
 			{
-				memcpy(new_allocation.Memory, m_Allocation.Memory, std::min(new_size, m_Size) * sizeof(T));
+				// Init new bytes
+				if (new_size > m_Allocation.Size) {
+					memset(new_allocation.Memory + m_Allocation.Size, 0, new_allocation.Size - m_Allocation.Size);
+				}
 
+				memcpy(new_allocation.Memory, m_Allocation.Memory, std::min(new_size, m_Size) * sizeof(T));
 				m_Allocator->FreeBase(m_Allocation);
 			}
-			memset(new_allocation.Memory, 0, new_allocation.Size);
+			else {
+				memset(new_allocation.Memory, 0, new_allocation.Size);
+			}
+
 			m_Allocation = new_allocation;
 		}
 
@@ -295,23 +303,31 @@ namespace Omni {
 				return *this;
 			}
 
+			// Clear existing data
 			if (m_Allocation.IsValid()) {
 				Clear();
 				m_Allocator->FreeBase(m_Allocation);
+				m_Allocation.Invalidate();
 			}
 
-			if (HasEnoughMemory(other.Size())) {
-				Reallocate(other.Size());
+			// Copy allocator and growth factor
+			m_Allocator = other.m_Allocator;
+			m_GrowthFactor = other.m_GrowthFactor;
+			m_Size = 0;
+
+			// Copy data if other has elements
+			if (other.m_Size > 0 && other.m_Allocator) {
+				Reallocate(other.m_Size);
+				
+				T* typed_array = m_Allocation.As<T>();
+				const T* other_array = other.m_Allocation.As<T>();
+
+				for (SizeType i = 0; i < other.m_Size; ++i) {
+					new (&typed_array[i]) T(other_array[i]);
+				}
+
+				m_Size = other.m_Size;
 			}
-
-			T* typed_array = m_Allocation.As<T>();
-			const T* other_array = other.m_Allocation.As<T>();
-
-			for (SizeType i = 0; i < other.m_Size; ++i) {
-				new (&typed_array[i]) T(other_array[i]);
-			}
-
-			m_Size = other.m_Size;
 
 			return *this;
 		}

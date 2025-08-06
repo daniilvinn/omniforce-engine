@@ -8,9 +8,16 @@
 #extension GL_EXT_shader_image_int64 : require
 #extension GL_EXT_shader_image_int64 : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+#extension GL_EXT_ray_tracing : require
+#extension GL_EXT_ray_query	: require
+
 
 layout(binding = 0) uniform sampler2D texture_bank[65535];
 
 layout(r64ui, binding = 1) uniform u64image2D visibility_buffer;
+
+layout(binding = 2) uniform accelerationStructureEXT TopLevelAS;
+
+layout(rgba16f, binding = 3) uniform image2D final_image;
 
 #endif

@@ -3,7 +3,7 @@
 #include <Foundation/Common.h>
 #include <Platform/Vulkan/VulkanCommon.h>
 
-#include <Renderer/Swapchain.h>
+#include <RHI/Swapchain.h>
 #include <Platform/Vulkan/VulkanDevice.h>
 #include <Platform/Vulkan/VulkanImage.h>
 
@@ -11,11 +11,6 @@ namespace Omni {
 
 	class VulkanSwapchain : public Swapchain {
 	public:
-		struct SwapchainSemaphores {
-			VkSemaphore render_complete;
-			VkSemaphore present_complete;
-		};
-
 		VulkanSwapchain(const SwapchainSpecification& spec);
 		~VulkanSwapchain();
 
@@ -32,11 +27,14 @@ namespace Omni {
 		void SetVSync(bool vsync) override;
 
 		SwapchainSpecification GetSpecification() override { return m_Specification; }
-		uint32 GetCurrentFrameIndex() const { return m_CurrentFrameIndex; }
 
-		SwapchainSemaphores GetSemaphores() const { return m_Semaphores[m_CurrentFrameIndex]; }
-		VkFence GetCurrentFence() const { return m_Fences[m_CurrentFrameIndex]; }
-		Ref<Image> GetCurrentImage() override { return m_Images[m_CurrentImageIndex]; };
+		// New accessors
+		VkSemaphore GetAcquireSemaphore() const { return m_AcquireSemaphores[m_CurrentFrame]; }
+		VkSemaphore GetRenderSemaphore() const { return m_RenderSemaphores[m_CurrentImage]; }
+		VkFence GetFence() const { return m_Fences[m_CurrentFrame]; }
+		uint32_t GetCurrentImageIndex() const { return m_CurrentImage; }
+		uint32_t GetCurrentFrameIndex() const { return m_CurrentFrame; }
+		Ref<Image> GetCurrentImage() override { return m_Images[m_CurrentImage]; };
 
 	private:
 		SwapchainSpecification m_Specification;
@@ -49,13 +47,17 @@ namespace Omni {
 
 		std::vector<Ref<VulkanImage>> m_Images;
 
-		std::vector<SwapchainSemaphores> m_Semaphores;
+		// Per-image semaphores (as suggested by validation layer)
+		std::vector<VkSemaphore> m_AcquireSemaphores;
+		std::vector<VkSemaphore> m_RenderSemaphores;
+		// Per-frame fences
 		std::vector<VkFence> m_Fences;
 
-		const uint32 m_SwachainImageCount = 3;
+		uint32 m_SwachainImageCount = 3;
+		uint32 m_FramesInFlight = 2;
 
-		uint32 m_CurrentFrameIndex = 0;
-		uint32 m_CurrentImageIndex = 0;
+		uint32 m_CurrentFrame = 0;
+		uint32 m_CurrentImage = 0;
 	};
 
 }

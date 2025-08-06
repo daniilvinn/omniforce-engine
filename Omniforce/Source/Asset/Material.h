@@ -2,15 +2,29 @@
 
 #include <Foundation/Common.h>
 #include <Asset/AssetBase.h>
-#include <Renderer/Pipeline.h>
+#include <RHI/Pipeline.h>
 
 #include <variant>
 #include <map>
+
+// Undefine OPAQUE macro to prevent conflicts with enum values
+#ifdef OPAQUE
+#undef OPAQUE
+#endif
 
 namespace Omni {
 
 	using MaterialTextureProperty = std::pair<AssetHandle, uint32>; // texture id - uv channel
 	using MaterialProperty = std::variant<MaterialTextureProperty, float32, uint32, glm::vec4>;
+
+	enum class META(ShaderExpose, Module = "RenderingGenerated") SurfaceDomain {
+		OPAQUE,
+		MASKED,
+		TRANSMISSIVE,
+		NONE
+	};
+
+	using MaterialDomain = SurfaceDomain;
 
 	class OMNIFORCE_API Material : public AssetBase {
 	public:
@@ -38,13 +52,15 @@ namespace Omni {
 		const Ref<Pipeline> GetPipeline() const { return m_Pipeline; }
 
 		void CompilePipeline();
-		
+
+		void SetDomain(MaterialDomain domain) { m_Domain = domain; }
+		MaterialDomain GetDomain() const { return m_Domain; }
 	private:
 		std::string m_Name;
 		std::map<std::string, MaterialProperty> m_Properties;
 		ShaderMacroTable m_Macros;
 		Ref<Pipeline> m_Pipeline;
-
+		MaterialDomain m_Domain;
 	};
 
 }

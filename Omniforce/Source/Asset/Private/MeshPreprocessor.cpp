@@ -195,6 +195,17 @@ namespace Omni {
 		}
 	}
 
+	void MeshPreprocessor::SplitVertexData(std::vector<byte>* geometry, std::vector<byte>* attributes, const std::vector<byte>* in_vertex_data, uint32 vertex_stride)
+	{
+		uint32 num_iterations = in_vertex_data->size() / vertex_stride;
+		uint32 deinterleaved_stride = vertex_stride - sizeof(glm::vec3);
+
+		for (int i = 0; i < num_iterations; i++) {
+			memcpy(geometry->data() + i * sizeof(glm::vec3), in_vertex_data->data() + i * vertex_stride, sizeof(glm::vec3));
+			memcpy(attributes->data() + i * deinterleaved_stride, in_vertex_data->data() + i * vertex_stride + sizeof(glm::vec3), deinterleaved_stride);
+		}
+	}
+
 	void MeshPreprocessor::GenerateShadowIndexBuffer(std::vector<uint32>* out, const std::vector<uint32>* indices, const std::vector<byte>* vertices, uint32 vertex_size, uint32 vertex_stride)
 	{
 		out->resize(indices->size());

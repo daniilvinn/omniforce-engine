@@ -2,12 +2,11 @@
 #include <DebugUtils/DebugRenderer.h>
 
 #include <Core/Utils.h>
-#include <Renderer/ShaderLibrary.h>
-#include <Renderer/Renderer.h>
-#include <Renderer/DescriptorSet.h>
+#include <RHI/ShaderLibrary.h>
+#include <RHI/Renderer.h>
+#include <RHI/DescriptorSet.h>
 #include <Asset/PrimitiveMeshGenerator.h>
 #include <Asset/MeshPreprocessor.h>
-#include <Shaders/Shared/Transform.glslh>
 
 #include <imgui.h>
 #include <glm/gtc/packing.hpp>
@@ -34,6 +33,11 @@ namespace Omni {
 		DeviceBufferLayoutElement element("position", DeviceDataType::FLOAT3);
 		DeviceBufferLayout buffer_layout(std::vector{ element });
 
+		// Create dummy descriptor set
+		DescriptorSetSpecification set_spec = {};
+		set_spec.bindings = shader_library->GetGlobalDescriptorSetBindings();
+		Ref<DescriptorSet> descriptor_set = DescriptorSet::Create(&g_TransientAllocator, set_spec);
+
 		PipelineSpecification pipeline_spec = PipelineSpecification::Default();
 		pipeline_spec.culling_mode = PipelineCullingMode::NONE;
 		pipeline_spec.debug_name = "debug renderer wireframe";
@@ -41,6 +45,7 @@ namespace Omni {
 		pipeline_spec.output_attachments_formats = { ImageFormat::RGB32_HDR };
 		pipeline_spec.topology = PipelineTopology::LINES;
 		pipeline_spec.shader = shader_library->GetShader("Wireframe.ofs");
+		pipeline_spec.descriptor_set = descriptor_set;
 		pipeline_spec.input_layout = buffer_layout;
 		pipeline_spec.depth_test_enable = true;
 		pipeline_spec.color_blending_enable = false;
@@ -110,7 +115,7 @@ namespace Omni {
 	void DebugRenderer::RenderWireframeSphere(const glm::vec3& position, float radius, const glm::vec3& color)
 	{
 		renderer->m_DebugRequests.push_back([=]() {
-			GLSL::Transform trs = {};
+			Transform trs = {};
 			trs.translation = position;
 			trs.rotation = glm::packHalf(glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
 			trs.scale = { radius, radius, radius };
@@ -134,7 +139,7 @@ namespace Omni {
 	void DebugRenderer::RenderWireframeBox(const glm::vec3& translation, const glm::quat rotation, const glm::vec3 scale, const glm::vec3& color)
 	{
 		renderer->m_DebugRequests.push_back([=]() {
-			GLSL::Transform trs = {};
+			Transform trs = {};
 			trs.translation = translation;
 			trs.rotation = glm::packHalf(glm::vec4(rotation.x, rotation.y, rotation.z, rotation.w));
 			trs.scale = scale;
@@ -158,7 +163,7 @@ namespace Omni {
 	void DebugRenderer::RenderWireframeLines(Ref<DeviceBuffer> vbo, const glm::vec3& translation, const glm::quat rotation, const glm::vec3 scale, const glm::vec3& color)
 	{
 		renderer->m_DebugRequests.push_back([=]() {
-			GLSL::Transform trs = {};
+			Transform trs = {};
 			trs.translation = translation;
 			trs.rotation = glm::packHalf(glm::vec4( rotation.x, rotation.y, rotation.z, rotation.w ) );
 			trs.scale = scale;

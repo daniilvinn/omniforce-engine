@@ -55,6 +55,7 @@ namespace Omni {
 
 		// Adds an object to the deletion queue. Queue will be executed after 3 frames in async mode.
 		void EnqueueObjectDeletion(std::function<void()> deleting_procedure) {
+			std::lock_guard lock(m_Mtx);
 			m_DeletionQueues[m_CurrentDeletionQueue].Push(deleting_procedure);
 		}
 
@@ -105,6 +106,7 @@ namespace Omni {
 
 		// Deletion queues
 		StaticArray<Stack<std::function<void()>>, NUM_DELETION_QUEUES> m_DeletionQueues;
+		std::shared_mutex m_Mtx;
 
 		OMNI_DEBUG_ONLY_FIELD(bool m_CoreObjectQueueExecuted = false);
 

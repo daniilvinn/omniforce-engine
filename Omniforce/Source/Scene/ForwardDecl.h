@@ -4,6 +4,7 @@
 
 namespace Omni {
 	
+	class ISceneRenderer;
 	class SceneRenderer;
 	class Scene;
 	class Camera;

@@ -11,11 +11,13 @@
 #include <Asset/Importers/MaterialImporter.h>
 #include <Asset/Importers/ImageImporter.h>
 #include <Asset/VirtualMeshBuilder.h>
-#include <Renderer/Mesh.h>
-#include <Renderer/Image.h>
+#include <Rendering/Mesh.h>
+#include <RHI/Image.h>
+#include <RHI/AccelerationStructure.h>
 #include <Threading/JobSystem.h>
 #include <Platform/Vulkan/Private/VulkanMemoryAllocator.h>
 #include <Core/BitStream.h>
+#include <Core/EngineConfig.h>
 
 #include <map>
 #include <atomic>
@@ -27,12 +29,13 @@
 #include <fastgltf/tools.hpp>
 #include <spdlog/fmt/fmt.h>
 #include <taskflow/taskflow.hpp>
-#include <metis.h>
 
 namespace Omni {
 
 	// just an alias for readability
 	namespace ftf = fastgltf;
+
+	static EngineConfigValue<bool> s_BuildVirtualGeometry("Renderer.UseVirtualGeometry", "Enables virtual geometry raster renderer");
 
 	AssetHandle ModelImporter::Import(std::filesystem::path path)
 	{
@@ -82,15 +85,15 @@ namespace Omni {
 					// 3. Process mesh data - generate lods, optimize mesh, generate meshlets etc.
 					Ref<Mesh> mesh;
 					AABB lod0_aabb = {};
+					ftf::Material& ftf_material = ftf_asset.materials[primitive.materialIndex.value()];
 
 					auto mesh_process_task = subflow.emplace([&, this]() {
-						ProcessMeshData(&mesh, &lod0_aabb, &vertex_data, &index_data, vertex_stride, attribute_metadata_table, &mtx);
+						ProcessMeshData(&mesh, &lod0_aabb, &vertex_data, &index_data, vertex_stride, attribute_metadata_table, ftf_material, &mtx);
 						OMNIFORCE_CORE_TRACE("[{}/{}] Loaded mesh: {}", ++mesh_load_progress_counter, ftf_asset.meshes.size(), ftf_mesh.name);
 					}).succeed(attribute_read_task);
 
 					// 4. Process material data - load textures, generate mip-maps, compress. Also copies scalar material properties
 					//    Material processing requires additional steps in order to make sure that no duplicates will be created.
-					const ftf::Material& ftf_material = ftf_asset.materials[primitive.materialIndex.value()];
 					Ref<Material> material;
 
 					auto material_process_task = subflow.emplace([&, this](tf::Subflow& sf) {
@@ -222,7 +225,79 @@ namespace Omni {
 		*out_size = attribute_stride;
 	}
 
-	void ModelImporter::ReadVertexAttributes(std::vector<byte>* out_vertex_data, std::vector<uint32>* out_index_data, const ftf::Asset* asset, 
+	Ptr<RTAccelerationStructure> ModelImporter::BuildAccelerationStructure(
+		const std::vector<byte>& vertex_data, 
+		const std::vector<uint32>& index_data, 
+		uint32 vertex_stride, 
+		MaterialDomain domain
+	)
+	{
+		DeviceBufferSpecification vertex_buffer_spec = {};
+		vertex_buffer_spec.size = vertex_data.size();
+		vertex_buffer_spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
+		vertex_buffer_spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
+		vertex_buffer_spec.heap = DeviceBufferMemoryHeap::HOST;
+		vertex_buffer_spec.flags = (BitMask)DeviceBufferFlags::AS_INPUT;
+
+		Ref<DeviceBuffer> vertex_buffer = DeviceBuffer::Create(&g_TransientAllocator, vertex_buffer_spec, (void*)vertex_data.data(), vertex_data.size());
+
+		DeviceBufferSpecification index_buffer_spec = {};
+		index_buffer_spec.size = index_data.size() * sizeof(uint32);
+		index_buffer_spec.buffer_usage = DeviceBufferUsage::SHADER_DEVICE_ADDRESS;
+		index_buffer_spec.memory_usage = DeviceBufferMemoryUsage::COHERENT_WRITE;
+		index_buffer_spec.heap = DeviceBufferMemoryHeap::HOST;
+		index_buffer_spec.flags = (BitMask)DeviceBufferFlags::AS_INPUT;
+
+		Ref<DeviceBuffer> index_buffer = DeviceBuffer::Create(&g_TransientAllocator, index_buffer_spec, (void*)index_data.data(), index_data.size() * sizeof(uint32));
+
+		BLASBuildInfo blas_build_info = {};
+		blas_build_info.geometry = vertex_buffer;
+		blas_build_info.indices = index_buffer;
+		blas_build_info.vertex_count = vertex_data.size() / vertex_stride;
+		blas_build_info.index_count = index_data.size();
+		blas_build_info.vertex_stride = vertex_stride;
+		blas_build_info.domain = domain;
+
+		Ptr<RTAccelerationStructure> as = RTAccelerationStructure::Create(&g_PersistentAllocator, blas_build_info);
+
+		return as;
+	}
+
+	GeometryLayoutTable ModelImporter::BuildLayoutTable(uint32 vertex_stride, const VertexAttributeMetadataTable& vertex_metadata)
+	{
+		GeometryLayoutTable layout = {};
+		layout.Stride = vertex_stride - sizeof(glm::vec3);
+		
+		for (auto& metadata_entry : vertex_metadata) {
+			if (metadata_entry.first.find("TEXCOORD") != std::string::npos) {
+				layout.AttributeMask.HasUV = true;
+				layout.AttributeMask.UVCount++;
+
+				const std::string& entry_key = metadata_entry.first;
+				
+				std::string UV_index_string = entry_key.substr(entry_key.length() - 1);
+				uint32 UV_index = std::atoi(UV_index_string.c_str());
+
+				layout.Offsets.UV[UV_index] = metadata_entry.second - sizeof(glm::vec3);
+			}
+			if (metadata_entry.first.find("NORMAL") != std::string::npos) {
+				layout.AttributeMask.HasNormals = true;
+				layout.Offsets.Normal = metadata_entry.second - sizeof(glm::vec3);
+			}
+			if (metadata_entry.first.find("TANGENT") != std::string::npos) {
+				layout.AttributeMask.HasTangents = true;
+				layout.Offsets.Tangent = metadata_entry.second - sizeof(glm::vec3);
+			}
+			if (metadata_entry.first.find("COLOR") != std::string::npos) {
+				layout.AttributeMask.HasColor = true;
+				layout.Offsets.Color = metadata_entry.second - sizeof(glm::vec3);
+			}
+		}
+
+		return layout;
+	}
+
+	void ModelImporter::ReadVertexAttributes(std::vector<byte>* out_vertex_data, std::vector<uint32>* out_index_data, const ftf::Asset* asset,
 		const ftf::Primitive* primitive, const VertexAttributeMetadataTable* metadata, uint32 vertex_stride)
 	{
 		// Load indices
@@ -275,7 +350,12 @@ namespace Omni {
 				);
 			}
 			else if (attrib.first.find("COLOR") != std::string::npos) {
-				OMNIFORCE_ASSERT_TAGGED(false, "Vertex colors are not implemented");
+				ftf::iterateAccessorWithIndex<glm::vec4>(*asset, accessor,
+					[&](const glm::vec4 value, std::size_t idx) {
+						const glm::u8vec4 quantized_color = quantizer.QuantizeColor(value);
+						memcpy(out_vertex_data->data() + idx * vertex_stride + attrib.second, &quantized_color, sizeof(quantized_color));
+					}
+				);
 			}
 			else if (attrib.first.find("JOINTS") != std::string::npos) {
 				OMNIFORCE_ASSERT_TAGGED(false, "Skinned meshes are not supported");
@@ -289,16 +369,71 @@ namespace Omni {
 		}
 	}
 
-	void ModelImporter::ProcessMeshData(Ref<Mesh>* out_mesh, AABB* out_lod0_aabb, const std::vector<byte>* vertex_data, const std::vector<uint32>* index_data, uint32 vertex_stride, const VertexAttributeMetadataTable& vertex_metadata, std::shared_mutex* mtx)
-	{
+	void ModelImporter::ProcessMeshData(
+		Ref<Mesh>* out_mesh,
+		AABB* out_lod0_aabb,
+		const std::vector<byte>* vertex_data,
+		const std::vector<uint32>* index_data,
+		uint32 vertex_stride,
+		const VertexAttributeMetadataTable& vertex_metadata,
+		ftf::Material& material,
+		std::shared_mutex* mtx
+	) {
 		// Init crucial data
 		MeshData mesh_data;
+
 		AABB lod0_aabb = {};
 		VirtualMesh vmesh = {};
 
-		// Process mesh data on per-LOD basis. It involves generating LOD index buffer, optimizing mesh, generating meshlets and remapping data
-		
 		MeshPreprocessor mesh_preprocessor = {};
+
+		// Prepare storage for ray tracing data
+		std::vector<byte> as_position_data(vertex_data->size() / vertex_stride * sizeof(glm::vec3));
+		mesh_data.ray_tracing.attributes.resize(vertex_data->size() / vertex_stride * (vertex_stride - sizeof(glm::vec3)));
+		mesh_data.ray_tracing.indices = *index_data;
+		mesh_data.ray_tracing.layout = BuildLayoutTable(vertex_stride, vertex_metadata);
+
+		// Split lod 0 data for ray tracing
+		mesh_preprocessor.SplitVertexData(&as_position_data, &mesh_data.ray_tracing.attributes, vertex_data, vertex_stride);
+
+		// Build acceleration structure
+		MaterialDomain material_domain = MaterialDomain::NONE;
+
+		switch (material.alphaMode) {
+			case ftf::AlphaMode::Opaque:
+				material_domain = MaterialDomain::OPAQUE;
+				break;
+			case ftf::AlphaMode::Mask:
+				material_domain = MaterialDomain::MASKED;
+				break;
+			case ftf::AlphaMode::Blend:
+				material_domain = MaterialDomain::TRANSMISSIVE;
+				break;
+			default:
+				material_domain = MaterialDomain::NONE;
+				break;
+		};
+
+		mesh_data.acceleration_structure = BuildAccelerationStructure(
+			as_position_data, 
+			*index_data, 
+			sizeof(glm::vec3), 
+			material_domain
+		);
+
+		// Check config for virtual geometry usage
+		mesh_data.virtual_geometry.use = s_BuildVirtualGeometry.Get();
+		if (!s_BuildVirtualGeometry.Get()) {
+			std::lock_guard lock(*mtx);
+			*out_mesh = Mesh::Create(
+				&g_PersistentAllocator,
+				mesh_data,
+				lod0_aabb
+			);
+
+			AssetManager::Get()->RegisterAsset(*out_mesh);
+			return;
+		}
 
 		// Optimize mesh (remove redundant vertices, optimize for vertex cache etc.)
 		std::vector<byte> optimized_vertices;
@@ -322,17 +457,17 @@ namespace Omni {
 		// Split vertex data into two data streams: geometry and attributes.
 		// It is an optimization used for depth-prepass and shadow maps rendering to speed up data reads.
 		std::vector<glm::vec3> deinterleaved_vertex_data(remapped_vertices.size() / vertex_stride);
-		mesh_data.attributes.resize(remapped_vertices.size() / vertex_stride * (vertex_stride - sizeof glm::vec3));
-		mesh_preprocessor.SplitVertexData(&deinterleaved_vertex_data, &mesh_data.attributes, &remapped_vertices, vertex_stride);
+		mesh_data.virtual_geometry.attributes.resize(remapped_vertices.size() / vertex_stride * (vertex_stride - sizeof(glm::vec3)));
+		mesh_preprocessor.SplitVertexData(&deinterleaved_vertex_data, &mesh_data.virtual_geometry.attributes, &remapped_vertices, vertex_stride);
 
 		// Generate mesh bounds
 		Bounds mesh_bounds = mesh_preprocessor.GenerateMeshBounds(&deinterleaved_vertex_data);
 
 		// Copy data
-		mesh_data.meshlets = vmesh.meshlets;
-		mesh_data.local_indices = vmesh.local_indices;
-		mesh_data.cull_data = vmesh.cull_bounds;
-		mesh_data.bounding_sphere = mesh_bounds.sphere;
+		mesh_data.virtual_geometry.meshlets = vmesh.meshlets;
+		mesh_data.virtual_geometry.local_indices = vmesh.local_indices;
+		mesh_data.virtual_geometry.cull_data = vmesh.cull_bounds;
+		mesh_data.virtual_geometry.bounding_sphere = mesh_bounds.sphere;
 
 		// test on OOB
 		for (auto& meshlet : vmesh.meshlets) {
@@ -353,7 +488,7 @@ namespace Omni {
 		// Quantize vertex positions
 		VertexDataQuantizer quantizer;
 		const uint32 vertex_bitrate = quantizer.ComputeOptimalVertexBitrate(lod0_aabb);
-		mesh_data.quantization_grid_size = vertex_bitrate;
+		mesh_data.virtual_geometry.quantization_grid_size = vertex_bitrate;
 		uint32 mesh_bitrate = quantizer.ComputeMeshBitrate(vertex_bitrate, lod0_aabb);
 		uint32 vertex_bitstream_bit_size = deinterleaved_vertex_data.size() * mesh_bitrate * 3;
 		uint32 grid_size = 1u << vertex_bitrate;
@@ -364,19 +499,19 @@ namespace Omni {
 		Ptr<BitStream> vertex_stream = CreatePtr<BitStream>(&g_PersistentAllocator, (vertex_bitstream_bit_size + BitStream::StorageTypeBitSize - 1) / BitStream::StorageTypeBitSize * 4u);
 		uint32 meshlet_idx = 0;
 
-		for (auto& meshlet_bounds : mesh_data.cull_data) {
+		for (auto& meshlet_bounds : mesh_data.virtual_geometry.cull_data) {
 			uint32 meshlet_bitrate = std::clamp((uint32)std::ceil(std::log2(meshlet_bounds.vis_culling_sphere.radius * 2 * grid_size)), 1u, BitStream::StorageTypeBitSize); // we need diameter of a sphere, not radius
 
 			OMNIFORCE_ASSERT_TAGGED(meshlet_bitrate <= BitStream::StorageTypeBitSize, "Bit stream overflow");
 
-			RenderableMeshlet& meshlet = mesh_data.meshlets[meshlet_idx];
+			RenderableMeshlet& meshlet = mesh_data.virtual_geometry.meshlets[meshlet_idx];
 
 			meshlet.vertex_bit_offset = vertex_stream->GetNumBitsUsed();
 			meshlet.metadata.bitrate = meshlet_bitrate;
 
 			meshlet_bounds.vis_culling_sphere.center = glm::round(meshlet_bounds.vis_culling_sphere.center * float32(grid_size)) / float32(grid_size);
 
-			uint32 base_vertex_offset = mesh_data.meshlets[meshlet_idx].vertex_offset;
+			uint32 base_vertex_offset = mesh_data.virtual_geometry.meshlets[meshlet_idx].vertex_offset;
 			for (uint32 vertex_idx = 0; vertex_idx < meshlet.metadata.vertex_count; vertex_idx++) {
 				for (uint32 vertex_channel = 0; vertex_channel < 3; vertex_channel++) {
 					float32 original_vertex = deinterleaved_vertex_data[base_vertex_offset + vertex_idx][vertex_channel];
@@ -394,7 +529,7 @@ namespace Omni {
 			meshlet_idx++;
 		}
 
-		mesh_data.geometry = std::move(vertex_stream);
+		mesh_data.virtual_geometry.geometry = std::move(vertex_stream);
 
 		// Create mesh under mutex
 		{
@@ -435,6 +570,9 @@ namespace Omni {
 
 		// All data is gathered - compile material pipeline
 		std::lock_guard lock(*mtx);
-		mat->CompilePipeline();
+
+		if (s_BuildVirtualGeometry.Get()) {
+			mat->CompilePipeline();
+		}
 	}
 }

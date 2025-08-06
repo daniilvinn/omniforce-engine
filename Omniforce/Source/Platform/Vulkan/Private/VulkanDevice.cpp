@@ -172,8 +172,29 @@ namespace Omni {
 		VkDeviceQueueCreateInfo queue_create_infos[2] = { general_queue_create_info, async_compute_queue_create_info };
 		std::vector<const char*> enabled_extensions = GetRequiredExtensions();
 
+		VkPhysicalDeviceRayQueryFeaturesKHR ray_query_features_struct = {};
+		ray_query_features_struct.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
+		ray_query_features_struct.rayQuery = true;
+
+		VkPhysicalDeviceRayTracingPositionFetchFeaturesKHR position_fetch_features_struct = {};
+		position_fetch_features_struct.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_POSITION_FETCH_FEATURES_KHR;
+		position_fetch_features_struct.rayTracingPositionFetch = true;
+		position_fetch_features_struct.pNext = &ray_query_features_struct;
+
+		VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure_features_struct = {};
+		acceleration_structure_features_struct.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+		acceleration_structure_features_struct.accelerationStructure = true;
+		acceleration_structure_features_struct.pNext = &position_fetch_features_struct;
+
+		VkPhysicalDeviceRayTracingPipelineFeaturesKHR rt_pipeline_features_struct = {};
+		rt_pipeline_features_struct.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
+		rt_pipeline_features_struct.pNext = &acceleration_structure_features_struct;
+		rt_pipeline_features_struct.rayTracingPipeline = true;
+		rt_pipeline_features_struct.rayTracingPipelineTraceRaysIndirect = true;
+
 		VkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR work_group_explicit_memory_layout_struct = {};
 		work_group_explicit_memory_layout_struct.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_WORKGROUP_MEMORY_EXPLICIT_LAYOUT_FEATURES_KHR;
+		work_group_explicit_memory_layout_struct.pNext = &rt_pipeline_features_struct;
 		work_group_explicit_memory_layout_struct.workgroupMemoryExplicitLayout = true;
 		work_group_explicit_memory_layout_struct.workgroupMemoryExplicitLayout16BitAccess = true;
 		work_group_explicit_memory_layout_struct.workgroupMemoryExplicitLayout8BitAccess = true;
@@ -181,8 +202,8 @@ namespace Omni {
 
 		VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT image_atomic_int64_struct = {};
 		image_atomic_int64_struct.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_IMAGE_ATOMIC_INT64_FEATURES_EXT;
-		image_atomic_int64_struct.shaderImageInt64Atomics = true;
 		image_atomic_int64_struct.pNext = &work_group_explicit_memory_layout_struct;
+		image_atomic_int64_struct.shaderImageInt64Atomics = true;
 
 		VkPhysicalDeviceMeshShaderFeaturesEXT mesh_shading_enable_struct = {};
 		mesh_shading_enable_struct.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
@@ -273,19 +294,18 @@ namespace Omni {
 		m_Device = VK_NULL_HANDLE;
 	}
 
-	VulkanDeviceCmdBuffer VulkanDevice::AllocateTransientCmdBuffer()
+	Ref<VulkanDeviceCmdBuffer> VulkanDevice::AllocateTransientCmdBuffer()
 	{
-		VulkanDeviceCmdBuffer cmd_buffer(DeviceCmdBufferLevel::PRIMARY, DeviceCmdBufferType::TRANSIENT, DeviceCmdType::GENERAL);
-		cmd_buffer.Begin();
+		Ref<DeviceCmdBuffer> cmd_buffer = DeviceCmdBuffer::Create(&g_TransientAllocator, DeviceCmdBufferLevel::PRIMARY, DeviceCmdBufferType::TRANSIENT, DeviceCmdType::GENERAL);
+		cmd_buffer->Begin();
 
 		return cmd_buffer;
 	}
 
-	void VulkanDevice::ExecuteTransientCmdBuffer(VulkanDeviceCmdBuffer cmd_buffer, bool wait /*= false*/) const
+	void VulkanDevice::ExecuteTransientCmdBuffer(Ref<VulkanDeviceCmdBuffer> cmd_buffer, bool wait /*= false*/) const
 	{
-		cmd_buffer.End();
-		cmd_buffer.Execute(true); // TODO: make such feature that cmd buffer can be launched asynchronously and will be self-destroyed on work finished
-		cmd_buffer.Destroy();
+		cmd_buffer->End();
+		cmd_buffer->Execute(true); // TODO: make such feature that cmd buffer can be launched asynchronously and will be self-destroyed on work finished
 	}
 
 	std::vector<const char*> VulkanDevice::GetRequiredExtensions()
@@ -315,6 +335,26 @@ namespace Omni {
 
 		if (m_PhysicalDevice->IsExtensionSupported(VK_KHR_WORKGROUP_MEMORY_EXPLICIT_LAYOUT_EXTENSION_NAME)) {
 			extensions.push_back(VK_KHR_WORKGROUP_MEMORY_EXPLICIT_LAYOUT_EXTENSION_NAME);
+		}
+
+		if (m_PhysicalDevice->IsExtensionSupported(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME)) {
+			extensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+		}
+
+		if (m_PhysicalDevice->IsExtensionSupported(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME)) {
+			extensions.push_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+		}
+
+		if (m_PhysicalDevice->IsExtensionSupported(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME)) {
+			extensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+		}
+
+		if (m_PhysicalDevice->IsExtensionSupported(VK_KHR_RAY_TRACING_POSITION_FETCH_EXTENSION_NAME)) {
+			extensions.push_back(VK_KHR_RAY_TRACING_POSITION_FETCH_EXTENSION_NAME);
+		}
+
+		if (m_PhysicalDevice->IsExtensionSupported(VK_KHR_RAY_QUERY_EXTENSION_NAME)) {
+			extensions.push_back(VK_KHR_RAY_QUERY_EXTENSION_NAME);
 		}
 
 		OMNIFORCE_CORE_TRACE("Enabled Vulkan device extensions:");

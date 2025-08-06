@@ -187,17 +187,128 @@ def check_and_install_clang():
     return False
 
 
+def check_and_install_ninja():
+    """Checks if Ninja is present and installs it if it is not"""
+    ninja_path = shutil.which("ninja")
+    if ninja_path:
+        print(f"Ninja is installed at: {ninja_path}")
+        return True
+    else:
+        print("Ninja is not installed.")
+        install_ninja()
+        return False
+
+
+def install_ninja():
+    """Downloads and installs Ninja"""
+    ninja_url = "https://github.com/ninja-build/ninja/releases/download/v1.11.1/ninja-win.zip"
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".zip")
+    temp_file.close()
+
+    print("Downloading Ninja...")
+    urllib.request.urlretrieve(ninja_url, temp_file.name)
+
+    # Extract to a temporary directory
+    import zipfile
+    temp_dir = tempfile.mkdtemp()
+    
+    with zipfile.ZipFile(temp_file.name, 'r') as zip_ref:
+        zip_ref.extractall(temp_dir)
+
+    # Copy ninja.exe to a directory in PATH
+    ninja_exe = os.path.join(temp_dir, "ninja.exe")
+    if os.path.exists(ninja_exe):
+        # Try to copy to a directory that's in PATH
+        target_dir = os.path.join(os.environ["ProgramFiles"], "CMake", "bin")
+        if not os.path.exists(target_dir):
+            target_dir = os.path.join(os.environ["ProgramFiles(x86)"], "CMake", "bin")
+        
+        if not os.path.exists(target_dir):
+            # Fallback to current directory
+            target_dir = os.getcwd()
+        
+        target_path = os.path.join(target_dir, "ninja.exe")
+        shutil.copy2(ninja_exe, target_path)
+        print(f"Ninja installed at: {target_path}")
+        
+        # Add to PATH if not already there
+        if target_dir not in os.environ["PATH"]:
+            os.environ["PATH"] += os.pathsep + target_dir
+    
+    # Cleanup
+    shutil.rmtree(temp_dir)
+    os.remove(temp_file.name)
+
+
+def generate_compile_commands():
+    """Generates compile_commands.json for clangd/Cursor"""
+    print("Generating compile_commands.json for clangd/Cursor...")
+    
+    # Get the project root directory (parent of Scripts)
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    build_dir = os.path.join(project_root, "Build")
+    build_clangd_dir = os.path.join(build_dir, "BuildClangd")
+    
+    # Create Build directory if it doesn't exist
+    if not os.path.exists(build_dir):
+        os.makedirs(build_dir)
+    
+    # Create BuildClangd directory if it doesn't exist
+    if not os.path.exists(build_clangd_dir):
+        os.makedirs(build_clangd_dir)
+    
+    # Change to BuildClangd directory
+    original_dir = os.getcwd()
+    os.chdir(build_clangd_dir)
+    
+    try:
+        # Run CMake with Ninja generator (main CMakeLists.txt handles the rest)
+        result = subprocess.run([
+            "cmake", "-G", "Ninja", 
+            project_root
+        ], capture_output=True, text=True)
+        
+        if result.returncode == 0:
+            compile_commands_path = os.path.join(build_clangd_dir, "compile_commands.json")
+            target_path = os.path.join(project_root, "compile_commands.json")
+            
+            if os.path.exists(compile_commands_path):
+                shutil.copy2(compile_commands_path, target_path)
+                print(f"compile_commands.json generated and copied to: {target_path}")
+                return True
+            else:
+                print("compile_commands.json was not generated")
+                return False
+        else:
+            print(f"CMake failed: {result.stderr}")
+            return False
+            
+    except Exception as e:
+        print(f"Error generating compile_commands.json: {e}")
+        return False
+    finally:
+        os.chdir(original_dir)
+
+
 def main():
     """Main logic"""
     run_as_admin()
-    print("Checking for Vulkan SDK, CMake, and Clang...")
+    print("Checking for Vulkan SDK, CMake, Clang, and Ninja...")
 
     vulkan_installed = check_and_install_vulkan_sdk()
     cmake_installed = check_and_install_cmake()
     clang_installed = check_and_install_clang()
+    ninja_installed = check_and_install_ninja()
 
-    if vulkan_installed and cmake_installed and clang_installed:
+    if vulkan_installed and cmake_installed and clang_installed and ninja_installed:
         print("Successfully installed all dependencies.")
+        
+        # Generate compile_commands.json for clangd/Cursor
+        print("\nGenerating compile_commands.json for Cursor/clangd...")
+        if generate_compile_commands():
+            print("Setup complete! Cursor should now work properly with clangd.")
+        else:
+            print("Warning: Failed to generate compile_commands.json. Cursor may not work optimally.")
     else:
         print("Some dependencies could not be installed.")
 

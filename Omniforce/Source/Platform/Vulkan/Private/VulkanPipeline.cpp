@@ -87,7 +87,7 @@ namespace Omni {
 		{
 		case PipelineType::GRAPHICS:		CreateGraphics(); break;
 		case PipelineType::COMPUTE:			CreateCompute(); break;
-		case PipelineType::RAY_TRACING:		std::unreachable(); break;
+		case PipelineType::RAY_TRACING:		CreateRayTracing(); break;
 		default:							std::unreachable(); break;
 		}
 
@@ -249,22 +249,23 @@ namespace Omni {
 		multisample_state.sampleShadingEnable = m_Specification.multisampling_enable;
 		multisample_state.rasterizationSamples = (VkSampleCountFlagBits)m_Specification.sample_count;
 
-		std::vector<DescriptorBinding> global_bindings;
-		global_bindings.push_back({ 0, DescriptorBindingType::SAMPLED_IMAGE, UINT16_MAX, (uint64)DescriptorFlags::PARTIALLY_BOUND });
-		global_bindings.push_back({ 1, DescriptorBindingType::STORAGE_IMAGE, 1, 0 });
+		VkDescriptorSetLayout descriptor_set_layout;
 
-		DescriptorSetSpecification dummy_descriptor_set_spec = {};
-		dummy_descriptor_set_spec.bindings = std::move(global_bindings);
-
-		Ref<DescriptorSet> dummy_set = DescriptorSet::Create(&g_TransientAllocator, dummy_descriptor_set_spec);
-		WeakPtr<VulkanDescriptorSet> vk_dummy_set = dummy_set;
+		if (m_Specification.descriptor_set) {
+			WeakPtr<VulkanDescriptorSet> descriptor_set = m_Specification.descriptor_set;
+			descriptor_set_layout = descriptor_set->RawLayout();
+		}
+		else {
+			WeakPtr<VulkanShader> shader = m_Specification.shader;
+			descriptor_set_layout = shader->GetLayouts()[0];
+		}
 
 		VkPushConstantRange dummy_pc_range = {};
 		dummy_pc_range.offset = 0;
 		dummy_pc_range.size = 128;
 		dummy_pc_range.stageFlags = VK_SHADER_STAGE_ALL;
 
-		std::vector<VkDescriptorSetLayout> descriptor_set_layouts = { vk_dummy_set->RawLayout() };
+		std::vector<VkDescriptorSetLayout> descriptor_set_layouts = { descriptor_set_layout };
 		std::vector<VkPushConstantRange> push_constant_ranges = { dummy_pc_range };
 
 		VkPipelineLayoutCreateInfo pipeline_layout_create_info = {};
@@ -324,6 +325,8 @@ namespace Omni {
 		std::vector<DescriptorBinding> global_bindings;
 		global_bindings.push_back({ 0, DescriptorBindingType::SAMPLED_IMAGE, UINT16_MAX, (uint64)DescriptorFlags::PARTIALLY_BOUND });
 		global_bindings.push_back({ 1, DescriptorBindingType::STORAGE_IMAGE, 1, 0 });
+		global_bindings.push_back({ 2, DescriptorBindingType::ACCELERATION_STRUCTURE, 1, 0 });
+		global_bindings.push_back({ 3, DescriptorBindingType::STORAGE_IMAGE, 1, 0 });
 
 		DescriptorSetSpecification dummy_descriptor_set_spec = {};
 		dummy_descriptor_set_spec.bindings = std::move(global_bindings);
@@ -365,6 +368,11 @@ namespace Omni {
 
 		OMNIFORCE_CORE_TRACE("Pipeline \"{0}\" created successfully", m_Specification.debug_name);
 
+	}
+
+	void VulkanPipeline::CreateRayTracing()
+	{
+		OMNIFORCE_ASSERT_TAGGED(false, "Use RTPipeline!");
 	}
 
 }

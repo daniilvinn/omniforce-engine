@@ -4,11 +4,11 @@
 #include <Platform/Vulkan/VulkanCommon.h>
 
 #include <Platform/Vulkan/VulkanDeviceCmdBuffer.h>
-#include <Renderer/RendererAPI.h>
-#include <Renderer/Swapchain.h>
+#include <RHI/RendererAPI.h>
+#include <RHI/Swapchain.h>
 #include <Platform/Vulkan/VulkanSwapchain.h>
 
-#include <Renderer/Renderer.h>
+#include <RHI/Renderer.h>
 
 namespace Omni {
 
@@ -25,6 +25,7 @@ namespace Omni {
 		uint32 GetDeviceOptimalTaskWorkGroupSize() const override;
 		uint32 GetDeviceOptimalMeshWorkGroupSize() const override;
 		uint32 GetDeviceOptimalComputeWorkGroupSize() const override;
+		RendererCapabilities GetCapabilities() const override;
 		Ref<DeviceCmdBuffer> GetCmdBuffer() override { return m_CurrentCmdBuffer; };
 		Ref<Swapchain> GetSwapchain() override { return m_Swapchain; };
 
@@ -34,6 +35,7 @@ namespace Omni {
 		void EndRender(Ref<Image> target) override;
 		void WaitDevice() override;
 		void BindSet(Ref<DescriptorSet> set, Ref<Pipeline> pipeline, uint8 index) override;
+		void BindSet(Ref<DescriptorSet> set, Ref<RTPipeline> pipeline, uint8 index) override;
 		void CopyToSwapchain(Ref<Image> image) override;
 		void InsertBarrier(const PipelineBarrierInfo& barrier) override;
 
@@ -44,6 +46,7 @@ namespace Omni {
 		void RenderQuad(Ref<Pipeline> pipeline, uint32 amount, MiscData data) override;
 		void DispatchCompute(Ref<Pipeline> pipeline, const glm::uvec3& dimensions, MiscData data) override;
 		void RenderUnindexed(Ref<Pipeline> pipeline, Ref<DeviceBuffer> vertex_buffer, MiscData data) override;
+		void DispatchRayTracing(Ref<RTPipeline> pipeline, const glm::uvec3& grid, MiscData data) override;
 
 		void RenderImGui() override;
 
@@ -63,6 +66,7 @@ namespace Omni {
 
 	private:
 		RendererConfig m_Config;
+		RendererCapabilities m_Caps;
 
 		Ref<VulkanGraphicsContext> m_GraphicsContext;
 		Ref<VulkanDevice> m_Device;

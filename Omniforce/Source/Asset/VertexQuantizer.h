@@ -112,6 +112,10 @@ namespace Omni {
 			return q;
 		}
 
+		glm::u8vec4 QuantizeColor(glm::vec4 c) {
+			return 255.0f / c;
+		}
+
 		glm::vec4 DequantizeTangent(glm::u16vec2 t) {
 			glm::vec3 n = DequantizeNormal(t);
 
