@@ -1,0 +1,357 @@
+#include <Foundation/Common.h>
+#include <Foundation/BasicTypes.h>
+#include <Platform/Vulkan/VulkanSwapchain.h>
+
+#include <Platform/Vulkan/VulkanGraphicsContext.h>
+#include <Platform/Vulkan/VulkanDevice.h>
+#include <Platform/Vulkan/VulkanImage.h>
+#include <Platform/Vulkan/VulkanDeviceCmdBuffer.h>
+#include <Core/RuntimeExecutionContext.h>
+#include <Core/EngineConfig.h>
+
+#include <GLFW/glfw3.h>
+
+namespace Omni {
+
+	static EngineConfigValue<int32> s_FramesInFlight("Renderer.ForceFramesInFlight", "Num of frames in flight to use");
+
+	VulkanSwapchain::VulkanSwapchain(const SwapchainSpecification& spec)
+		: m_Surface(VK_NULL_HANDLE), m_Swapchain(VK_NULL_HANDLE), m_Specification(spec)
+	{
+		m_Swapchain = new VkSwapchainKHR(VK_NULL_HANDLE);
+		m_FramesInFlight = s_FramesInFlight.Get();
+	}
+
+	VulkanSwapchain::~VulkanSwapchain()
+	{
+		auto device = VulkanGraphicsContext::Get()->GetDevice();
+		for (auto& image : m_Images) {
+			RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueObjectDeletion(
+				[vk_device = device->Raw(), vk_view = image->RawView()]() {
+					vkDestroyImageView(vk_device, vk_view, nullptr);
+				}
+			);
+		}
+		for (auto sem : m_AcquireSemaphores) {
+			RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueCoreObjectDelection(
+				[vk_device = device->Raw(), sem]() {
+					vkDestroySemaphore(vk_device, sem, nullptr);
+				}
+			);
+		}
+		for (auto sem : m_RenderSemaphores) {
+			RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueCoreObjectDelection(
+				[vk_device = device->Raw(), sem]() {
+					vkDestroySemaphore(vk_device, sem, nullptr);
+				}
+			);
+		}
+		for (auto fence : m_Fences) {
+			RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueCoreObjectDelection(
+				[vk_device = device->Raw(), fence]() {
+					vkDestroyFence(vk_device, fence, nullptr);
+				}
+			);
+		}
+	}
+
+	void VulkanSwapchain::CreateSurface(const SwapchainSpecification& spec)
+	{
+		auto device = VulkanGraphicsContext::Get()->GetDevice();
+
+		VulkanGraphicsContext* ctx = VulkanGraphicsContext::Get();
+		VK_CHECK_RESULT(
+			glfwCreateWindowSurface(
+				ctx->GetVulkanInstance(),
+				(GLFWwindow*)spec.main_window->Raw(),
+				nullptr,
+				&m_Surface
+			)
+		);
+		OMNIFORCE_CORE_INFO("Initialized application window surface");
+
+		VkInstance vk_instance = VulkanGraphicsContext::Get()->GetVulkanInstance();
+
+		RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueCoreObjectDelection(
+			//OMNIFORCE_ASSERT_TAGGED(!m_Swapchain, "Attempted to destroy window surface, but associated swapchain was not destroyed yet");
+
+			[vk_instance, surface = m_Surface]() {
+				vkDestroySurfaceKHR(vk_instance, surface, nullptr);
+				OMNIFORCE_CORE_INFO("Destroyed application window surface");
+			}
+		);
+
+		// Looking for available presentation modes.
+		// FIFO (aka v-synced) is guaranteed to be available, so only looking for Mailbox (non v-synced) mode.
+		uint32 present_mode_count = 0;
+		vkGetPhysicalDeviceSurfacePresentModesKHR(device->GetPhysicalDevice()->Raw(), m_Surface, &present_mode_count, nullptr);
+
+		std::vector<VkPresentModeKHR> present_modes(present_mode_count);
+		vkGetPhysicalDeviceSurfacePresentModesKHR(device->GetPhysicalDevice()->Raw(), m_Surface, &present_mode_count, present_modes.data());
+
+		m_SupportsMailboxPresentation = false;
+		for (auto& mode : present_modes) {
+			if (mode == VK_PRESENT_MODE_MAILBOX_KHR) m_SupportsMailboxPresentation = true;
+		}
+
+		if (!m_SupportsMailboxPresentation && !spec.vsync)
+			OMNIFORCE_CORE_WARNING("Mailbox presentation mode is requested but not supporeted. Falling back to FIFO mode");
+
+		// Looking for suitable surface color space
+		uint32 surface_format_count = 0;
+		vkGetPhysicalDeviceSurfaceFormatsKHR(device->GetPhysicalDevice()->Raw(), m_Surface, &surface_format_count, nullptr);
+
+		std::vector<VkSurfaceFormatKHR> surface_formats(surface_format_count);
+		vkGetPhysicalDeviceSurfaceFormatsKHR(device->GetPhysicalDevice()->Raw(), m_Surface, &surface_format_count, surface_formats.data());
+
+		// To begin, set surface format as first available, if no srgb 32-bit format is supported.
+		m_SurfaceFormat = surface_formats[0];
+
+		for (auto& format : surface_formats) {
+			if (format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+				m_SurfaceFormat = format;
+			}
+		}
+
+		RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueCoreObjectDelection(
+			[vk_device = device->Raw(), swapchain = m_Swapchain]() {
+				vkDestroySwapchainKHR(vk_device, *swapchain, nullptr);
+			}
+		);
+
+	}
+
+	void VulkanSwapchain::CreateSwapchain(const SwapchainSpecification& spec)
+	{
+		auto device = VulkanGraphicsContext::Get()->GetDevice();
+
+		m_Specification = spec;
+		m_FramesInFlight = s_FramesInFlight.Get();
+		m_Images.reserve(m_SwachainImageCount);
+
+		if (*m_Swapchain) [[likely]]
+		{
+			vkDestroySwapchainKHR(device->Raw(), *m_Swapchain, nullptr);
+		}
+
+		uvec2 extent = (uvec2)spec.extent;
+		if (extent.x + extent.y == 0) {
+			extent = { 1, 1 };
+		}
+
+		VkSurfaceCapabilitiesKHR surface_capabilities = {};
+		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device->GetPhysicalDevice()->Raw(), m_Surface, &surface_capabilities);
+
+		VkSwapchainCreateInfoKHR swapchain_create_info = {};
+		swapchain_create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+		swapchain_create_info.surface = m_Surface;
+		swapchain_create_info.oldSwapchain = VK_NULL_HANDLE;
+		swapchain_create_info.imageFormat = m_SurfaceFormat.format;
+		swapchain_create_info.imageColorSpace = m_SurfaceFormat.colorSpace;
+		swapchain_create_info.minImageCount = 3;
+		swapchain_create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		swapchain_create_info.imageExtent = { extent.x, extent.y };
+		swapchain_create_info.imageArrayLayers = 1;
+		swapchain_create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+		swapchain_create_info.clipped = VK_TRUE;
+		swapchain_create_info.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+		swapchain_create_info.preTransform = surface_capabilities.currentTransform;
+		swapchain_create_info.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+
+		if (m_SupportsMailboxPresentation) {
+			swapchain_create_info.presentMode = m_Specification.vsync ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_MAILBOX_KHR;
+		}
+
+		VK_CHECK_RESULT(vkCreateSwapchainKHR(device->Raw(), &swapchain_create_info, nullptr, m_Swapchain));
+
+		VK_CHECK_RESULT(vkGetSwapchainImagesKHR(device->Raw(), *m_Swapchain, (uint32*)&m_SwachainImageCount, nullptr));
+
+		m_Images.reserve(m_SwachainImageCount);
+		std::vector<VkImage> pure_swapchain_images(m_SwachainImageCount);
+
+		VK_CHECK_RESULT(vkGetSwapchainImagesKHR(device->Raw(), *m_Swapchain, (uint32*)&m_SwachainImageCount, pure_swapchain_images.data()));
+
+		Ref<VulkanDeviceCmdBuffer> image_layout_transition_command_buffer = device->AllocateTransientCmdBuffer();
+
+		for (auto& image : m_Images) {
+			RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueObjectDeletion(
+				[vk_device = device->Raw(), vk_view = image->RawView()]() {
+					vkDestroyImageView(vk_device, vk_view, nullptr);
+				}
+			);
+		}
+		m_Images.clear();
+
+		for (auto sem : m_AcquireSemaphores) {
+			RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueCoreObjectDelection(
+				[vk_device = device->Raw(), sem]() {
+					vkDestroySemaphore(vk_device, sem, nullptr);
+				}
+			);
+		}
+		for (auto sem : m_RenderSemaphores) {
+			RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueCoreObjectDelection(
+				[vk_device = device->Raw(), sem]() {
+					vkDestroySemaphore(vk_device, sem, nullptr);
+				}
+			);
+		}
+		m_AcquireSemaphores.clear();
+		m_RenderSemaphores.clear();
+
+		for (auto& image : pure_swapchain_images) {
+			VkImageView image_view = VK_NULL_HANDLE;
+			VkImageViewCreateInfo image_view_create_info = {};
+			image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+			image_view_create_info.image = image;
+			image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+			image_view_create_info.format = m_SurfaceFormat.format;
+			image_view_create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+			image_view_create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+			image_view_create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+			image_view_create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+			image_view_create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			image_view_create_info.subresourceRange.baseArrayLayer = 0;
+			image_view_create_info.subresourceRange.layerCount = 1;
+			image_view_create_info.subresourceRange.baseMipLevel = 0;
+			image_view_create_info.subresourceRange.levelCount = 1;
+			VK_CHECK_RESULT(vkCreateImageView(device->Raw(), &image_view_create_info, nullptr, &image_view));
+			ImageSpecification swapchain_image_spec = {};
+			swapchain_image_spec.extent = { (uint32)m_Specification.extent.x, (uint32)m_Specification.extent.y, 1 };
+			swapchain_image_spec.usage = ImageUsage::RENDER_TARGET;
+			swapchain_image_spec.type = ImageType::TYPE_2D;
+			swapchain_image_spec.format = convert(m_SurfaceFormat.format);
+			m_Images.push_back(CreateRef<VulkanImage>(&g_PersistentAllocator, swapchain_image_spec, image, image_view));
+			VkImageMemoryBarrier image_memory_barrier = {};
+			image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+			image_memory_barrier.image = image;
+			image_memory_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			image_memory_barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+			image_memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			image_memory_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			image_memory_barrier.subresourceRange.baseArrayLayer = 0;
+			image_memory_barrier.subresourceRange.layerCount = 1;
+			image_memory_barrier.subresourceRange.baseMipLevel = 0;
+			image_memory_barrier.subresourceRange.levelCount = 1;
+			vkCmdPipelineBarrier(
+				image_layout_transition_command_buffer->Raw(),
+				VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+				0,
+				0,
+				nullptr,
+				0,
+				nullptr,
+				1,
+				&image_memory_barrier
+			);
+		}
+		device->ExecuteTransientCmdBuffer(image_layout_transition_command_buffer, true);
+		for (auto& image : m_Images) {
+			image->SetCurrentLayout(ImageLayout::PRESENT_SRC);
+		}
+		// Create per-image semaphores (as suggested by validation layer)
+		VkSemaphoreCreateInfo semaphore_create_info = {};
+		semaphore_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+		for (uint32 i = 0; i < m_SwachainImageCount; i++) {
+			VkSemaphore acquire_sem, render_sem;
+			VK_CHECK_RESULT(vkCreateSemaphore(device->Raw(), &semaphore_create_info, nullptr, &acquire_sem));
+			VK_CHECK_RESULT(vkCreateSemaphore(device->Raw(), &semaphore_create_info, nullptr, &render_sem));
+			m_AcquireSemaphores.push_back(acquire_sem);
+			m_RenderSemaphores.push_back(render_sem);
+		}
+		// Create per-frame fences
+		for (auto fence : m_Fences) {
+			RuntimeExecutionContext::Get().GetObjectLifetimeManager().EnqueueCoreObjectDelection(
+				[vk_device = device->Raw(), fence]() {
+					vkDestroyFence(vk_device, fence, nullptr);
+				}
+			);
+		}
+		m_Fences.clear();
+		VkFenceCreateInfo fence_create_info = {};
+		fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+		fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+		for (uint32 i = 0; i < m_FramesInFlight; i++) {
+			VkFence fence;
+			VK_CHECK_RESULT(vkCreateFence(device->Raw(), &fence_create_info, nullptr, &fence));
+			m_Fences.push_back(fence);
+		}
+		m_CurrentFrame = 0;
+		m_CurrentImage = 0;
+		OMNIFORCE_CORE_INFO(
+			"Created window swapchain with extent: {0}x{1}, VSync: {2}, image count: {3}, frames in flight: {4}",
+			spec.extent.x,
+			spec.extent.y,
+			spec.vsync ? "on" : "off",
+			m_SwachainImageCount,
+			m_FramesInFlight
+		);
+	}
+
+	void VulkanSwapchain::SetVSync(bool vsync)
+	{
+		if (m_Specification.vsync == vsync) return;
+
+		m_Specification.vsync = vsync;
+
+		SwapchainSpecification current_spec = GetSpecification();
+		SwapchainSpecification new_spec = current_spec;
+		new_spec.vsync = vsync;
+
+		CreateSwapchain(new_spec);
+	}
+
+	void VulkanSwapchain::BeginFrame()
+	{
+		auto device = VulkanGraphicsContext::Get()->GetDevice();
+		// Wait for the current frame's fence - this ensures any previous use of our semaphores is complete
+		VK_CHECK_RESULT(vkWaitForFences(device->Raw(), 1, &m_Fences[m_CurrentFrame], VK_TRUE, UINT64_MAX));
+	
+		// Acquire next image using the acquire semaphore for the current frame
+		VK_CHECK_RESULT(vkAcquireNextImageKHR(
+			device->Raw(),
+			*m_Swapchain,
+			UINT64_MAX,
+			m_AcquireSemaphores[m_CurrentFrame], // Use per-frame acquire semaphore
+			VK_NULL_HANDLE,
+			&m_CurrentImage
+		));
+	
+		// Reset the fence for this frame
+		VK_CHECK_RESULT(vkResetFences(device->Raw(), 1, &m_Fences[m_CurrentFrame]));
+	}
+
+	void VulkanSwapchain::EndFrame()
+	{
+		auto device = VulkanGraphicsContext::Get()->GetDevice();
+
+		VkPresentInfoKHR present_info = {};
+		present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+		present_info.pImageIndices = &m_CurrentImage;
+		present_info.swapchainCount = 1;
+		present_info.pSwapchains = m_Swapchain;
+		present_info.waitSemaphoreCount = 1;
+		present_info.pWaitSemaphores = &m_RenderSemaphores[m_CurrentImage];
+		present_info.pResults = nullptr;
+
+		VkResult present_result = vkQueuePresentKHR(device->GetGeneralQueue(), &present_info);
+
+		if (present_result == VK_ERROR_OUT_OF_DATE_KHR || present_result == VK_SUBOPTIMAL_KHR)
+		{
+			VkSurfaceCapabilitiesKHR surface_capabilities = {};
+			vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device->GetPhysicalDevice()->Raw(), m_Surface, &surface_capabilities);
+
+			SwapchainSpecification new_spec = GetSpecification();
+			new_spec.extent = { (int32)surface_capabilities.currentExtent.width, (int32)surface_capabilities.currentExtent.height };
+
+			vkQueueWaitIdle(device->GetGeneralQueue());
+
+			CreateSwapchain(new_spec);
+		}
+		// Advance frame
+		m_CurrentFrame = (m_CurrentFrame + 1) % m_FramesInFlight;
+	}
+
+}

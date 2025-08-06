@@ -1,0 +1,15 @@
+#ifndef TASK_PAYLOAD_GLSLH
+#define TASK_PAYLOAD_GLSLH
+
+#extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
+
+struct TaskPayload {
+	uint base_offset;
+	uint base_vis_cluster_offset;
+	uint8_t meshlet_ids[__OMNI_TASK_SHADER_PREFERRED_WORK_GROUP_SIZE];
+	uint draw_id; // newer Vulkan SDK versions don't allow the usage of `gl_DrawID` in mesh shader stages
+};
+
+taskPayloadSharedEXT TaskPayload task_payload;
+
+#endif

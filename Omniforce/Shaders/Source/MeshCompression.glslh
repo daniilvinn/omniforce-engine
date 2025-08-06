@@ -1,0 +1,56 @@
+#ifndef MESH_QUANTIZATION_GLSLH
+#define MESH_QUANTIZATION_GLSLH
+
+#extension GL_EXT_shader_explicit_arithmetic_types_float16		: require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16		: require
+
+#include <Source/Sphere.glslh>
+
+f16vec2 OctahedronWrap(f16vec2 v) {
+    f16vec2 w = 1.0hf - abs( v.yx );
+    if (v.x < 0.0hf) w.x = -w.x;
+    if (v.y < 0.0hf) w.y = -w.y;
+
+    return w;
+}
+
+f16vec2 EncodeNormal(f16vec3 n) {
+    n /= ( abs( n.x ) + abs( n.y ) + abs( n.z ) );
+    n.xy = n.z > 0.0hf ? n.xy : OctahedronWrap( n.xy );
+    n.xy = n.xy * 0.5hf + 0.5hf;
+    return n.xy;
+}
+
+f16vec3 DecodeNormal(f16vec2 f)
+{
+	f = f * 2.0hf - 1.0hf;
+
+	// https://twitter.com/Stubbesaurus/status/937994790553227264
+	f16vec3 n = f16vec3(f.x, f.y, 1.0hf - abs(f.x) - abs(f.y));
+	float16_t t = max(-n.z, 0.0hf);
+	n.x += n.x >= 0.0hf ? -t : t;
+	n.y += n.y >= 0.0hf ? -t : t;
+
+	return normalize(n);
+}
+
+f16vec4 DecodeTangent(f16vec2 f)
+{
+	f16vec4 t;
+	t.xyz = DecodeNormal(f);
+	
+	// Check if lowest bit of Y's mantissa is set. If so, bitangent sign is positive, otherwise negative.
+	t.w	= bool(float16BitsToUint16(f.y) & 1us) ? 1.0hf : -1.0hf;
+
+	return t;
+}
+
+// To decode quantized value, we need to convert it to float, divide by `1 << bitrate`,
+// subtract by min value of a dimension we're decoding to restore sign and add meshlet's center position to transform vertex from meshlet-space to model-space
+// But instead of division by POT value, we divide bitrate (not `1 << bitrate`) from float's exponent using `ldexp()` built-in, which is equal to
+// division of a float by power-of-two value.
+vec3 DecodeVertex(const ivec3 encoded_vertex, int vertex_bitrate, const vec3 meshlet_center) {
+	return ldexp(vec3(encoded_vertex), ivec3(-vertex_bitrate)) + meshlet_center;
+}
+
+#endif

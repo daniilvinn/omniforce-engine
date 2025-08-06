@@ -1,0 +1,8 @@
+#ifndef CONSTANTS_GLSLH
+#define CONSTANTS_GLSLH
+
+#define PI					3.14159265359f
+#define FLOAT_MIN			1.175494351e-38F
+#define FLOAT_MAX			3.402823466e+38F
+
+#endif

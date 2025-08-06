@@ -29,3 +29,17 @@ function(omni_set_project_ide_folder TARGET_NAME PROJECT_SOURCE_DIR)
   set_property(TARGET ${TARGET_NAME} PROPERTY FOLDER ${IDE_FOLDER})
   
 endfunction()
+
+set(SLANG_DLL_PATH "${CMAKE_SOURCE_DIR}/Omniforce/ThirdParty/slang/slang.dll")
+
+function(SetupTarget TARGET)
+    if(NOT TARGET ${TARGET})
+        message(WARNING "Target '${TARGET}' does not exist.")
+        return()
+    endif()
+    if(MSVC)
+        set_target_properties(${TARGET} PROPERTIES
+            VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/Runtime"
+        )
+    endif()
+endfunction()
