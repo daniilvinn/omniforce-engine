@@ -188,6 +188,6 @@ This tool is part of the **Omniforce Engine** project. For issues or improvement
 
 <div align="center">
 
-**Made with ❤️ by the Omniforce Engine Team**
+**Made with ❤️ by the Daniil Vinnik**
 
 </div> 
