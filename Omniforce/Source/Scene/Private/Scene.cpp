@@ -15,10 +15,13 @@
 #include <Scripting/ScriptEngine.h>
 #include <Threading/JobSystem.h>
 #include <Core/Utils.h>
+#include <Core/EngineConfig.h>
 
 #include <nlohmann/json.hpp>
 
 namespace Omni {
+
+	static EngineConfigValue<bool> g_EnableScripting = EngineConfigValue<bool>("Core.EnableScripting", "Enable C# scripting and Mono Runtime");
 
 	template<typename Component>
 	static void ExplicitComponentCopy(entt::registry& src_registry, entt::registry& dst_registry, robin_hood::unordered_map<UUID, entt::entity>& map) {
@@ -178,13 +181,15 @@ namespace Omni {
 
 		// Update scripts (if script engine has no context, then we are in editor mode and no scripts update needed)
 		ScriptEngine* script_engine = ScriptEngine::Get();
-		if (script_engine->HasContext()) {
-			script_engine->OnUpdate();
+		if (g_EnableScripting) {
+			if (script_engine->HasContext()) {
+				script_engine->OnUpdate();
 
-			auto script_component_view = m_Registry.view<ScriptComponent>();
-			for (auto& e : script_component_view) {
-				Entity entity(e, this);
-				entity.GetComponent<ScriptComponent>().script_object->InvokeUpdate();
+				auto script_component_view = m_Registry.view<ScriptComponent>();
+				for (auto& e : script_component_view) {
+					Entity entity(e, this);
+					entity.GetComponent<ScriptComponent>().script_object->InvokeUpdate();
+				}
 			}
 		}
 	}
@@ -299,12 +304,14 @@ namespace Omni {
 		physics_engine->LaunchRuntime(this);
 		physics_engine->SetSettings(m_PhysicsSettings);
 
-		ScriptEngine* script_engine = ScriptEngine::Get();
-		script_engine->LaunchRuntime(this);
-		auto script_component_view = m_Registry.view<ScriptComponent>();
-		for (auto& e : script_component_view) {
-			Entity entity(e, this);
-			entity.GetComponent<ScriptComponent>().script_object->InvokeInit();
+		if (g_EnableScripting) {
+			ScriptEngine* script_engine = ScriptEngine::Get();
+			script_engine->LaunchRuntime(this);
+			auto script_component_view = m_Registry.view<ScriptComponent>();
+			for (auto& e : script_component_view) {
+				Entity entity(e, this);
+				entity.GetComponent<ScriptComponent>().script_object->InvokeInit();
+			}
 		}
 	}
 

@@ -12,11 +12,11 @@
 #include <Audio/AudioEngine.h>
 #include <Threading/JobSystem.h>
 #include <DebugUtils/DebugRenderer.h>
-
-#include <chrono>
+#include <Core/EngineConfig.h>
 
 namespace Omni 
 {
+	static EngineConfigValue<bool> g_EnableScripting = EngineConfigValue<bool>("Core.EnableScripting", "Enable C# scripting and Mono Runtime");
 
 	Application* Application::s_Instance = nullptr;
 
@@ -46,7 +46,9 @@ namespace Omni
 		m_WindowSystem->AddWindow(main_window_config);
 
 		// Init on main thread
-		ScriptEngine::Init();
+		if (g_EnableScripting) {
+			ScriptEngine::Init();
+		}
 
 		RendererConfig renderer_config = {};
 		renderer_config.main_window = m_WindowSystem->GetWindow("main").Raw();

@@ -79,6 +79,11 @@ namespace Omni {
 		s_RendererAPI->BindSet(set, pipeline, index);
 	}
 
+	void Renderer::CopyToSwapchain(Ref<Image> image)
+	{
+		s_RendererAPI->CopyToSwapchain(image);
+	}
+
 	Ref<Image> Renderer::GetSwapchainImage()
 	{
 		return s_RendererAPI->GetSwapchain()->GetCurrentImage();

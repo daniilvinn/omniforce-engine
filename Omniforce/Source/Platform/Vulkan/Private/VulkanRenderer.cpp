@@ -452,6 +452,8 @@ namespace Omni {
 
 	void VulkanRenderer::CopyToSwapchain(Ref<Image> image)
 	{
+		// This thing is broken;
+		// TODO: fix later
 		Renderer::Submit([=]() mutable {
 			WeakPtr<VulkanImage> vk_image = image;
 			Ref<Image> swapchain_image = m_Swapchain->GetCurrentImage();
@@ -475,18 +477,28 @@ namespace Omni {
 
 			vk_image->SetLayout(
 				m_CurrentCmdBuffer,
-				ImageLayout::TRANSFER_DST,
+				ImageLayout::TRANSFER_SRC,
 				PipelineStage::COLOR_ATTACHMENT_OUTPUT,
 				PipelineStage::TRANSFER,
 				(BitMask)PipelineAccess::COLOR_ATTACHMENT_WRITE,
 				(BitMask)PipelineAccess::TRANSFER_READ
 			);
 
+			swapchain_image->SetLayout(
+				m_CurrentCmdBuffer,
+				ImageLayout::TRANSFER_DST,
+				PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+				PipelineStage::TRANSFER,
+				(BitMask)PipelineAccess::COLOR_ATTACHMENT_WRITE,
+				(BitMask)PipelineAccess::TRANSFER_WRITE
+			);
+
+
 			vkCmdBlitImage(
 				m_CurrentCmdBuffer->Raw(),
 				vk_image->Raw(),
 				(VkImageLayout)vk_image->GetCurrentLayout(),
-				WeakPtr<VulkanImage>(image)->Raw(),
+				WeakPtr<VulkanImage>(swapchain_image)->Raw(),
 				(VkImageLayout)VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 				1,
 				&image_blit,
