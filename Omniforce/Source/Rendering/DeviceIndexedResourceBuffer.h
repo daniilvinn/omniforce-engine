@@ -50,12 +50,13 @@ namespace Omni {
 			return offset;
 		}
 
-		uint32 ReleaseIndex(const AssetHandle& id) {
-			m_IndexAllocator->Free(m_Indices.at(id));
-			m_Indices.erase(id);
-		}
+        void ReleaseIndex(const AssetHandle& id) {
+            m_IndexAllocator->Free(m_Indices.at(id));
+            m_Indices.erase(id);
+        }
 
 		uint32 GetIndex(const AssetHandle& id) const { return m_Indices.at(id); }
+		bool Has(const AssetHandle& id) const { return m_Indices.contains(id); }
 
 		uint64 GetStorageBDA() const { return m_DeviceBuffer->GetDeviceAddress(); }
 		Ref<DeviceBuffer> GetStorage() const { return m_DeviceBuffer; }

@@ -128,8 +128,14 @@ namespace Omni {
 	};
 
 	struct OMNIFORCE_API MeshComponent {
-		AssetHandle mesh_handle;
-		AssetHandle material_handle;
+		AssetHandle mesh_handle = {};
+		AssetHandle material_handle = {};
+
+		MeshComponent() = default;
+		MeshComponent(AssetHandle mesh, AssetHandle material)
+			: mesh_handle(mesh)
+			, material_handle(material)
+		{ }
 	};
 
 	struct OMNIFORCE_API PointLightComponent {

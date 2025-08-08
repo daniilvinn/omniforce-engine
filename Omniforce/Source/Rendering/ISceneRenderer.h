@@ -75,6 +75,18 @@ namespace Omni {
 			return true;
 		}
 
+		bool ReleaseResourceIndex(Ref<Mesh> mesh) {
+			if (m_MeshResourcesBuffer.Has(mesh->Handle))
+				m_MeshResourcesBuffer.ReleaseIndex(mesh->Handle);
+			return true;
+		}
+
+		bool ReleaseResourceIndex(Ref<Material> material) {
+			if (m_MaterialDataPool.Has(material->Handle))
+				m_MaterialDataPool.Free(material->Handle);
+			return true;
+		}
+
 		uint32 GetTextureIndex(const AssetHandle& uuid) const { return m_TextureIndices.at(uuid); }
 		uint64 GetMaterialBDA(const AssetHandle& id) const { return m_MaterialDataPool.GetStorageBufferAddress() + m_MaterialDataPool.GetOffset(id); }
 		uint32 GetMeshIndex(const AssetHandle& uuid) const { return m_MeshResourcesBuffer.GetIndex(uuid); }

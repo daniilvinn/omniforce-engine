@@ -147,6 +147,7 @@ namespace Omni {
 	void DeviceMaterialPool::Free(AssetHandle material)
 	{
 		m_VirtualAllocator->Free(m_OffsetsMap.at(material));
+		m_OffsetsMap.erase(material);
 	}
 
 	uint64 DeviceMaterialPool::GetStorageBufferAddress() const

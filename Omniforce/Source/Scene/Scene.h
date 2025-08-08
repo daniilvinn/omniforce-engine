@@ -64,6 +64,11 @@ namespace Omni {
 		void EditorSetCamera(Ref<Camera> camera) { m_Camera = camera; }
 
 	private:
+		// entt component lifecycle hooks
+		void OnMeshAdded(entt::registry& registry, entt::entity entity);
+		void OnMeshRemoved(entt::registry& registry, entt::entity entity);
+
+	private:
 		UUID m_Id;
 
 		Ref<ISceneRenderer> m_Renderer;

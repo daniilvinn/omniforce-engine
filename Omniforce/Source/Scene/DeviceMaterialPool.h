@@ -24,6 +24,10 @@ namespace Omni {
 
 		uint64 GetStorageBufferAddress() const;
 
+		bool Has(AssetHandle material) const {
+			return m_OffsetsMap.contains(material);
+		}
+
 		uint64 GetOffset(AssetHandle material) const {
 			OMNIFORCE_ASSERT_TAGGED(m_OffsetsMap.contains(material), "Attempted to get device material pool offset for material, \
 				which was not previously allocated in the pool. Aborting execution");

@@ -41,6 +41,10 @@ namespace Omni {
 		renderer_spec.anisotropic_filtering = 16;
 
 		m_Renderer = PathTracingSceneRenderer::Create(&g_PersistentAllocator, renderer_spec);
+
+		// Connect entt hooks for renderer resource lifetime of mesh/material
+		m_Registry.on_construct<MeshComponent>().connect<&Scene::OnMeshAdded>(this);
+		m_Registry.on_destroy<MeshComponent>().connect<&Scene::OnMeshRemoved>(this);
 	}
 
 	Scene::Scene(Scene* other)
@@ -49,6 +53,10 @@ namespace Omni {
 
 		m_Renderer = other->m_Renderer;
 		m_Camera = other->m_Camera;
+
+		// Ensure component lifecycle hooks are connected for the copied scene as well
+		m_Registry.on_construct<MeshComponent>().connect<&Scene::OnMeshAdded>(this);
+		m_Registry.on_destroy<MeshComponent>().connect<&Scene::OnMeshRemoved>(this);
 
 		auto idComponents = other->m_Registry.view<UUIDComponent>();
 		for (auto entity = idComponents.rbegin(); entity != idComponents.rend(); entity++)
@@ -415,13 +423,13 @@ namespace Omni {
 		}
 		executor->run(taskflow).wait();
 
-		nlohmann::json& entities_node = node["GameObjects"];
-		for (auto i : entities_node.items()) {
-			Entity entity = CreateEntity(std::stoull(i.key()));
-			entity.Deserialize(i.value());
-		}
+        nlohmann::json& entities_node = node["GameObjects"];
+        for (auto i : entities_node.items()) {
+            Entity entity = CreateEntity(std::stoull(i.key()));
+            entity.Deserialize(i.value());
+        }
 
-		// look up primary camera
+        // look up primary camera
 		auto camera_component_view = m_Registry.view<CameraComponent>();
 		for (auto& camera_entity : camera_component_view) {
 			Entity entity(camera_entity, this);
@@ -430,5 +438,37 @@ namespace Omni {
 				break;
 			}
 		}
+	}
+  
+	void Scene::OnMeshAdded(entt::registry& r, entt::entity e)
+	{
+		if (!r.all_of<MeshComponent>(e))
+			return;
+
+		auto& comp = r.get<MeshComponent>(e);
+		AssetManager* assets = AssetManager::Get();
+
+		if (assets->HasAsset(comp.mesh_handle)) {
+			OMNIFORCE_CORE_ERROR("Attempted to add a mesh that is not withing asset registry");
+			m_Renderer->AcquireResourceIndex(assets->GetAsset<Mesh>(comp.mesh_handle));
+		}
+
+		if (assets->HasAsset(comp.material_handle)) {
+			OMNIFORCE_CORE_ERROR("Attempted to add a material that is not withing asset registry");
+			m_Renderer->AcquireResourceIndex(assets->GetAsset<Material>(comp.material_handle));
+		}
+	}
+
+	void Scene::OnMeshRemoved(entt::registry& r, entt::entity e)
+	{
+		if (!r.all_of<MeshComponent>(e))
+			return;
+
+		auto& comp = r.get<MeshComponent>(e);
+		AssetManager* assets = AssetManager::Get();
+		if (assets->HasAsset(comp.mesh_handle))
+			m_Renderer->ReleaseResourceIndex(assets->GetAsset<Mesh>(comp.mesh_handle));
+		if (assets->HasAsset(comp.material_handle))
+			m_Renderer->ReleaseResourceIndex(assets->GetAsset<Material>(comp.material_handle));
 	}
 }

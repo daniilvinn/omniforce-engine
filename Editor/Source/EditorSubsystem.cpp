@@ -67,11 +67,11 @@ public:
 
 		//Render and process scene hierarchy panel
 		ImGui::BeginDisabled(m_InRuntime);
-		m_HierarchyPanel->Update();
-		if (m_EntitySelected = m_HierarchyPanel->IsNodeSelected()) 
-		{
-			m_SelectedEntity = m_HierarchyPanel->GetSelectedNode();
-		}
+        m_HierarchyPanel->Update();
+        m_EntitySelected = m_HierarchyPanel->IsNodeSelected();
+        if (m_EntitySelected) {
+            m_SelectedEntity = m_HierarchyPanel->GetSelectedNode();
+        }
 
 		// Properties panel
 		m_PropertiesPanel->SetEntity(m_SelectedEntity, m_HierarchyPanel->IsNodeSelected());
@@ -87,9 +87,9 @@ public:
 		m_PathTracingPanel->Update();
 
 		// Debug
-		ImGui::Begin("Debug");
-		ImGui::Text(fmt::format("Delta time: {}", step * 1000.0f).c_str());
-		ImGui::Text(fmt::format("FPS: {}", (uint32)(1000.0f / (step * 1000.0f))).c_str());
+        ImGui::Begin("Debug");
+        ImGui::Text("%s", fmt::format("Delta time: {}", step * 1000.0f).c_str());
+        ImGui::Text("%s", fmt::format("FPS: {}", (uint32)(1000.0f / (step * 1000.0f))).c_str());
 		ImGui::End();
 
 		// Utils
@@ -275,13 +275,9 @@ public:
 						for (auto& entry : children_map) {
 							Entity child = m_CurrentScene->CreateChildEntity(root_entity);
 							child.GetComponent<TagComponent>().tag = asset_manager->GetAsset<Material>(entry.second)->GetName();
-							MeshComponent& mesh_component = child.AddComponent<MeshComponent>();
-							mesh_component.mesh_handle = entry.first;
-							mesh_component.material_handle = entry.second;
+							child.AddComponent<MeshComponent>(MeshComponent{ entry.first, entry.second });
 
-							// TODO: definitely need to move it from here to somewhere else into engine core
-							m_EditorScene->GetRenderer()->AcquireResourceIndex(asset_manager->GetAsset<Mesh>(mesh_component.mesh_handle));
-							m_EditorScene->GetRenderer()->AcquireResourceIndex(asset_manager->GetAsset<Material>(mesh_component.material_handle));
+							// Resource acquisition now handled by engine (Scene entt hooks)
 						}
 					}
 				}
@@ -425,10 +421,10 @@ public:
 		AssetManager* asset_manager = AssetManager::Get();
 		auto renderer = m_EditorScene->GetRenderer();
 		auto& texture_registry = *asset_manager->GetAssetRegistry();
-		for (auto [id, asset] : texture_registry) {
+        for (auto [id, asset] : texture_registry) {
 			if(asset->Type != AssetType::OMNI_IMAGE)
 				continue;
-			renderer->ReleaseResourceIndex(asset);
+            renderer->ReleaseResourceIndex(AssetManager::Get()->GetAsset<Image>(id));
 		}
 		asset_manager->FullUnload();
 
