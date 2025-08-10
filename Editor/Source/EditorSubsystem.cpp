@@ -9,361 +9,324 @@
 #include "EditorCamera.h"
 
 #include <filesystem>
-#include <fstream>
+// #include <fstream>
 
 #include <tinyfiledialogs.h>
 #include <ImGuizmo.h>
 
+// Editor refactor services and manager
+#include "PanelManager.h"
+#include "Services/EditorContext.h"
+#include "Services/SelectionService.h"
+#include "Services/GizmoController.h"
+#include <memory>
+#include "Services/ProjectService.h"
+#include "EditorPanels/ViewportPanel.h"
+
 using namespace Omni;
+using namespace Omni::EditorServices;
 
-class EditorSubsystem : public Subsystem
-{
+class EditorSubsystem : public Subsystem {
 public:
-	~EditorSubsystem() override
-	{
-		Destroy();
-	}
+    ~EditorSubsystem() override { Destroy(); }
 
-	void OnUpdate(float32 step) override
-	{
-		// Main menu bar
-		ImGui::BeginMainMenuBar();
-		if (ImGui::MenuItem("File")) {
-			ImGui::OpenPopup("menu_bar_file");
-		};
-		if (ImGui::MenuItem("View")) {
-			ImGui::OpenPopup("menu_bar_view");
-		};
-		if (ImGui::BeginPopup("menu_bar_file")) {
-			if (ImGui::MenuItem("Open project", "Ctrl + O")) {
-				LoadProject();
-			};
-			if (ImGui::MenuItem("Save project", "Ctrl + S")) {
-				SaveProject();
-			};
-			if (ImGui::MenuItem("New project", "Ctrl + N")) {
-				NewProject();
-			};
-			ImGui::EndPopup();
-		};
-		if (ImGui::BeginPopup("menu_bar_view")) {
-			if (ImGui::MenuItem("Scene hierarchy")) {
-				m_HierarchyPanel->Open(true);
-			}
-			if (ImGui::MenuItem("Properties")) {
-				m_PropertiesPanel->Open(true);
-			}
-			if (ImGui::MenuItem("Content browser")) {
-				m_AssetsPanel->Open(true);
-			}
-			if (ImGui::MenuItem("Path Tracing Settings")) {
-				m_PathTracingPanel->Open(true);
-			}
-			ImGui::EndPopup();
-		}
-		ImGui::EndMainMenuBar();
+    void OnUpdate(float32 step) override {
+        DrawMainMenuBar();
+        DrawDockspace();
+        DrawToolbar();
+        DrawViewport();
+        DrawDebugWindow(step);
+        DrawUtilsWindow();
 
-		ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
+        // Panels in a defined order to preserve prior behavior
+        ImGui::BeginDisabled(m_Context.IsInRuntime());
+        auto* hierarchy = static_cast<SceneHierarchyPanel*>(m_PanelManager->GetPanel("scene_hierarchy"));
+        auto* properties = static_cast<PropertiesPanel*>(m_PanelManager->GetPanel("properties"));
+        auto* content = static_cast<ContentBrowser*>(m_PanelManager->GetPanel("content_browser"));
+        auto* logs = static_cast<LogsPanel*>(m_PanelManager->GetPanel("logs"));
+        auto* pt = static_cast<PathTracingSettingsPanel*>(m_PanelManager->GetPanel("path_tracing_settings"));
 
-		//Render and process scene hierarchy panel
-		ImGui::BeginDisabled(m_InRuntime);
-        m_HierarchyPanel->Update();
-        m_EntitySelected = m_HierarchyPanel->IsNodeSelected();
-        if (m_EntitySelected) {
-            m_SelectedEntity = m_HierarchyPanel->GetSelectedNode();
+        if (hierarchy) {
+            hierarchy->Update();
+        }
+        if (hierarchy && hierarchy->IsNodeSelected()) {
+            m_SelectionService->SetSelected(hierarchy->GetSelectedNode(), true);
+        }
+        else {
+            m_SelectionService->Clear();
         }
 
-		// Properties panel
-		m_PropertiesPanel->SetEntity(m_SelectedEntity, m_HierarchyPanel->IsNodeSelected());
-		m_PropertiesPanel->Update();
+        if (properties) {
+            properties->SetEntity(m_SelectionService->GetSelected(), m_SelectionService->HasSelection());
+            properties->Update();
+        }
+        if (content) {
+            content->Update();
+        }
+#if 1
+        if (logs) {
+            logs->Update();
+        }
+#endif
+        if (pt) {
+            pt->Update();
+        }
+        ImGui::EndDisabled();
 
-		// Asset panel
-		m_AssetsPanel->Update();
+        // Update scene and camera
+        m_Context.GetCurrentScene()->OnUpdate(step);
+        if (m_Context.IsViewportFocused() && !m_Context.IsInRuntime()) {
+            m_Context.GetEditorCamera()->OnUpdate(step);
+        }
+    }
 
-		// Logs panel
-		m_LogsPanel->Update();
+    void Launch() override {
+        Scene* editor_scene = new Scene(SceneType::SCENE_TYPE_3D);
+        m_Context.SetEditorScene(editor_scene);
+        m_Context.SetCurrentScene(editor_scene);
 
-		// Path Tracing Settings panel
-		m_PathTracingPanel->Update();
+        Ref<EditorCamera> camera = CreateRef<EditorCamera>(&g_PersistentAllocator, 16.0 / 9.0);
+        editor_scene->EditorSetCamera(camera);
+        m_Context.SetEditorCamera(camera);
 
-		// Debug
+        ImGuizmo::SetOrthographic(false);
+
+        // Services
+        m_SelectionService = std::make_unique<SelectionService>();
+        m_GizmoController = std::make_unique<GizmoController>();
+        m_GizmoController->SetContext(&m_Context);
+        m_Context.SetSelectionService(m_SelectionService.get());
+
+        // Panel manager
+        if (!PanelManager::Get()) PanelManager::Init();
+        m_PanelManager = PanelManager::Get();
+        m_PanelManager->SetContext(editor_scene);
+        m_PanelManager->SetEditorContext(&m_Context);
+        m_PanelManager->AddPanel("logs", new LogsPanel(editor_scene));
+        m_PanelManager->AddPanel("path_tracing_settings", new PathTracingSettingsPanel(editor_scene));
+        m_PanelManager->AddPanel("viewport", new ViewportPanel(editor_scene, m_GizmoController.get()));
+
+        // Project defaults and project service
+        m_ProjectService = std::make_unique<ProjectService>();
+        m_ProjectService->Initialize(&m_Context);
+        m_Context.SetProjectPath("resources/SandboxProject");
+        m_Context.SetProjectFilename("Sandbox.omni");
+        FileSystem::SetWorkingDirectory(m_Context.GetProjectPath());
+    }
+
+    void Destroy() override {
+        delete m_Context.GetEditorScene();
+    }
+
+    void OnEvent(Event* e) override {
+        EventDispatcher dispatcher(e);
+        dispatcher.Dispatch<WindowResizeEvent>(OMNIFORCE_BIND_EVENT_FUNCTION(OnWindowResize));
+        dispatcher.Dispatch<KeyPressedEvent>(OMNIFORCE_BIND_EVENT_FUNCTION(OnKeyPressed));
+
+        if (m_Context.IsViewportFocused())
+            m_Context.GetEditorCamera()->OnEvent(e);
+    }
+
+    bool OnWindowResize(WindowResizeEvent* /*e*/) { return false; }
+
+    bool OnKeyPressed(KeyPressedEvent* e) {
+        if (!e->GetRepeatCount()) {
+            if (Input::KeyPressed(KeyCode::KEY_LEFT_CONTROL) || Input::KeyPressed(KeyCode::KEY_RIGHT_CONTROL)) {
+                if (Input::KeyPressed(KeyCode::KEY_S)) m_ProjectService->SaveProject();
+                if (Input::KeyPressed(KeyCode::KEY_O)) m_ProjectService->LoadProject();
+                if (Input::KeyPressed(KeyCode::KEY_N)) m_ProjectService->NewProject();
+                if (Input::KeyPressed(KeyCode::KEY_Q)) m_GizmoController->SetOperation((ImGuizmo::OPERATION)0);
+                if (Input::KeyPressed(KeyCode::KEY_W)) m_GizmoController->SetOperation(ImGuizmo::OPERATION::TRANSLATE);
+                if (Input::KeyPressed(KeyCode::KEY_E)) m_GizmoController->SetOperation(ImGuizmo::OPERATION(ImGuizmo::OPERATION::ROTATE & ~(ImGuizmo::OPERATION::ROTATE_SCREEN)));
+                if (Input::KeyPressed(KeyCode::KEY_R)) m_GizmoController->SetOperation(ImGuizmo::OPERATION::SCALE);
+            }
+        }
+        return false;
+    }
+
+private:
+    void DrawMainMenuBar() {
+        ImGui::BeginMainMenuBar();
+        if (ImGui::MenuItem("File")) ImGui::OpenPopup("menu_bar_file");
+        if (ImGui::MenuItem("View")) ImGui::OpenPopup("menu_bar_view");
+        if (ImGui::BeginPopup("menu_bar_file")) {
+            if (ImGui::MenuItem("Open project", "Ctrl + O")) m_ProjectService->LoadProject();
+            if (ImGui::MenuItem("Save project", "Ctrl + S")) m_ProjectService->SaveProject();
+            if (ImGui::MenuItem("New project", "Ctrl + N")) m_ProjectService->NewProject();
+            ImGui::EndPopup();
+        }
+        if (ImGui::BeginPopup("menu_bar_view")) {
+            if (auto* p = m_PanelManager->GetPanel("scene_hierarchy")) { if (ImGui::MenuItem("Scene hierarchy")) p->Open(true); }
+            if (auto* p = m_PanelManager->GetPanel("properties")) { if (ImGui::MenuItem("Properties")) p->Open(true); }
+            if (auto* p = m_PanelManager->GetPanel("content_browser")) { if (ImGui::MenuItem("Content browser")) p->Open(true); }
+            if (auto* p = m_PanelManager->GetPanel("viewport")) { if (ImGui::MenuItem("Viewport")) p->Open(true); }
+            if (auto* p = m_PanelManager->GetPanel("logs")) { if (ImGui::MenuItem("Logs")) p->Open(true); }
+            if (auto* p = m_PanelManager->GetPanel("path_tracing_settings")) { if (ImGui::MenuItem("Path Tracing Settings")) p->Open(true); }
+            ImGui::EndPopup();
+        }
+        ImGui::EndMainMenuBar();
+    }
+
+    void DrawDockspace() { ImGui::DockSpaceOverViewport(ImGui::GetMainViewport()); }
+
+    void DrawToolbar() {
+        ImGui::Begin("##Toolbar", nullptr,
+            ImGuiWindowFlags_NoDecoration |
+            ImGuiWindowFlags_NoScrollbar |
+            ImGuiWindowFlags_NoScrollWithMouse |
+            ImGuiWindowFlags_NoTitleBar);
+        bool in_runtime = m_Context.IsInRuntime();
+        if (ImGui::Button(in_runtime ? "Stop" : "Play")) {
+            ToggleRuntime();
+        }
+        ImGui::End();
+    }
+
+    void DrawViewport() { /* handled by ViewportPanel */ }
+
+    void DrawDebugWindow(float32 step) {
         ImGui::Begin("Debug");
         ImGui::Text("%s", fmt::format("Delta time: {}", step * 1000.0f).c_str());
         ImGui::Text("%s", fmt::format("FPS: {}", (uint32)(1000.0f / (step * 1000.0f))).c_str());
-		ImGui::End();
+        ImGui::End();
+    }
 
-		// Utils
-		ImGui::Begin("Utils");
-		{
-			// TODO: fix bug here and in properties panel
-			// when engine crashes after trying to close / hide imgui window which contains tables.
-			PhysicsSettings physics_settings = m_CurrentScene->GetPhysicsSettings();
-			ImGui::Text("Gravity");
-			ImGui::SameLine();
+    void DrawUtilsWindow() {
+        ImGui::Begin("Utils");
+        {
+            PhysicsSettings physics_settings = m_Context.GetCurrentScene()->GetPhysicsSettings();
+            ImGui::Text("Gravity");
+            ImGui::SameLine();
+            if (ImGui::DragFloat3("##physics_settings_gravity_drag_float", (float32*)&physics_settings.gravity, 0.01f, -99.0f, 99.0f))
+                m_Context.GetCurrentScene()->SetPhysicsSettings(physics_settings);
 
-			if(ImGui::DragFloat3("##physics_settings_gravity_drag_float", (float32*)&physics_settings.gravity, 0.01f, -99.0f, 99.0f))
-				m_CurrentScene->SetPhysicsSettings(physics_settings);
+            if (ImGui::Button("Reload script assemblies"))
+                ScriptEngine::Get()->ReloadAssemblies();
 
-			if (ImGui::Button("Reload script assemblies"))
-				ScriptEngine::Get()->ReloadAssemblies();
+            ImGui::Checkbox("Visualize physics colliders", &m_Context.VisualizeColliders());
+            ImGui::Checkbox("Visualize mesh cull bounds", &m_Context.VisualizeCullBounds());
+            ImGui::Checkbox("Scene cluster debug view", &m_Context.SceneDebugViewEnabled());
 
-			ImGui::Checkbox("Visualize physics colliders", &m_VisualizeColliders);
-			ImGui::Checkbox("Visualize mesh cull bounds", &m_VisualizeCullBounds);
-			ImGui::Checkbox("Scene cluster debug view", &m_SceneDebugViewEnabled);
+            if (m_Context.VisualizeColliders()) {
+                auto box_colliders_view = m_Context.GetEditorScene()->GetRegistry()->view<BoxColliderComponent>();
+                for (auto& e : box_colliders_view) {
+                    Entity entity(e, m_Context.GetCurrentScene());
+                    const TRSComponent& trs = entity.GetComponent<TRSComponent>();
+                    const BoxColliderComponent& bc_component = entity.GetComponent<BoxColliderComponent>();
+                    DebugRenderer::RenderWireframeBox(trs.translation, trs.rotation, bc_component.size * 2.0f, { 0.28f, 0.27f, 1.0f });
+                }
 
-			if (m_VisualizeColliders) {
-				auto box_colliders_view = m_EditorScene->GetRegistry()->view<BoxColliderComponent>();
-				for (auto& e : box_colliders_view) {
-					Entity entity(e, m_CurrentScene);
-					// Not world transform, since entities with rigid body must be not a child of another entity
-					const TRSComponent& trs = entity.GetComponent<TRSComponent>();
-					const BoxColliderComponent& bc_component = entity.GetComponent<BoxColliderComponent>();
+                auto sphere_colliders_view = m_Context.GetEditorScene()->GetRegistry()->view<SphereColliderComponent>();
+                for (auto& e : sphere_colliders_view) {
+                    Entity entity(e, m_Context.GetCurrentScene());
+                    const TRSComponent& trs = entity.GetComponent<TRSComponent>();
+                    const SphereColliderComponent& sc_component = entity.GetComponent<SphereColliderComponent>();
+                    DebugRenderer::RenderWireframeSphere(trs.translation, sc_component.radius, { 0.28f, 0.27f, 1.0f });
+                }
+            }
+            if (m_Context.VisualizeCullBounds()) {
+                auto mesh_view = m_Context.GetCurrentScene()->GetRegistry()->view<MeshComponent>();
+                for (auto& e : mesh_view) {
+                    Entity entity(e, m_Context.GetCurrentScene());
+                    const TRSComponent trs = entity.GetWorldTransform();
+                    const MeshComponent& mesh_component = entity.GetComponent<MeshComponent>();
+                    Ref<Mesh> mesh = AssetManager::Get()->GetAsset<Mesh>(mesh_component.mesh_handle);
+                    Sphere bounding_sphere = mesh->GetBoundingSphere();
+                    AABB aabb = mesh->GetAABB();
+                    float32 max_scale = glm::max(glm::max(trs.scale.x, trs.scale.y), trs.scale.z);
+                    DebugRenderer::RenderWireframeSphere(
+                        trs.translation + bounding_sphere.center * trs.scale,
+                        bounding_sphere.radius * max_scale,
+                        { 0.28f, 0.27f, 1.0f }
+                    );
+                    glm::vec3 aabb_scale = glm::vec3{
+                        (aabb.max.x - aabb.min.x),
+                        (aabb.max.y - aabb.min.y),
+                        (aabb.max.z - aabb.min.z)
+                    };
+                    glm::vec3 aabb_translation = glm::vec3{
+                        (aabb.min.x + aabb.max.x) * 0.5f + trs.translation.x,
+                        (aabb.min.y + aabb.max.y) * 0.5f + trs.translation.y,
+                        (aabb.min.z + aabb.max.z) * 0.5f + trs.translation.z
+                    };
+                    DebugRenderer::RenderWireframeBox(aabb_translation, trs.rotation, aabb_scale, { 0.28f, 0.27f, 1.0f });
+                }
+            }
+            if (m_Context.SceneDebugViewEnabled()) {
+                if (!m_Context.GetCurrentScene()->GetRenderer()->IsInDebugMode()) {
+                    m_Context.GetCurrentScene()->GetRenderer()->EnterDebugMode(DebugSceneView::CLUSTER);
+                }
+                const char* items[] = { "Cluster view", "Triangle view", "Cluster group"};
+                uint32 current_item = uint32(m_Context.GetCurrentScene()->GetRenderer()->GetCurrentDebugMode());
+                if (ImGui::BeginCombo("View", items[current_item])) {
+                    for (int i = 0; i < IM_ARRAYSIZE(items); i++) {
+                        bool is_selected = current_item == i;
+                        switch (i) {
+                        case 0:  ImGui::Selectable("Cluster view", &is_selected); break;
+                        case 1:  ImGui::Selectable("Triangle view", &is_selected); break;
+                        default: break;
+                        }
+                        if (is_selected) {
+                            m_Context.GetCurrentScene()->GetRenderer()->EnterDebugMode(DebugSceneView(i));
+                            current_item = i;
+                            ImGui::SetItemDefaultFocus();
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+            } else {
+                m_Context.GetCurrentScene()->GetRenderer()->ExitDebugMode();
+            }
+        }
+        ImGui::End();
+    }
 
-					DebugRenderer::RenderWireframeBox(trs.translation, trs.rotation, bc_component.size * 2.0f, { 0.28f, 0.27f, 1.0f });
-				}
+    void ToggleRuntime() {
+        bool enter_runtime = !m_Context.IsInRuntime();
+        m_Context.SetInRuntime(enter_runtime);
 
-				auto sphere_colliders_view = m_EditorScene->GetRegistry()->view<SphereColliderComponent>();
-				for (auto& e : sphere_colliders_view) {
-					Entity entity(e, m_CurrentScene);
-					// Not world transform, since entities with rigid body must be not a child of another entity
-					const TRSComponent& trs = entity.GetComponent<TRSComponent>();
-					const SphereColliderComponent& sc_component = entity.GetComponent<SphereColliderComponent>();
+        Omni::UUID selected_node;
+        if (m_SelectionService->HasSelection())
+            selected_node = m_SelectionService->GetSelected().GetComponent<UUIDComponent>();
 
-					DebugRenderer::RenderWireframeSphere(trs.translation, sc_component.radius, { 0.28f, 0.27f, 1.0f });
-				}
-			}
-			if (m_VisualizeCullBounds) {
-				auto mesh_view = m_CurrentScene->GetRegistry()->view<MeshComponent>();
-				for (auto& e : mesh_view) {
-					Entity entity(e, m_CurrentScene);
+        if (enter_runtime) {
+            Scene* runtime = new Scene(m_Context.GetEditorScene());
+            m_Context.SetRuntimeScene(runtime);
+            runtime->LaunchRuntime();
+            m_Context.SetCurrentScene(runtime);
+        } else {
+            Scene* runtime = m_Context.GetRuntimeScene();
+            if (runtime) {
+                runtime->ShutdownRuntime();
+                delete runtime;
+            }
+            m_Context.SetRuntimeScene(nullptr);
+            m_Context.SetCurrentScene(m_Context.GetEditorScene());
+            m_Context.GetCurrentScene()->EditorSetCamera(m_Context.GetEditorCamera());
+        }
 
-					const TRSComponent trs = entity.GetWorldTransform();
-					const MeshComponent& mesh_component = entity.GetComponent<MeshComponent>();
+        if (m_SelectionService->HasSelection()) {
+            entt::entity entity_id = m_Context.GetCurrentScene()->GetEntities().at(selected_node);
+            m_SelectionService->SetSelected(Entity(entity_id, m_Context.GetCurrentScene()), true);
+        }
 
-					Ref<Mesh> mesh = AssetManager::Get()->GetAsset<Mesh>(mesh_component.mesh_handle);
-					Sphere bounding_sphere = mesh->GetBoundingSphere();
-					AABB aabb = mesh->GetAABB();
+        m_PanelManager->SetContext(m_Context.GetCurrentScene());
+    }
 
-					float32 max_scale = glm::max(glm::max(trs.scale.x, trs.scale.y), trs.scale.z);
+    void HandleContentDrop(const ImGuiPayload* /*payload*/) {}
 
-					DebugRenderer::RenderWireframeSphere(
-						trs.translation + bounding_sphere.center * trs.scale,
-						bounding_sphere.radius * max_scale,
-						{ 0.28f, 0.27f, 1.0f }
-					);
+    void SaveProject() { m_ProjectService->SaveProject(); }
+    void LoadProject() { m_ProjectService->LoadProject(); }
+    void NewProject() { m_ProjectService->NewProject(); }
 
-					glm::vec3 aabb_scale = glm::vec3{
-						(aabb.max.x - aabb.min.x),
-						(aabb.max.y - aabb.min.y),
-						(aabb.max.z - aabb.min.z)
-					};
-
-					glm::vec3 aabb_translation = glm::vec3{
-						(aabb.min.x + aabb.max.x) * 0.5f + trs.translation.x,
-						(aabb.min.y + aabb.max.y) * 0.5f + trs.translation.y,
-						(aabb.min.z + aabb.max.z) * 0.5f + trs.translation.z
-					};
-
-					DebugRenderer::RenderWireframeBox(aabb_translation, trs.rotation, aabb_scale, { 0.28f, 0.27f, 1.0f });
-				}
-			}
-			if (m_SceneDebugViewEnabled) {
-				if (!m_CurrentScene->GetRenderer()->IsInDebugMode()) {
-					m_CurrentScene->GetRenderer()->EnterDebugMode(DebugSceneView::CLUSTER);
-				}
-				
-				const char* items[] = { "Cluster view", "Triangle view", "Cluster group"};
-				uint32 current_item = uint32(m_CurrentScene->GetRenderer()->GetCurrentDebugMode());
-				if (ImGui::BeginCombo("View", items[current_item])) {
-
-					for (int i = 0; i < IM_ARRAYSIZE(items); i++) {
-						bool is_selected = current_item == i;
-
-						switch (i)
-						{
-						case 0:  ImGui::Selectable("Cluster view", &is_selected);		break;
-						case 1:  ImGui::Selectable("Triangle view", &is_selected);		break;
-						default: break;
-						}
-
-						if (is_selected) {
-							m_CurrentScene->GetRenderer()->EnterDebugMode(DebugSceneView(i));
-							current_item = i;
-							ImGui::SetItemDefaultFocus();
-						}
-					}
-
-					ImGui::EndCombo();
-				}
-			}
-			else {
-				m_CurrentScene->GetRenderer()->ExitDebugMode();
-			}
-
-		}
-		ImGui::End();
-		ImGui::EndDisabled();
-
-		// Render and process play/stop button
-		ImGui::Begin("##Toolbar", nullptr, 
-			ImGuiWindowFlags_NoDecoration | 
-			ImGuiWindowFlags_NoScrollbar |
-			ImGuiWindowFlags_NoScrollWithMouse | 
-			ImGuiWindowFlags_NoTitleBar
-		);
-		if (ImGui::Button(m_InRuntime ? "Stop" : "Play")) {
-			m_InRuntime = !m_InRuntime;
-
-			Omni::UUID selected_node;
-			if(m_EntitySelected)
-				selected_node = m_SelectedEntity.GetComponent<UUIDComponent>();
-
-			if (m_InRuntime) {
-				m_RuntimeScene = new Scene(m_EditorScene); 
-				m_RuntimeScene->LaunchRuntime();
-				m_CurrentScene = m_RuntimeScene;
-			}
-			else {
-				m_RuntimeScene->ShutdownRuntime();
-				if (m_RuntimeScene)
-					delete m_RuntimeScene;
-				m_CurrentScene = m_EditorScene;
-				m_CurrentScene->EditorSetCamera(m_EditorCamera);
-			};
-
-			if (m_EntitySelected) {
-				entt::entity entity_id = m_CurrentScene->GetEntities().at(selected_node);
-				m_SelectedEntity = Entity(m_SelectedEntity, m_CurrentScene);
-			}
-			m_HierarchyPanel->SetContext(m_CurrentScene);
-			m_HierarchyPanel->SetSelectedNode(m_SelectedEntity, m_EntitySelected);
-			m_PropertiesPanel->SetContext(m_CurrentScene);
-		};
-		ImGui::End();
-
-		// Viewport panel
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 0.0f, 0.0f });
-		ImGui::Begin("Viewport");
-		{
-			ImVec2 viewportMinRegion = ImGui::GetWindowContentRegionMin();
-			ImVec2 viewportMaxRegion = ImGui::GetWindowContentRegionMax();
-			ImVec2 viewportOffset = ImGui::GetWindowPos();
-			m_ViewportBounds[0] = { viewportMinRegion.x + viewportOffset.x, viewportMinRegion.y + viewportOffset.y };
-			m_ViewportBounds[1] = { viewportMaxRegion.x + viewportOffset.x, viewportMaxRegion.y + viewportOffset.y };
-
-			m_ViewportFocused = ImGui::IsWindowFocused();
-			ImVec2 viewport_frame_size = ImGui::GetContentRegionAvail();
-			UI::RenderImage(m_EditorScene->GetFinalImage(), m_EditorScene->GetRenderer()->GetSamplerLinear(), viewport_frame_size, 0, true);
-
-			if(auto camera = m_CurrentScene->GetCamera(); camera)
-				camera->SetAspectRatio(viewport_frame_size.x / viewport_frame_size.y);
-			
-			if (ImGui::BeginDragDropTarget()) {
-				ImGuiDragDropFlags target_flags = 0;
-				const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("content_browser_item", target_flags);
-
-				if (payload) {
-					std::filesystem::path filename(std::string((char*)payload->Data, payload->DataSize));
-					if (filename.extension() == ".gltf" || filename.extension() == ".glb") {
-						AssetManager* asset_manager = AssetManager::Get();
-						ModelImporter importer;
-						Ref<Model> model = AssetManager::Get()->GetAsset<Model>(importer.Import(filename));
-
-						Entity root_entity = m_CurrentScene->CreateEntity();
-
-						auto& children_map = model->GetMap();
-						for (auto& entry : children_map) {
-							Entity child = m_CurrentScene->CreateChildEntity(root_entity);
-							child.GetComponent<TagComponent>().tag = asset_manager->GetAsset<Material>(entry.second)->GetName();
-							child.AddComponent<MeshComponent>(MeshComponent{ entry.first, entry.second });
-
-							// Resource acquisition now handled by engine (Scene entt hooks)
-						}
-					}
-				}
-				
-				ImGui::EndDragDropTarget();
-			}
-
-			if (m_InRuntime) {
-				m_CurrentOperation = (ImGuizmo::OPERATION)0;
-			}
-			else {
-				RenderGizmos();
-			}
-		}
-		ImGui::End();
-		ImGui::PopStyleVar();
-
-		// Update editor camera and scene
-		m_CurrentScene->OnUpdate(step);
-		if(m_ViewportFocused && !m_InRuntime)
-			m_EditorCamera->OnUpdate(step);
-	}
-
-	void Launch() override
-	{
-		m_EditorScene = new Scene(SceneType::SCENE_TYPE_3D);
-
-		m_HierarchyPanel = CreatePtr<SceneHierarchyPanel>(&g_PersistentAllocator, m_EditorScene);
-		m_PropertiesPanel = CreatePtr<PropertiesPanel>(&g_PersistentAllocator, m_EditorScene);
-		m_AssetsPanel = CreatePtr<ContentBrowser>(&g_PersistentAllocator, m_EditorScene);
-		m_LogsPanel = CreatePtr<LogsPanel>(&g_PersistentAllocator, m_EditorScene);
-		m_PathTracingPanel = CreatePtr<PathTracingSettingsPanel>(&g_PersistentAllocator, m_EditorScene);
-
-		m_ProjectPath = "";
-
-		m_EditorCamera = CreateRef<EditorCamera>(&g_PersistentAllocator, 16.0 / 9.0);
-		m_EditorScene->EditorSetCamera(m_EditorCamera);
-		m_CurrentScene = m_EditorScene;
-
-		ImGuizmo::SetOrthographic(false);
-		
-		m_ProjectPath = "resources/SandboxProject";
-		m_ProjectFilename = "Sandbox.omni";
-		FileSystem::SetWorkingDirectory(m_ProjectPath);
-	}
-
-	void Destroy() override
-	{
-		delete m_EditorScene;
-	}
-
-	void OnEvent(Event* e) override
-	{
-		EventDispatcher dispatcher(e);
-		dispatcher.Dispatch<WindowResizeEvent>(OMNIFORCE_BIND_EVENT_FUNCTION(OnWindowResize));
-		dispatcher.Dispatch<KeyPressedEvent>(OMNIFORCE_BIND_EVENT_FUNCTION(OnKeyPressed));
-
-		if (m_ViewportFocused)
-			m_EditorCamera->OnEvent(e);
-	}
-
-	bool OnWindowResize(WindowResizeEvent* e) {
-		return false;
-	}
-
-	bool OnKeyPressed(KeyPressedEvent* e) {
-		if (!e->GetRepeatCount()) {
-			if (Input::KeyPressed(KeyCode::KEY_LEFT_CONTROL) || Input::KeyPressed(KeyCode::KEY_RIGHT_CONTROL)) {
-				if (Input::KeyPressed(KeyCode::KEY_S))
-					SaveProject();
-				if (Input::KeyPressed(KeyCode::KEY_O))
-					LoadProject();
-				if (Input::KeyPressed(KeyCode::KEY_N))
-					NewProject();
-				if (Input::KeyPressed(KeyCode::KEY_Q))
-					m_CurrentOperation = (ImGuizmo::OPERATION)0;
-				if (Input::KeyPressed(KeyCode::KEY_W))
-					m_CurrentOperation = ImGuizmo::OPERATION::TRANSLATE;
-				if (Input::KeyPressed(KeyCode::KEY_E))
-					m_CurrentOperation = ImGuizmo::OPERATION(ImGuizmo::OPERATION::ROTATE & ~(ImGuizmo::OPERATION::ROTATE_SCREEN));
-				if (Input::KeyPressed(KeyCode::KEY_R))
-					m_CurrentOperation = ImGuizmo::OPERATION::SCALE;
-			}
-		}
-		return false;
-	}
+private:
+    EditorContext m_Context;
+    std::unique_ptr<SelectionService> m_SelectionService;
+    std::unique_ptr<GizmoController> m_GizmoController;
+    std::unique_ptr<ProjectService> m_ProjectService;
+    PanelManager* m_PanelManager = nullptr;
+};
+#if 0
 
 	void SaveProject() {
 		if (m_ProjectPath.empty()) {
@@ -568,6 +531,7 @@ public:
 
 };
 
+#endif
 Ptr<Subsystem> ConstructRootSystem()
 {
 	return CreatePtr<EditorSubsystem>(&g_PersistentAllocator);

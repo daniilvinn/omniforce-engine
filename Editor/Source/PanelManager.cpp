@@ -11,11 +11,12 @@ namespace Omni {
 		m_Instance = new PanelManager;
 	}
 
-	PanelManager::PanelManager() {
-		m_Panels.emplace("scene_hierarchy", new PropertiesPanel(nullptr));
-		m_Panels.emplace("properties", new PropertiesPanel(nullptr));
-		m_Panels.emplace("content_browser", new ContentBrowser(nullptr));
-	}
+    PanelManager::PanelManager() {
+        // Correct default registrations
+        m_Panels.emplace("scene_hierarchy", new SceneHierarchyPanel(nullptr));
+        m_Panels.emplace("properties", new PropertiesPanel(nullptr));
+        m_Panels.emplace("content_browser", new ContentBrowser(nullptr));
+    }
 
 	PanelManager::~PanelManager()
 	{

@@ -7,7 +7,7 @@
 
 #include <Rendering/UI/ImGuiRenderer.h>
 
-#include <fstream>
+// #include <fstream>
 #include <filesystem>
 
 #include <imgui.h>
@@ -71,14 +71,14 @@ namespace Omni {
 	{
 		m_WorkingDirectory = FileSystem::GetWorkingDirectory() /= "assets";
 		m_CurrentDirectory = m_WorkingDirectory;
+		m_Context = ctx;
 	}
 
 	void ContentBrowser::Update()
 	{
 		auto texture_registry = AssetManager::Get()->GetAssetRegistry();
 
-		if (m_IsOpen) {
-			ImGui::Begin("Content browser", &m_IsOpen);
+        if (ImGui::Begin("Content browser", &m_IsOpen)) {
 
 			if (ImGui::BeginPopupContextWindow("##cb_create_directory_popup", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
 
@@ -109,7 +109,7 @@ namespace Omni {
 					text.clear();
 				}
 
-				ImGui::End();
+            ImGui::End();
 			}
 
 			ImGui::BeginDisabled(m_CurrentDirectory == m_WorkingDirectory);
@@ -128,7 +128,7 @@ namespace Omni {
 				relative = "Project root";
 
 			ImGui::SetCursorPos({ ImGui::GetCursorPosX(), ImGui::GetCursorPosY() + 5 });
-			ImGui::Text(relative.c_str());
+            ImGui::Text("%s", relative.c_str());
 
 			ImGui::Separator();
 
@@ -175,7 +175,7 @@ namespace Omni {
 					if (ImGui::BeginDragDropSource(drag_and_drop_flags))
 					{
 						if (!(drag_and_drop_flags & ImGuiDragDropFlags_SourceNoPreviewTooltip))
-							ImGui::Text(entry.string().c_str());
+                            ImGui::Text("%s", entry.string().c_str());
 						ImGui::SetDragDropPayload("content_browser_item", entry.string().c_str(), entry.string().size());
 						ImGui::EndDragDropSource();
 					}
@@ -191,7 +191,7 @@ namespace Omni {
 						filesystem_refetch_requested = true;
 					}
 
-					if (ImGui::BeginPopup(fmt::format("##cb_item_actions_{}", entry.string()).c_str())) {
+                    if (ImGui::BeginPopup(fmt::format("##cb_item_actions_{}", entry.string()).c_str())) {
 						if (ImGui::MenuItem("Delete")) {
 							std::filesystem::remove_all(entry);
 							filesystem_refetch_requested = true;
@@ -204,7 +204,7 @@ namespace Omni {
 						ImGui::EndPopup();
 					}
 
-					ImGui::TextWrapped(entry.filename().string().c_str());
+                    ImGui::TextWrapped("%s", entry.filename().string().c_str());
 
 					item_id++;
 
@@ -214,13 +214,17 @@ namespace Omni {
 					FetchCurrentDirectory();
 			}
 
-			ImGui::End();
 		}
+		ImGui::End();
 	}
 
 	void ContentBrowser::FetchCurrentDirectory()
 	{
 		m_CurrentDirectoryEntries.clear();
+	
+		if (!std::filesystem::exists(m_CurrentDirectory))
+			return;
+
 		std::filesystem::directory_iterator it(m_CurrentDirectory);
 		for (auto& entry : it) {
 			if (entry.is_directory())

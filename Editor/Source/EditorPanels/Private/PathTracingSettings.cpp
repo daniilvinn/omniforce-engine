@@ -321,10 +321,10 @@ namespace Omni {
 		const auto& settings = renderer->GetSettings();
 
 		// Performance stats
-		ImGui::Text("Rays per Second: %llu", 0);
-		ImGui::Text("Convergence Rate: %.4f", 0);
-		ImGui::Text("Current Samples: %u", 0);
-		ImGui::Text("Total Rays: %llu", 0);
+        ImGui::Text("Rays per Second: %llu", 0ull);
+        ImGui::Text("Convergence Rate: %.4f", 0.0f);
+        ImGui::Text("Current Samples: %u", 0u);
+        ImGui::Text("Total Rays: %llu", 0ull);
 
 		// Progress bar for accumulation
 		float progress = settings.MaxAccumulatedFrameCount > 0 ? 
@@ -464,7 +464,7 @@ namespace Omni {
 		m_SettingsChanged = true;
 		
 		// Show a brief notification
-		ImGui::SetTooltip(fmt::format("Applied {} preset", presetName).c_str());
+        ImGui::SetTooltip("%s", fmt::format("Applied {} preset", presetName).c_str());
 	}
 
 } 

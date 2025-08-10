@@ -15,8 +15,7 @@ namespace Omni {
 
 	void SceneHierarchyPanel::Update()
 	{
-		if (m_IsOpen) {
-			ImGui::Begin("Scene Hierarchy", &m_IsOpen);
+        if (m_IsOpen && ImGui::Begin("Scene Hierarchy", &m_IsOpen)) {
 			ImGui::Text("Right-click to create object");
 
 			if (ImGui::BeginPopupContextWindow("hierarchy_create_entity_popup", ImGuiPopupFlags_MouseButtonRight |ImGuiPopupFlags_NoOpenOverItems))
@@ -35,7 +34,7 @@ namespace Omni {
 				if(!entity.GetComponent<HierarchyNodeComponent>().parent)
 					RenderHierarchyNode(entity);
 			};
-			ImGui::End();
+            ImGui::End();
 		}
 	}
 
@@ -53,13 +52,13 @@ namespace Omni {
 
 		ImGuiTreeNodeFlags flags = ((m_SelectedNode == entity) ? ImGuiTreeNodeFlags_Selected : 0) | ImGuiTreeNodeFlags_OpenOnDoubleClick
 			| ImGuiTreeNodeFlags_OpenOnArrow;
-		bool node_opened = ImGui::TreeNodeEx((void*)(uint64)(uint32)(entt::entity)entity, flags, tag_component.tag.c_str());
+        bool node_opened = ImGui::TreeNodeEx((void*)(uint64)(uint32)(entt::entity)entity, flags, "%s", tag_component.tag.c_str());
 
-		if (ImGui::IsItemHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
-			ImGui::OpenPopup(fmt::format("hierarchy_node_popup{}", uc.id).c_str());
+        if (ImGui::IsItemHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
+            ImGui::OpenPopup(fmt::format("hierarchy_node_popup{}", (uint64)uc.id).c_str());
 		}
 
-		if (ImGui::BeginPopup(fmt::format("hierarchy_node_popup{}", uc.id).c_str())) {
+        if (ImGui::BeginPopup(fmt::format("hierarchy_node_popup{}", (uint64)uc.id).c_str())) {
 			if (ImGui::MenuItem("Delete")) {
 				m_Context->RemoveEntity(entity);
 				m_IsSelected = false;
@@ -85,8 +84,8 @@ namespace Omni {
 
 		if (ImGui::BeginDragDropSource(drag_and_drop_flags))
 		{
-			if (!(drag_and_drop_flags & ImGuiDragDropFlags_SourceNoPreviewTooltip))
-				ImGui::Text(tag_component.tag.c_str());
+            if (!(drag_and_drop_flags & ImGuiDragDropFlags_SourceNoPreviewTooltip))
+                ImGui::Text("%s", tag_component.tag.c_str());
 			ImGui::SetDragDropPayload("hierarchy_move_node_payload", &uc.id, sizeof(uc.id));
 			ImGui::EndDragDropSource();
 		}

@@ -8,7 +8,7 @@
 #include <Filesystem/Filesystem.h>
 #include <DebugUtils/DebugRenderer.h>
 
-#include "../../EditorUtils.h"
+// #include "../../EditorUtils.h" // Not used directly in this file
 
 #include <glm/glm.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
@@ -163,7 +163,7 @@ namespace Omni {
 
 							ImGui::Separator();
 
-							if(ImGui::BeginTable("##sprite_component_properties_table", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV));
+                    if(ImGui::BeginTable("##sprite_component_properties_table", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV))
 							{
 								ImGui::TableNextRow();
 								ImGui::TableNextColumn();
@@ -199,7 +199,7 @@ namespace Omni {
 						ImGui::SameLine();
 						if (ImGui::TreeNode("Mesh component")) {
 							MeshComponent& mc = m_Entity.GetComponent<MeshComponent>();
-							if (ImGui::BeginTable("##mesh_component_table", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV));
+                            if (ImGui::BeginTable("##mesh_component_table", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV))
 							{
 								ImGui::TableNextRow();
 								ImGui::TableNextColumn();
@@ -587,7 +587,7 @@ namespace Omni {
 					}
 				}
 			}
-			ImGui::End();
+            ImGui::End();
 		}
 	}
 

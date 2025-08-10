@@ -1,0 +1,143 @@
+#include "ProjectService.h"
+
+#include "EditorContext.h"
+
+#include <Scene/Scene.h>
+#include <Asset/AssetManager.h>
+#include <Rendering/ISceneRenderer.h>
+#include <Scripting/ScriptEngine.h>
+#include <Filesystem/Filesystem.h>
+
+#include "EditorCamera.h"
+
+#include <tinyfiledialogs.h>
+#include <fstream>
+
+namespace Omni::EditorServices {
+
+    void ProjectService::Initialize(EditorContext* context)
+    {
+        // Store pointer to shared editor state
+        m_Context = context;
+    }
+
+    void ProjectService::SaveProject()
+    {
+        // Resolve path; if missing, run NewProject() to ask for location
+        if (m_Context->GetProjectPath().empty()) {
+            NewProject();
+            if (m_Context->GetProjectPath().empty()) return;
+        }
+
+        // Serialize editor scene
+        nlohmann::json root = {};
+        m_Context->GetEditorScene()->Serialize(root);
+
+        // Write file to disk
+        std::filesystem::path output = m_Context->GetProjectPath() / m_Context->GetProjectFilename();
+        WriteProjectToDisk(root, output);
+    }
+
+    void ProjectService::LoadProject()
+    {
+        const char* filters[] = { "*.omni" };
+        const char* filepath = tinyfd_openFileDialog(
+            "Open project",
+            std::filesystem::current_path().string().c_str(),
+            1,
+            filters,
+            "Omniforce project files (*.omni)",
+            false
+        );
+        if (filepath == nullptr) return;
+
+        // Parse JSON from disk
+        nlohmann::json root;
+        if (!ReadProjectFromDisk(filepath, root)) return;
+
+        // Update working directory and context fields
+        std::filesystem::path p = filepath;
+        m_Context->SetProjectPath(p);
+        m_Context->SetProjectFilename(p.filename().string());
+        p.remove_filename();
+        FileSystem::SetWorkingDirectory(p);
+
+        // Wait the device and flush assets
+        Renderer::WaitDevice();
+
+        AssetManager* assetManager = AssetManager::Get();
+        auto renderer = m_Context->GetEditorScene()->GetRenderer();
+        auto& registry = *assetManager->GetAssetRegistry();
+        for (auto [id, asset] : registry) {
+            if (asset->Type != AssetType::OMNI_IMAGE) continue;
+            renderer->ReleaseResourceIndex(AssetManager::Get()->GetAsset<Image>(id));
+        }
+        assetManager->FullUnload();
+
+        // Restore scene and script assemblies
+        m_Context->GetEditorScene()->Deserialize(root);
+        m_Context->GetEditorScene()->EditorSetCamera(m_Context->GetEditorCamera());
+
+        ScriptEngine* scriptEngine = ScriptEngine::Get();
+        if (scriptEngine->HasAssemblies()) scriptEngine->UnloadAssemblies();
+        scriptEngine->LoadAssemblies();
+    }
+
+    void ProjectService::NewProject()
+    {
+        const char* filters[] = { "*.omni" };
+        const char* filepath = tinyfd_saveFileDialog(
+            "New project",
+            std::filesystem::current_path().string().c_str(),
+            1,
+            filters,
+            nullptr
+        );
+        if (filepath == nullptr) return;
+
+        // Update paths and working directory
+        std::filesystem::path p = filepath;
+        m_Context->SetProjectPath(p);
+        m_Context->SetProjectFilename(p.filename().string());
+        p.remove_filename();
+        FileSystem::SetWorkingDirectory(p);
+
+        // Create standard project directories
+        std::filesystem::create_directories(p.string() + std::string("Assets/Textures"));
+        std::filesystem::create_directories(p.string() + std::string("Assets/Scripts/Assemblies"));
+        std::filesystem::create_directories(p.string() + std::string("Assets/Audio"));
+        std::filesystem::create_directories(p.string() + std::string("Assets/Meshes"));
+
+        // Seed script project
+        std::filesystem::copy("Resources/Scripts/ScriptsProject", p.string() + "/Assets/Scripts", std::filesystem::copy_options::recursive);
+        std::filesystem::copy("Resources/Scripting/Build/ScriptEngine.dll", p / "Assets/Scripts/Assemblies/ScriptEngine.dll");
+
+        // Save immediately to create the .omni file
+        SaveProject();
+    }
+
+    void ProjectService::WriteProjectToDisk(const nlohmann::json& rootNode, const std::filesystem::path& outputPath)
+    {
+        std::ofstream out(outputPath);
+        out << rootNode.dump(4);
+        out.close();
+    }
+
+    bool ProjectService::ReadProjectFromDisk(const char* filepath, nlohmann::json& outRootNode)
+    {
+        std::ifstream input(filepath);
+        try {
+            outRootNode = nlohmann::json::parse(input);
+        }
+        catch (const std::exception&) {
+            OMNIFORCE_CLIENT_ERROR("Failed to load project at location: {}", filepath);
+            return false;
+        }
+        input.close();
+        return true;
+    }
+
+}
+
+
+

@@ -107,13 +107,13 @@ namespace Omni {
 					ImGui::TableNextRow();
 
 					ImGui::TableNextColumn();
-					ImGui::Text(Logger::LogLevelToString(msg.severity).data());
+                    ImGui::Text("%s", Logger::LogLevelToString(msg.severity).data());
 
 					ImGui::TableNextColumn();
-					ImGui::Text(LogSourceToString(msg.source).data());
+                    ImGui::Text("%s", LogSourceToString(msg.source).data());
 
 					ImGui::TableNextColumn();
-					ImGui::Text(msg.message.c_str());
+                    ImGui::Text("%s", msg.message.c_str());
 				}
 
 				ImGui::EndTable();
@@ -121,7 +121,7 @@ namespace Omni {
 
 			ImGui::PopStyleColor(2);
 			
-			ImGui::End();
+            ImGui::End();
 		}
 
 	}
