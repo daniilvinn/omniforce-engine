@@ -34,6 +34,10 @@ public:
         DrawMainMenuBar();
         DrawDockspace();
         DrawToolbar();
+        // Update viewport panel explicitly so it renders the scene and handles DnD/gizmos
+        if (auto* vp = m_PanelManager->GetPanelAs<ViewportPanel>("viewport")) {
+            vp->Update();
+        }
         DrawViewport();
         DrawDebugWindow(step);
         DrawUtilsWindow();
@@ -98,8 +102,8 @@ public:
         m_Context.SetSelectionService(m_SelectionService.get());
 
         // Panel manager
-        if (!PanelManager::Get()) PanelManager::Init();
-        m_PanelManager = PanelManager::Get();
+        if (!::Omni::PanelManager::Get()) ::Omni::PanelManager::Init();
+        m_PanelManager = ::Omni::PanelManager::Get();
         m_PanelManager->SetContext(editor_scene);
         m_PanelManager->SetEditorContext(&m_Context);
         m_PanelManager->AddPanel("logs", new LogsPanel(editor_scene));
@@ -108,7 +112,7 @@ public:
 
         // Project defaults and project service
         m_ProjectService = std::make_unique<ProjectService>();
-        m_ProjectService->Initialize(&m_Context);
+        m_ProjectService->Initialize(&m_Context, m_PanelManager);
         m_Context.SetProjectPath("resources/SandboxProject");
         m_Context.SetProjectFilename("Sandbox.omni");
         FileSystem::SetWorkingDirectory(m_Context.GetProjectPath());

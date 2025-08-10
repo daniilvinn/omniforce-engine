@@ -8,17 +8,20 @@
 #include <Scripting/ScriptEngine.h>
 #include <Filesystem/Filesystem.h>
 
-#include "EditorCamera.h"
+#include "EditorCamera.h" // not directly used here
+#include "../PanelManager.h"
+#include "../EditorPanels/ContentBrowser.h"
 
 #include <tinyfiledialogs.h>
 #include <fstream>
 
 namespace Omni::EditorServices {
 
-    void ProjectService::Initialize(EditorContext* context)
+    void ProjectService::Initialize(EditorContext* context, ::Omni::PanelManager* panelManager)
     {
         // Store pointer to shared editor state
         m_Context = context;
+        m_PanelManager = panelManager;
     }
 
     void ProjectService::SaveProject()
@@ -77,6 +80,15 @@ namespace Omni::EditorServices {
         // Restore scene and script assemblies
         m_Context->GetEditorScene()->Deserialize(root);
         m_Context->GetEditorScene()->EditorSetCamera(m_Context->GetEditorCamera());
+
+        // Propagate new scene context to all panels
+        if (m_PanelManager) {
+            // Update scene context across all panels
+            m_PanelManager->SetContext(m_Context->GetEditorScene());
+            // Ask Content Browser to refresh its directory listing
+            if (auto* cb = m_PanelManager->GetPanelAs<ContentBrowser>("content_browser"))
+                cb->Refresh();
+        }
 
         ScriptEngine* scriptEngine = ScriptEngine::Get();
         if (scriptEngine->HasAssemblies()) scriptEngine->UnloadAssemblies();

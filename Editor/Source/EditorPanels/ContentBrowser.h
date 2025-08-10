@@ -13,6 +13,7 @@ namespace Omni {
 		~ContentBrowser();
 
 		void SetContext(Scene* ctx) override;
+		void Refresh();
 
 		void Update() override;
 

@@ -9,7 +9,7 @@
 
 #include "Services/EditorContext.h"
 #include "Services/GizmoController.h"
-#include "EditorCamera.h"
+#include "EditorCamera.h" // not directly used here
 
 namespace Omni {
 
@@ -19,6 +19,8 @@ namespace Omni {
 
         // Zero padding around the image area
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 0.0f, 0.0f });
+        // Make viewport window background black to match renderer output (override style)
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0,0,0,1));
         if (ImGui::Begin("Viewport", &m_IsOpen)) {
             UpdateViewportState_();
 
@@ -38,6 +40,7 @@ namespace Omni {
                 m_Gizmo->UpdateAndDraw();
         }
         ImGui::End();
+        ImGui::PopStyleColor();
         ImGui::PopStyleVar();
     }
 
@@ -64,7 +67,9 @@ namespace Omni {
         ImGuiDragDropFlags targetFlags = 0;
         const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("content_browser_item", targetFlags);
         if (payload) {
-            std::filesystem::path filename(std::string((char*)payload->Data, payload->DataSize));
+            // Payload data includes the trailing null terminator (sender sends size+1)
+            const char* cpath = reinterpret_cast<const char*>(payload->Data);
+            std::filesystem::path filename = std::filesystem::path(std::string(cpath));
             if (filename.extension() == ".gltf" || filename.extension() == ".glb") {
                 // Import model and spawn entities in the current scene
                 AssetManager* assetManager = AssetManager::Get();

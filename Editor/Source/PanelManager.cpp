@@ -33,4 +33,7 @@ namespace Omni {
 			exec.second();
 	}
 
+    // Ensure newly added panels immediately receive current contexts
+    // Note: we keep AddPanel inline in header; this explanatory code is kept here for clarity.
+
 }

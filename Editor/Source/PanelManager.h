@@ -32,6 +32,8 @@ namespace Omni {
 		void AddPanel(std::string_view key, EditorPanel* panel)
 		{
 			m_Panels.emplace(key.data(), panel);
+			if (m_Context) panel->SetContext(m_Context);
+			if (m_EditorContext) panel->SetEditorContext(m_EditorContext);
 		}
 
 		void RemovePanel(std::string_view key)
@@ -47,6 +49,12 @@ namespace Omni {
 		void AddSimplePanel(std::string_view key, std::function<void()> exec)
 		{
 			m_SimplePanels.emplace(key.data(), exec);
+		}
+		template<typename TPanel>
+		TPanel* GetPanelAs(std::string_view key) {
+			auto it = m_Panels.find(std::string(key));
+			if (it == m_Panels.end()) return nullptr;
+			return dynamic_cast<TPanel*>(it->second);
 		}
 
 		void RemoveSimplePanel(std::string_view key)

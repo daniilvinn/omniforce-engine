@@ -74,6 +74,14 @@ namespace Omni {
 		m_Context = ctx;
 	}
 
+    void ContentBrowser::Refresh()
+    {
+        // Called after project load to pick up new working directory contents
+        m_WorkingDirectory = FileSystem::GetWorkingDirectory() /= "assets";
+        m_CurrentDirectory = m_WorkingDirectory;
+        FetchCurrentDirectory();
+    }
+
 	void ContentBrowser::Update()
 	{
 		auto texture_registry = AssetManager::Get()->GetAssetRegistry();
@@ -172,11 +180,13 @@ namespace Omni {
 					ImGuiDragDropFlags drag_and_drop_flags = ImGuiDragDropFlags_None;
 					drag_and_drop_flags |= ImGuiDragDropFlags_SourceAllowNullID;
 
-					if (ImGui::BeginDragDropSource(drag_and_drop_flags))
+                    if (ImGui::BeginDragDropSource(drag_and_drop_flags))
 					{
 						if (!(drag_and_drop_flags & ImGuiDragDropFlags_SourceNoPreviewTooltip))
                             ImGui::Text("%s", entry.string().c_str());
-						ImGui::SetDragDropPayload("content_browser_item", entry.string().c_str(), entry.string().size());
+                        // Include null-terminator to be safe; receiver uses size to reconstruct path
+                        const std::string pathStr = entry.string();
+                        ImGui::SetDragDropPayload("content_browser_item", pathStr.c_str(), pathStr.size() + 1);
 						ImGui::EndDragDropSource();
 					}
 
