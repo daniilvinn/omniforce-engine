@@ -1,4 +1,3 @@
-mkdir build
-cd build
+mkdir Build
+cd Build
 call cmake ../
-PAUSE

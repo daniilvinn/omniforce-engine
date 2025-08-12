@@ -7,6 +7,7 @@
 #include <Rendering/ISceneRenderer.h>
 #include <Scripting/ScriptEngine.h>
 #include <Filesystem/Filesystem.h>
+#include <Threading/JobSystem.h>
 
 #include "EditorCamera.h" // not directly used here
 #include "../PanelManager.h"
@@ -14,6 +15,7 @@
 
 #include <tinyfiledialogs.h>
 #include <fstream>
+#include <cstdlib>
 
 namespace Omni::EditorServices {
 
@@ -37,7 +39,8 @@ namespace Omni::EditorServices {
         m_Context->GetEditorScene()->Serialize(root);
 
         // Write file to disk
-        std::filesystem::path output = m_Context->GetProjectPath() / m_Context->GetProjectFilename();
+        //std::filesystem::path output = m_Context->GetProjectPath() / m_Context->GetProjectFilename();
+        std::filesystem::path output = m_Context->GetProjectPath();
         WriteProjectToDisk(root, output);
     }
 
@@ -115,19 +118,40 @@ namespace Omni::EditorServices {
         FileSystem::SetWorkingDirectory(p);
 
         // Create standard project directories
-        std::filesystem::create_directories(p.string() + std::string("Assets/Textures"));
-        std::filesystem::create_directories(p.string() + std::string("Assets/Scripts/Assemblies"));
-        std::filesystem::create_directories(p.string() + std::string("Assets/Audio"));
-        std::filesystem::create_directories(p.string() + std::string("Assets/Meshes"));
+        std::filesystem::create_directories(p.string() + std::string("Content"));
+        std::filesystem::create_directories(p.string() + std::string("Binaries"));
 
         // Seed script project
-        std::filesystem::copy("Resources/Scripts/ScriptsProject", p.string() + "/Assets/Scripts", std::filesystem::copy_options::recursive);
-        std::filesystem::copy("Resources/Scripting/Build/ScriptEngine.dll", p / "Assets/Scripts/Assemblies/ScriptEngine.dll");
+        std::filesystem::copy("Resources/Scripts/ScriptsProject", p.string(), std::filesystem::copy_options::recursive);
+        std::filesystem::copy("Resources/Scripting/Build/ScriptEngine.dll", p / "Binaries/ScriptEngine.dll");
 
-        // Save immediately to create the .omni file
+        // Run the Build.bat script to build the script assemblies asynchronously to avoid blocking the engine
+        std::filesystem::path buildBatPath = p / "Build.bat";
+#ifdef _WIN32
+        if (!std::filesystem::exists(buildBatPath))
+        {
+            OMNIFORCE_CLIENT_ERROR("Build script not found at: {}", buildBatPath.string());
+        }
+        else
+        {
+            // Compose a command that changes directory inside the cmd shell only (does not change process CWD)
+            std::string build_dir = buildBatPath.parent_path().string();
+            std::string command = "cmd /C \"cd /d \"" + build_dir + "\" && Build.bat\"";
+
+            JobSystem::Submit([command]() {
+                int exit_code = std::system(command.c_str());
+                if (exit_code != 0)
+                {
+                    OMNIFORCE_CLIENT_ERROR("Build.bat failed with exit code: {}", exit_code);
+                }
+            }, { "Build scripts (Build.bat)", "Scripting", TaskPriority::Low }, JobSystem::Queue::Low);
+        }
+#else
+        #error "Not implemented"
+#endif
         SaveProject();
     }
-
+    
     void ProjectService::WriteProjectToDisk(const nlohmann::json& rootNode, const std::filesystem::path& outputPath)
     {
         std::ofstream out(outputPath);

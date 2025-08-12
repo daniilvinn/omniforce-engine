@@ -80,7 +80,7 @@ namespace Omni {
 
 		OMNIFORCE_ASSERT_TAGGED(mAppDomain != NULL, "Failed to create app domain");
 
-		mCoreAssembly = (MonoAssembly*)ReadAssembly(FileSystem::GetWorkingDirectory().append("assets/scripts/assemblies/ScriptEngine.dll"));
+		mCoreAssembly = (MonoAssembly*)ReadAssembly(FileSystem::GetWorkingDirectory().append("Binaries/ScriptEngine.dll"));
 
 		MonoImage* engine_core_image = mono_assembly_get_image(mCoreAssembly);
 		mScriptBase = ScriptClass("Omni", "GameObject", true);
@@ -91,7 +91,7 @@ namespace Omni {
 		mBaseCtor = mScriptBase.GetMethod(".ctor", 1);
 
 		// App assembly
-		mAppAssembly = ReadAssembly(FileSystem::GetWorkingDirectory().append("assets/scripts/assemblies/gamescripts.dll"));
+		mAppAssembly = ReadAssembly(FileSystem::GetWorkingDirectory().append("Binaries/gamescripts.dll"));
 
 		MonoImage* app_image = mono_assembly_get_image(mAppAssembly);
 		const MonoTableInfo* typedef_table = mono_image_get_table_info(app_image, MONO_TABLE_TYPEDEF);

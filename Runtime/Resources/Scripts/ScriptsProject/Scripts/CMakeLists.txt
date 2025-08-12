@@ -11,8 +11,8 @@ set_property(TARGET ${SCRIPT_PROJECT} PROPERTY VS_DOTNET_TARGET_FRAMEWORK_VERSIO
 
 set_target_properties(${SCRIPT_PROJECT} PROPERTIES
     VS_DOTNET_REFERENCES "${VS_DOTNET_REFERENCES}"
-    VS_DOTNET_REFERENCE_ScriptEngine "${CMAKE_SOURCE_DIR}/assemblies/ScriptEngine.dll"
-    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_SOURCE_DIR}/assemblies"
+    VS_DOTNET_REFERENCE_ScriptEngine "${CMAKE_SOURCE_DIR}/Binaries/ScriptEngine.dll"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_SOURCE_DIR}/Binaries"
     OUTPUT_NAME "gamescripts"
 )
 target_compile_options(${SCRIPT_PROJECT} PRIVATE "/langversion:8")

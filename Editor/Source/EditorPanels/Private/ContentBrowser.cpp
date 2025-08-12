@@ -69,7 +69,7 @@ namespace Omni {
 
 	void ContentBrowser::SetContext(Scene* ctx)
 	{
-		m_WorkingDirectory = FileSystem::GetWorkingDirectory() /= "assets";
+		m_WorkingDirectory = FileSystem::GetWorkingDirectory();
 		m_CurrentDirectory = m_WorkingDirectory;
 		m_Context = ctx;
 	}
@@ -77,7 +77,7 @@ namespace Omni {
     void ContentBrowser::Refresh()
     {
         // Called after project load to pick up new working directory contents
-        m_WorkingDirectory = FileSystem::GetWorkingDirectory() /= "assets";
+        m_WorkingDirectory = FileSystem::GetWorkingDirectory();
         m_CurrentDirectory = m_WorkingDirectory;
         FetchCurrentDirectory();
     }
