@@ -139,10 +139,13 @@ namespace Omni::EditorServices {
             std::string command = "cmd /C \"cd /d \"" + build_dir + "\" && Build.bat\"";
 
             JobSystem::Submit([command]() {
+                OMNIFORCE_CUSTOM_LOGGER_INFO("OmniEditor", "Building scripts...");
                 int exit_code = std::system(command.c_str());
                 if (exit_code != 0)
                 {
                     OMNIFORCE_CLIENT_ERROR("Build.bat failed with exit code: {}", exit_code);
+                } else {
+                    OMNIFORCE_CUSTOM_LOGGER_INFO("OmniEditor", "Script project build completed successfully");
                 }
             }, { "Build scripts (Build.bat)", "Scripting", TaskPriority::Low }, JobSystem::Queue::Low);
         }

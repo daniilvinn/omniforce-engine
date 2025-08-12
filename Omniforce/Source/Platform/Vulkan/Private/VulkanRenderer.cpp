@@ -132,7 +132,7 @@ namespace Omni {
 		Renderer::Submit(
 			[=]() mutable {
 				// Execution code
-				VkPipelineStageFlags stagemasks[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+				VkPipelineStageFlags stage_masks[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
 				WeakPtr<VulkanDeviceCmdBuffer> vk_cmd_buffer = m_CurrentCmdBuffer;
 				VkCommandBuffer raw_buffer = vk_cmd_buffer->Raw();
@@ -149,11 +149,10 @@ namespace Omni {
 				submitinfo.pSignalSemaphores = &signal_semaphore;
 				submitinfo.waitSemaphoreCount = 1;
 				submitinfo.pWaitSemaphores = &wait_semaphore;
-				submitinfo.pWaitDstStageMask = stagemasks;
+				submitinfo.pWaitDstStageMask = stage_masks;
 
-				m_Mutex.lock();
+				std::lock_guard lock(m_Device->GetSubmitMutex());
 				VkResult result = vkQueueSubmit(m_Device->GetGeneralQueue(), 1, &submitinfo, fence);
-				m_Mutex.unlock();
 			}
 		);
 	}

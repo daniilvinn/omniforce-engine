@@ -26,7 +26,7 @@ namespace Omni {
 		VkPhysicalDevice Raw() const { return m_PhysicalDevice; }
 		VkPhysicalDeviceProperties2 GetProperties() const { return m_DeviceProps; }
 		QueueFamilyIndex GetQueueFamilyIndices() const { return m_Indices; }
-
+		
 		bool IsExtensionSupported(const std::string& extension) const;
 
 	private:
@@ -44,7 +44,8 @@ namespace Omni {
 		Ref<VulkanPhysicalDevice> GetPhysicalDevice() const { return m_PhysicalDevice; }
 		VkQueue GetGeneralQueue() const { return m_GeneralQueue; }
 		VkQueue GetAsyncComputeQueue() const { return m_GeneralQueue; }
-		
+		std::shared_mutex& GetSubmitMutex() { return m_Mutex; }
+
 		Ref<VulkanDeviceCmdBuffer> AllocateTransientCmdBuffer();
 		void ExecuteTransientCmdBuffer(Ref<VulkanDeviceCmdBuffer> cmd_buffer, bool wait = false) const;
 
