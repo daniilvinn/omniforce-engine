@@ -10,6 +10,7 @@
 #include <ImGuizmo.h>
 #include "backends/imgui_impl_vulkan.h"
 #include "backends/imgui_impl_glfw.h"
+#include "imgui.h"
 
 namespace Omni {
 
@@ -65,7 +66,7 @@ namespace Omni {
 
 		ImGui::StyleColorsDark();
 
-		// UE5-like dark theme and spacing
+		// Dark theme and spacing
 		ImGuiStyle& style = ImGui::GetStyle();
 		style.Alpha = 1.0f;
 		style.WindowPadding = ImVec2(8.0f, 6.0f);
@@ -146,7 +147,9 @@ namespace Omni {
 		style.Colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
 		style.Colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
 		style.Colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
-
+		style.Colors[ImGuiCol_CheckMark] = ImVec4(0.95f, 0.96f, 0.97f, 1.00f); 
+		style.Colors[ImGuiCol_SliderGrab] = ImVec4(0.95f, 0.96f, 0.97f, 1.00f); 
+		style.Colors[ImGuiCol_SliderGrabActive] = ImVec4(0.95f, 0.96f, 0.97f, 1.00f); 
 		VkInstance inst = context->GetVulkanInstance();
 
 		ImGui_ImplVulkan_LoadFunctions([](const char* function_name, void* vk_instance) {
