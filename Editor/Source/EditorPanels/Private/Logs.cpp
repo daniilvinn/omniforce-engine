@@ -4,6 +4,7 @@
 #include "../../EditorLogsSinks.h"
 
 #include <imgui.h>
+#include <algorithm>
 
 namespace Omni {
 
@@ -41,7 +42,13 @@ namespace Omni {
 
 			ImGuiTableFlags flags = ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_BordersInnerH  | ImGuiTableFlags_RowBg;
 
-			// Filters
+			// Top bar: search + filters + actions
+			static std::string search_query; search_query.reserve(256);
+			ImGui::SetNextItemWidth(240.0f);
+			ImGui::InputTextWithHint("##log_search", "Search...", search_query.data(), search_query.capacity());
+			search_query.resize(strlen(search_query.c_str()));
+			ImGui::SameLine();
+
 			if (ImGui::RadioButton("Trace", m_FilterTogglesStatus.trace)) {
 				m_FilterTogglesStatus.trace = !m_FilterTogglesStatus.trace;
 				m_Filters ^= BIT(0);
@@ -76,6 +83,11 @@ namespace Omni {
 				m_FilterTogglesStatus.game = !m_FilterTogglesStatus.game;
 				m_Filters ^= BIT(6);
 			}
+			ImGui::SameLine();
+			if (ImGui::SmallButton("Clear")) { m_Messages.clear(); }
+			ImGui::SameLine();
+			static bool autoscroll = true;
+			ImGui::Checkbox("Autoscroll", &autoscroll);
 
 
 			// Logs
@@ -103,6 +115,12 @@ namespace Omni {
 					show_message = show_message && ((((BitMask)msg.source) << 5) & m_Filters);
 					if(!show_message)
 						continue;
+					if (!search_query.empty()) {
+						std::string l_msg = msg.message, l_q = search_query;
+						std::transform(l_msg.begin(), l_msg.end(), l_msg.begin(), [](unsigned char c){ return (char)std::tolower(c); });
+						std::transform(l_q.begin(), l_q.end(), l_q.begin(), [](unsigned char c){ return (char)std::tolower(c); });
+						if (l_msg.find(l_q) == std::string::npos) continue;
+					}
 
 					ImGui::TableNextRow();
 
@@ -120,8 +138,11 @@ namespace Omni {
 			}
 
 			ImGui::PopStyleColor(2);
+			if (autoscroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) {
+				ImGui::SetScrollHereY(1.0f);
+			}
 			
-            ImGui::End();
+			ImGui::End();
 		}
 
 	}

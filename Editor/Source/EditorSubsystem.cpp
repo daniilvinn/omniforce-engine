@@ -79,7 +79,7 @@ public:
 
         // Update scene and camera
         m_Context.GetCurrentScene()->OnUpdate(step);
-        if (m_Context.IsViewportFocused() && !m_Context.IsInRuntime()) {
+        if (!m_Context.IsInRuntime()) {
             m_Context.GetEditorCamera()->OnUpdate(step);
         }
     }
@@ -102,8 +102,8 @@ public:
         m_Context.SetSelectionService(m_SelectionService.get());
 
         // Panel manager
-        if (!::Omni::PanelManager::Get()) ::Omni::PanelManager::Init();
-        m_PanelManager = ::Omni::PanelManager::Get();
+        if (!PanelManager::Get()) PanelManager::Init();
+        m_PanelManager = PanelManager::Get();
         m_PanelManager->SetContext(editor_scene);
         m_PanelManager->SetEditorContext(&m_Context);
         m_PanelManager->AddPanel("logs", new LogsPanel(editor_scene));
@@ -127,7 +127,7 @@ public:
         dispatcher.Dispatch<WindowResizeEvent>(OMNIFORCE_BIND_EVENT_FUNCTION(OnWindowResize));
         dispatcher.Dispatch<KeyPressedEvent>(OMNIFORCE_BIND_EVENT_FUNCTION(OnKeyPressed));
 
-        if (m_Context.IsViewportFocused())
+        if (!m_Context.IsInRuntime())
             m_Context.GetEditorCamera()->OnEvent(e);
     }
 
@@ -179,10 +179,40 @@ private:
             ImGuiWindowFlags_NoScrollbar |
             ImGuiWindowFlags_NoScrollWithMouse |
             ImGuiWindowFlags_NoTitleBar);
+
         bool in_runtime = m_Context.IsInRuntime();
-        if (ImGui::Button(in_runtime ? "Stop" : "Play")) {
+
+        // Left: Play/Stop
+        if (ImGui::Button(in_runtime ? "Stop" : "Play", ImVec2(70.0f, 0.0f))) {
             ToggleRuntime();
         }
+
+        // Middle: Gizmo operation toggles (Move/Rotate/Scale)
+        ImGui::SameLine();
+        auto make_tool_button = [&](const char* label, bool selected) {
+            bool clicked = false;
+            if (selected) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.46f, 0.98f, 1.0f));
+            clicked = ImGui::SmallButton(label);
+            if (selected) ImGui::PopStyleColor();
+            return clicked;
+        };
+
+        if (m_GizmoController) {
+            ImGuizmo::OPERATION op = m_GizmoController->GetOperation();
+            ImGui::SameLine();
+            if (make_tool_button("Move", op == ImGuizmo::TRANSLATE)) {
+                m_GizmoController->SetOperation(ImGuizmo::TRANSLATE);
+            }
+            ImGui::SameLine();
+            if (make_tool_button("Rotate", (op & ImGuizmo::OPERATION::ROTATE) == ImGuizmo::OPERATION::ROTATE)) {
+                m_GizmoController->SetOperation(ImGuizmo::OPERATION::ROTATE);
+            }
+            ImGui::SameLine();
+            if (make_tool_button("Scale", op == ImGuizmo::SCALE)) {
+                m_GizmoController->SetOperation(ImGuizmo::SCALE);
+            }
+        }
+
         ImGui::End();
     }
 

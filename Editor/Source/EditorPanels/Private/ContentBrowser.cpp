@@ -13,6 +13,7 @@
 #include <imgui.h>
 #include <misc/cpp/imgui_stdlib.h>
 #include <tinyfiledialogs.h>
+#include <algorithm>
 
 namespace Omni {
 
@@ -86,8 +87,12 @@ namespace Omni {
 	{
 		auto texture_registry = AssetManager::Get()->GetAssetRegistry();
 
-        if (ImGui::Begin("Content browser", &m_IsOpen)) {
+		// Persisted search box state across renders
+		static std::string search_query; search_query.reserve(256);
 
+		if (ImGui::Begin("Content Browser", &m_IsOpen)) {
+
+			// Top bar: back, breadcrumbs, search, new
 			if (ImGui::BeginPopupContextWindow("##cb_create_directory_popup", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
 
 				if (ImGui::MenuItem("Create directory")) {
@@ -120,23 +125,59 @@ namespace Omni {
             ImGui::End();
 			}
 
+
+			// Back button aligned to frame height
+			float frame_h = ImGui::GetFrameHeight();
+			float button_size = frame_h * 0.8f;
 			ImGui::BeginDisabled(m_CurrentDirectory == m_WorkingDirectory);
-			if (UI::RenderImageButton(m_IconMap["btn_back.png"], m_Context->GetRenderer()->GetSamplerLinear(), { 18,18 })) {
+			if (UI::RenderImageButton(m_IconMap["btn_back.png"], m_Context->GetRenderer()->GetSamplerLinear(), { button_size, button_size })) {
 					m_CurrentDirectory = m_CurrentDirectory.parent_path();
 					FetchCurrentDirectory();
 			}
 			ImGui::EndDisabled();
-
 			ImGui::SameLine();
-			auto relative = std::filesystem::relative(m_CurrentDirectory, m_WorkingDirectory).string();
-			std::replace(relative.begin(), relative.end(), '\\', '/');
+			ImGui::AlignTextToFramePadding();
 
-			// HACK
-			if (relative.length() == 1 && relative[0] == '.')
-				relative = "Project root";
+			// Breadcrumbs (buttons) aligned to frame
+			{
+				auto relPath = std::filesystem::relative(m_CurrentDirectory, m_WorkingDirectory);
+				std::filesystem::path accum;
+				int segIndex = 0;
+				for (auto& seg : relPath) {
+					if (segIndex > 0) { 
+						ImGui::SameLine(); 
+						ImGui::AlignTextToFramePadding(); 
+						ImGui::Text(">"); 
+						ImGui::SameLine(); 
+					}
+					if (ImGui::Button(seg.string().c_str())) {
+						m_CurrentDirectory = m_WorkingDirectory / accum;
+						FetchCurrentDirectory();
+					}
+					accum /= seg;
+					segIndex++;
+				}
+				if (segIndex == 0) { 
+					ImGui::SameLine(); 
+					ImGui::AlignTextToFramePadding();
+					ImGui::Text("Project root"); 
+				}
+			}
 
-			ImGui::SetCursorPos({ ImGui::GetCursorPosX(), ImGui::GetCursorPosY() + 5 });
-            ImGui::Text("%s", relative.c_str());
+			// Right-aligned actions: search + new folder
+			{
+				float searchWidth = 200.0f;
+				float newBtnWidth = 80.0f;
+				float totalWidth = searchWidth + ImGui::GetStyle().ItemSpacing.x + newBtnWidth;
+				float avail = ImGui::GetContentRegionAvail().x;
+				ImGui::SameLine();
+				ImGui::SetCursorPosX(ImGui::GetCursorPosX() + std::max(0.0f, avail - totalWidth));
+				ImGui::SetNextItemWidth(searchWidth);
+				ImGui::InputTextWithHint("##cb_search", "Search...", search_query.data(), search_query.capacity());
+				search_query.resize(strlen(search_query.c_str()));
+				ImGui::SameLine();
+				if (ImGui::Button("New Folder", ImVec2(newBtnWidth, 0))) { m_CreateDirectoryWindowActive = true; }
+			}
 
 			ImGui::Separator();
 
@@ -164,6 +205,15 @@ namespace Omni {
 					ImGui::TableNextColumn();
 
 					ImGui::PushID(fmt::format("cb_item_{}", entry.string()).c_str());
+
+					// Search filter
+					if (!search_query.empty()) {
+						std::string name = entry.filename().string();
+						std::string l_name = name, l_query = search_query;
+						std::transform(l_name.begin(), l_name.end(), l_name.begin(), [](unsigned char c){ return (char)std::tolower(c); });
+						std::transform(l_query.begin(), l_query.end(), l_query.begin(), [](unsigned char c){ return (char)std::tolower(c); });
+						if (l_name.find(l_query) == std::string::npos) { ImGui::PopID(); continue; }
+					}
 
 					if (std::filesystem::is_directory(entry)) {
 						ImGui::PushStyleColor(ImGuiCol_Button, { 0, 0, 0, 0 });

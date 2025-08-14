@@ -3,6 +3,7 @@
 #include <Core/Input/Input.h>
 #include <Core/Input/KeyCode.h>
 #include <Core/Events/KeyEvents.h>
+#include <cmath>
 
 namespace Omni {
 
@@ -11,53 +12,89 @@ namespace Omni {
 		Move({ 0.0f, 0.0f, -10.0f });
 	}
 
+	EditorCamera::~EditorCamera()
+	{
+		// Ensure mouse is released if camera is destroyed while dragging
+		if (m_IsRightMouseDragging || m_IsAltLeftMouseDragging) {
+			Input::ReleaseAndShowMouse();
+		}
+	}
+
 	void EditorCamera::OnUpdate(float32 step)
 	{
-		float32 multiplier = 1.0f;
-
+		// Speed multipliers
+		float32 speed_multiplier = 1.0f;
+		
 		if (Input::KeyPressed(KeyCode::KEY_LEFT_SHIFT))
-			multiplier = 3.0f;
+			speed_multiplier = 3.0f;
 
-		if (Input::KeyPressed(KeyCode::KEY_LEFT_ALT)) {
-			if (Input::ButtonPressed(ButtonCode::MOUSE_BUTTON_LEFT)) {
-				if (m_FirstInteraction) {
-					m_LastMousePosition = Input::MousePosition();
-					m_FirstInteraction = false;
-				}
-				else {
-					float32 x_offset = (float32)m_LastMousePosition.x - Input::MousePosition().x;
-					float32 y_offset = (float32)m_LastMousePosition.y - Input::MousePosition().y;
-					Rotate(-1.0f * x_offset, 0.0f, 0.0f, true);
-					Rotate(0.0f, -1.0f * -y_offset, 0.0f, true);
-					CalculateMatrices();
-					m_LastMousePosition = Input::MousePosition();
-				}
-				m_InteractionIsOver = false;
+		// Handle mouse capture state changes
+		bool right_mouse_pressed = Input::ButtonPressed(ButtonCode::MOUSE_BUTTON_RIGHT);
+		bool alt_left_mouse_pressed = Input::KeyPressed(KeyCode::KEY_LEFT_ALT) && Input::ButtonPressed(ButtonCode::MOUSE_BUTTON_LEFT);
+
+		// Start right mouse drag
+		if (right_mouse_pressed && !m_IsRightMouseDragging) {
+			m_IsRightMouseDragging = true;
+			m_LastMousePosition = Input::MousePosition();
+			Input::LockAndHideMouse();
+		}
+		// End right mouse drag  
+		else if (!right_mouse_pressed && m_IsRightMouseDragging) {
+			m_IsRightMouseDragging = false;
+			Input::ReleaseAndShowMouse();
+		}
+
+		// Start alt+left mouse drag
+		if (alt_left_mouse_pressed && !m_IsAltLeftMouseDragging) {
+			m_IsAltLeftMouseDragging = true;
+			m_LastMousePosition = Input::MousePosition();
+			Input::LockAndHideMouse();
+		}
+		// End alt+left mouse drag
+		else if (!alt_left_mouse_pressed && m_IsAltLeftMouseDragging) {
+			m_IsAltLeftMouseDragging = false;
+			Input::ReleaseAndShowMouse();
+		}
+
+		// Handle camera rotation with infinite movement
+		if (m_IsRightMouseDragging || m_IsAltLeftMouseDragging) {
+			ivec2 current_pos = Input::MousePosition();
+			float32 x_delta = -(float32)(current_pos.x - m_LastMousePosition.x);
+			float32 y_delta = (float32)(current_pos.y - m_LastMousePosition.y);
+			
+			// Apply rotation sensitivity
+			float32 rotation_sensitivity = 0.15f;
+			x_delta *= rotation_sensitivity;
+			y_delta *= rotation_sensitivity;
+			
+			if (fabsf(x_delta) > 0.01f || fabsf(y_delta) > 0.01f) {
+				Rotate(-x_delta, 0.0f, 0.0f, true);
+				Rotate(0.0f, -y_delta, 0.0f, true);
+				CalculateMatrices();
 			}
+			
+			m_LastMousePosition = current_pos;
+		}
 
-			else {
-				if (Input::KeyPressed(KeyCode::KEY_W)) {
-					Move({ 0.0f, 0.0f, 5.0f * step * multiplier});
-				}
-				if (Input::KeyPressed(KeyCode::KEY_A)) {
-					Move({ -5.0f * step * multiplier, 0.0f, 0.0f});
-				}
-				if (Input::KeyPressed(KeyCode::KEY_S)) {
-					Move({ 0.0f, 0.0f, -5.0f * step * multiplier });
-				}
-				if (Input::KeyPressed(KeyCode::KEY_D)) {
-					Move({ 5.0f * step * multiplier , 0.0f, 0.0f});
-				}
-				if (Input::KeyPressed(KeyCode::KEY_Q)) {
-					Move({ 0.0f , -5.0f * step * multiplier, 0.0f });
-				}
-				if (Input::KeyPressed(KeyCode::KEY_E)) {
-					Move({ 0.0f , 5.0f * step * multiplier, 0.0f });
-				}
-				if (!m_InteractionIsOver) {
-					m_FirstInteraction = true;
-					m_InteractionIsOver = true;
-				}
+		// Handle movement during right mouse drag
+		if (m_IsRightMouseDragging) {
+			if (Input::KeyPressed(KeyCode::KEY_W)) {
+				Move({ 0.0f, 0.0f, 8.0f * step * speed_multiplier});
+			}
+			if (Input::KeyPressed(KeyCode::KEY_A)) {
+				Move({ -8.0f * step * speed_multiplier, 0.0f, 0.0f});
+			}
+			if (Input::KeyPressed(KeyCode::KEY_S)) {
+				Move({ 0.0f, 0.0f, -8.0f * step * speed_multiplier });
+			}
+			if (Input::KeyPressed(KeyCode::KEY_D)) {
+				Move({ 8.0f * step * speed_multiplier , 0.0f, 0.0f});
+			}
+			if (Input::KeyPressed(KeyCode::KEY_Q)) {
+				Move({ 0.0f , -8.0f * step * speed_multiplier, 0.0f });
+			}
+			if (Input::KeyPressed(KeyCode::KEY_E)) {
+				Move({ 0.0f , 8.0f * step * speed_multiplier, 0.0f });
 			}
 		}
 	}
@@ -66,13 +103,10 @@ namespace Omni {
 	{
 		if (e->GetType() == Event::Type::MouseScrolled) {
 			MouseScrolledEvent* mouse_scrolled_event = (MouseScrolledEvent*)e;
-
-			float32 new_fov_in_degrees = glm::degrees(m_FieldOfView) - mouse_scrolled_event->GetAxis().y * 2;
-			new_fov_in_degrees = glm::clamp(new_fov_in_degrees, 45.0f, 120.0f);
-			SetFOV(glm::radians(new_fov_in_degrees));
-		}
-		if (e->GetType() == Event::Type::MouseMoved) {
-			MouseMovedEvent* mouse_moved_event = (MouseMovedEvent*)e;
+			
+			// Mouse scroll for forward/backward movement (UE5 style)
+			float32 scroll_speed = 2.0f;
+			Move({ 0.0f, 0.0f, mouse_scrolled_event->GetAxis().y * scroll_speed });
 		}
 	}
 

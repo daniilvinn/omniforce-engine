@@ -30,7 +30,7 @@ namespace Omni {
 				if(ImGui::BeginTable("properties_entity_name", 3, ImGuiTableFlags_SizingStretchProp))
 				{
 					ImGui::TableNextColumn();
-					ImGui::Text("Entity name: ");
+					ImGui::Text("Name");
 
 					ImGui::TableNextColumn();
 					ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
@@ -109,7 +109,7 @@ namespace Omni {
 				{
 					ImGui::TableNextRow();
 					ImGui::TableNextColumn();
-					ImGui::Text("Translation");
+					ImGui::Text("Location");
 					ImGui::SameLine();
 					ImGui::TableNextColumn();
 					ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);

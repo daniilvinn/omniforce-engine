@@ -13,14 +13,15 @@ namespace Omni {
 	public:
 		EditorCamera() = default;
 		EditorCamera(float32 aspect_ratio);
+		~EditorCamera();
 
 		void OnUpdate(float32 step);
 		void OnEvent(Event* e);
 
 	private:
 		ivec2 m_LastMousePosition = { 0, 0 };
-		bool m_FirstInteraction = true;
-		bool m_InteractionIsOver = true;
+		bool m_IsRightMouseDragging = false;
+		bool m_IsAltLeftMouseDragging = false;
 
 	};
 }

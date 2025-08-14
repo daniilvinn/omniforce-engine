@@ -5,6 +5,7 @@
 
 #include <imgui.h>
 #include <entt/entt.hpp>
+#include <algorithm>
 
 namespace Omni {
 
@@ -15,10 +16,20 @@ namespace Omni {
 
 	void SceneHierarchyPanel::Update()
 	{
-        if (m_IsOpen && ImGui::Begin("Scene Hierarchy", &m_IsOpen)) {
-			ImGui::Text("Right-click to create object");
+		if (m_IsOpen && ImGui::Begin("Scene Hierarchy", &m_IsOpen)) {
+			// Toolbar: search + create
+			static std::string search_query;
+			search_query.reserve(256);
+			ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 100.0f);
+			ImGui::InputTextWithHint("##hierarchy_search", "Search...", search_query.data(), search_query.capacity());
+			search_query.resize(strlen(search_query.c_str()));
+			ImGui::SameLine();
+			if (ImGui::Button("+ Create")) {
+				m_SelectedNode = m_Context->CreateEntity();
+				m_IsSelected = true;
+			}
 
-			if (ImGui::BeginPopupContextWindow("hierarchy_create_entity_popup", ImGuiPopupFlags_MouseButtonRight |ImGuiPopupFlags_NoOpenOverItems))
+			if (ImGui::BeginPopupContextWindow("hierarchy_create_entity_popup", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
 			{
 				if (ImGui::MenuItem("Create object")) {
 					m_SelectedNode = m_Context->CreateEntity();
@@ -32,9 +43,20 @@ namespace Omni {
 			for (auto& entity_id : entities) {
 				Entity entity(entity_id, m_Context);
 				if(!entity.GetComponent<HierarchyNodeComponent>().parent)
+				{
+					// Filter by search
+					if (!search_query.empty()) {
+						const std::string& name = entity.GetComponent<TagComponent>().tag;
+						std::string lower_name = name; std::string lower_query = search_query;
+						std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(), [](unsigned char c){ return (char)std::tolower(c); });
+						std::transform(lower_query.begin(), lower_query.end(), lower_query.begin(), [](unsigned char c){ return (char)std::tolower(c); });
+						if (lower_name.find(lower_query) == std::string::npos)
+							continue;
+					}
 					RenderHierarchyNode(entity);
+				}
 			};
-            ImGui::End();
+			ImGui::End();
 		}
 	}
 
