@@ -187,6 +187,9 @@ namespace Omni {
 		if (m_MainFont == nullptr)
 			OMNIFORCE_CORE_CRITICAL("Failed to load font for ImGui renderer");
 
+		// Initialize UI abstraction layer
+		//UI::Initialize();
+
 		OMNIFORCE_CORE_INFO("Initialized ImGui renderer");
 	}
 
@@ -195,6 +198,9 @@ namespace Omni {
 		auto device = VulkanGraphicsContext::Get()->GetDevice();
 
 		vkDeviceWaitIdle(device->Raw());
+
+		// Shutdown UI abstraction layer
+		UI::Shutdown();
 
 		ImGui_ImplVulkan_Shutdown();
 		ImGui_ImplGlfw_Shutdown();

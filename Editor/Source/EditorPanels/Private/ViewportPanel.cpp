@@ -26,9 +26,9 @@ namespace Omni {
 
             // Render scene output to the viewport window
             ImVec2 size = ImGui::GetContentRegionAvail();
-            ImVec2 overlay_position = ImGui::GetCursorPos();
-            overlay_position.x += 8.0f;
-            overlay_position.y += 8.0f;
+            m_ViewportContentSize = size;
+
+            m_ViewportCursorPos = ImGui::GetCursorPos();
 
             UI::RenderImage(m_Context->GetFinalImage(), m_Context->GetRenderer()->GetSamplerLinear(), size, 0, true);
 
@@ -38,26 +38,6 @@ namespace Omni {
 
             // Drag-and-drop for assets
             HandleDragAndDrop_();
-
-            // Overlay: controls bar (auto-size, no background)
-            {
-                ImGui::SetCursorPos(overlay_position);
-                ImGuiWindowFlags overlayFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
-                ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0,0,0,0));
-                ImGui::BeginChild("##vp_overlay", ImVec2(0, 0), false, overlayFlags);
-                bool in_runtime = m_EditorContext && m_EditorContext->IsInRuntime();
-                
-                ImGui::SameLine();
-                static int viewMode = 0; // 0 Lit, 1 Unlit, 2 Wireframe (placeholder)
-                ImGui::SetNextItemWidth(110);
-                ImGui::Combo("##vp_viewmode", &viewMode, "Lit\0Unlit\0Wireframe\0\0");
-                ImGui::SameLine();
-                static float exposure = 1.0f;
-                ImGui::SetNextItemWidth(140);
-                ImGui::SliderFloat("Exposure", &exposure, 0.1f, 4.0f, "%.2f");
-                ImGui::EndChild();
-                ImGui::PopStyleColor();
-            }
 
             // Draw gizmos only in editor mode
             if (m_EditorContext && !m_EditorContext->IsInRuntime() && m_Gizmo)
@@ -74,7 +54,10 @@ namespace Omni {
         ImVec2 minRegion = ImGui::GetWindowContentRegionMin();
         ImVec2 maxRegion = ImGui::GetWindowContentRegionMax();
         ImVec2 offset = ImGui::GetWindowPos();
+        m_ViewportWindowPos = offset; // Store the window position
         fvec2 bounds[2] = { { minRegion.x + offset.x, minRegion.y + offset.y }, { maxRegion.x + offset.x, maxRegion.y + offset.y } };
+        if (m_EditorContext)
+            m_EditorContext->SetViewportBounds(bounds);
         if (m_EditorContext)
             m_EditorContext->SetViewportBounds(bounds);
 

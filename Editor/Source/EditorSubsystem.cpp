@@ -1,10 +1,13 @@
 #include <Omniforce.h>
+#include <Foundation/Timer.h>
+#include <Rendering/UI/ImGuiRenderer.h>
 
 #include "EditorPanels/SceneHierarchy.h"
 #include "EditorPanels/Properties.h"
 #include "EditorPanels/ContentBrowser.h"
 #include "EditorPanels/Logs.h"
 #include "EditorPanels/PathTracingSettings.h"
+#include "EditorPanels/ViewportOverlayPanel.h"
 
 #include "EditorCamera.h"
 
@@ -39,20 +42,19 @@ public:
             vp->Update();
         }
         DrawViewport();
-        DrawDebugWindow(step);
-        DrawUtilsWindow();
+        DrawUtilsWindow(step);
 
         // Panels in a defined order to preserve prior behavior
         ImGui::BeginDisabled(m_Context.IsInRuntime());
+
+
         auto* hierarchy = static_cast<SceneHierarchyPanel*>(m_PanelManager->GetPanel("scene_hierarchy"));
         auto* properties = static_cast<PropertiesPanel*>(m_PanelManager->GetPanel("properties"));
         auto* content = static_cast<ContentBrowser*>(m_PanelManager->GetPanel("content_browser"));
         auto* logs = static_cast<LogsPanel*>(m_PanelManager->GetPanel("logs"));
         auto* pt = static_cast<PathTracingSettingsPanel*>(m_PanelManager->GetPanel("path_tracing_settings"));
-
-        if (hierarchy) {
-            hierarchy->Update();
-        }
+        
+        // Update selection service based on hierarchy selection
         if (hierarchy && hierarchy->IsNodeSelected()) {
             m_SelectionService->SetSelected(hierarchy->GetSelectedNode(), true);
         }
@@ -60,22 +62,13 @@ public:
             m_SelectionService->Clear();
         }
 
+        // Pass selection to properties panel
         if (properties) {
             properties->SetEntity(m_SelectionService->GetSelected(), m_SelectionService->HasSelection());
-            properties->Update();
         }
-        if (content) {
-            content->Update();
-        }
-#if 1
-        if (logs) {
-            logs->Update();
-        }
-#endif
-        if (pt) {
-            pt->Update();
-        }
-        ImGui::EndDisabled();
+
+        // Update panels
+        m_PanelManager->Update();
 
         // Update scene and camera
         m_Context.GetCurrentScene()->OnUpdate(step);
@@ -106,9 +99,18 @@ public:
         m_PanelManager = PanelManager::Get();
         m_PanelManager->SetContext(editor_scene);
         m_PanelManager->SetEditorContext(&m_Context);
+        
+        // Core editor panels
+        m_PanelManager->AddPanel("scene_hierarchy", new SceneHierarchyPanel(editor_scene));
+        m_PanelManager->AddPanel("properties", new PropertiesPanel(editor_scene));
+        m_PanelManager->AddPanel("content_browser", new ContentBrowser(editor_scene));
         m_PanelManager->AddPanel("logs", new LogsPanel(editor_scene));
         m_PanelManager->AddPanel("path_tracing_settings", new PathTracingSettingsPanel(editor_scene));
         m_PanelManager->AddPanel("viewport", new ViewportPanel(editor_scene, m_GizmoController.get()));
+        
+        // Add viewport overlay panel with reference to viewport panel
+        ViewportPanel* viewport_panel = m_PanelManager->GetPanelAs<ViewportPanel>("viewport");
+        m_PanelManager->AddPanel("viewport_overlay", new ViewportOverlayPanel(editor_scene, viewport_panel));
 
         // Project defaults and project service
         m_ProjectService = std::make_unique<ProjectService>();
@@ -218,101 +220,216 @@ private:
 
     void DrawViewport() { /* handled by ViewportPanel */ }
 
-    void DrawDebugWindow(float32 step) {
-        ImGui::Begin("Debug");
-        ImGui::Text("%s", fmt::format("Delta time: {}", step * 1000.0f).c_str());
-        ImGui::Text("%s", fmt::format("FPS: {}", (uint32)(1000.0f / (step * 1000.0f))).c_str());
-        ImGui::End();
-    }
-
-    void DrawUtilsWindow() {
-        ImGui::Begin("Utils");
-        {
-            PhysicsSettings physics_settings = m_Context.GetCurrentScene()->GetPhysicsSettings();
-            ImGui::Text("Gravity");
-            ImGui::SameLine();
-            if (ImGui::DragFloat3("##physics_settings_gravity_drag_float", (float32*)&physics_settings.gravity, 0.01f, -99.0f, 99.0f))
-                m_Context.GetCurrentScene()->SetPhysicsSettings(physics_settings);
-
-            if (ImGui::Button("Reload script assemblies"))
+    void DrawUtilsWindow(float32 step) {
+        // Update performance metrics only every 0.5 seconds
+        if (m_PerformanceUpdateTimer.Elapsed() >= 0.5f) {
+            m_CachedDeltaTime = step * 1000.0f;
+            m_CachedFPS = (uint32)(1000.0f / (step * 1000.0f));
+            m_PerformanceUpdateTimer.Reset();
+        }
+        
+        // Use the new UI abstraction layer
+        if (UI::BeginPanel("Utils", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            // Apply compact styling for the entire panel
+            UI::PushCompactStyle();
+        
+        // Performance Section
+        if (ImGui::CollapsingHeader("Performance", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::Indent(8.0f);
+            
+            // Use the new table system for consistent styling
+            UI::Table performance_table("##performance_table", 2, UITableStyle::Properties);
+            performance_table.SetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+            performance_table.SetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+            
+            if (performance_table.IsValid()) {
+                // Delta time row
+                performance_table.NextRow();
+                performance_table.SetColumnIndex(0);
+                performance_table.CellText("Delta Time:");
+                performance_table.SetColumnIndex(1);
+                performance_table.CellTextFmt("%.2f ms", m_CachedDeltaTime);
+                
+                // FPS row
+                performance_table.NextRow();
+                performance_table.SetColumnIndex(0);
+                performance_table.CellText("FPS:");
+                performance_table.SetColumnIndex(1);
+                
+                // Color code FPS for better visual feedback
+                ImVec4 fps_color;
+                if (m_CachedFPS >= 60) {
+                    fps_color = ImVec4(0.2f, 0.8f, 0.2f, 1.0f); // Green
+                } else if (m_CachedFPS >= 30) {
+                    fps_color = ImVec4(0.9f, 0.7f, 0.1f, 1.0f); // Orange
+                } else {
+                    fps_color = ImVec4(0.9f, 0.2f, 0.2f, 1.0f); // Red
+                }
+                performance_table.CellTextColored(fps_color, std::to_string(m_CachedFPS).c_str());
+            }
+            
+            ImGui::Unindent(8.0f);
+            ImGui::Spacing();
+        }
+        
+        // Physics Section
+        if (ImGui::CollapsingHeader("Physics", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::Indent(8.0f);
+            
+            // Use the new table system for consistent styling
+            UI::Table physics_table("##physics_table", 2, UITableStyle::Properties);
+            physics_table.SetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+            physics_table.SetupColumn("Control", ImGuiTableColumnFlags_WidthStretch);
+            
+            if (physics_table.IsValid()) {
+                physics_table.NextRow();
+                physics_table.SetColumnIndex(0);
+                physics_table.CellText("Gravity:");
+                physics_table.SetColumnIndex(1);
+                
+                PhysicsSettings physics_settings = m_Context.GetCurrentScene()->GetPhysicsSettings();
+                
+                // Use raw ImGui control since we're already handling label in table
+                if (UI::DragFloat3("##physics_settings_gravity", &physics_settings.gravity.x, 0.01f, -99.0f, 99.0f, "%.3f")) {
+                    m_Context.GetCurrentScene()->SetPhysicsSettings(physics_settings);
+                }
+            }
+            
+            ImGui::Unindent(8.0f);
+            ImGui::Spacing();
+        }
+        
+        // Scripting Section
+        if (ImGui::CollapsingHeader("Scripting", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::Indent(8.0f);
+            
+            // Use the new button system
+            if (UI::Button("Reload Script Assemblies", ImVec2(-FLT_MIN, 0))) {
                 ScriptEngine::Get()->ReloadAssemblies();
-
-            ImGui::Checkbox("Visualize physics colliders", &m_Context.VisualizeColliders());
-            ImGui::Checkbox("Visualize mesh cull bounds", &m_Context.VisualizeCullBounds());
-            ImGui::Checkbox("Scene cluster debug view", &m_Context.SceneDebugViewEnabled());
-
-            if (m_Context.VisualizeColliders()) {
-                auto box_colliders_view = m_Context.GetEditorScene()->GetRegistry()->view<BoxColliderComponent>();
-                for (auto& e : box_colliders_view) {
-                    Entity entity(e, m_Context.GetCurrentScene());
-                    const TRSComponent& trs = entity.GetComponent<TRSComponent>();
-                    const BoxColliderComponent& bc_component = entity.GetComponent<BoxColliderComponent>();
-                    DebugRenderer::RenderWireframeBox(trs.translation, trs.rotation, bc_component.size * 2.0f, { 0.28f, 0.27f, 1.0f });
-                }
-
-                auto sphere_colliders_view = m_Context.GetEditorScene()->GetRegistry()->view<SphereColliderComponent>();
-                for (auto& e : sphere_colliders_view) {
-                    Entity entity(e, m_Context.GetCurrentScene());
-                    const TRSComponent& trs = entity.GetComponent<TRSComponent>();
-                    const SphereColliderComponent& sc_component = entity.GetComponent<SphereColliderComponent>();
-                    DebugRenderer::RenderWireframeSphere(trs.translation, sc_component.radius, { 0.28f, 0.27f, 1.0f });
-                }
             }
-            if (m_Context.VisualizeCullBounds()) {
-                auto mesh_view = m_Context.GetCurrentScene()->GetRegistry()->view<MeshComponent>();
-                for (auto& e : mesh_view) {
-                    Entity entity(e, m_Context.GetCurrentScene());
-                    const TRSComponent trs = entity.GetWorldTransform();
-                    const MeshComponent& mesh_component = entity.GetComponent<MeshComponent>();
-                    Ref<Mesh> mesh = AssetManager::Get()->GetAsset<Mesh>(mesh_component.mesh_handle);
-                    Sphere bounding_sphere = mesh->GetBoundingSphere();
-                    AABB aabb = mesh->GetAABB();
-                    float32 max_scale = glm::max(glm::max(trs.scale.x, trs.scale.y), trs.scale.z);
-                    DebugRenderer::RenderWireframeSphere(
-                        trs.translation + bounding_sphere.center * trs.scale,
-                        bounding_sphere.radius * max_scale,
-                        { 0.28f, 0.27f, 1.0f }
-                    );
-                    glm::vec3 aabb_scale = glm::vec3{
-                        (aabb.max.x - aabb.min.x),
-                        (aabb.max.y - aabb.min.y),
-                        (aabb.max.z - aabb.min.z)
-                    };
-                    glm::vec3 aabb_translation = glm::vec3{
-                        (aabb.min.x + aabb.max.x) * 0.5f + trs.translation.x,
-                        (aabb.min.y + aabb.max.y) * 0.5f + trs.translation.y,
-                        (aabb.min.z + aabb.max.z) * 0.5f + trs.translation.z
-                    };
-                    DebugRenderer::RenderWireframeBox(aabb_translation, trs.rotation, aabb_scale, { 0.28f, 0.27f, 1.0f });
-                }
-            }
+            
+            ImGui::Unindent(8.0f);
+            ImGui::Spacing();
+        }
+        
+        // Visualization Section
+        if (ImGui::CollapsingHeader("Visualization", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::Spacing();
+            
+            // Use the new checkbox system
+            UI::Checkbox("Visualize Physics Colliders", &m_Context.VisualizeColliders());
+            UI::Checkbox("Visualize Mesh Cull Bounds", &m_Context.VisualizeCullBounds());
+            UI::Checkbox("Scene Cluster Debug View", &m_Context.SceneDebugViewEnabled());
+            
+            ImGui::Spacing();
+        }
+
+        
+        // Debug Views Section
+        if (ImGui::CollapsingHeader("Debug Views")) {
+            ImGui::Indent(8.0f);
+            
             if (m_Context.SceneDebugViewEnabled()) {
                 if (!m_Context.GetCurrentScene()->GetRenderer()->IsInDebugMode()) {
                     m_Context.GetCurrentScene()->GetRenderer()->EnterDebugMode(DebugSceneView::CLUSTER);
                 }
-                const char* items[] = { "Cluster view", "Triangle view", "Cluster group"};
-                uint32 current_item = uint32(m_Context.GetCurrentScene()->GetRenderer()->GetCurrentDebugMode());
-                if (ImGui::BeginCombo("View", items[current_item])) {
-                    for (int i = 0; i < IM_ARRAYSIZE(items); i++) {
-                        bool is_selected = current_item == i;
-                        switch (i) {
-                        case 0:  ImGui::Selectable("Cluster view", &is_selected); break;
-                        case 1:  ImGui::Selectable("Triangle view", &is_selected); break;
-                        default: break;
+                
+                // Use the new table system for consistent styling
+                UI::Table debug_table("##debug_views_table", 2, UITableStyle::Properties);
+                debug_table.SetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+                debug_table.SetupColumn("Control", ImGuiTableColumnFlags_WidthStretch);
+                
+                if (debug_table.IsValid()) {
+                    debug_table.NextRow();
+                    debug_table.SetColumnIndex(0);
+                    debug_table.CellText("View Mode:");
+                    debug_table.SetColumnIndex(1);
+                    
+                    const char* items[] = { "Cluster view", "Triangle view", "Cluster group"};
+                    uint32 current_item = uint32(m_Context.GetCurrentScene()->GetRenderer()->GetCurrentDebugMode());
+                    
+                    if (ImGui::BeginCombo("##debug_view_combo", items[current_item])) {
+                        for (int i = 0; i < IM_ARRAYSIZE(items); i++) {
+                            bool is_selected = current_item == i;
+                            
+                            if (i < 2) { // Only show first two items as per original code
+                                const char* item_name = nullptr;
+                                switch (i) {
+                                case 0: item_name = "Cluster view"; break;
+                                case 1: item_name = "Triangle view"; break;
+                                default: break;
+                                }
+                                
+                                if (item_name && ImGui::Selectable(item_name, &is_selected)) {
+                                    m_Context.GetCurrentScene()->GetRenderer()->EnterDebugMode(DebugSceneView(i));
+                                    current_item = i;
+                                    ImGui::SetItemDefaultFocus();
+                                }
+                            }
                         }
-                        if (is_selected) {
-                            m_Context.GetCurrentScene()->GetRenderer()->EnterDebugMode(DebugSceneView(i));
-                            current_item = i;
-                            ImGui::SetItemDefaultFocus();
-                        }
+                        ImGui::EndCombo();
                     }
-                    ImGui::EndCombo();
                 }
             } else {
                 m_Context.GetCurrentScene()->GetRenderer()->ExitDebugMode();
+                UI::TextDisabled("Enable 'Scene Cluster Debug View' to access debug modes");
+            }
+            
+            ImGui::Unindent(8.0f);
+        }
+        
+            // Pop the compact styling
+            UI::PopCompactStyle();
+        }
+        UI::EndPanel();
+        
+        // Handle visualization rendering (unchanged)
+        if (m_Context.VisualizeColliders()) {
+            auto box_colliders_view = m_Context.GetEditorScene()->GetRegistry()->view<BoxColliderComponent>();
+            for (auto& e : box_colliders_view) {
+                Entity entity(e, m_Context.GetCurrentScene());
+                const TRSComponent& trs = entity.GetComponent<TRSComponent>();
+                const BoxColliderComponent& bc_component = entity.GetComponent<BoxColliderComponent>();
+                DebugRenderer::RenderWireframeBox(trs.translation, trs.rotation, bc_component.size * 2.0f, { 0.28f, 0.27f, 1.0f });
+            }
+
+            auto sphere_colliders_view = m_Context.GetEditorScene()->GetRegistry()->view<SphereColliderComponent>();
+            for (auto& e : sphere_colliders_view) {
+                Entity entity(e, m_Context.GetCurrentScene());
+                const TRSComponent& trs = entity.GetComponent<TRSComponent>();
+                const SphereColliderComponent& sc_component = entity.GetComponent<SphereColliderComponent>();
+                DebugRenderer::RenderWireframeSphere(trs.translation, sc_component.radius, { 0.28f, 0.27f, 1.0f });
             }
         }
-        ImGui::End();
+        
+        if (m_Context.VisualizeCullBounds()) {
+            auto mesh_view = m_Context.GetCurrentScene()->GetRegistry()->view<MeshComponent>();
+            for (auto& e : mesh_view) {
+                Entity entity(e, m_Context.GetCurrentScene());
+                const TRSComponent trs = entity.GetWorldTransform();
+                const MeshComponent& mesh_component = entity.GetComponent<MeshComponent>();
+                Ref<Mesh> mesh = AssetManager::Get()->GetAsset<Mesh>(mesh_component.mesh_handle);
+                Sphere bounding_sphere = mesh->GetBoundingSphere();
+                AABB aabb = mesh->GetAABB();
+                float32 max_scale = glm::max(glm::max(trs.scale.x, trs.scale.y), trs.scale.z);
+                DebugRenderer::RenderWireframeSphere(
+                    trs.translation + bounding_sphere.center * trs.scale,
+                    bounding_sphere.radius * max_scale,
+                    { 0.28f, 0.27f, 1.0f }
+                );
+                glm::vec3 aabb_scale = glm::vec3{
+                    (aabb.max.x - aabb.min.x),
+                    (aabb.max.y - aabb.min.y),
+                    (aabb.max.z - aabb.min.z)
+                };
+                glm::vec3 aabb_translation = glm::vec3{
+                    (aabb.min.x + aabb.max.x) * 0.5f + trs.translation.x,
+                    (aabb.min.y + aabb.max.y) * 0.5f + trs.translation.y,
+                    (aabb.min.z + aabb.max.z) * 0.5f + trs.translation.z
+                };
+                DebugRenderer::RenderWireframeBox(aabb_translation, trs.rotation, aabb_scale, { 0.28f, 0.27f, 1.0f });
+            }
+        }
     }
 
     void ToggleRuntime() {
@@ -359,6 +476,11 @@ private:
     std::unique_ptr<GizmoController> m_GizmoController;
     std::unique_ptr<ProjectService> m_ProjectService;
     PanelManager* m_PanelManager = nullptr;
+    
+    // Performance metrics caching
+    Timer m_PerformanceUpdateTimer;
+    float32 m_CachedDeltaTime = 0.0f;
+    uint32 m_CachedFPS = 0;
 };
 #if 0
 

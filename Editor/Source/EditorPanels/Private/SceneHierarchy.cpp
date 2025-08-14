@@ -56,6 +56,13 @@ namespace Omni {
 					RenderHierarchyNode(entity);
 				}
 			};
+
+			// Handle deselection when clicking on empty space
+			if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered()) {
+				m_SelectedNode = { entt::null, m_Context };
+				m_IsSelected = false;
+			}
+
 			ImGui::End();
 		}
 	}
