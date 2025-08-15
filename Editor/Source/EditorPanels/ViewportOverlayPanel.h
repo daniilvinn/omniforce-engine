@@ -7,6 +7,7 @@
 namespace Omni {
 
 	class ViewportPanel;
+	class PathTracingSceneRenderer;
 
 	// Renders the viewport overlay controls (Play/Stop, View Mode, Exposure) at a position retrieved from ViewportPanel
 	class ViewportOverlayPanel : public EditorPanel {
@@ -14,11 +15,17 @@ namespace Omni {
 		ViewportOverlayPanel(Scene* ctx, ViewportPanel* viewport_panel);
 		void Update() override;
 
-	private:
-		ViewportPanel* m_ViewportPanel = nullptr;
-		int m_ViewMode = 0; // 0 Lit, 1 Unlit, 2 Wireframe
-		float m_Exposure = 1.0f;
+private:
+	// Helper method to get path tracing renderer instance
+	PathTracingSceneRenderer* GetPathTracingRenderer();
+	
+	// Runtime toggle functionality
+	void ToggleRuntime();
+
+	ViewportPanel* m_ViewportPanel = nullptr;
+	int m_ViewMode = 0; // 0 Lit, 1 Unlit, 2 Wireframe
+	float m_Exposure = 1.0f;
         Ref<Image> m_FadeImage;
-	};
+};
 
 }

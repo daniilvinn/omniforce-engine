@@ -40,6 +40,7 @@ namespace Omni {
 		void RemoveEntityWithChildren(Entity entity);
 		void LaunchRuntime();
 		void ShutdownRuntime();
+		bool IsInRuntime() const { return m_InRuntime; }
 		fvec3 TraverseSceneHierarchy(Entity node, TRSComponent origin);
 		
 

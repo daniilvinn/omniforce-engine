@@ -36,17 +36,11 @@ public:
     void OnUpdate(float32 step) override {
         DrawMainMenuBar();
         DrawDockspace();
-        DrawToolbar();
-        // Update viewport panel explicitly so it renders the scene and handles DnD/gizmos
-        if (auto* vp = m_PanelManager->GetPanelAs<ViewportPanel>("viewport")) {
-            vp->Update();
-        }
-        DrawViewport();
-        DrawUtilsWindow(step);
-
+        
         // Panels in a defined order to preserve prior behavior
         ImGui::BeginDisabled(m_Context.IsInRuntime());
 
+        DrawUtilsWindow(step);
 
         auto* hierarchy = static_cast<SceneHierarchyPanel*>(m_PanelManager->GetPanel("scene_hierarchy"));
         auto* properties = static_cast<PropertiesPanel*>(m_PanelManager->GetPanel("properties"));
@@ -69,6 +63,8 @@ public:
 
         // Update panels
         m_PanelManager->Update();
+
+        ImGui::EndDisabled();
 
         // Update scene and camera
         m_Context.GetCurrentScene()->OnUpdate(step);
@@ -174,51 +170,6 @@ private:
     }
 
     void DrawDockspace() { ImGui::DockSpaceOverViewport(ImGui::GetMainViewport()); }
-
-    void DrawToolbar() {
-        ImGui::Begin("##Toolbar", nullptr,
-            ImGuiWindowFlags_NoDecoration |
-            ImGuiWindowFlags_NoScrollbar |
-            ImGuiWindowFlags_NoScrollWithMouse |
-            ImGuiWindowFlags_NoTitleBar);
-
-        bool in_runtime = m_Context.IsInRuntime();
-
-        // Left: Play/Stop
-        if (ImGui::Button(in_runtime ? "Stop" : "Play", ImVec2(70.0f, 0.0f))) {
-            ToggleRuntime();
-        }
-
-        // Middle: Gizmo operation toggles (Move/Rotate/Scale)
-        ImGui::SameLine();
-        auto make_tool_button = [&](const char* label, bool selected) {
-            bool clicked = false;
-            if (selected) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.46f, 0.98f, 1.0f));
-            clicked = ImGui::SmallButton(label);
-            if (selected) ImGui::PopStyleColor();
-            return clicked;
-        };
-
-        if (m_GizmoController) {
-            ImGuizmo::OPERATION op = m_GizmoController->GetOperation();
-            ImGui::SameLine();
-            if (make_tool_button("Move", op == ImGuizmo::TRANSLATE)) {
-                m_GizmoController->SetOperation(ImGuizmo::TRANSLATE);
-            }
-            ImGui::SameLine();
-            if (make_tool_button("Rotate", (op & ImGuizmo::OPERATION::ROTATE) == ImGuizmo::OPERATION::ROTATE)) {
-                m_GizmoController->SetOperation(ImGuizmo::OPERATION::ROTATE);
-            }
-            ImGui::SameLine();
-            if (make_tool_button("Scale", op == ImGuizmo::SCALE)) {
-                m_GizmoController->SetOperation(ImGuizmo::SCALE);
-            }
-        }
-
-        ImGui::End();
-    }
-
-    void DrawViewport() { /* handled by ViewportPanel */ }
 
     void DrawUtilsWindow(float32 step) {
         // Update performance metrics only every 0.5 seconds

@@ -26,14 +26,18 @@ namespace Omni {
 		// Setting new settings will reset the accumulated frame count
 		void SetSettings(const PathTracingSettings& settings);
 
-		// Get current settings
-		const PathTracingSettings& GetSettings() const { return m_Settings; }
-		PathTracingSettings& GetSettings() { return m_Settings; }
+			// Get current settings
+	const PathTracingSettings& GetSettings() const { return m_Settings; }
+	PathTracingSettings& GetSettings() { return m_Settings; }
 
-		uint32 GetAccumulatedFrameCount() const { return m_AccumulatedFrameCount; }
+	uint32 GetAccumulatedFrameCount() const { return m_AccumulatedFrameCount; }
 
-		// Reset accumulation manually
-		void ResetAccumulation() { m_AccumulatedFrameCount = 0; }
+	// Reset accumulation manually
+	void ResetAccumulation() { m_AccumulatedFrameCount = 0; }
+
+	// Set exposure without triggering accumulation reset
+	void SetExposure(float32 exposure) { m_Exposure = exposure; }
+	float32 GetExposure() const { return m_Exposure; }
 
 	private:
 		Ref<RTPipeline> m_RTPipeline;

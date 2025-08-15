@@ -213,26 +213,22 @@ namespace Omni {
 	}
 
 	void PathTracingSceneRenderer::BeginScene(Ref<Camera> camera)
-	{
-		m_CurrentMainRenderTarget = m_RendererOutputs[Renderer::GetCurrentFrameIndex()];
-		m_CurrentDepthAttachment = m_DepthAttachments[Renderer::GetCurrentFrameIndex()];
+{
+	m_CurrentMainRenderTarget = m_RendererOutputs[Renderer::GetCurrentFrameIndex()];
+	m_CurrentDepthAttachment = m_DepthAttachments[Renderer::GetCurrentFrameIndex()];
 
-		// Write camera data to device buffer
-		if (camera) {
-			m_Camera = camera;
+	// Write camera data to device buffer
+	if (camera) {
+		m_Camera = camera;
 
-			WeakPtr<Camera3D> camera_3D = m_Camera;
+		WeakPtr<Camera3D> camera_3D = m_Camera;
 
-			ImGui::Begin("Post-processing");
-			ImGui::SliderFloat("Exposure", &m_Exposure, 0.1, 20.0);
-			ImGui::End();
-
-			ViewData camera_data;// = m_PreviousFrameView;
-			camera_data.view = m_Camera->GetViewMatrix();
-			camera_data.proj = m_Camera->GetProjectionMatrix();
-			camera_data.view_proj = m_Camera->GetViewProjectionMatrix();
-			camera_data.position = m_Camera->GetPosition();
-			camera_data.frustum = m_Camera->GenerateFrustum();
+		ViewData camera_data;// = m_PreviousFrameView;
+		camera_data.view = m_Camera->GetViewMatrix();
+		camera_data.proj = m_Camera->GetProjectionMatrix();
+		camera_data.view_proj = m_Camera->GetViewProjectionMatrix();
+		camera_data.position = m_Camera->GetPosition();
+		camera_data.frustum = m_Camera->GenerateFrustum();
 			camera_data.forward_vector = m_Camera->GetForwardVector();
 			// If camera is 3D (very likely to be truth though) cast it to 3D camera and get FOV, otherwise use fixed 90 degree FOV
 			camera_data.fov = m_Camera->GetType() == CameraProjectionType::PROJECTION_3D ? camera_3D->GetFOV() : glm::radians(90.0f);
