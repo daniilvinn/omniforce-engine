@@ -99,10 +99,13 @@ namespace Omni {
 
 		// Handle transmission
 		uint32 rt_material_size = sizeof(RTMaterial);
+		
+		if((rt_material.TransmissionData.enabled = m->HasShaderMacro("TRANSMISSION_ENABLED")) == true) {
+			rt_material.TransmissionData.value = RTMaterialTransmission();
 
-		if((rt_material.TransmissionData.enabled = material_table.contains("TRANSMISSION_ENABLED")) == true) {
-			rt_material_size += sizeof(RTMaterialTransmission);
-			
+			if(material_table.contains("TRANSMISSION_FACTOR")) {
+				memcpy(&rt_material.TransmissionData.value.Factor, &material_table["TRANSMISSION_FACTOR"], sizeof(float32));
+			}
 			if (material_table.contains("TRANSMISSION_IOR")) {
 				memcpy(&rt_material.TransmissionData.value.IOR, &material_table["TRANSMISSION_IOR"], sizeof(float32));
 			}

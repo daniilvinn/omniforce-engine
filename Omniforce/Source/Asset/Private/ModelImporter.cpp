@@ -138,7 +138,8 @@ namespace Omni {
 	void ModelImporter::ExtractAsset(ftf::Asset* asset, std::filesystem::path path)
 	{
 		// Allocate crucial fastgltf objects
-		ftf::Parser gltf_parser;
+		ftf::Extensions extensions = ftf::Extensions::KHR_materials_transmission | ftf::Extensions::KHR_materials_ior;
+		ftf::Parser gltf_parser(extensions);
 		ftf::GltfDataBuffer data_buffer;
 
 		// Try to load asset data

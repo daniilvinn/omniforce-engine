@@ -197,7 +197,7 @@ public struct HitSurfaceInfo<SurfaceDomain Domain = SurfaceDomain.Opaque> {
         Surface.Roughness = MetallicRoughnessOcclusion.g;
 
         if (let Transmission = Material.TransmissionData.get()) {
-            Surface.Transmission.Factor = 1.0 - BaseColor.a; // TODO: check if this is correct
+            Surface.Transmission.Factor = 1.0 - Transmission.Factor;
             Surface.Transmission.IOR = Transmission.IOR;
             Surface.Transmission.Thickness = Transmission.Thickness;
         }

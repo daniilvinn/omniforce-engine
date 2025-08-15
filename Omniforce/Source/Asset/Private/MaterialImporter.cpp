@@ -171,27 +171,33 @@ namespace Omni {
 
 		MaterialDomain domain = MaterialDomain::NONE;
 
-		switch (in_material->alphaMode) {
-			case ftf::AlphaMode::Opaque:
-				domain = MaterialDomain::OPAQUE;
-				break;
-			case ftf::AlphaMode::Mask:
-				domain = MaterialDomain::MASKED;
-				break;
-			case ftf::AlphaMode::Blend:
-				domain = MaterialDomain::TRANSMISSIVE;
-				break;
-			default:
-				domain = MaterialDomain::NONE;
-				break;
+		if (in_material->transmission) {
+			domain = MaterialDomain::TRANSMISSIVE;
 		}
-
+		else {
+			switch (in_material->alphaMode) {
+				case ftf::AlphaMode::Opaque:
+					domain = MaterialDomain::OPAQUE;
+					break;
+				case ftf::AlphaMode::Mask:
+					domain = MaterialDomain::MASKED;
+					break;
+				case ftf::AlphaMode::Blend:
+					domain = MaterialDomain::TRANSMISSIVE;
+					break;
+				default:
+					domain = MaterialDomain::NONE;
+					break;
+			}
+		}
+		
 		material->SetDomain(domain);
 
 		if (domain == MaterialDomain::TRANSMISSIVE) {
 			material->AddShaderMacro("TRANSMISSION_ENABLED");
 
 			material->AddProperty("TRANSMISSION_IOR", in_material->ior);
+			material->AddProperty("TRANSMISSION_FACTOR", in_material->transmission->transmissionFactor);
 
 			if(in_material->volume) {
 				material->AddProperty("TRANSMISSION_THICKNESS", in_material->volume->thicknessFactor);

@@ -49,6 +49,7 @@ namespace Omni {
 		static uint8 GetRuntimeEntrySize(uint8 variant_index);
 		const auto& GetName() const { return m_Name; }
 		const auto& GetTable() const { return m_Properties; }
+		bool HasShaderMacro(std::string_view macro) const { return m_Macros.contains(macro.data()); }
 		const Ref<Pipeline> GetPipeline() const { return m_Pipeline; }
 
 		void CompilePipeline();
