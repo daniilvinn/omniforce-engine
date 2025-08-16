@@ -5,6 +5,10 @@ cmake_minimum_required (VERSION 3.23)
 
 project ("Omniforce Engine")
 
+# Include custom build configuration setup
+include("${CMAKE_SOURCE_DIR}/CMake/BuildConfigurations.cmake")
+omni_setup_build_configurations()
+
 if(MSVC)
 	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 endif()

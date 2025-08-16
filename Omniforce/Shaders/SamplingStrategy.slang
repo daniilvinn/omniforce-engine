@@ -368,7 +368,6 @@ public struct BSDFSamplingStrategy {
             EtaT
         );
 
-
         // Early exit for grazing angles
         if (NdotV < FloatMin) {
             Result.Direction = FloatMax;
@@ -428,9 +427,7 @@ public struct BSDFSamplingStrategy {
         }
         else if (pRefract > FloatMin)
         {
-            float Eta;
-            
-            Eta = EtaI / EtaT;
+            float Eta = EtaI / EtaT;
 
             Result.Direction = normalize(refract(-V, N, Eta));
             Result.PDF = pRefract;
