@@ -15,7 +15,7 @@ namespace Omni {
 	EditorCamera::~EditorCamera()
 	{
 		// Ensure mouse is released if camera is destroyed while dragging
-		if (m_IsRightMouseDragging || m_IsAltLeftMouseDragging) {
+		if (m_IsRightMouseDragging) {
 			Input::ReleaseAndShowMouse();
 		}
 	}
@@ -30,7 +30,6 @@ namespace Omni {
 
 		// Handle mouse capture state changes
 		bool right_mouse_pressed = Input::ButtonPressed(ButtonCode::MOUSE_BUTTON_RIGHT);
-		bool alt_left_mouse_pressed = Input::KeyPressed(KeyCode::KEY_LEFT_ALT) && Input::ButtonPressed(ButtonCode::MOUSE_BUTTON_LEFT);
 
 		// Start right mouse drag
 		if (right_mouse_pressed && !m_IsRightMouseDragging) {
@@ -44,20 +43,8 @@ namespace Omni {
 			Input::ReleaseAndShowMouse();
 		}
 
-		// Start alt+left mouse drag
-		if (alt_left_mouse_pressed && !m_IsAltLeftMouseDragging) {
-			m_IsAltLeftMouseDragging = true;
-			m_LastMousePosition = Input::MousePosition();
-			Input::LockAndHideMouse();
-		}
-		// End alt+left mouse drag
-		else if (!alt_left_mouse_pressed && m_IsAltLeftMouseDragging) {
-			m_IsAltLeftMouseDragging = false;
-			Input::ReleaseAndShowMouse();
-		}
-
-		// Handle camera rotation with infinite movement
-		if (m_IsRightMouseDragging || m_IsAltLeftMouseDragging) {
+		// Handle camera rotation
+		if (m_IsRightMouseDragging) {
 			ivec2 current_pos = Input::MousePosition();
 			float32 x_delta = -(float32)(current_pos.x - m_LastMousePosition.x);
 			float32 y_delta = (float32)(current_pos.y - m_LastMousePosition.y);

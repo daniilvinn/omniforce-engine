@@ -21,7 +21,6 @@ namespace Omni {
 	private:
 		ivec2 m_LastMousePosition = { 0, 0 };
 		bool m_IsRightMouseDragging = false;
-		bool m_IsAltLeftMouseDragging = false;
 
 	};
 }
