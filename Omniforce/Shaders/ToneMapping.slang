@@ -19,7 +19,9 @@ float3 ApplyToneMapping(float3 Color, float Exposure) {
 
 float3 ApplyGammaCorrection(float3 Color, float Gamma)
 {
-	return pow(Color, 1.0 / Gamma);
+    float3 lower = Color * 12.92;
+    float3 upper = 1.055 * pow(Color, rcp(2.4)) - 0.055;
+    return select(Color <= 0.0031308, lower, upper);
 }
 
 [shader("fragment")]

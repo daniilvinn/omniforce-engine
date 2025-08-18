@@ -20,7 +20,6 @@ namespace Omni {
 		float Factor = 1.0;
 	};
 
-	// Example of the new system with template arguments and field-level conditions
 	struct META(ShaderExpose, Module = "RenderingGenerated", TemplateArguments = "SurfaceDomain Domain = SurfaceDomain.Opaque") RTMaterial {
 		RTMaterialMetadata Metadata;
 		DeviceTexture BaseColor;
