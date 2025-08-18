@@ -199,7 +199,8 @@ public struct NEESamplingStrategy {
         PBRSurface<Domain> Surface,
         float3 V,
         float2 Xi,
-        NextEventEstimator NEE
+        NextEventEstimator NEE,
+        MISHeuristic MISHeuristic
     ) {
         if (NEE.GetLightCount() == 0) {
             return SamplingResult.Invalid();
@@ -322,7 +323,6 @@ public struct NEESamplingStrategy {
         }
 
         // Apply MIS weights
-        PowerHeuristic MISHeuristic;
         float MISWeight = MISHeuristic.Compute(SolidAnglePDF, BSDFPdf);
         
         float3 LightEmission = NEESample.Color * NEESample.Intensity;

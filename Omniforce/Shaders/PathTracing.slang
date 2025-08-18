@@ -165,12 +165,20 @@ void OpaqueHit(inout RayPayload Payload, in BuiltInTriangleIntersectionAttribute
 
     NextEventEstimator NEE = NextEventEstimator(Input.PointLights);
 
+    MISHeuristic MISHeuristic;
+    if(Input.Settings.EnableMIS) {
+        MISHeuristic = PowerHeuristic();
+    } else {
+        MISHeuristic = NullHeuristic();
+    }
+
     NEESamplingStrategy NEEStrategy;
     Result = NEEStrategy.Sample(
         SurfaceInfo.Surface, 
         normalize(-Payload.IncomingDirection), 
         Random.GetXi<float2>(),
-        NEE
+        NEE,
+        MISHeuristic
     );
 
     if (!IsInvalidHitPoint(Result.Direction)) {
@@ -204,7 +212,13 @@ void PointLightHit(inout RayPayload Payload, in BuiltInTriangleIntersectionAttri
         
         if (NEEPdf > 1e-8) {
             // Apply MIS weight for direct light hit
-            PowerHeuristic MISHeuristic;
+            MISHeuristic MISHeuristic;
+            if(Input.Settings.EnableMIS) {
+                MISHeuristic = PowerHeuristic();
+            } else {
+                MISHeuristic = NullHeuristic();
+            }
+
             float MISWeight = MISHeuristic.Compute(Payload.BSDFPdf, NEEPdf);
             Payload.Radiance += LightEmission * Payload.PathThroughput * MISWeight;
         } else {

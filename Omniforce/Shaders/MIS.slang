@@ -21,4 +21,10 @@ public struct PowerHeuristic : MISHeuristic {
     }
 }
 
+public struct NullHeuristic : MISHeuristic {
+    public float Compute(float pdf_x, float pdf_y) {
+        return 1.0;
+    }
+}
+
 }
