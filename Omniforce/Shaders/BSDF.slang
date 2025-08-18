@@ -88,33 +88,6 @@ public struct CookTorranceBRDF {
         return Specular;
     }
 
-    public float PDF(float3 V, float3 L) {
-        float NdotV = max(dot(TBN.N, V), 0.0);
-        float NdotL = max(dot(TBN.N, L), 0.0);
-
-        if (NdotV < FloatMin || NdotL < FloatMin) {
-            return 0.0;
-        }
-
-        float3 H = normalize(V + L);
-        float NdotH = max(dot(TBN.N, H), 0.0);
-        float VdotH = max(dot(V, H), 0.0);
-
-        if (NdotH < FloatMin || VdotH < FloatMin) {
-            return 0.0;
-        }
-
-        // Specular PDF (GGX)
-        float D = DistributionGGX(TBN.N, H, Roughness);
-        float PDFSpec = D * NdotH / (4.0 * VdotH);
-
-        return PDFSpec;
-    }
-
-    public float3 ComputeAndGetPDF(float3 V, float3 L, out float pdf) {
-        pdf = PDF(V, L);
-        return Compute(V, L);
-    }
 };
 
 public struct RoughBTDF {
