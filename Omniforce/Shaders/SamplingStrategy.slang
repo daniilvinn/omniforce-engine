@@ -39,7 +39,7 @@ public struct BRDFSamplingStrategy
 {
     public SamplingResult Sample<SurfaceDomain Domain = SurfaceDomain.Opaque>(
         PBRSurface<Domain> Surface,
-        float3 V_world,
+        float3 V,
         float2 Xi
     ) {
         SamplingResult Result;
@@ -48,7 +48,6 @@ public struct BRDFSamplingStrategy
         Result.Direction = FloatMax;
 
         // Ensure view direction points toward surface
-        float3 V = normalize(V_world);
         float NdotV = max(dot(Surface.TangentSpace.N, V), 0.0);
 
         float3 F0 = FresnelBaseReflectance<SurfaceDomain.Opaque>(Surface.Color, Surface.Metallic);
@@ -70,10 +69,10 @@ public struct BRDFSamplingStrategy
             }
 
             // Fresnel at view angle
-            float3 Fm = FresnelSchlick(NdotV, F0);
+            float3 FresnelFactor = FresnelSchlick(NdotV, F0);
 
             Result.PDF = 1.0;
-            Result.Weight = Fm;
+            Result.Weight = FresnelFactor;
 
             return Result;
         }
@@ -82,11 +81,11 @@ public struct BRDFSamplingStrategy
         Surface.Roughness = max(Surface.Roughness, 0.001); // avoid singularities
 
         // Fresnel at view direction for energy distribution
-        float3 FresnelView = FresnelSchlick(NdotV, F0);
-        float3 kSpecular = FresnelView;
+        float3 FresnelFactor = FresnelSchlick(NdotV, F0);
+        float3 kSpecular = FresnelFactor;
         float3 kDiffuse = (1.0 - kSpecular) * (1.0 - Surface.Metallic); // energy conserving diffuse
 
-        // Use luminance weights for MIS probabilities
+        // Use luminance weights for sampling probabilities
         float SpecularWeight = dot(kSpecular, float3(0.299, 0.587, 0.114));
         float DiffuseWeight = dot(kDiffuse, float3(0.299, 0.587, 0.114));
         float TotalWeight = SpecularWeight + DiffuseWeight + 1e-8;
@@ -95,34 +94,33 @@ public struct BRDFSamplingStrategy
 
         // --- 3) Branch: Specular vs Diffuse sampling ------------------
         float3 H;
-        float PDFSpecular = 0;
-        float PDFDiffuse = 0;
 
-        // Transform view to local tangent space
-        float3 V_local = float3(
-        	dot(V, Surface.TangentSpace.T),
-        	dot(V, Surface.TangentSpace.B),
-        	dot(V, Surface.TangentSpace.N)
-        );
+        float PDFDiffuse = 0;
+        float PDFSpecular = 0;
 
         if (Xi.x < SpecularPathProbability && SpecularPathProbability > FloatMin)
         {
-        	// ---- Specular (GGX VNDF) sampling ----
-        	float2 XiSpecular = float2(Xi.x / SpecularPathProbability, Xi.y);
+            // ---- Specular (GGX VNDF) sampling ----
+            float2 XiSpecular = float2(Xi.x / SpecularPathProbability, Xi.y);
 
-        	// Sample microfacet normal H in local space using static sampler
-        	float3 H_local = CookTorranceBRDF.Sampler.Sample(V_local, Surface.Roughness, XiSpecular);
+            // Transform view to local tangent space
+            float3 V_local = float3(
+                dot(V, Surface.TangentSpace.T), 
+                dot(V, Surface.TangentSpace.B), 
+                dot(V, Surface.TangentSpace.N)
+            );
 
-        	// Reflect view around H_local in local space to get outgoing direction L_local
-        	float3 L_local = normalize(reflect(-V_local, H_local));
+            // Sample microfacet normal H in local space using static sampler
+            float3 H_local = CookTorranceBRDF.Sampler.Sample(V_local, Surface.Roughness, XiSpecular);
+            H = normalize(mul(H_local, Surface.TangentSpace.TBN));
 
-            // Compute PDFs
-            PDFSpecular = CookTorranceBRDF.Sampler.PDF(V_local, L_local, Surface.Roughness);
+            float3 L_local = normalize(reflect(-V_local, H_local));
+            
+            // Reflect view around H to get outgoing direction L
+            Result.Direction = normalize(reflect(-V, H));
+
             PDFDiffuse = LambertianDiffuseBRDF.Sampler.PDF(L_local);
-
-        	// Transform H and L from local to world space
-        	H = normalize(mul(H_local, Surface.TangentSpace.TBN));
-        	Result.Direction = normalize(mul(L_local, Surface.TangentSpace.TBN));
+            PDFSpecular = CookTorranceBRDF.Sampler.PDF(V, Result.Direction, Surface.TangentSpace, Surface.Roughness);
         }
         else if (DiffusePathProbability > FloatMin)
         {
@@ -132,19 +130,18 @@ public struct BRDFSamplingStrategy
             // Use static sampler from LambertianDiffuseBRDF
             float3 L_local = LambertianDiffuseBRDF.Sampler.Sample(XiDiffuse);
 
-            // Compute PDFs
-            PDFSpecular = CookTorranceBRDF.Sampler.PDF(V_local, L_local, Surface.Roughness);
-            PDFDiffuse = LambertianDiffuseBRDF.Sampler.PDF(L_local);
-
             Result.Direction = normalize(mul(L_local, Surface.TangentSpace.TBN));
             H = normalize(V + Result.Direction);
+
+            PDFDiffuse = LambertianDiffuseBRDF.Sampler.PDF(L_local);
+            PDFSpecular = CookTorranceBRDF.Sampler.PDF(V, Result.Direction, Surface.TangentSpace, Surface.Roughness);
         }
         else
         {
             return SamplingResult.Invalid();
         }
 
-        // --- 4) Direct BRDF evaluation ---------------
+        // --- 4) Common precomputations ---------------
         float NdotL = max(dot(Surface.TangentSpace.N, Result.Direction), 0.0);
         float NdotH = max(dot(Surface.TangentSpace.N, H), 0.0);
         float VdotH = max(dot(V, H), 0.0);
@@ -165,13 +162,15 @@ public struct BRDFSamplingStrategy
 
         LambertianDiffuseBRDF DiffuseBRDF = LambertianDiffuseBRDF(
             Surface.Color,
-            (1.0 - FresnelView) * (1.0 - Surface.Metallic) // Compute diffuse weight
+            (1.0 - FresnelFactor) * (1.0 - Surface.Metallic)
         );
 
         float3 Specular = SpecularBRDF.Compute(V, Result.Direction);
         float3 Diffuse = DiffuseBRDF.Compute(V, Result.Direction);
-        float3 f = Specular + Diffuse;
         
+        float3 f = Specular + Diffuse;
+
+        // Compute final PDF
         Result.PDF = SpecularPathProbability * PDFSpecular + DiffusePathProbability * PDFDiffuse;
 
         if (Result.PDF < 1e-8) {
@@ -211,10 +210,10 @@ public struct NEESamplingStrategy {
         Result.PDF = 0;
         Result.Direction = FloatMax;
 
+        // Ensure view direction points toward surface
         float NdotV = max(dot(Surface.TangentSpace.N, V), 0.0);
 
         float3 F0 = FresnelBaseReflectance<SurfaceDomain.Opaque>(Surface.Color, Surface.Metallic);
-        float3 Fv = FresnelSchlick(NdotV, F0);
 
         // Early exit for grazing angles
         if (NdotV < FloatMin) {
@@ -285,29 +284,23 @@ public struct NEESamplingStrategy {
         float3 Diffuse = DiffuseBRDF.Compute(V, L);
         float3 f = Specular + Diffuse;
 
-        // Compute V with respect to tangent basis
-        float3 V_local = float3(
-            dot(V, Surface.TangentSpace.T),
-            dot(V, Surface.TangentSpace.B),
-            dot(V, Surface.TangentSpace.N)
-        );
-
+        // --- 5) Calculate BSDF PDFs using separated BRDFs ---
         float3 L_local = float3(
             dot(L, Surface.TangentSpace.T),
             dot(L, Surface.TangentSpace.B),
             dot(L, Surface.TangentSpace.N)
         );
 
-        // --- 5) Calculate BSDF PDF for MIS using separated BRDFs ---
-        float PDFSpecular = CookTorranceBRDF.Sampler.PDF(V_local, L_local, Surface.Roughness);
-        float PDFDiffuse = LambertianDiffuseBRDF.Sampler.PDF(L_local);
+        float PDFSpecular = SpecularBRDF.Sampler.PDF(V, L, Surface.TangentSpace, Surface.Roughness);
+        float PDFDiffuse = DiffuseBRDF.Sampler.PDF(L_local); 
 
         // Use view-direction Fresnel for MIS probabilities (consistent with BRDFSamplingStrategy)
-        float3 FresnelSpecular = Fv;
-        float3 FresnelDiffuse = (1.0 - FresnelSpecular) * (1.0 - Surface.Metallic);
+        float3 FresnelFactor = FresnelSchlick(NdotV, F0);
+        float3 kSpecular = FresnelFactor;
+        float3 kDiffuse = (1.0 - kSpecular) * (1.0 - Surface.Metallic);
         
-        float SpecularWeight = dot(FresnelSpecular, float3(0.299, 0.587, 0.114));
-        float DiffuseWeight = dot(FresnelDiffuse, float3(0.299, 0.587, 0.114));
+        float SpecularWeight = dot(kSpecular, float3(0.299, 0.587, 0.114));
+        float DiffuseWeight = dot(kDiffuse, float3(0.299, 0.587, 0.114));
         float TotalWeight = SpecularWeight + DiffuseWeight + 1e-8;
         float SpecularPathProbability = SpecularWeight / TotalWeight;
         float DiffusePathProbability = DiffuseWeight / TotalWeight;

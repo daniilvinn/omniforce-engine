@@ -138,33 +138,25 @@ namespace Omni {
             return H;
         }
         
-        public float PDF(float3 V, float3 L, float Roughness) {
-            float NdotV = max(V.z, 0.0f);
-            float NdotL = max(L.z, 0.0f);
+        public float PDF(float3 V, float3 L, TangentSpace TBN, float Roughness) {
+            float NdotV = max(dot(TBN.N, V), 0.0);
+            float NdotL = max(dot(TBN.N, L), 0.0);
 
             if (NdotV < FloatMin || NdotL < FloatMin) {
-                return 0.0f;
+                return 0.0;
             }
 
             float3 H = normalize(V + L);
-            float NdotH = max(H.z, 0.0f);
-            float VdotH = max(dot(V, H), 0.0f);
+            float NdotH = max(dot(TBN.N, H), 0.0);
+            float VdotH = max(dot(V, H), 0.0);
 
             if (NdotH < FloatMin || VdotH < FloatMin) {
-                return 0.0f;
+                return 0.0;
             }
 
-            float Alpha = Roughness * Roughness;
-            float Alpha2 = Alpha * Alpha;
-            
-            // GGX normal distribution D(H)
-            float CosTheta = H.z;
-            float Cos2Theta = CosTheta * CosTheta;
-            float Tan2Theta = (1.0f - Cos2Theta) / Cos2Theta;
-            float D = Alpha2 / (PI * Cos2Theta * Cos2Theta * (Alpha2 + Tan2Theta) * (Alpha2 + Tan2Theta));
-
-            // Specular PDF (GGX) - same as BRDFSamplingStrategy::PDF
-            float PDFSpec = D * NdotH / (4.0f * VdotH);
+            // Specular PDF (GGX)
+            float D = DistributionGGX(TBN.N, H, Roughness);
+            float PDFSpec = D * NdotH / (4.0 * VdotH);
 
             return PDFSpec;
         }
