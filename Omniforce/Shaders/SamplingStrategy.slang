@@ -335,7 +335,7 @@ public struct NEESamplingStrategy {
 public struct BSDFSamplingStrategy {
     public SamplingResult Sample<SurfaceDomain Domain = SurfaceDomain.Transmissive>(
         PBRSurface<Domain> Surface,
-        float3 V_world,
+        float3 V,
         float2 Xi
     ) {
         SamplingResult Result;
@@ -343,12 +343,11 @@ public struct BSDFSamplingStrategy {
         Result.PDF = 0;
         Result.Direction = FloatMax;
 
-        // Ensure view direction points toward surface
-        float3 V = normalize(V_world);
+        // Fix normal if needed
         float3 N = SameHemisphere(V, Surface.TangentSpace.N) ? Surface.TangentSpace.N : -Surface.TangentSpace.N;
         float NdotV = max(dot(N, V), 0.0);
 
-        // TODO: This is not correct, we need track correct current medium IOR
+        // TODO: This is not correct (?), we need track correct current medium IOR
         float EtaI;
         float EtaT;
 
@@ -359,6 +358,8 @@ public struct BSDFSamplingStrategy {
             EtaI = Surface.Transmission.IOR;
             EtaT = 1.0;
         }
+
+        float Eta = EtaI / EtaT;
 
         float3 F0 = FresnelBaseReflectance<SurfaceDomain.Transmissive>(
             Surface.Color, 
@@ -398,47 +399,84 @@ public struct BSDFSamplingStrategy {
         // Fresnel at view direction for energy distribution
         float3 Fv = FresnelSchlick(NdotV, F0);
         float3 kReflect = Fv;
+        float3 kRefract = (1.0 - kReflect) * (1.0 - Surface.Metallic); // Refraction only possible for non-metallic transmissive surfaces
         
-        // Refraction only possible for non-metallic transmissive surfaces
-        float3 kRefract = (1.0 - kReflect) * (1.0 - Surface.Metallic);
-        
-        // For non-transmissive domains, no refraction is possible
-        if (Domain != SurfaceDomain.Transmissive) {
-            kRefract = 0.0;
-        }
-
         // Use luminance weights for MIS probabilities
-        float wReflect = dot(kReflect, float3(0.299, 0.587, 0.114));
-        float wRefract = dot(kRefract, float3(0.299, 0.587, 0.114));
-        float totalWeight = wReflect + wRefract + 1e-8;
-        float pReflect = wReflect / totalWeight;
-        float pRefract = wRefract / totalWeight;
+        float ReflectionWeight = dot(kReflect, float3(0.299, 0.587, 0.114));
+        float RefractionWeight = dot(kRefract, float3(0.299, 0.587, 0.114));
+        float TotalWeight = ReflectionWeight + RefractionWeight + 1e-8;
+        float ReflectionPathProbability = ReflectionWeight / TotalWeight;
+        float RefractionPathProbability = RefractionWeight / TotalWeight;
 
-        // --- 3) Branch: Reflect vs Refract sampling ------------------
-        // For now we only support specular reflection with no roughness
-        if (Xi.x < pReflect && pReflect > FloatMin)
-        {
-            Result.Direction = normalize(reflect(-V, N));
-            Result.PDF = pReflect;
-            Result.Weight = Fv * Surface.Color;
+        bool ReflectionChosen = Xi.x < ReflectionPathProbability && ReflectionPathProbability > FloatMin;
+        bool RefractionChosen = Xi.x > ReflectionPathProbability && RefractionPathProbability > FloatMin;
 
-            return Result;
+        // --- 3) Perfect transmission or reflection shortcut ------------------
+        if (false &&Surface.Roughness <= 0.001) {
+            if (ReflectionChosen)
+            {
+                Result.Direction = normalize(reflect(-V, N));
+                Result.PDF = ReflectionPathProbability;
+                Result.Weight = Fv * Surface.Color;
+
+                return Result;
+            }
+            else if (RefractionChosen)
+            {
+                Result.Direction = normalize(refract(-V, N, Eta));
+                Result.PDF = RefractionPathProbability;
+                Result.Weight = (1.0 - Fv) * Surface.Color * (1.0f - Surface.Transmission.Factor);
+
+                return Result;
+            }
+            else
+            {
+                return SamplingResult.Invalid();
+            }
         }
-        else if (pRefract > FloatMin)
+
+        // --- 4) Rough transmission / reflection sampling ----------------------------
+        float3 H = RoughBTDF.Sampler.Sample(V, Surface.Roughness, Xi);
+        Result.PDF = RoughBTDF.Sampler.PDF(V, normalize(reflect(-V, H)), Surface.TangentSpace, Surface.Roughness);
+
+        float3 f;
+
+        if(ReflectionChosen)
         {
-            float Eta = EtaI / EtaT;
+            CookTorranceBRDF SpecularBRDF = CookTorranceBRDF(
+                Surface.Color,
+                Surface.Metallic,
+                Surface.Roughness,
+                F0,
+                Surface.TangentSpace
+            );
+
+            Result.Direction = normalize(reflect(-V, N));
+
+            f = SpecularBRDF.Compute(V, Result.Direction);
+        }
+        else if(RefractionChosen)
+        {
+            RoughBTDF RoughBTDF = RoughBTDF(
+                Surface.Color,
+                Surface.Metallic,
+                Surface.Roughness,
+                F0,
+                Surface.TangentSpace,
+                Eta
+            );
 
             Result.Direction = normalize(refract(-V, N, Eta));
-            Result.PDF = pRefract;
-            Result.Weight = (1.0 - Fv) * Surface.Color * (1.0f - Surface.Transmission.Factor);
 
-            return Result;
-        }
-        else
-        {
+            f = RoughBTDF.Compute(V, Result.Direction);
+        } 
+        else {
             return SamplingResult.Invalid();
         }
-        
+
+        // --- 5) Compute final weight and PDF ----------------------------
+        Result.Weight = f * dot(N, Result.Direction) / Result.PDF;
+
         return Result;
     }
 };

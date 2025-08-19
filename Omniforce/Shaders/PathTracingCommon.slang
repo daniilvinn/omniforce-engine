@@ -179,7 +179,7 @@ public struct HitSurfaceInfo<SurfaceDomain Domain = SurfaceDomain.Opaque> {
         TangentSpace TangentSpace = TangentSpace(T.xyz, B, N, Instance.transform.rotation);
 
         // Fetch metallic roughness
-        float3 MetallicRoughnessOcclusion = float3(1.0f, 1.0f, 0.0f);
+        float3 MetallicRoughnessOcclusion = float3(1.0f, 0.1f, 0.0f);
         if (Material.Metadata.HasMetallicRoughness == 1) {
             if (LastFetchedUVIndex != Material.MetallicRoughness.UVChannelIndex) {
                 UV = Geometry.RTFetchUV(HitTriangleIndices, Material.MetallicRoughness.UVChannelIndex, Barys);
