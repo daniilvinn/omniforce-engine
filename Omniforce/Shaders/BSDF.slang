@@ -110,18 +110,21 @@ public struct RoughBTDF {
     }
 
     public float3 Compute(float3 V, float3 L) {
+        // V is the incident direction, L is the transmitted direction
+        // Both V and L point away from the surface for transmission
         float NdotV = max(dot(TBN.N, V), 0.0);
-        float NdotL = max(dot(TBN.N, -L), 0.0); // Note: L points toward surface for transmission
-
+        float NdotL = max(dot(TBN.N, -L), 0.0); // L points away from surface for transmission
+        
         if (NdotV < FloatMin || NdotL < FloatMin) {
             return float3(0.0, 0.0, 0.0);
         }
 
-        // Compute the microfacet normal (half vector) for transmission
-        // For transmission: wm = -normalize(wi + wo/eta)
-        float3 H = -normalize(L + V / Eta);
+        // Compute the half-vector for transmission using correct formula
+        // For transmission BTDF: H = -normalize(ηi * ωi + ηt * ωt)
+        // Since Eta = ηi/ηt, we get: H = -normalize(Eta * V + L)
+        float3 H = -normalize(Eta * V + L);
         
-        // Ensure half vector points into the same hemisphere as the surface normal
+        // Ensure half vector points toward the correct hemisphere
         if (dot(H, TBN.N) < 0.0) {
             H = -H;
         }
@@ -134,39 +137,38 @@ public struct RoughBTDF {
             return float3(0.0, 0.0, 0.0);
         }
 
-        // GGX Distribution
+        // GGX Distribution: D(ω_m)
         float D = DistributionGGX(TBN.N, H, Roughness);
 
-        // Smith Geometry function
+        // Smith Geometry function: G(ω_i, ω_o) - V=ω_i (incident), -L=ω_o (transmitted)
         float G = GeometrySmith(TBN.N, V, -L, Roughness);
 
-        // Fresnel term (1 - F for transmission)
-        float3 F = F0 + (1.0 - F0) * pow(clamp(1.0 - abs(VdotH), 0.0, 1.0), 5.0);
-        float3 T = (1.0 - F); // Transmission coefficient
+        // Fresnel term: F(ωi · ωm) - using VdotH (incident direction)
+        float3 F = FresnelSchlick(VdotH, F0);;
 
-        // BTDF denominator: ((wi·wm) + (wo·wm)/η)²
-        float DenomH = LdotH + VdotH / Eta;
+        // BTDF denominator: ((ωi · ωm) + (ωo · ωm)/η)²
+        // For our convention: ωi · ωm = VdotH, ωo · ωm = -LdotH (since L points away)
+        float DenomH = VdotH - LdotH / Eta;
         float DenomHSquared = DenomH * DenomH;
 
         if (abs(DenomHSquared) < FloatMin) {
             return float3(0.0, 0.0, 0.0);
         }
 
-        // BTDF numerator: D * T * G * |wi·wm| * |wo·wm|
-        float Numerator = D * G * abs(LdotH) * abs(VdotH);
+        // BTDF with proper energy conservation factor η²
+        // Numerator: η² * D(ωm) * (1-F(ωi·ωm)) * G(ωi,ωo) * |ωi·ωm| * |ωo·ωm|
+        float EtaSquared = Eta * Eta;
+        float3 Numerator = EtaSquared * D * (1.0 - F) * G * abs(VdotH) * abs(LdotH);
         
-        // Full BTDF denominator: denomHSquared * |cos θi| * |cos θo|
-        float FullDenom = DenomHSquared * NdotL * NdotV;
+        // Denominator: DenomHSquared * |cosθi| * |cosθo|
+        float Denominator = DenomHSquared * NdotV * NdotL;
 
-        if (FullDenom < FloatMin) {
+        if (Denominator < FloatMin) {
             return float3(0.0, 0.0, 0.0);
         }
 
-        // Final BTDF value
-        float BTDFValue = Numerator / FullDenom;
-        
-        // Apply transmission color and scale by eta²
-        float3 Result = BaseColor * T * BTDFValue * (Eta * Eta);
+        // Apply the corrected theoretical formula with energy conservation
+        float3 Result = BaseColor * (Numerator / Denominator);
 
         return Result;
     }

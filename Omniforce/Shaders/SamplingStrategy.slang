@@ -446,10 +446,6 @@ public struct BSDFSamplingStrategy {
         );
 
         float3 H_local = CookTorranceBRDF.Sampler.Sample(V_local, Surface.Roughness, Xi);
-        // H = normalize(mul(H_local, Surface.TangentSpace.TBN));
-
-        //float3 H = RoughBTDF.Sampler.Sample(V_local, Surface.Roughness, Xi);
-
         float3 H = normalize(mul(H_local, Surface.TangentSpace.TBN));
 
         Result.PDF = RoughBTDF.Sampler.PDF(V, normalize(reflect(-V, H)), Surface.TangentSpace, Surface.Roughness);
@@ -468,9 +464,7 @@ public struct BSDFSamplingStrategy {
 
             Result.Direction = normalize(reflect(-V, H));
 
-            //f = SpecularBRDF.Compute(V, Result.Direction);
-            Result.Weight = Fv * Surface.Color;
-            return Result;
+            f = SpecularBRDF.Compute(V, Result.Direction);
         }
         else if(RefractionChosen)
         {
@@ -485,10 +479,7 @@ public struct BSDFSamplingStrategy {
 
             Result.Direction = normalize(refract(-V, H, Eta));
 
-            f = RoughBTDF.Compute(V, Result.Direction);
-            Result.Weight = (1.0 - Fv) * Surface.Color * (1.0f - Surface.Transmission.Factor);
-
-            return Result;
+            f = RoughBTDF.Compute(V, Result.Direction) * (1.0 - Surface.Transmission.Factor);
         } 
         else {
             return SamplingResult.Invalid();
@@ -496,8 +487,8 @@ public struct BSDFSamplingStrategy {
 
         // --- 5) Compute final weight and PDF ----------------------------
         // Result.Weight = f * dot(N, Result.Direction) / Result.PDF;
-        // Result.Weight = f / Result.PDF;
-
+        Result.Weight = f / Result.PDF;
+        
         return Result;
     }
 };
