@@ -345,6 +345,7 @@ public struct BSDFSamplingStrategy {
 
         // Fix normal if needed
         float3 N = SameHemisphere(V, Surface.TangentSpace.N) ? Surface.TangentSpace.N : -Surface.TangentSpace.N;
+
         float NdotV = max(dot(N, V), 0.0);
 
         // TODO: This is not correct (?), we need track correct current medium IOR
@@ -360,6 +361,8 @@ public struct BSDFSamplingStrategy {
         }
 
         float Eta = EtaI / EtaT;
+
+        Surface.TangentSpace.N = N;
 
         float3 F0 = FresnelBaseReflectance<SurfaceDomain.Transmissive>(
             Surface.Color, 
@@ -412,7 +415,7 @@ public struct BSDFSamplingStrategy {
         bool RefractionChosen = Xi.x > ReflectionPathProbability && RefractionPathProbability > FloatMin;
 
         // --- 3) Perfect transmission or reflection shortcut ------------------
-        if (false &&Surface.Roughness <= 0.001) {
+        if (Surface.Roughness <= 0.001) {
             if (ReflectionChosen)
             {
                 Result.Direction = normalize(reflect(-V, N));
@@ -436,7 +439,19 @@ public struct BSDFSamplingStrategy {
         }
 
         // --- 4) Rough transmission / reflection sampling ----------------------------
-        float3 H = RoughBTDF.Sampler.Sample(V, Surface.Roughness, Xi);
+        float3 V_local = float3(
+            dot(V, Surface.TangentSpace.T),
+            dot(V, Surface.TangentSpace.B),
+            dot(V, Surface.TangentSpace.N)
+        );
+
+        float3 H_local = CookTorranceBRDF.Sampler.Sample(V_local, Surface.Roughness, Xi);
+        // H = normalize(mul(H_local, Surface.TangentSpace.TBN));
+
+        //float3 H = RoughBTDF.Sampler.Sample(V_local, Surface.Roughness, Xi);
+
+        float3 H = normalize(mul(H_local, Surface.TangentSpace.TBN));
+
         Result.PDF = RoughBTDF.Sampler.PDF(V, normalize(reflect(-V, H)), Surface.TangentSpace, Surface.Roughness);
 
         float3 f;
@@ -451,9 +466,11 @@ public struct BSDFSamplingStrategy {
                 Surface.TangentSpace
             );
 
-            Result.Direction = normalize(reflect(-V, N));
+            Result.Direction = normalize(reflect(-V, H));
 
-            f = SpecularBRDF.Compute(V, Result.Direction);
+            //f = SpecularBRDF.Compute(V, Result.Direction);
+            Result.Weight = Fv * Surface.Color;
+            return Result;
         }
         else if(RefractionChosen)
         {
@@ -466,16 +483,20 @@ public struct BSDFSamplingStrategy {
                 Eta
             );
 
-            Result.Direction = normalize(refract(-V, N, Eta));
+            Result.Direction = normalize(refract(-V, H, Eta));
 
             f = RoughBTDF.Compute(V, Result.Direction);
+            Result.Weight = (1.0 - Fv) * Surface.Color * (1.0f - Surface.Transmission.Factor);
+
+            return Result;
         } 
         else {
             return SamplingResult.Invalid();
         }
 
         // --- 5) Compute final weight and PDF ----------------------------
-        Result.Weight = f * dot(N, Result.Direction) / Result.PDF;
+        // Result.Weight = f * dot(N, Result.Direction) / Result.PDF;
+        // Result.Weight = f / Result.PDF;
 
         return Result;
     }
