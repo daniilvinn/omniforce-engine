@@ -47,6 +47,30 @@ namespace Omni {
 		m_Registry.on_destroy<MeshComponent>().connect<&Scene::OnMeshRemoved>(this);
 	}
 
+	Scene::Scene(SceneType type, bool create_renderer)
+		: m_Type(type)
+	{
+		if
+		(
+			create_renderer
+		)
+		{
+			SceneRendererSpecification renderer_spec = {};
+			renderer_spec.anisotropic_filtering = 16;
+
+			m_Renderer = PathTracingSceneRenderer::Create(&g_PersistentAllocator, renderer_spec);
+
+			// Connect entt hooks for renderer resource lifetime of mesh/material
+			m_Registry.on_construct<MeshComponent>().connect<&Scene::OnMeshAdded>(this);
+			m_Registry.on_destroy<MeshComponent>().connect<&Scene::OnMeshRemoved>(this);
+		}
+		else
+		{
+			// Template scene - no renderer, no hooks needed yet
+			m_Renderer = nullptr;
+		}
+	}
+
 	Scene::Scene(Scene* other)
 	{
 		m_Registry.clear();
@@ -253,9 +277,9 @@ namespace Omni {
 		return {};
 	}
 
-	Entity Scene::GetEntity(UUID id)
+	Entity Scene::GetEntity(UUID id) const
 	{
-		return Entity(m_Entities[id], this);
+		return Entity(m_Entities.at(id), const_cast<Scene*>(this));
 	}
 
 	void Scene::RemoveEntity(Entity entity)
@@ -438,6 +462,146 @@ namespace Omni {
 				break;
 			}
 		}
+	}
+
+	void Scene::MergeScene(Ref<Scene> other_scene, Entity parent)
+	{
+		// Validate source scene is template (no renderer)
+		if
+		(
+			!other_scene->IsTemplate()
+		)
+		{
+			OMNIFORCE_CORE_ERROR("Cannot merge scene: source scene must be a template (no renderer)");
+			return;
+		}
+		
+		// Validate target scene has renderer
+		if
+		(
+			this->IsTemplate()
+		)
+		{
+			OMNIFORCE_CORE_ERROR("Cannot merge scene: target scene must have a renderer");
+			return;
+		}
+
+		// Copy all root entities from source scene
+		auto view = other_scene->m_Registry.view<UUIDComponent>();
+		for 
+		(
+			auto entity : view
+		)
+		{
+			Entity source_entity(entity, other_scene.Raw());
+			
+			// Only process root entities (entities without parents)
+			if
+			(
+				source_entity.HasComponent<HierarchyNodeComponent>()
+			)
+			{
+				HierarchyNodeComponent& hierarchy_comp = source_entity.GetComponent<HierarchyNodeComponent>();
+				if
+				(
+					hierarchy_comp.parent.Valid()
+				)
+				{
+					continue; // Skip non-root entities, they will be copied recursively
+				}
+			}
+
+			// Copy the entire hierarchy starting from this root entity
+			CopyEntityHierarchy(other_scene.Raw(), source_entity, parent);
+		}
+	}
+
+	Entity Scene::CopyEntityHierarchy(const Scene* source_scene, Entity source_entity, Entity new_parent)
+	{
+		// Create new entity with new UUID
+		Entity new_entity = new_parent.Valid() ? CreateChildEntity(new_parent) : CreateEntity();
+		
+		// Copy all components except UUID and HierarchyNode (handled separately)
+		if
+		(
+			source_entity.HasComponent<TagComponent>()
+		)
+		{
+			new_entity.GetComponent<TagComponent>() = source_entity.GetComponent<TagComponent>();
+		}
+		
+		if
+		(
+			source_entity.HasComponent<TRSComponent>()
+		)
+		{
+			new_entity.GetComponent<TRSComponent>() = source_entity.GetComponent<TRSComponent>();
+		}
+		
+		if
+		(
+			source_entity.HasComponent<MeshComponent>()
+		)
+		{
+			new_entity.AddComponent<MeshComponent>(source_entity.GetComponent<MeshComponent>());
+		}
+		
+		if
+		(
+			source_entity.HasComponent<CameraComponent>()
+		)
+		{
+			new_entity.AddComponent<CameraComponent>(source_entity.GetComponent<CameraComponent>());
+		}
+		
+		if
+		(
+			source_entity.HasComponent<PointLightComponent>()
+		)
+		{
+			new_entity.AddComponent<PointLightComponent>(source_entity.GetComponent<PointLightComponent>());
+		}
+
+		// Recursively copy children
+		if
+		(
+			source_entity.HasComponent<HierarchyNodeComponent>()
+		)
+		{
+			const HierarchyNodeComponent& source_hierarchy = source_entity.GetComponent<HierarchyNodeComponent>();
+			for 
+			(
+				const UUID& child_id : source_hierarchy.children
+			)
+			{
+				Entity child_entity = source_scene->GetEntity(child_id);
+				CopyEntityHierarchy(source_scene, child_entity, new_entity);
+			}
+		}
+
+		return new_entity;
+	}
+
+	Ref<Scene> Scene::Clone() const
+	{
+		// Create new scene with same type and renderer status
+		Ref<Scene> cloned_scene = CreateRef<Scene>(&g_PersistentAllocator, m_Type, !IsTemplate());
+		
+		// Use MergeScene to copy all entities
+		Ref<Scene> this_ref = CreateRef<Scene>(&g_PersistentAllocator, *const_cast<Scene*>(this));
+		cloned_scene->MergeScene(this_ref, Entity());
+		
+		// Copy scene-level properties
+		cloned_scene->m_PhysicsSettings = m_PhysicsSettings;
+		
+		return cloned_scene;
+	}
+
+	Entity Scene::InstantiateScene(Ref<Scene> scene, Entity parent)
+	{
+		// This is essentially MergeScene but ensures everything goes under the specified parent
+		MergeScene(scene, parent);
+		return parent;
 	}
   
 	void Scene::OnMeshAdded(entt::registry& r, entt::entity e)

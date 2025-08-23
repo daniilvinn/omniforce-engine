@@ -29,6 +29,8 @@ namespace Omni {
 		Scene() = delete;
 		Scene(SceneType type);
 		Scene(Scene* other);
+		// Alternative constructor for template scenes (no renderer)
+		Scene(SceneType type, bool create_renderer);
 
 		void Destroy();
 
@@ -43,11 +45,16 @@ namespace Omni {
 		bool IsInRuntime() const { return m_InRuntime; }
 		fvec3 TraverseSceneHierarchy(Entity node, TRSComponent origin);
 		
+		// Scene merging and template functionality
+		void MergeScene(Ref<Scene> other_scene, Entity parent = {});
+		bool IsTemplate() const { return !m_Renderer; }
+		Ref<Scene> Clone() const;
+		Entity InstantiateScene(Ref<Scene> scene, Entity parent = {});
 
 		SceneType				GetType() const { return m_Type; }
 		entt::registry*			GetRegistry() { return &m_Registry; }
 		auto&					GetEntities() { return m_Entities; }
-		Entity					GetEntity(UUID id);
+		Entity					GetEntity(UUID id) const;
 		Entity					GetEntity(std::string_view tag);
 		Ref<Image>				GetFinalImage() const { return m_Renderer->GetFinalImage(); }
 		Ref<Camera>				GetCamera() const { return m_Camera; };
@@ -68,6 +75,9 @@ namespace Omni {
 		// entt component lifecycle hooks
 		void OnMeshAdded(entt::registry& registry, entt::entity entity);
 		void OnMeshRemoved(entt::registry& registry, entt::entity entity);
+
+		// Helper for recursive entity copying with new UUIDs
+		Entity CopyEntityHierarchy(const Scene* source_scene, Entity source_entity, Entity new_parent = {});
 
 	private:
 		UUID m_Id;
