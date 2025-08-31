@@ -43,13 +43,12 @@ namespace Omni {
 		void LaunchRuntime();
 		void ShutdownRuntime();
 		bool IsInRuntime() const { return m_InRuntime; }
-		fvec3 TraverseSceneHierarchy(Entity node, TRSComponent origin);
 		
 		// Scene merging and template functionality
-		void MergeScene(Ref<Scene> other_scene, Entity parent = {});
+		void MergeScene(const Scene* other_scene, Entity parent);
 		bool IsTemplate() const { return !m_Renderer; }
 		Ref<Scene> Clone() const;
-		Entity InstantiateScene(Ref<Scene> scene, Entity parent = {});
+		Entity InstantiateScene(Ref<Scene> scene, Entity parent);
 
 		SceneType				GetType() const { return m_Type; }
 		entt::registry*			GetRegistry() { return &m_Registry; }
@@ -77,7 +76,7 @@ namespace Omni {
 		void OnMeshRemoved(entt::registry& registry, entt::entity entity);
 
 		// Helper for recursive entity copying with new UUIDs
-		Entity CopyEntityHierarchy(const Scene* source_scene, Entity source_entity, Entity new_parent = {});
+		Entity CopyEntityHierarchy(const Scene* source_scene, Entity source_entity, Entity new_parent);
 
 	private:
 		UUID m_Id;

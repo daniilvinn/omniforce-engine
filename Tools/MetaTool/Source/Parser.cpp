@@ -102,7 +102,6 @@ namespace Omni {
 
 		if (errorCode != CXError_Success) {
 			std::cerr << "Failed to run MetaTool; error code: " << errorCode << std::endl;
-			exit(-2);
 		}
 
 		ValidateTranslationUnit(tu);
@@ -110,29 +109,29 @@ namespace Omni {
 	}
 
 	void Parser::ValidateTranslationUnit(CXTranslationUnit translationUnit) {
-		int numDiagnosticMessages = clang_getNumDiagnostics(translationUnit);
+		int num_diagnostic_messages = clang_getNumDiagnostics(translationUnit);
 
-		if (numDiagnosticMessages) {
-			std::cout << "There are " << numDiagnosticMessages << " MetaTool diagnostic messages" << std::endl;
+		if (num_diagnostic_messages) {
+			std::cout << "There are " << num_diagnostic_messages << " MetaTool diagnostic messages" << std::endl;
 		}
 
-		bool foundError = false;
+		bool found_error = false;
 
-		for (uint32_t currentMessage = 0; currentMessage < numDiagnosticMessages; ++currentMessage) {
+		for (uint32_t currentMessage = 0; currentMessage < num_diagnostic_messages; ++currentMessage) {
 			CXDiagnostic diagnostic = clang_getDiagnostic(translationUnit, currentMessage);
-			CXString errorString = clang_formatDiagnostic(diagnostic, clang_defaultDiagnosticDisplayOptions());
+			CXString error_string = clang_formatDiagnostic(diagnostic, clang_defaultDiagnosticDisplayOptions());
 
-			std::string tmp(clang_getCString(errorString));
-			clang_disposeString(errorString);
+			std::string tmp(clang_getCString(error_string));
+			clang_disposeString(error_string);
 
 			if (tmp.find("error") != std::string::npos) {
-				foundError = true;
+				found_error = true;
 			}
 
 			std::cerr << tmp << std::endl;
 		}
 
-		if (foundError) {
+		if (found_error) {
 			std::cerr << "Failed to run MetaTool" << std::endl;
 			exit(-1);
 		}

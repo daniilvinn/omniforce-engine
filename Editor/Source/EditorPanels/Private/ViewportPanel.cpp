@@ -5,7 +5,9 @@
 #include <Scene/Entity.h>
 #include <Scene/Component.h>
 #include <Asset/AssetManager.h>
-#include <Asset/Importers/ModelImporter.h>
+#include <Asset/Importers/SceneImporter.h>
+
+#include <spdlog/fmt/fmt.h>
 
 #include "EditorCamera.h"
 #include "Services/EditorContext.h"
@@ -79,20 +81,18 @@ namespace Omni {
             // Payload data includes the trailing null terminator (sender sends size+1)
             const char* cpath = reinterpret_cast<const char*>(payload->Data);
             std::filesystem::path filename = std::filesystem::path(std::string(cpath));
-            if (filename.extension() == ".gltf" || filename.extension() == ".glb") {
-                // Import model and spawn entities in the current scene
-                AssetManager* assetManager = AssetManager::Get();
-                ModelImporter importer;
-                Ref<Model> model = AssetManager::Get()->GetAsset<Model>(importer.Import(filename));
-
-                Entity root = m_Context->CreateEntity();
-                auto& map = model->GetMap();
-                for (auto& entry : map) {
-                    Entity child = m_Context->CreateChildEntity(root);
-                    child.GetComponent<TagComponent>().tag = assetManager->GetAsset<Material>(entry.second)->GetName();
-                    child.AddComponent<MeshComponent>(MeshComponent{ entry.first, entry.second });
-                }
-            }
+                    if (filename.extension() == ".gltf" || filename.extension() == ".glb") {
+            // Import scene and merge it into the current scene (Phase 2 enhancement)
+            SceneImporter importer;
+            Ref<Scene> imported_scene = importer.ImportScene(filename);
+            
+            // Create a root entity for the imported scene
+            Entity root = m_Context->CreateEntity();
+            root.GetComponent<TagComponent>().tag = fmt::format("Imported_{}", filename.stem().string());
+            
+            // Merge the imported scene under the root entity
+            m_Context->MergeScene(imported_scene.Raw(), root);
+        }
         }
         ImGui::EndDragDropTarget();
     }

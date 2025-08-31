@@ -1,11 +1,10 @@
 #pragma once
 
 #include <Foundation/Common.h>
-#include <Scene/Scene.h>
-#include <Scene/Entity.h>
 #include <Asset/Importers/MaterialImporter.h>
 #include <Asset/Material.h>
 #include <Rendering/Mesh.h>
+#include <Scene/Scene.h>
 
 #include <filesystem>
 #include <shared_mutex>
@@ -24,6 +23,9 @@ namespace fastgltf {
 namespace Omni {
 
 	namespace ftf = fastgltf;
+	
+	class Scene;
+	class Entity;
 
 	using MeshMaterialPair = std::pair<AssetHandle, AssetHandle>;
 	using VertexAttributeMetadataTable = std::map<std::string, uint8>;
@@ -48,7 +50,7 @@ namespace Omni {
 		/*
 		*  Process GLTF nodes recursively
 		*/
-		Entity ProcessNode(Scene* scene, const ftf::Asset* asset, const ftf::Node* node, Entity parent = {});
+		Entity ProcessNode(Scene* scene, const ftf::Asset* asset, const ftf::Node* node, Entity parent);
 		
 		/*
 		*  Specialized node processors
